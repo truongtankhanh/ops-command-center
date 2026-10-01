@@ -13,7 +13,7 @@ const EMPTY_MESSAGE = {
 export function IncidentFeed() {
   const { data: incidents, isPending, isError } = useIncidents();
   const { data: zones = [] } = useZones();
-  const { filter, setFilter } = useConsole();
+  const { filter, setFilter, reporting, startReport } = useConsole();
   const now = useNow();
 
   const zoneName = new Map(zones.map((z: Zone) => [z.id, z.name]));
@@ -21,6 +21,16 @@ export function IncidentFeed() {
 
   return (
     <aside className="feed" aria-label="Incidents">
+      <div className="feed-actions">
+        <button
+          type="button"
+          className="button button-primary"
+          aria-pressed={reporting}
+          onClick={startReport}
+        >
+          Report incident
+        </button>
+      </div>
       <div className="feed-tabs" role="tablist" aria-label="Filter incidents">
         {FEED_FILTERS.map(({ value, label }) => (
           <button

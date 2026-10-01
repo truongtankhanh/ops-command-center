@@ -2,6 +2,7 @@ import type {
   Camera,
   Incident,
   IncidentDetail,
+  ReportIncidentRequest,
   StreamDescriptor,
   TransitionIncidentRequest,
   Zone,
@@ -62,6 +63,21 @@ export function useTransition(action: Transition) {
       api.post<IncidentDetail>(`/incidents/${id}/${action}`, note ? { note } : {}),
     onSuccess: (detail) => {
       queryClient.setQueryData(queryKeys.incident(detail.id), detail);
+      queryClient.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
+        upsertIncident(list, detail),
+      );
+    },
+  });
+}
+
+/** Report a new incident; the response is written straight into the cache. */
+export function useReportIncident() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ReportIncidentRequest) => api.post<IncidentDetail>('/incidents', request),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(queryKeys.incident(detail.id), detail);
+      // Idempotent with the live `incident.created` event this console also receives.
       queryClient.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
         upsertIncident(list, detail),
       );

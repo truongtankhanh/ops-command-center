@@ -5,3 +5,6 @@ coverage
 .env
 *.log
 .DS_Store
+
+# Steel pipeline run folders (local working state)
+.steel/

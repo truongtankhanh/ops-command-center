@@ -45,7 +45,9 @@ function renderFeed() {
 }
 
 describe('IncidentFeed', () => {
-  beforeEach(() => useConsole.setState({ filter: 'active', selectedIncidentId: null }));
+  beforeEach(() =>
+    useConsole.setState({ filter: 'active', selectedIncidentId: null, reporting: false }),
+  );
 
   it('shows only active incidents by default, with zone and status', () => {
     renderFeed();
@@ -73,6 +75,16 @@ describe('IncidentFeed', () => {
     expect(row).toHaveAttribute('aria-current', 'true');
 
     await userEvent.click(row);
+    expect(useConsole.getState().selectedIncidentId).toBeNull();
+  });
+
+  it('opens the report form from the feed and clears the selection', async () => {
+    useConsole.setState({ selectedIncidentId: 'a' });
+    renderFeed();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Report incident' }));
+
+    expect(useConsole.getState().reporting).toBe(true);
     expect(useConsole.getState().selectedIncidentId).toBeNull();
   });
 });
