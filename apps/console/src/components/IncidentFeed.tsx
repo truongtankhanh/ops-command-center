@@ -25,7 +25,8 @@ export function IncidentFeed() {
         <button
           type="button"
           className="button button-primary"
-          aria-pressed={reporting}
+          aria-expanded={reporting}
+          aria-controls="report-incident-panel"
           onClick={startReport}
         >
           Report incident

@@ -626,6 +626,10 @@ button {
   padding: 20px;
 }
 
+.report-form .detail-title {
+  margin: 0;
+}
+
 .field {
   display: grid;
   gap: 6px;

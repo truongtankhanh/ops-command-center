@@ -49,12 +49,10 @@ export function ReportIncidentForm() {
   };
 
   return (
-    <aside className="detail" aria-label="Report an incident">
+    <aside id="report-incident-panel" className="detail" aria-label="Report an incident">
       <form className="report-form" onSubmit={submit} noValidate>
         <div className="detail-toprow">
-          <h2 className="detail-title" style={{ margin: 0 }}>
-            Report an incident
-          </h2>
+          <h2 className="detail-title">Report an incident</h2>
         </div>
 
         <label className="field">
