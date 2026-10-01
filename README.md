@@ -51,12 +51,13 @@ packages/
   contracts/        Shared types + event names: the API ↔ console contract
   camera-adapter/   CameraSource port with mock and MediaMTX implementations
 docs/
+  api/              API reference + OpenAPI 3.1, generated from code and drift-checked
   architecture.md   System design, domain model, real-time flow
   adr/              Architecture Decision Records
   roadmap.md        Milestones and ticket breakdown
 ```
 
-The full design is in [docs/architecture.md](docs/architecture.md). Key decisions, each with context, options and consequences:
+The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
 | ADR                                                      | Decision                                                                                            |
 | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |

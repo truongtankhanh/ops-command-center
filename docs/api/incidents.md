@@ -1,0 +1,112 @@
+# Incidents
+
+An incident moves `open → acknowledged → resolved` (or straight from `open` to `resolved`).
+Every transition is recorded on the incident's timeline, and every create or change is pushed
+to connected clients — see [events.md](events.md).
+
+`Incident` fields: `id`, `code` (`INC-000042`), `type`, `severity`, `status`, `title`,
+`description` (nullable), `zoneId`, `position: [lng, lat]`, `source` (`operator` |
+`simulator`), `reportedAt`, `acknowledgedAt` (nullable), `resolvedAt` (nullable).
+
+| Enum       | Values                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| `type`     | `intrusion`, `fire_alarm`, `equipment_fault`, `medical`, `crowding`, `suspicious_object` |
+| `severity` | `low`, `medium`, `high`, `critical`                                                      |
+| `status`   | `open`, `acknowledged`, `resolved`                                                       |
+
+### List incidents
+
+<!-- steel:endpoint GET /api/incidents | query: limit?, severity?, status? | returns: Incident[] | auth: none -->
+
+`GET /api/incidents` · Status: current
+
+Ordered for an operator: unresolved first, then by severity (most severe first), then newest.
+
+| Query      | Type                 | Notes                                                    |
+| ---------- | -------------------- | -------------------------------------------------------- |
+| `status`   | `IncidentStatus[]`   | comma-separated or repeated: `?status=open,acknowledged` |
+| `severity` | `IncidentSeverity[]` | comma-separated or repeated                              |
+| `limit`    | `integer`            | 1–500, default 100                                       |
+
+**200** — `Incident[]`
+**400** — unknown enum value or `limit` out of range
+
+Source: `apps/api/src/incidents/incidents.controller.ts:24`
+
+### Get an incident
+
+<!-- steel:endpoint GET /api/incidents/:id | params: id | returns: IncidentDetail | auth: none -->
+
+`GET /api/incidents/:id` · Status: current
+
+One incident with its full timeline, oldest entry first.
+
+**200** — `IncidentDetail` = `Incident` + `timeline: { id, kind, note, at }[]`, where `kind` is
+`reported`, `acknowledged` or `resolved` and `note` is the operator's note or `null`
+**400** — `id` is not a UUID
+**404** — unknown incident
+
+Source: `apps/api/src/incidents/incidents.controller.ts:31`
+
+### Report an incident
+
+<!-- steel:endpoint POST /api/incidents | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: none -->
+
+`POST /api/incidents` · Status: current
+
+Creates an incident in status `open` with `source: operator` and a sequential `code`.
+Broadcasts `incident.created` after the write commits.
+
+| Body field    | Type               | Rules                                                            |
+| ------------- | ------------------ | ---------------------------------------------------------------- |
+| `type`        | `IncidentType`     | required                                                         |
+| `severity`    | `IncidentSeverity` | required                                                         |
+| `title`       | `string`           | required, 1–160 characters                                       |
+| `description` | `string`           | optional, ≤ 2000 characters                                      |
+| `zoneId`      | `uuid`             | required, must exist                                             |
+| `position`    | `[lng, lat]`       | optional, both numbers in range; defaults to the zone's `center` |
+
+**201** — `IncidentDetail` (timeline has one `reported` entry)
+**400** — validation failed, or an unknown field was sent
+**404** — `zoneId` does not exist
+
+Source: `apps/api/src/incidents/incidents.controller.ts:39`
+
+### Acknowledge an incident
+
+<!-- steel:endpoint POST /api/incidents/:id/acknowledge | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: none -->
+
+`POST /api/incidents/:id/acknowledge` · Status: current
+
+Marks an `open` incident as being handled and records the optional note on the timeline. The
+incident row is locked during the change, so two operators cannot both acknowledge it.
+Broadcasts `incident.updated`.
+
+| Body field | Type     | Rules                       |
+| ---------- | -------- | --------------------------- |
+| `note`     | `string` | optional, ≤ 1000 characters |
+
+**200** — `IncidentDetail`
+**404** — unknown incident
+**409** — the incident is not `open`
+
+Source: `apps/api/src/incidents/incidents.controller.ts:47`
+
+### Resolve an incident
+
+<!-- steel:endpoint POST /api/incidents/:id/resolve | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: none -->
+
+`POST /api/incidents/:id/resolve` · Status: current
+
+Closes an `open` or `acknowledged` incident, with an optional resolution note. Broadcasts
+`incident.updated`.
+
+| Body field | Type     | Rules                       |
+| ---------- | -------- | --------------------------- |
+| `note`     | `string` | optional, ≤ 1000 characters |
+
+**200** — `IncidentDetail`
+**404** — unknown incident
+**409** — the incident is already `resolved`
+
+Source: `apps/api/src/incidents/incidents.controller.ts:59`

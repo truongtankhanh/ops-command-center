@@ -1,0 +1,687 @@
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "HealthController_check",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "status": "ok",
+                    "database": "up"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": ""
+          }
+        },
+        "summary": "Liveness + database reachability. Used by Docker health checks.",
+        "tags": ["health"]
+      }
+    },
+    "/api/zones": {
+      "get": {
+        "operationId": "ZonesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "All zones of the campus with their outlines.",
+        "tags": ["zones"]
+      }
+    },
+    "/api/cameras": {
+      "get": {
+        "operationId": "CamerasController_list",
+        "parameters": [
+          {
+            "name": "zoneId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CameraDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cameras, optionally filtered by zone.",
+        "tags": ["cameras"]
+      }
+    },
+    "/api/cameras/{id}/stream": {
+      "get": {
+        "operationId": "CamerasController_stream",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamDescriptorDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "How the client should render this camera — resolved by the configured CameraSource.",
+        "tags": ["cameras"]
+      }
+    },
+    "/api/incidents": {
+      "get": {
+        "operationId": "IncidentsController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["open", "acknowledged", "resolved"]
+              },
+              "examples": ["open,acknowledged"]
+            }
+          },
+          {
+            "name": "severity",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
+              },
+              "examples": ["high,critical"]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncidentDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Incidents ordered for an operator: unresolved first, then by severity, then newest.",
+        "tags": ["incidents"]
+      },
+      "post": {
+        "operationId": "IncidentsController_report",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Zone does not exist"
+          }
+        },
+        "summary": "Report a new incident on behalf of an operator.",
+        "tags": ["incidents"]
+      }
+    },
+    "/api/incidents/{id}": {
+      "get": {
+        "operationId": "IncidentsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        },
+        "summary": "One incident with its full timeline.",
+        "tags": ["incidents"]
+      }
+    },
+    "/api/incidents/{id}/acknowledge": {
+      "post": {
+        "operationId": "IncidentsController_acknowledge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Incident is not open"
+          }
+        },
+        "summary": "Mark an open incident as being handled.",
+        "tags": ["incidents"]
+      }
+    },
+    "/api/incidents/{id}/resolve": {
+      "post": {
+        "operationId": "IncidentsController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransitionIncidentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetailDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Incident is already resolved"
+          }
+        },
+        "summary": "Close an incident, optionally with a resolution note.",
+        "tags": ["incidents"]
+      }
+    }
+  },
+  "info": {
+    "title": "Ops Command Center API",
+    "version": "0.1.0",
+    "description": "Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace — see events.md."
+  },
+  "tags": [],
+  "components": {
+    "schemas": {
+      "ZoneDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "examples": ["BLD-LIB"]
+          },
+          "name": {
+            "type": "string",
+            "examples": ["Library"]
+          },
+          "kind": {
+            "enum": ["building", "parking", "gate", "outdoor"],
+            "type": "string"
+          },
+          "polygon": {
+            "type": "array",
+            "description": "Closed ring of [lng, lat] points",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "center": {
+            "description": "[lng, lat]",
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          }
+        },
+        "required": ["id", "code", "name", "kind", "polygon", "center"]
+      },
+      "CameraDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "examples": ["CAM-L01"]
+          },
+          "name": {
+            "type": "string",
+            "examples": ["Library entrance"]
+          },
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "description": "[lng, lat]",
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "online": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "code", "name", "zoneId", "position", "online"]
+      },
+      "StreamDescriptorDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": ["mock", "hls", "webrtc"],
+            "type": "string"
+          },
+          "cameraId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "label": {
+            "type": "string",
+            "examples": ["CAM-L01 · Library entrance"]
+          },
+          "url": {
+            "type": "string"
+          },
+          "seed": {
+            "type": "number"
+          }
+        },
+        "required": ["kind", "cameraId", "label"]
+      },
+      "IncidentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "examples": ["INC-000042"]
+          },
+          "type": {
+            "enum": [
+              "intrusion",
+              "fire_alarm",
+              "equipment_fault",
+              "medical",
+              "crowding",
+              "suspicious_object"
+            ],
+            "type": "string"
+          },
+          "severity": {
+            "enum": ["low", "medium", "high", "critical"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["open", "acknowledged", "resolved"],
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "examples": ["Door forced open — service corridor"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "description": "[lng, lat]",
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "source": {
+            "enum": ["operator", "simulator"],
+            "type": "string"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "severity",
+          "status",
+          "title",
+          "description",
+          "zoneId",
+          "position",
+          "source",
+          "reportedAt",
+          "acknowledgedAt",
+          "resolvedAt"
+        ]
+      },
+      "IncidentEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": ["reported", "acknowledged", "resolved"],
+            "type": "string"
+          },
+          "note": {
+            "type": ["string", "null"]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["id", "kind", "note", "at"]
+      },
+      "IncidentDetailDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string",
+            "examples": ["INC-000042"]
+          },
+          "type": {
+            "enum": [
+              "intrusion",
+              "fire_alarm",
+              "equipment_fault",
+              "medical",
+              "crowding",
+              "suspicious_object"
+            ],
+            "type": "string"
+          },
+          "severity": {
+            "enum": ["low", "medium", "high", "critical"],
+            "type": "string"
+          },
+          "status": {
+            "enum": ["open", "acknowledged", "resolved"],
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "examples": ["Door forced open — service corridor"]
+          },
+          "description": {
+            "type": ["string", "null"]
+          },
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "position": {
+            "description": "[lng, lat]",
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "source": {
+            "enum": ["operator", "simulator"],
+            "type": "string"
+          },
+          "reportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentEventDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "type",
+          "severity",
+          "status",
+          "title",
+          "description",
+          "zoneId",
+          "position",
+          "source",
+          "reportedAt",
+          "acknowledgedAt",
+          "resolvedAt",
+          "timeline"
+        ]
+      },
+      "ReportIncidentDto": {
+        "type": "object",
+        "properties": {
+          "position": {
+            "description": "[lng, lat]. Defaults to the zone centre.",
+            "minItems": 2,
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "examples": [[108.4415, 11.953]]
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "intrusion",
+              "fire_alarm",
+              "equipment_fault",
+              "medical",
+              "crowding",
+              "suspicious_object"
+            ]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["low", "medium", "high", "critical"]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["type", "severity", "title", "zoneId"]
+      },
+      "TransitionIncidentDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Optional operator note recorded on the timeline.",
+            "maxLength": 1000
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ]
+}
