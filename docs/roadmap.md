@@ -25,12 +25,13 @@ Goal: the full loop works end to end with synthetic data.
 
 ## M2 — Real video & richer map
 
-| #      | Ticket                                                                                          |
-| ------ | ----------------------------------------------------------------------------------------------- |
-| OCC-15 | MediaMTX service in Compose, fed by simulated RTSP publishers; `CAMERA_SOURCE=mediamtx` profile |
-| OCC-16 | Console HLS/WebRTC player for `StreamDescriptor.kind = hls \| webrtc`                           |
-| OCC-17 | Nearest cameras to an incident (PostGIS distance query)                                         |
-| OCC-18 | deck.gl layer: incident density heatmap over the last 24 h                                      |
+| #      | Ticket                                                                                                                                                                                                                                                                       |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OCC-15 | MediaMTX service in Compose, fed by simulated RTSP publishers; `CAMERA_SOURCE=mediamtx` profile                                                                                                                                                                              |
+| OCC-16 | Console HLS/WebRTC player for `StreamDescriptor.kind = hls \| webrtc`                                                                                                                                                                                                        |
+| OCC-17 | Nearest cameras to an incident (PostGIS distance query)                                                                                                                                                                                                                      |
+| OCC-18 | deck.gl layer: incident density heatmap over the last 24 h                                                                                                                                                                                                                   |
+| OCC-28 | `VmsCameraSource`: stream URLs, inventory sync and PTZ through the site's VMS API, with a recorded fake ([platform ADR-0009](https://github.com/truongtankhanh/architecture-decisions/blob/main/decisions/0009-reach-cameras-through-the-site-s-video-management-system.md)) |
 
 ## M3 — Video wall & access control
 
