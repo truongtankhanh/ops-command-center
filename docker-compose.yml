@@ -1,0 +1,46 @@
+# One command, whole stack:  docker compose up --build   →  http://localhost:8080
+name: ops-command-center
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ops
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ops']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ops
+      SEED_ON_BOOT: 'true'
+      SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
+      SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}
+      CAMERA_SOURCE: mock
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '3000:3000'
+
+  console:
+    build:
+      context: .
+      dockerfile: apps/console/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '8080:80'
+
+volumes:
+  pgdata:
