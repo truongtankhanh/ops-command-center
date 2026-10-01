@@ -5,3 +5,7 @@
 **/.env
 .git
 docs
+.steel
+.claude
+.vscode
+.github

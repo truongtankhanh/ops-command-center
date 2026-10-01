@@ -14,8 +14,8 @@ The demo runs on **Langbiang Tech Campus**, a fictional site with synthetic inci
 
 ```bash
 docker compose up --build
-# Console      http://localhost:8080
-# API + docs   http://localhost:3000/api/docs
+# Console      http://localhost:18080
+# API + docs   http://localhost:13000/api/docs
 ```
 
 ## What it does
@@ -81,23 +81,31 @@ Requirements: Node 24, pnpm 10, PostgreSQL 16+ (or use the `postgres` service fr
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env      # point DATABASE_URL at your database
-docker compose up -d postgres               # optional: a local database
+docker compose up -d postgres               # optional: a local database on 127.0.0.1:15432
 
-pnpm dev                                     # API on :3000, console on :5173
+pnpm dev                                     # API on :13000, console on :15173
 ```
 
-The console's dev server proxies `/api` and `/socket.io` to the API, exactly as nginx does in the container — no CORS configuration anywhere.
+The Compose `postgres` service listens on `127.0.0.1` only. If port 15432 is taken, start it with `POSTGRES_PORT=15433 docker compose up -d postgres` and use the same port in `DATABASE_URL`.
 
-| Variable                                   | Default | Purpose                                              |
-| ------------------------------------------ | ------- | ---------------------------------------------------- |
-| `DATABASE_URL`                             | —       | PostgreSQL connection string                         |
-| `SEED_ON_BOOT`                             | `true`  | Seed the reference campus when the database is empty |
-| `SIMULATOR_ENABLED`                        | `false` | Generate demo incident traffic                       |
-| `SIMULATOR_INTERVAL_MS`                    | `8000`  | Time between simulator ticks                         |
-| `CAMERA_SOURCE`                            | `mock`  | `mock` or `mediamtx`                                 |
-| `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —       | Media server endpoints when `CAMERA_SOURCE=mediamtx` |
+The console's dev server proxies `/api` and `/socket.io` to the API, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`).
+
+API configuration (`apps/api/.env`):
+
+| Variable                                   | Default | Purpose                                                                |
+| ------------------------------------------ | ------- | ---------------------------------------------------------------------- |
+| `PORT`                                     | `3000`  | HTTP and WebSocket port (`.env.example` sets `13000` for `pnpm dev`)   |
+| `DATABASE_URL`                             | —       | PostgreSQL connection string                                           |
+| `SEED_ON_BOOT`                             | `true`  | Seed the reference campus when the database is empty                   |
+| `SIMULATOR_ENABLED`                        | `false` | Generate demo incident traffic (`.env.example` and Compose turn it on) |
+| `SIMULATOR_INTERVAL_MS`                    | `8000`  | Time between simulator ticks                                           |
+| `CAMERA_SOURCE`                            | `mock`  | `mock` or `mediamtx`                                                   |
+| `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —       | Media server endpoints when `CAMERA_SOURCE=mediamtx`                   |
+| `MEDIAMTX_PROTOCOL`                        | `hls`   | `hls` or `webrtc`                                                      |
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong.
+
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file.
 
 ## Quality
 

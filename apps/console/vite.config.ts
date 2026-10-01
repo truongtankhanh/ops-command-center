@@ -2,12 +2,12 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-const apiTarget = process.env.API_URL ?? 'http://localhost:3000';
+const apiTarget = process.env.API_URL ?? 'http://localhost:13000';
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 15173,
     // Same-origin in development, exactly like nginx does in production — no CORS anywhere.
     proxy: {
       '/api': apiTarget,

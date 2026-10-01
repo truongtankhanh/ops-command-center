@@ -122,7 +122,9 @@ The API resolves a camera to a `StreamDescriptor` (`{ kind: 'mock' }` today, `{ 
 
 ## 7. Deployment
 
-Single host, Docker Compose: `postgres`, `api`, `console` (static build served by nginx, which also reverse-proxies `/api` and `/events` to the API — one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
+The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API; one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
+
+A production deployment guide is not published yet.
 
 ## 8. Cross-cutting concerns
 
