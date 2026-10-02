@@ -29,6 +29,9 @@ services:
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}
       CAMERA_SOURCE: ${CAMERA_SOURCE:-mock}
+      # The image runs NODE_ENV=production, which refuses mock cameras and seeding unless the
+      # deploy opts in. This stack is the demo, so it does (ADR-0006).
+      DEMO_MODE: ${DEMO_MODE:-true}
       # Demo stack, not production: keep /api/docs on. The image runs NODE_ENV=production,
       # so "Try it out" stays disabled (ADR-0005).
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}

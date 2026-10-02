@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CamerasModule } from './cameras/cameras.module';
+import { envFilePath } from './config/env-files';
 import { type Env, validateEnv } from './config/env.validation';
 import { SeedService } from './database/seed/seed.service';
 import { typeormOptions } from './database/typeorm-options';
@@ -14,7 +15,12 @@ import { ZonesModule } from './zones/zones.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, cache: true, validate: validateEnv }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      envFilePath: envFilePath(),
+      validate: validateEnv,
+    }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>

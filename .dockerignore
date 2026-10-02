@@ -3,6 +3,7 @@
 **/coverage
 **/.turbo
 **/.env
+**/.env.*
 .git
 docs
 .steel

@@ -12,11 +12,13 @@ import { io, type Socket } from 'socket.io-client';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
+import { validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
 
 /**
- * Runs the real application against a real PostgreSQL database (`DATABASE_URL`).
- * The schema is dropped and rebuilt through migrations, then the reference campus is seeded.
+ * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
+ * or the shell; its name must end in `_test`). The schema is dropped and rebuilt through
+ * migrations, then the reference campus is seeded.
  */
 describe('Incidents (e2e)', () => {
   let app: INestApplication;
@@ -25,15 +27,10 @@ describe('Incidents (e2e)', () => {
   let zone: Zone;
 
   beforeAll(async () => {
-    process.env.SEED_ON_BOOT = 'true';
-    process.env.SIMULATOR_ENABLED = 'false';
-    process.env.DATABASE_URL ??= 'postgres://postgres:postgres@localhost:5432/ops_test';
-
     // Start from an empty schema so migrations and seed run exactly as on a fresh install.
-    const admin = await new DataSource({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-    }).initialize();
+    const { DATABASE_URL } = validateEnv(process.env);
+    assertTestDatabase(DATABASE_URL);
+    const admin = await new DataSource({ type: 'postgres', url: DATABASE_URL }).initialize();
     await admin.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
     await admin.destroy();
 
@@ -179,6 +176,16 @@ describe('Incidents (e2e)', () => {
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
   });
 });
+
+/** The suite drops the whole schema: refuse any database whose name does not end in `_test`. */
+function assertTestDatabase(databaseUrl: string): void {
+  const name = decodeURIComponent(new URL(databaseUrl).pathname.slice(1));
+  if (!name.endsWith('_test')) {
+    throw new Error(
+      `Refusing to drop schema "public" in database "${name}": e2e needs a *_test database.`,
+    );
+  }
+}
 
 function waitFor<E extends keyof ServerToClientEvents>(
   socket: Socket<ServerToClientEvents, ClientToServerEvents>,

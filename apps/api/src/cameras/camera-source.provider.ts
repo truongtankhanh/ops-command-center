@@ -14,8 +14,8 @@ export const cameraSourceProvider: Provider<CameraSource> = {
     if (kind === 'mediamtx') {
       return createCameraSource({
         kind,
-        hlsBaseUrl: config.get('MEDIAMTX_HLS_URL', { infer: true })!,
-        webrtcBaseUrl: config.get('MEDIAMTX_WEBRTC_URL', { infer: true })!,
+        hlsBaseUrl: config.getOrThrow('MEDIAMTX_HLS_URL', { infer: true }),
+        webrtcBaseUrl: config.getOrThrow('MEDIAMTX_WEBRTC_URL', { infer: true }),
         protocol: config.get('MEDIAMTX_PROTOCOL', { infer: true }),
       });
     }
