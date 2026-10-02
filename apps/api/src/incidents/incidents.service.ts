@@ -12,11 +12,11 @@ import {
 import { DataSource } from 'typeorm';
 import { EntityNotFoundError } from '../common/domain-errors';
 import { ZoneEntity } from '../zones/zone.entity';
+import { DEFAULT_INCIDENT_LIMIT } from './dto/incident-requests.dto';
 import { nextIncidentCode } from './incident-code';
 import { IncidentEntity } from './incident.entity';
 import { persistIncident } from './persist-incident';
 
-const DEFAULT_LIMIT = 100;
 const SEVERITY_ORDER = `ARRAY[${INCIDENT_SEVERITIES.map((s) => `'${s}'`).join(',')}]::varchar[]`;
 
 /**
@@ -42,7 +42,7 @@ export class IncidentsService {
       .orderBy(`CASE WHEN incident.status = 'resolved' THEN 1 ELSE 0 END`, 'ASC')
       .addOrderBy(`array_position(${SEVERITY_ORDER}, incident.severity)`, 'DESC')
       .addOrderBy('incident.reportedAt', 'DESC')
-      .limit(query.limit ?? DEFAULT_LIMIT)
+      .limit(query.limit ?? DEFAULT_INCIDENT_LIMIT)
       .getMany();
     return incidents.map((incident) => incident.toContract());
   }

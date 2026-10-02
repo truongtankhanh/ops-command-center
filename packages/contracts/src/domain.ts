@@ -73,6 +73,11 @@ export interface Incident {
   reportedAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;
+  /**
+   * Starts at 1 and goes up by one on every change. REST responses and live events can
+   * arrive out of order, so a client keeps a copy unless the incoming one has a higher version.
+   */
+  version: number;
 }
 
 export interface IncidentDetail extends Incident {

@@ -4,7 +4,6 @@ import {
   IsIn,
   IsInt,
   IsOptional,
-  IsString,
   IsUrl,
   Max,
   Min,
@@ -20,18 +19,30 @@ const toBoolean = ({ value }: { value: unknown }) =>
  * The API refuses to start when this does not validate.
  */
 export class Env {
+  /** Required: a forgotten value fails boot instead of quietly running as development. */
+  @IsIn(['development', 'test', 'production'])
+  NODE_ENV: 'development' | 'test' | 'production';
+
+  /** Serve Swagger UI and the raw spec. Unset: on everywhere except production (ADR-0005). */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  API_DOCS_ENABLED?: boolean;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(65535)
   PORT = 3000;
 
-  @IsString()
+  /** PostgreSQL connection string; the only secret the API reads. */
+  @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
   DATABASE_URL: string;
 
+  /** Unset: on, except in production (see `applyEnvironmentDefaults`). */
   @Transform(toBoolean)
   @IsBoolean()
-  SEED_ON_BOOT = true;
+  SEED_ON_BOOT: boolean;
 
   @Transform(toBoolean)
   @IsBoolean()
@@ -42,8 +53,11 @@ export class Env {
   @Min(1000)
   SIMULATOR_INTERVAL_MS = 8000;
 
-  @IsIn(['mock', 'mediamtx'])
-  CAMERA_SOURCE: 'mock' | 'mediamtx' = 'mock';
+  /** Unset: `mock`, except in production, which has no default. */
+  @IsIn(['mock', 'mediamtx'], {
+    message: '$property must be mock or mediamtx; production has no default',
+  })
+  CAMERA_SOURCE: 'mock' | 'mediamtx';
 
   @ValidateIf((env: Env) => env.CAMERA_SOURCE === 'mediamtx')
   @IsUrl({ require_tld: false })
@@ -56,15 +70,42 @@ export class Env {
   @IsOptional()
   @IsIn(['hls', 'webrtc'])
   MEDIAMTX_PROTOCOL: 'hls' | 'webrtc' = 'hls';
+
+  /** Lets production run demo behaviour (mock cameras, seeding). Only the Compose demo sets it. */
+  @Transform(toBoolean)
+  @IsBoolean()
+  DEMO_MODE = false;
+}
+
+/** Defaults that depend on `NODE_ENV`, which a field initializer cannot see. */
+function applyEnvironmentDefaults(env: Env): void {
+  const production = env.NODE_ENV === 'production';
+  env.SEED_ON_BOOT ??= !production;
+  if (!production) env.CAMERA_SOURCE ??= 'mock';
+}
+
+/** Production refuses demo behaviour unless `DEMO_MODE` opts in. */
+function productionProblems(env: Env): string[] {
+  if (env.NODE_ENV !== 'production' || env.DEMO_MODE) return [];
+  const problems: string[] = [];
+  if (env.CAMERA_SOURCE === 'mock') {
+    problems.push('CAMERA_SOURCE: mock needs DEMO_MODE=true in production');
+  }
+  if (env.SEED_ON_BOOT) problems.push('SEED_ON_BOOT: true needs DEMO_MODE=true in production');
+  return problems;
 }
 
 export function validateEnv(raw: Record<string, unknown>): Env {
   const env = plainToInstance(Env, raw);
-  const errors = validateSync(env, { skipMissingProperties: false });
-  if (errors.length > 0) {
-    const details = errors
-      .map((e) => `  - ${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`)
-      .join('\n');
+  applyEnvironmentDefaults(env);
+  const problems = [
+    ...validateSync(env, { skipMissingProperties: false }).map(
+      (e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`,
+    ),
+    ...productionProblems(env),
+  ];
+  if (problems.length > 0) {
+    const details = problems.map((problem) => `  - ${problem}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${details}`);
   }
   return env;

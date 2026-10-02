@@ -14,6 +14,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  VersionColumn,
 } from 'typeorm';
 import { InvalidTransitionError } from '../common/domain-errors';
 import { ZoneEntity } from '../zones/zone.entity';
@@ -72,6 +73,13 @@ export class IncidentEntity {
 
   @Column({ name: 'resolved_at', type: 'timestamptz', nullable: true })
   resolvedAt: Date | null;
+
+  /**
+   * Set to 1 on insert and incremented by TypeORM on every update. Clients use it to drop
+   * stale copies. It does not guard concurrent writes: the row lock in `IncidentsService` does.
+   */
+  @VersionColumn({ type: 'integer' })
+  version: number;
 
   /** Loaded for reads only; new entries are written from `pendingEvents`. */
   @OneToMany(() => IncidentEventEntity, (event) => event.incident)
@@ -144,6 +152,7 @@ export class IncidentEntity {
       reportedAt: this.reportedAt.toISOString(),
       acknowledgedAt: this.acknowledgedAt?.toISOString() ?? null,
       resolvedAt: this.resolvedAt?.toISOString() ?? null,
+      version: this.version,
     };
   }
 

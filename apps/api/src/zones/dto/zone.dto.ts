@@ -3,6 +3,7 @@ import { type LngLat, type Zone, ZONE_KINDS, type ZoneKind } from '@occ/contract
 
 /** OpenAPI shape of `Zone`. `implements` keeps it in lockstep with the shared contract. */
 export class ZoneDto implements Zone {
+  /** Zone id. */
   @ApiProperty({ format: 'uuid' })
   id: string;
 
@@ -12,6 +13,7 @@ export class ZoneDto implements Zone {
   @ApiProperty({ example: 'Library' })
   name: string;
 
+  /** What kind of area this is: a `building`, `parking` lot, campus `gate` or `outdoor` space. */
   @ApiProperty({ enum: ZONE_KINDS })
   kind: ZoneKind;
 
@@ -22,6 +24,11 @@ export class ZoneDto implements Zone {
   })
   polygon: LngLat[];
 
-  @ApiProperty({ description: '[lng, lat]', type: [Number], minItems: 2, maxItems: 2 })
+  @ApiProperty({
+    description: 'Centre as [lng, lat]. Used as the position of incidents reported without one.',
+    type: [Number],
+    minItems: 2,
+    maxItems: 2,
+  })
   center: LngLat;
 }

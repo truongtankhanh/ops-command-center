@@ -15,7 +15,7 @@ The demo runs on **Langbiang Tech Campus**, a fictional site with synthetic inci
 ```bash
 docker compose up --build
 # Console      http://localhost:18080
-# API + docs   http://localhost:13000/api/docs
+# API + docs   http://localhost:13000/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
 ## What it does
@@ -59,12 +59,14 @@ docs/
 
 The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
-| ADR                                                      | Decision                                                                                            |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)         | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR |
-| [0002](docs/adr/0002-camera-source-adapter.md)           | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config  |
-| [0003](docs/adr/0003-realtime-domain-events-socketio.md) | Domain events emitted after commit, broadcast by a Socket.IO gateway that only listens              |
-| [0004](docs/adr/0004-postgres-typeorm-migrations.md)     | PostgreSQL + TypeORM, migrations only, applied at boot                                              |
+| ADR                                                         | Decision                                                                                                                    |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                         |
+| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                          |
+| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events emitted after commit, broadcast by a Socket.IO gateway that only listens                                      |
+| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                      |
+| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                              |
+| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform |
 
 ### Design details worth a look
 
@@ -92,20 +94,23 @@ The console's dev server proxies `/api` and `/socket.io` to the API, exactly as 
 
 API configuration (`apps/api/.env`):
 
-| Variable                                   | Default | Purpose                                                                |
-| ------------------------------------------ | ------- | ---------------------------------------------------------------------- |
-| `PORT`                                     | `3000`  | HTTP and WebSocket port (`.env.example` sets `13000` for `pnpm dev`)   |
-| `DATABASE_URL`                             | —       | PostgreSQL connection string                                           |
-| `SEED_ON_BOOT`                             | `true`  | Seed the reference campus when the database is empty                   |
-| `SIMULATOR_ENABLED`                        | `false` | Generate demo incident traffic (`.env.example` and Compose turn it on) |
-| `SIMULATOR_INTERVAL_MS`                    | `8000`  | Time between simulator ticks                                           |
-| `CAMERA_SOURCE`                            | `mock`  | `mock` or `mediamtx`                                                   |
-| `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —       | Media server endpoints when `CAMERA_SOURCE=mediamtx`                   |
-| `MEDIAMTX_PROTOCOL`                        | `hls`   | `hls` or `webrtc`                                                      |
+| Variable                                   | Default                       | Purpose                                                                                         |
+| ------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                 | — (required)                  | `development`, `test` or `production` (Jest sets `test`, the Docker image sets `production`)    |
+| `PORT`                                     | `3000`                        | HTTP and WebSocket port (`.env.example` sets `13000` for `pnpm dev`)                            |
+| `DATABASE_URL`                             | —                             | PostgreSQL connection string (`postgres://` or `postgresql://`)                                 |
+| `API_DOCS_ENABLED`                         | on, off in production         | Serve Swagger UI and the raw spec at `/api/docs` (ADR-0005)                                     |
+| `SEED_ON_BOOT`                             | `true`, `false` in production | Seed the reference campus when the database is empty; production needs `DEMO_MODE` to enable it |
+| `SIMULATOR_ENABLED`                        | `false`                       | Generate demo incident traffic (`.env.example` and Compose turn it on)                          |
+| `SIMULATOR_INTERVAL_MS`                    | `8000`                        | Time between simulator ticks                                                                    |
+| `CAMERA_SOURCE`                            | `mock`, none in production    | `mock` or `mediamtx`; production must set it, and `mock` needs `DEMO_MODE`                      |
+| `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —                             | Media server endpoints when `CAMERA_SOURCE=mediamtx`                                            |
+| `MEDIAMTX_PROTOCOL`                        | `hls`                         | `hls` or `webrtc`                                                                               |
+| `DEMO_MODE`                                | `false`                       | Lets a `production` deploy use mock cameras and seeding; only the Compose demo sets it          |
 
-The API validates its configuration at startup and refuses to boot with a clear message when something is wrong.
+The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file.
 
 ## Quality
 
@@ -115,6 +120,13 @@ pnpm typecheck     # strict TypeScript everywhere
 pnpm test          # unit tests: domain rules, error mapping, adapters, console logic and components
 pnpm test:e2e      # API against a real PostgreSQL: migrations, seed, lifecycle, validation, WebSocket events
 pnpm build
+```
+
+`pnpm test:e2e` never reads `apps/api/.env`. It uses `apps/api/.env.test`, and it refuses to run against a database whose name does not end in `_test`, because it drops and rebuilds the schema. One-off setup:
+
+```bash
+cp apps/api/.env.test.example apps/api/.env.test
+docker compose exec postgres createdb -U postgres ops_test
 ```
 
 CI runs all of the above on every push and pull request, then builds both Docker images.

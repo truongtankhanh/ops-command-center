@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { Camera, LngLat } from '@occ/contracts';
+import type { Camera, LngLat, StreamDescriptor } from '@occ/contracts';
 
 export class CameraDto implements Camera {
+  /** Camera id. */
   @ApiProperty({ format: 'uuid' })
   id: string;
 
@@ -11,30 +12,73 @@ export class CameraDto implements Camera {
   @ApiProperty({ example: 'Library entrance' })
   name: string;
 
+  /** Zone the camera is mounted in. */
   @ApiProperty({ format: 'uuid' })
   zoneId: string;
 
-  @ApiProperty({ description: '[lng, lat]', type: [Number], minItems: 2, maxItems: 2 })
+  @ApiProperty({
+    description: 'Mounting point as [lng, lat]',
+    type: [Number],
+    minItems: 2,
+    maxItems: 2,
+  })
   position: LngLat;
 
+  /** Whether the camera is currently online. */
   @ApiProperty()
   online: boolean;
 }
 
-/** How to render a camera. `url` is present for `hls` and `webrtc`; `seed` for `mock`. */
-export class StreamDescriptorDto {
-  @ApiProperty({ enum: ['mock', 'hls', 'webrtc'] })
-  kind: 'mock' | 'hls' | 'webrtc';
-
+/** Fields every stream descriptor has. Not a schema of its own — only the variants below are. */
+abstract class StreamDescriptorBaseDto {
   @ApiProperty({ format: 'uuid' })
   cameraId: string;
 
   @ApiProperty({ example: 'CAM-L01 · Library entrance' })
   label: string;
+}
 
-  @ApiProperty({ required: false })
-  url?: string;
+/** No real camera behind it: the client draws a synthetic feed from `seed`. */
+export class MockStreamDescriptorDto
+  extends StreamDescriptorBaseDto
+  implements Extract<StreamDescriptor, { kind: 'mock' }>
+{
+  @ApiProperty({ enum: ['mock'] })
+  kind: 'mock';
 
-  @ApiProperty({ required: false })
-  seed?: number;
+  /** Seed for the synthetic feed. A camera always gets the same seed, so its scene is stable. */
+  @ApiProperty()
+  seed: number;
+}
+
+/** Play `url` as an HLS stream. */
+export class HlsStreamDescriptorDto
+  extends StreamDescriptorBaseDto
+  implements Extract<StreamDescriptor, { kind: 'hls' }>
+{
+  @ApiProperty({ enum: ['hls'] })
+  kind: 'hls';
+
+  @ApiProperty({
+    format: 'uri',
+    description: 'HLS playlist URL',
+    example: 'https://media.example.com/cam-l01/index.m3u8',
+  })
+  url: string;
+}
+
+/** Play `url` over WebRTC (WHEP). */
+export class WebRtcStreamDescriptorDto
+  extends StreamDescriptorBaseDto
+  implements Extract<StreamDescriptor, { kind: 'webrtc' }>
+{
+  @ApiProperty({ enum: ['webrtc'] })
+  kind: 'webrtc';
+
+  @ApiProperty({
+    format: 'uri',
+    description: 'WHEP endpoint URL',
+    example: 'https://media.example.com/cam-l01/whep',
+  })
+  url: string;
 }

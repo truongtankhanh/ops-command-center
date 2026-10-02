@@ -6,7 +6,10 @@ to connected clients — see [events.md](events.md).
 
 `Incident` fields: `id`, `code` (`INC-000042`), `type`, `severity`, `status`, `title`,
 `description` (nullable), `zoneId`, `position: [lng, lat]`, `source` (`operator` |
-`simulator`), `reportedAt`, `acknowledgedAt` (nullable), `resolvedAt` (nullable).
+`simulator`), `reportedAt`, `acknowledgedAt` (nullable), `resolvedAt` (nullable), `version`.
+
+`version` starts at 1 and goes up by one on every change to the incident. Between two copies of
+the same `id`, the one with the higher `version` is newer.
 
 | Enum       | Values                                                                                   |
 | ---------- | ---------------------------------------------------------------------------------------- |

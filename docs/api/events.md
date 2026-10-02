@@ -5,6 +5,9 @@ Clients connect with Socket.IO to the **`/events` namespace** on the API's origi
 sees a change that was rolled back. Delivery is at-most-once: after reconnecting, refetch
 `GET /api/incidents` once to catch up.
 
+Events and REST responses can arrive in any order, so an older copy of an incident may arrive
+after a newer one. Compare `version` (see [incidents.md](incidents.md)) and keep the higher one.
+
 Event names and payload types are defined once in `@occ/contracts` (`IncidentEvents`,
 `ServerToClientEvents`).
 
@@ -27,7 +30,7 @@ Source: `apps/api/src/realtime/events.gateway.ts:37`
 `incident.updated` · Status: current
 
 Sent after an incident is acknowledged or resolved. The payload is the whole incident, not a
-diff — replace the cached copy by `id`.
+diff — replace the cached copy by `id` only if the payload's `version` is higher.
 
 Payload: `Incident`.
 
