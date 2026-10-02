@@ -18,5 +18,5 @@ The data is relational (zones → cameras, zones → incidents → timeline) wit
 
 - Every schema change is reviewed as SQL in a pull request and is reproducible in every environment.
 - Upgrades on customer hardware need no manual database step.
-- Incident + timeline writes happen in one transaction; domain events are emitted after commit (see ADR-0003).
+- Incident + timeline writes happen in one transaction, together with the outbox row that announces the change. A relay publishes it after commit (see ADR-0007, which amends ADR-0003).
 - Cost: migrations must be written (or generated and reviewed) for every entity change.

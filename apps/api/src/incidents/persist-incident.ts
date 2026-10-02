@@ -1,14 +1,18 @@
 import type { EntityManager } from 'typeorm';
+import { OutboxEntity, type OutboxEventName } from '../outbox/outbox.entity';
 import { IncidentEventEntity } from './incident-event.entity';
 import { IncidentEntity } from './incident.entity';
 
 /**
- * Saves an incident together with the timeline entries its transitions produced.
- * Must be called inside a transaction so both writes commit or roll back together.
+ * Saves an incident together with the timeline entries its transitions produced and, when
+ * `outboxEvent` is given, the outbox row that announces the change (ADR-0007).
+ * Must be called inside a transaction so all writes commit or roll back together.
+ * The seed omits `outboxEvent`: nobody is listening while it runs.
  */
 export async function persistIncident(
   manager: EntityManager,
   incident: IncidentEntity,
+  outboxEvent?: OutboxEventName,
 ): Promise<IncidentEntity> {
   const events = incident.pendingEvents ?? [];
   const saved = await manager.save(IncidentEntity, incident);
@@ -17,6 +21,9 @@ export async function persistIncident(
       IncidentEventEntity,
       events.map((event) => Object.assign(event, { incidentId: saved.id })),
     );
+  }
+  if (outboxEvent) {
+    await manager.insert(OutboxEntity, OutboxEntity.create(outboxEvent, saved.toContract()));
   }
   saved.pendingEvents = [];
   return saved;

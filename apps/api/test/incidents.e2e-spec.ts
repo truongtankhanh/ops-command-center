@@ -14,6 +14,10 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { IncidentEntity } from '../src/incidents/incident.entity';
+import { persistIncident } from '../src/incidents/persist-incident';
+import { OutboxRelay } from '../src/outbox/outbox-relay.service';
+import { OutboxEntity } from '../src/outbox/outbox.entity';
 
 /**
  * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
@@ -61,6 +65,8 @@ describe('Incidents (e2e)', () => {
     expect(zones.body).toHaveLength(9);
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
+    // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
+    expect(await app.get(DataSource).getRepository(OutboxEntity).count()).toBe(0);
   });
 
   it('orders incidents unresolved first, then by severity', async () => {
@@ -124,6 +130,72 @@ describe('Incidents (e2e)', () => {
       'resolved',
     ]);
     expect(done.body.timeline[1].note).toBe('Medic on the way');
+
+    // The relay emits before it commits `published_at`; awaiting a drain makes the check exact.
+    await app.get(OutboxRelay).drain();
+    const outbox = await app
+      .get(DataSource)
+      .getRepository(OutboxEntity)
+      .find({ where: { aggregateId: report.body.id }, order: { id: 'ASC' } });
+    expect(outbox.map((row) => [row.event, row.payload.version])).toEqual([
+      [IncidentEvents.Created, 1],
+      [IncidentEvents.Updated, 2],
+      [IncidentEvents.Updated, 3],
+    ]);
+    expect(outbox.every((row) => row.publishedAt !== null)).toBe(true);
+  });
+
+  it('writes no outbox row when the transaction rolls back', async () => {
+    const dataSource = app.get(DataSource);
+    let incidentId: string | undefined;
+
+    const rolledBack = dataSource.transaction(async (manager) => {
+      const saved = await persistIncident(
+        manager,
+        IncidentEntity.report({
+          // Fixed code: a sequence value is not given back on rollback.
+          code: 'INC-ROLLBACK',
+          type: 'medical',
+          severity: 'low',
+          title: 'Rolled back',
+          zoneId: zone.id,
+          lng: zone.center[0],
+          lat: zone.center[1],
+          source: 'operator',
+          at: new Date(),
+        }),
+        IncidentEvents.Created,
+      );
+      incidentId = saved.id;
+      // The row was really written, so it is the rollback that removes it.
+      expect(await manager.countBy(OutboxEntity, { aggregateId: saved.id })).toBe(1);
+      throw new Error('rollback');
+    });
+
+    await expect(rolledBack).rejects.toThrow('rollback');
+    expect(incidentId).toBeDefined();
+    const incidents = dataSource.getRepository(IncidentEntity);
+    const outbox = dataSource.getRepository(OutboxEntity);
+    expect(await incidents.countBy({ id: incidentId! })).toBe(0);
+    expect(await outbox.countBy({ aggregateId: incidentId! })).toBe(0);
+  });
+
+  it('delivers a pending outbox row through the poll, without a nudge', async () => {
+    const res = await request(app.getHttpServer()).get('/api/incidents?limit=1').expect(200);
+    const incident = res.body[0] as Incident;
+    const payload = { ...incident, version: incident.version + 100 };
+
+    // Written straight to the table, so nothing nudges the relay: only the poll can deliver it.
+    // That is what a restarted API finds after dying between commit and publish (ADR-0007).
+    const delivered = waitFor(socket, IncidentEvents.Updated);
+    const outbox = app.get(DataSource).getRepository(OutboxEntity);
+    await outbox.insert(OutboxEntity.create(IncidentEvents.Updated, payload));
+
+    expect(await delivered).toMatchObject({ id: payload.id, version: payload.version });
+    await app.get(OutboxRelay).drain();
+    const [row] = await outbox.find({ order: { id: 'DESC' }, take: 1 });
+    expect(row).toMatchObject({ aggregateId: payload.id });
+    expect(row!.publishedAt).not.toBeNull();
   });
 
   it('rejects an invalid transition with 409', async () => {

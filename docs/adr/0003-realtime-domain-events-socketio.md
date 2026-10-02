@@ -1,7 +1,9 @@
 # ADR-0003: Domain events in-process, broadcast with Socket.IO
 
-- **Status:** Accepted
+- **Status:** Accepted, delivery amended by [ADR-0007](0007-transactional-outbox.md)
 - **Date:** 2026-10-01
+
+> **Amended 2026-10-02 by ADR-0007.** Events are no longer emitted directly after commit. They are written to an outbox in the same transaction and published by a relay, so delivery is at-least-once instead of at-most-once. The in-process event bus, the gateway as a pure listener, and the contracts below still stand.
 
 ## Context
 
@@ -16,7 +18,7 @@ Consoles must reflect incident changes within a second. Changes come from severa
 
 ## Decision
 
-Option 3. `IncidentsService` emits `incident.created` / `incident.updated` **after** the transaction commits. `EventsGateway` listens and broadcasts to connected consoles on the `/events` namespace. Event names and payloads are defined once in `packages/contracts`.
+Option 3. `IncidentsService` emits `incident.created` / `incident.updated` **after** the transaction commits. _(Superseded by ADR-0007: the event is written to the outbox inside the transaction and `OutboxRelay` emits it.)_ `EventsGateway` listens and broadcasts to connected consoles on the `/events` namespace. Event names and payloads are defined once in `packages/contracts`.
 
 Socket.IO over raw WebSocket for automatic reconnection, heartbeats and a clean path to multi-instance scaling via its Redis adapter.
 
@@ -24,5 +26,5 @@ Socket.IO over raw WebSocket for automatic reconnection, heartbeats and a clean 
 
 - New consumers (notifications, metrics, audit export) subscribe to the same events without touching the service.
 - Consoles patch their local cache from the event payload — no refetch per event.
-- Delivery is at-most-once; on reconnect the console refetches once to converge.
+- ~~Delivery is at-most-once~~ Delivery is at-least-once since ADR-0007, so listeners must tolerate duplicates. On reconnect the console still refetches once to converge.
 - Scaling past one API instance requires the Socket.IO Redis adapter (and moving domain events to a broker if listeners must also be distributed). Deferred until there is a need.

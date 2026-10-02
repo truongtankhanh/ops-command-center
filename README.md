@@ -59,21 +59,22 @@ docs/
 
 The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
-| ADR                                                         | Decision                                                                                                                    |
-| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                         |
-| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                          |
-| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events emitted after commit, broadcast by a Socket.IO gateway that only listens                                      |
-| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                      |
-| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                              |
-| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform |
+| ADR                                                         | Decision                                                                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                                 |
+| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                                  |
+| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events on an in-process bus, broadcast by a Socket.IO gateway that only listens (delivery amended by 0007)                   |
+| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                              |
+| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                                      |
+| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform         |
+| [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client |
 
 ### Design details worth a look
 
 - **Type-safe contract end to end.** `packages/contracts` defines the domain types and the WebSocket event map. The API's OpenAPI DTOs `implement` those interfaces and both socket ends are typed with the same event map, so a renamed field or event fails to compile on both sides.
 - **Lifecycle rules live in the entity.** `IncidentEntity.acknowledge()` / `resolve()` enforce transitions and append timeline events; the service only orchestrates. Domain errors map to HTTP status codes in one exception filter.
 - **Concurrency-safe transitions.** Status changes run in a transaction with a row lock (`SELECT … FOR UPDATE`), so two operators cannot both acknowledge the same incident. Codes like `INC-000042` come from a database sequence.
-- **Events after commit, cache patching on the client.** Consoles update the TanStack Query cache from event payloads instead of refetching, and refetch once on reconnect to converge.
+- **Events through a transactional outbox, cache patching on the client.** Each change writes its event in the same transaction, and a relay publishes it, so a crash between commit and broadcast cannot lose it. Consoles update the TanStack Query cache from event payloads instead of refetching, ignore duplicates and stale copies by `version`, and refetch once on reconnect to converge.
 - **The simulator is a client, not a backdoor.** It goes through `IncidentsService` like an operator, so demo data never bypasses validation, persistence or events.
 
 ## Running locally
