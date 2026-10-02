@@ -19,4 +19,5 @@ The data is relational (zones → cameras, zones → incidents → timeline) wit
 - Every schema change is reviewed as SQL in a pull request and is reproducible in every environment.
 - Upgrades on customer hardware need no manual database step.
 - Incident + timeline writes happen in one transaction, together with the outbox row that announces the change. A relay publishes it after commit (see ADR-0007, which amends ADR-0003).
+- Migrations run under the app's session limits (`typeorm-options.ts`): `statement_timeout` 15 s, `lock_timeout` 5 s. A migration that needs longer, such as a large backfill or a table rewrite, raises them inside its own transaction with `SET LOCAL statement_timeout = …`. A migration whose `ALTER` cannot get its lock within 5 s fails, and the API does not boot. It fails fast instead of queueing behind live traffic. Restart once traffic is quieter, or raise `lock_timeout` in that migration on purpose.
 - Cost: migrations must be written (or generated and reviewed) for every entity change.
