@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   INCIDENT_SEVERITIES,
   type Incident,
@@ -11,6 +10,7 @@ import {
 } from '@occ/contracts';
 import { DataSource } from 'typeorm';
 import { EntityNotFoundError } from '../common/domain-errors';
+import { OutboxRelay } from '../outbox/outbox-relay.service';
 import { ZoneEntity } from '../zones/zone.entity';
 import { DEFAULT_INCIDENT_LIMIT } from './dto/incident-requests.dto';
 import { nextIncidentCode } from './incident-code';
@@ -20,14 +20,15 @@ import { persistIncident } from './persist-incident';
 const SEVERITY_ORDER = `ARRAY[${INCIDENT_SEVERITIES.map((s) => `'${s}'`).join(',')}]::varchar[]`;
 
 /**
- * Application service for incidents. Every write runs in one transaction and publishes a
- * domain event *after* commit — listeners (e.g. the WebSocket gateway) never see rolled-back state.
+ * Application service for incidents. Every write runs in one transaction that also records its
+ * domain event in the outbox, so an event exists exactly when its change committed. `OutboxRelay`
+ * publishes it to listeners (e.g. the WebSocket gateway); this service only nudges it (ADR-0007).
  */
 @Injectable()
 export class IncidentsService {
   constructor(
     private readonly dataSource: DataSource,
-    private readonly events: EventEmitter2,
+    private readonly outbox: OutboxRelay,
   ) {}
 
   /** Unresolved first, then most severe, then newest. */
@@ -76,10 +77,11 @@ export class IncidentsService {
           source,
           at: this.now(),
         }),
+        IncidentEvents.Created,
       );
     });
 
-    this.events.emit(IncidentEvents.Created, incident.toContract());
+    void this.outbox.drain();
     return this.get(incident.id);
   }
 
@@ -96,17 +98,17 @@ export class IncidentsService {
     id: string,
     apply: (incident: IncidentEntity, at: Date) => void,
   ): Promise<IncidentDetail> {
-    const incident = await this.dataSource.transaction(async (manager) => {
+    await this.dataSource.transaction(async (manager) => {
       const locked = await manager.findOne(IncidentEntity, {
         where: { id },
         lock: { mode: 'pessimistic_write' },
       });
       if (!locked) throw new EntityNotFoundError('Incident', id);
       apply(locked, this.now());
-      return persistIncident(manager, locked);
+      await persistIncident(manager, locked, IncidentEvents.Updated);
     });
 
-    this.events.emit(IncidentEvents.Updated, incident.toContract());
+    void this.outbox.drain();
     return this.get(id);
   }
 

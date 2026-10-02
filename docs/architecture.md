@@ -93,20 +93,25 @@ sequenceDiagram
   participant S as Simulator / Operator
   participant IS as IncidentsService
   participant DB as PostgreSQL
+  participant R as OutboxRelay
   participant EB as Event bus (in-process)
   participant GW as EventsGateway
   participant C as Consoles
 
   S->>IS: report / acknowledge / resolve
-  IS->>DB: save incident + event (one transaction)
-  IS->>EB: emit incident.created | incident.updated
+  IS->>DB: save incident + timeline entry + outbox row (one transaction)
+  IS-->>R: nudge after commit (a 1 s poll catches anything missed)
+  R->>DB: claim pending rows (FOR UPDATE SKIP LOCKED)
+  R->>EB: emit incident.created | incident.updated
   EB->>GW: listener
   GW->>C: broadcast over WebSocket
-  C->>C: patch TanStack Query cache (no refetch)
+  R->>DB: mark rows published (same transaction as the claim)
+  C->>C: keep the higher version, patch TanStack Query cache (no refetch)
 ```
 
-- The service never knows about WebSockets. It emits a domain event; the gateway is one listener among potentially many (notifications, metrics…). See [ADR-0003](adr/0003-realtime-domain-events-socketio.md).
-- Events are emitted **after** the transaction commits, so a console never sees an incident that was rolled back.
+- The service never knows about WebSockets. It records a domain event; the gateway is one listener among potentially many (notifications, metrics…). See [ADR-0003](adr/0003-realtime-domain-events-socketio.md).
+- The event is written to the `outbox` table **in the same transaction** as the change, so it exists exactly when the change committed: a rolled-back change has no event, and a committed one always gets published, even if the process dies right after the commit. `OutboxRelay` publishes pending rows when nudged, every second, and at boot. See [ADR-0007](adr/0007-transactional-outbox.md).
+- Delivery is **at-least-once**: after a crash an event can be published twice, and events are ordered only within one relay batch. Every listener must tolerate both.
 - On reconnect, the console refetches once to recover anything missed while offline.
 - Events, HTTP responses and refetches can arrive in any order. Every incident carries a `version`, and the console keeps whichever copy has the higher one, so a late response or refetch never overwrites a newer event (see [events.md](api/events.md)).
 
@@ -135,15 +140,18 @@ A production deployment guide is not published yet.
 | Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                         |
 | Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                   |
 | Schema changes | TypeORM migrations only; `synchronize` is never enabled                                                                              |
+| Event delivery | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md))        |
 | API docs       | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md)) |
 | Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                         |
 
 ## 9. Decisions
 
-| ADR                                                   | Decision                                           |
-| ----------------------------------------------------- | -------------------------------------------------- |
-| [0001](adr/0001-monorepo-pnpm-turborepo.md)           | Monorepo with pnpm workspaces and Turborepo        |
-| [0002](adr/0002-camera-source-adapter.md)             | Camera access behind a `CameraSource` adapter      |
-| [0003](adr/0003-realtime-domain-events-socketio.md)   | Domain events in-process, broadcast with Socket.IO |
-| [0004](adr/0004-postgres-typeorm-migrations.md)       | PostgreSQL with TypeORM, migrations only           |
-| [0005](adr/0005-api-docs-exposure-per-environment.md) | API docs exposure per environment                  |
+| ADR                                                    | Decision                                           |
+| ------------------------------------------------------ | -------------------------------------------------- |
+| [0001](adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo        |
+| [0002](adr/0002-camera-source-adapter.md)              | Camera access behind a `CameraSource` adapter      |
+| [0003](adr/0003-realtime-domain-events-socketio.md)    | Domain events in-process, broadcast with Socket.IO |
+| [0004](adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL with TypeORM, migrations only           |
+| [0005](adr/0005-api-docs-exposure-per-environment.md)  | API docs exposure per environment                  |
+| [0006](adr/0006-config-and-secrets-per-environment.md) | Configuration and secrets per environment          |
+| [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events           |
