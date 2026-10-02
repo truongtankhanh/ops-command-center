@@ -128,20 +128,21 @@ A production deployment guide is not published yet.
 
 ## 8. Cross-cutting concerns
 
-| Concern        | Approach                                                                           |
-| -------------- | ---------------------------------------------------------------------------------- |
-| Configuration  | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env  |
-| Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)       |
-| Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body |
-| Schema changes | TypeORM migrations only; `synchronize` is never enabled                            |
-| API docs       | OpenAPI generated from code at `/api/docs`                                         |
-| Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)       |
+| Concern        | Approach                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Configuration  | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                    |
+| Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                         |
+| Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                   |
+| Schema changes | TypeORM migrations only; `synchronize` is never enabled                                                                              |
+| API docs       | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md)) |
+| Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                         |
 
 ## 9. Decisions
 
-| ADR                                                 | Decision                                           |
-| --------------------------------------------------- | -------------------------------------------------- |
-| [0001](adr/0001-monorepo-pnpm-turborepo.md)         | Monorepo with pnpm workspaces and Turborepo        |
-| [0002](adr/0002-camera-source-adapter.md)           | Camera access behind a `CameraSource` adapter      |
-| [0003](adr/0003-realtime-domain-events-socketio.md) | Domain events in-process, broadcast with Socket.IO |
-| [0004](adr/0004-postgres-typeorm-migrations.md)     | PostgreSQL with TypeORM, migrations only           |
+| ADR                                                   | Decision                                           |
+| ----------------------------------------------------- | -------------------------------------------------- |
+| [0001](adr/0001-monorepo-pnpm-turborepo.md)           | Monorepo with pnpm workspaces and Turborepo        |
+| [0002](adr/0002-camera-source-adapter.md)             | Camera access behind a `CameraSource` adapter      |
+| [0003](adr/0003-realtime-domain-events-socketio.md)   | Domain events in-process, broadcast with Socket.IO |
+| [0004](adr/0004-postgres-typeorm-migrations.md)       | PostgreSQL with TypeORM, migrations only           |
+| [0005](adr/0005-api-docs-exposure-per-environment.md) | API docs exposure per environment                  |

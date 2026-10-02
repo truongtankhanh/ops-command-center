@@ -15,7 +15,7 @@ The demo runs on **Langbiang Tech Campus**, a fictional site with synthetic inci
 ```bash
 docker compose up --build
 # Console      http://localhost:18080
-# API + docs   http://localhost:13000/api/docs
+# API + docs   http://localhost:13000/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
 ## What it does
@@ -59,12 +59,13 @@ docs/
 
 The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
-| ADR                                                      | Decision                                                                                            |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)         | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR |
-| [0002](docs/adr/0002-camera-source-adapter.md)           | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config  |
-| [0003](docs/adr/0003-realtime-domain-events-socketio.md) | Domain events emitted after commit, broadcast by a Socket.IO gateway that only listens              |
-| [0004](docs/adr/0004-postgres-typeorm-migrations.md)     | PostgreSQL + TypeORM, migrations only, applied at boot                                              |
+| ADR                                                        | Decision                                                                                            |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)           | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR |
+| [0002](docs/adr/0002-camera-source-adapter.md)             | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config  |
+| [0003](docs/adr/0003-realtime-domain-events-socketio.md)   | Domain events emitted after commit, broadcast by a Socket.IO gateway that only listens              |
+| [0004](docs/adr/0004-postgres-typeorm-migrations.md)       | PostgreSQL + TypeORM, migrations only, applied at boot                                              |
+| [0005](docs/adr/0005-api-docs-exposure-per-environment.md) | Swagger UI on in development, off in production unless explicitly enabled — and then read-only      |
 
 ### Design details worth a look
 

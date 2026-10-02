@@ -20,6 +20,15 @@ const toBoolean = ({ value }: { value: unknown }) =>
  * The API refuses to start when this does not validate.
  */
 export class Env {
+  @IsIn(['development', 'test', 'production'])
+  NODE_ENV: 'development' | 'test' | 'production' = 'development';
+
+  /** Serve Swagger UI and the raw spec. Unset: on everywhere except production (ADR-0005). */
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  API_DOCS_ENABLED?: boolean;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

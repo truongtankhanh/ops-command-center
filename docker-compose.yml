@@ -29,6 +29,9 @@ services:
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}
       CAMERA_SOURCE: ${CAMERA_SOURCE:-mock}
+      # Demo stack, not production: keep /api/docs on. The image runs NODE_ENV=production,
+      # so "Try it out" stays disabled (ADR-0005).
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
     depends_on:
       postgres:
         condition: service_healthy

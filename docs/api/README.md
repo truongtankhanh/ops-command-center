@@ -2,7 +2,8 @@
 
 Generated from the code by `/steel:api-docs-*` and reconciled on every run — see each
 endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) (OpenAPI 3.1).
-The running API also serves interactive docs at `/api/docs`.
+The running API also serves interactive docs at `/api/docs` in development; in production they are off
+unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
 Last reconciled: 2026-10-01
 
