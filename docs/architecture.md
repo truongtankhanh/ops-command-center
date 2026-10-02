@@ -108,6 +108,7 @@ sequenceDiagram
 - The service never knows about WebSockets. It emits a domain event; the gateway is one listener among potentially many (notifications, metrics…). See [ADR-0003](adr/0003-realtime-domain-events-socketio.md).
 - Events are emitted **after** the transaction commits, so a console never sees an incident that was rolled back.
 - On reconnect, the console refetches once to recover anything missed while offline.
+- Events, HTTP responses and refetches can arrive in any order. Every incident carries a `version`, and the console keeps whichever copy has the higher one, so a late response or refetch never overwrites a newer event (see [events.md](api/events.md)).
 
 ## 6. Camera sources
 

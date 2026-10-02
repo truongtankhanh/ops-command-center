@@ -25,6 +25,7 @@ const base: Omit<Incident, 'id' | 'title' | 'status' | 'severity'> = {
   reportedAt: new Date().toISOString(),
   acknowledgedAt: null,
   resolvedAt: null,
+  version: 1,
 };
 
 const incidents: Incident[] = [

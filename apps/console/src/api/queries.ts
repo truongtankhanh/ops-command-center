@@ -7,8 +7,8 @@ import type {
   TransitionIncidentRequest,
   Zone,
 } from '@occ/contracts';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { upsertIncident } from '../lib/incidents';
+import { replaceEqualDeep, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents';
 import { api } from './client';
 
 export const queryKeys = {
@@ -38,6 +38,12 @@ export const useIncidents = () =>
     queryKey: queryKeys.incidents,
     queryFn: () => api.get<Incident[]>('/incidents?limit=200'),
     staleTime: Infinity, // kept fresh by WebSocket events, refetched on reconnect
+    // A refetch can be older than events applied while it was in flight: merge, never roll back.
+    structuralSharing: (cached, fetched) =>
+      replaceEqualDeep(
+        cached,
+        mergeIncidentLists(cached as Incident[] | undefined, fetched as Incident[]),
+      ),
   });
 
 export const useIncident = (id: string | null) =>
@@ -45,6 +51,9 @@ export const useIncident = (id: string | null) =>
     queryKey: queryKeys.incident(id ?? ''),
     queryFn: () => api.get<IncidentDetail>(`/incidents/${id}`),
     enabled: id !== null,
+    // A refetch started by a live event can land after a newer mutation response.
+    structuralSharing: (cached, fetched) =>
+      newerIncident(cached as IncidentDetail | undefined, fetched as IncidentDetail),
   });
 
 export const useStream = (cameraId: string) =>
@@ -62,7 +71,9 @@ export function useTransition(action: Transition) {
     mutationFn: ({ id, note }: { id: string } & TransitionIncidentRequest) =>
       api.post<IncidentDetail>(`/incidents/${id}/${action}`, note ? { note } : {}),
     onSuccess: (detail) => {
-      queryClient.setQueryData(queryKeys.incident(detail.id), detail);
+      queryClient.setQueryData<IncidentDetail>(queryKeys.incident(detail.id), (cached) =>
+        newerIncident(cached, detail),
+      );
       queryClient.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
         upsertIncident(list, detail),
       );
@@ -76,7 +87,9 @@ export function useReportIncident() {
   return useMutation({
     mutationFn: (request: ReportIncidentRequest) => api.post<IncidentDetail>('/incidents', request),
     onSuccess: (detail) => {
-      queryClient.setQueryData(queryKeys.incident(detail.id), detail);
+      queryClient.setQueryData<IncidentDetail>(queryKeys.incident(detail.id), (cached) =>
+        newerIncident(cached, detail),
+      );
       // Idempotent with the live `incident.created` event this console also receives.
       queryClient.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
         upsertIncident(list, detail),

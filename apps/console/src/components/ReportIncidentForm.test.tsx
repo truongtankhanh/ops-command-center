@@ -29,6 +29,7 @@ const created: IncidentDetail = {
   reportedAt: '2026-10-01T08:00:00.000Z',
   acknowledgedAt: null,
   resolvedAt: null,
+  version: 1,
   timeline: [],
 };
 

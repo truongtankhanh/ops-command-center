@@ -26,10 +26,40 @@ export function compareIncidents(a: Incident, b: Incident): number {
   return b.reportedAt.localeCompare(a.reportedAt);
 }
 
-/** Inserts or replaces an incident and keeps the list ordered. Never mutates its input. */
+/**
+ * Picks the copy to keep when two copies of the same incident meet. HTTP responses, live events and
+ * refetches can arrive in any order, so the incoming copy wins only with a higher `version`.
+ */
+export function newerIncident<T extends Incident>(cached: T | undefined, incoming: T): T {
+  return cached && cached.version >= incoming.version ? cached : incoming;
+}
+
+/**
+ * Inserts or replaces an incident and keeps the list ordered. A copy that is not newer than the
+ * cached one is ignored and the same list is returned. Never mutates its input.
+ */
 export function upsertIncident(list: Incident[] | undefined, incident: Incident): Incident[] {
-  const rest = (list ?? []).filter((item) => item.id !== incident.id);
+  const current = list ?? [];
+  const cached = current.find((item) => item.id === incident.id);
+  if (newerIncident(cached, incident) !== incident) return current;
+  const rest = current.filter((item) => item.id !== incident.id);
   return [...rest, incident].sort(compareIncidents);
+}
+
+/**
+ * Merges a refetched list into the cached one, keeping the newer copy of each incident, so a
+ * snapshot read before a live event cannot roll it back. Incidents are never deleted, so one
+ * missing from the snapshot was most likely created after it was read: it is kept, not dropped.
+ */
+export function mergeIncidentLists(
+  cached: Incident[] | undefined,
+  fetched: Incident[],
+): Incident[] {
+  const byId = new Map((cached ?? []).map((incident) => [incident.id, incident]));
+  for (const incident of fetched) {
+    byId.set(incident.id, newerIncident(byId.get(incident.id), incident));
+  }
+  return [...byId.values()].sort(compareIncidents);
 }
 
 export interface SeverityCounts {
