@@ -98,22 +98,25 @@ describe('Incidents (e2e)', () => {
       status: 'open',
       source: 'operator',
       position: zone.center,
+      version: 1,
     });
-    expect((await created).id).toBe(report.body.id);
+    expect(await created).toMatchObject({ id: report.body.id, version: 1 });
 
     const acknowledged = waitFor(socket, IncidentEvents.Updated);
-    await request(app.getHttpServer())
+    const ack = await request(app.getHttpServer())
       .post(`/api/incidents/${report.body.id}/acknowledge`)
       .send({ note: 'Medic on the way' })
       .expect(200);
-    expect((await acknowledged).status).toBe('acknowledged');
+    expect(ack.body.version).toBe(2);
+    expect(await acknowledged).toMatchObject({ status: 'acknowledged', version: 2 });
 
     const resolved = waitFor(socket, IncidentEvents.Updated);
     const done = await request(app.getHttpServer())
       .post(`/api/incidents/${report.body.id}/resolve`)
       .send({})
       .expect(200);
-    expect((await resolved).status).toBe('resolved');
+    expect(await resolved).toMatchObject({ status: 'resolved', version: 3 });
+    expect(done.body.version).toBe(3);
 
     expect(done.body.timeline.map((e: { kind: string }) => e.kind)).toEqual([
       'reported',

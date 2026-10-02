@@ -71,6 +71,10 @@ export class IncidentDto implements Incident {
   /** When it was resolved. `null` until then. */
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   resolvedAt: string | null;
+
+  /** Starts at 1 and goes up by one on every change. Keep a cached copy unless this is higher. */
+  @ApiProperty({ type: 'integer', minimum: 1, example: 3 })
+  version: number;
 }
 
 export class IncidentEventDto implements IncidentEvent {
