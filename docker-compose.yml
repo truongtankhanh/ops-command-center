@@ -38,8 +38,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - '13000:3000'
+    # No host port: the API (docs included) is reached through the console on :18080, which
+    # balances across replicas. That is what lets `docker compose up --scale api=2` work (ADR-0008).
 
   console:
     build:

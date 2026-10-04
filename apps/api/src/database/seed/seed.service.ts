@@ -8,6 +8,7 @@ import { nextIncidentCode } from '../../incidents/incident-code';
 import { IncidentEntity } from '../../incidents/incident.entity';
 import { persistIncident } from '../../incidents/persist-incident';
 import { ZoneEntity } from '../../zones/zone.entity';
+import { AdvisoryLocks } from '../advisory-locks';
 import { CAMERAS, INCIDENTS, ZONES, zoneCenter, zonePolygon } from './campus';
 
 const MINUTE = 60_000;
@@ -26,7 +27,16 @@ export class SeedService implements OnApplicationBootstrap {
     if (!this.config.get('SEED_ON_BOOT', { infer: true })) return;
     if ((await this.dataSource.getRepository(ZoneEntity).count()) > 0) return;
 
-    await this.dataSource.transaction((manager) => this.seed(manager, new Date()));
+    const seeded = await this.dataSource.transaction(async (manager) => {
+      // Replicas booting together all saw an empty database above. The lock lets one seed; the
+      // others wait for its commit, then find the zones and stop. The wait is capped by the 5 s
+      // `lock_timeout`; seeding the campus takes a fraction of that.
+      await manager.query('SELECT pg_advisory_xact_lock($1)', [AdvisoryLocks.Seed]);
+      if ((await manager.count(ZoneEntity)) > 0) return false;
+      await this.seed(manager, new Date());
+      return true;
+    });
+    if (!seeded) return;
     this.logger.log(
       `Seeded ${ZONES.length} zones, ${CAMERAS.length} cameras, ${INCIDENTS.length} incidents`,
     );

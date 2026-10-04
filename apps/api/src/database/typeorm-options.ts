@@ -11,6 +11,8 @@ import { Outbox1790929369576 } from './migrations/1790929369576-outbox';
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
  * of PostgreSQL's default 100 `max_connections`. Re-check against the real ceiling before scaling.
+ * Up to 2 slots per replica are held for the process's lifetime (outbox listener, simulator
+ * leader), so at least 8 stay free for requests.
  */
 const POOL_SIZE = 10;
 /** Waiting longer than this for a pool slot (or a new connection) fails instead of hanging. */
@@ -42,7 +44,8 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
   extra: SESSION_TIMEOUTS,
   entities,
   migrations: [InitialSchema1790800000000, IncidentVersion1790924435743, Outbox1790929369576],
-  migrationsRun: true,
+  // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
+  migrationsRun: false,
   synchronize: false,
   // Extensions belong in migrations; uuid ids come from the core `gen_random_uuid()` default.
   installExtensions: false,

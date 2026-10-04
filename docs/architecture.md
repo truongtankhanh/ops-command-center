@@ -94,24 +94,29 @@ sequenceDiagram
   participant IS as IncidentsService
   participant DB as PostgreSQL
   participant R as OutboxRelay
-  participant EB as Event bus (in-process)
-  participant GW as EventsGateway
+  participant L as OutboxListener (every replica)
+  participant EB as Event bus (in-process, per replica)
+  participant GW as EventsGateway (per replica)
   participant C as Consoles
 
   S->>IS: report / acknowledge / resolve
   IS->>DB: save incident + timeline entry + outbox row (one transaction)
   IS-->>R: nudge after commit (a 1 s poll catches anything missed)
   R->>DB: claim pending rows (FOR UPDATE SKIP LOCKED)
-  R->>EB: emit incident.created | incident.updated
+  R->>DB: NOTIFY outbox_published with the ids, mark rows published, commit
+  DB-->>L: notification, delivered on commit to every replica
+  L->>DB: read the rows by id
+  L->>EB: emit incident.created | incident.updated
   EB->>GW: listener
-  GW->>C: broadcast over WebSocket
-  R->>DB: mark rows published (same transaction as the claim)
+  GW->>C: broadcast over WebSocket to this replica's consoles
   C->>C: keep the higher version, patch TanStack Query cache (no refetch)
 ```
 
 - The service never knows about WebSockets. It records a domain event; the gateway is one listener among potentially many (notifications, metrics…). See [ADR-0003](adr/0003-realtime-domain-events-socketio.md).
 - The event is written to the `outbox` table **in the same transaction** as the change, so it exists exactly when the change committed: a rolled-back change has no event, and a committed one always gets published, even if the process dies right after the commit. `OutboxRelay` publishes pending rows when nudged, every second, and at boot. See [ADR-0007](adr/0007-transactional-outbox.md).
 - Delivery is **at-least-once**: after a crash an event can be published twice, and events are ordered only within one relay batch. Every listener must tolerate both.
+- **Every replica broadcasts every event.** The relay announces each batch with a Postgres `NOTIFY` of its outbox ids, sent only when the batch commits. Each API replica's `OutboxListener` reads those rows and emits them on its own bus, so a console sees a change whichever replica made it. No broker is involved. See [ADR-0008](adr/0008-multi-replica-fan-out.md).
+- If a replica's LISTEN connection drops, its consoles miss notifications until it reconnects. It then closes their connections, and they reconnect and refetch once (the same recovery as any reconnect).
 - On reconnect, the console refetches once to recover anything missed while offline.
 - Events, HTTP responses and refetches can arrive in any order. Every incident carries a `version`, and the console keeps whichever copy has the higher one, so a late response or refetch never overwrites a newer event (see [events.md](api/events.md)).
 
@@ -130,28 +135,36 @@ The API resolves a camera to a `StreamDescriptor` (`{ kind: 'mock' }` today, `{ 
 
 The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API; one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
 
+The API can run as several replicas (`docker compose up --scale api=2`; [ADR-0008](adr/0008-multi-replica-fan-out.md)):
+
+- The `api` service publishes no host port. nginx round-robins across all replicas and re-resolves them through Docker DNS.
+- No sticky sessions are needed, because the `/events` namespace accepts WebSocket only.
+- Replicas booting together take turns: migrations and the seed run under Postgres advisory locks.
+- Only the replica holding the simulator lock runs the simulator. Another takes over if it dies.
+
 A production deployment guide is not published yet.
 
 ## 8. Cross-cutting concerns
 
-| Concern        | Approach                                                                                                                             |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Configuration  | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                    |
-| Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                         |
-| Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                   |
-| Schema changes | TypeORM migrations only; `synchronize` is never enabled                                                                              |
-| Event delivery | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md))        |
-| API docs       | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md)) |
-| Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                         |
+| Concern        | Approach                                                                                                                                                                                                                   |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configuration  | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                                                                                                          |
+| Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                                                                                                               |
+| Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                                                                                                         |
+| Schema changes | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                    |
+| Event delivery | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md)) |
+| API docs       | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                       |
+| Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                               |
 
 ## 9. Decisions
 
-| ADR                                                    | Decision                                           |
-| ------------------------------------------------------ | -------------------------------------------------- |
-| [0001](adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo        |
-| [0002](adr/0002-camera-source-adapter.md)              | Camera access behind a `CameraSource` adapter      |
-| [0003](adr/0003-realtime-domain-events-socketio.md)    | Domain events in-process, broadcast with Socket.IO |
-| [0004](adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL with TypeORM, migrations only           |
-| [0005](adr/0005-api-docs-exposure-per-environment.md)  | API docs exposure per environment                  |
-| [0006](adr/0006-config-and-secrets-per-environment.md) | Configuration and secrets per environment          |
-| [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events           |
+| ADR                                                    | Decision                                                 |
+| ------------------------------------------------------ | -------------------------------------------------------- |
+| [0001](adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo              |
+| [0002](adr/0002-camera-source-adapter.md)              | Camera access behind a `CameraSource` adapter            |
+| [0003](adr/0003-realtime-domain-events-socketio.md)    | Domain events in-process, broadcast with Socket.IO       |
+| [0004](adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL with TypeORM, migrations only                 |
+| [0005](adr/0005-api-docs-exposure-per-environment.md)  | API docs exposure per environment                        |
+| [0006](adr/0006-config-and-secrets-per-environment.md) | Configuration and secrets per environment                |
+| [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events                 |
+| [0008](adr/0008-multi-replica-fan-out.md)              | Several API replicas, events fanned out through Postgres |
