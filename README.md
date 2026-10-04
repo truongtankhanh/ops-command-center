@@ -104,9 +104,9 @@ docker compose up -d postgres keycloak      # database on 127.0.0.1:15432, sign-
 pnpm dev                                     # API on :13000, console on :15173
 ```
 
-The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DATABASE_URL`; if 18081 is taken, use `KEYCLOAK_PORT` and change the port in `OIDC_JWKS_URL`. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
+The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DATABASE_URL`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
 
-The console's dev server proxies `/api` and `/socket.io` to the API, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`).
+The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
 API configuration (`apps/api/.env`):
 

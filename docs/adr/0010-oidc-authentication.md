@@ -45,6 +45,12 @@ Constraints:
 2. An `AUTH_DISABLED` switch for tests. A setting that turns authentication off is exactly the kind of production-safety gap IMP-04 removed.
 3. **A test-local issuer**: the suite generates its own key pair, serves its JWKS on loopback, and mints tokens, so the production verification path is what gets tested.
 
+**The console's OIDC client.**
+
+1. Hand-written: discovery, PKCE, the code exchange and the refresh grant in about 200 lines. No dependency, but security-sensitive state, nonce and verifier handling that the team would own and test alone.
+2. `react-oidc-context`: a provider and a `useAuth()` hook on top of `oidc-client-ts`. A second package for a thin wrapper the console does not need.
+3. **`oidc-client-ts`** directly, behind one small module. Maintained, one runtime dependency (`jwt-decode`), and it covers PKCE, state and nonce checks, the refresh grant and sign-out.
+
 ## Decision
 
 Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2.0 resource server that verifies access tokens with `jose`.
@@ -55,6 +61,7 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - Redirect URIs are relative (`/*`), which Keycloak resolves against the origin it was reached on, so only the console's own origin is accepted.
   - An audience mapper adds `occ-api` to access tokens.
   - Realm roles `operator`, `supervisor`, `viewer`, and one demo user per role, with the password equal to the username.
+  - Refresh tokens rotate (`revokeRefreshToken`, `refreshTokenMaxReuse: 0`): each refresh returns a new refresh token and the old one stops working. A browser app is a public client, so a stolen refresh token then works at most once, and reusing it is refused.
 - **Hostname.** No fixed Keycloak hostname. Keycloak builds its URLs and the token's `iss` from the forwarded host, so sign-in works through nginx (`:18080`) and through the console's dev server (`:15173`). The API still accepts exactly one issuer.
 - **API configuration**, required in every environment, with no default and no off switch:
   - `OIDC_ISSUER`, the expected `iss`, as the browser reaches it;
@@ -76,9 +83,14 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
 - **WebSocket.** Nest guards do not run on the handshake, so `/events` authenticates in namespace middleware with the same verifier.
   - The token travels in the Socket.IO `auth` payload, never in the query string, which ends up in access logs.
   - A refused client gets `connect_error` with `Unauthorized` or `Identity provider unavailable` (`EventsConnectErrors` in `@occ/contracts`).
-  - The server closes the transport when the token expires.
+  - The server closes the transport when the token expires. Socket.IO reconnects by itself after that close, but not after a refused handshake (the client socket is destroyed), so a client must retry a refusal itself.
 - **Idempotency keys** (ADR-0009) are scoped to the token's `sub`: the primary key becomes `(subject, key)`.
-- **Console.** Authorization Code + PKCE, token kept in memory only, sent as a bearer header and in the socket `auth` callback (`IMP-09-console`).
+- **Console** (`IMP-09-console`). Authorization Code + PKCE with `oidc-client-ts`.
+  - **Tokens in memory only.** Both stores are set explicitly, because the library's defaults keep tokens in `sessionStorage` and the sign-in state in `localStorage`. The one-time PKCE verifier and `state` are the exception: they must survive the redirect to Keycloak, so they live in `sessionStorage` until the callback deletes them.
+  - The authority is the console's own origin (`/auth/realms/occ`, client `occ-console`). There is no build-time IdP setting; configuring another IdP at runtime belongs to the release work (IMP-18).
+  - **One renewal path.** The token is refreshed 60 s before it expires, on a REST `401` (then the request is sent once more: the guard runs before any handler, so a `401` request changed nothing), and on a socket refused as `Unauthorized`. All three share one in-flight refresh, because with rotation two concurrent refreshes would spend the same refresh token and the second would end the session. If the refresh fails, the console shows a "Session expired" banner instead of redirecting, so a half-filled form is not lost.
+  - The access token goes in the `Authorization` header and in the socket's `auth` callback. A refused socket is retried with backoff (1 s doubling to 30 s, with jitter); `Unauthorized` first renews the token.
+  - Sign-out closes the socket, clears the query cache and ends the Keycloak session.
 
 ## Consequences
 
@@ -88,6 +100,8 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - During an outage, REST answers `503` and new sockets are refused. Sockets already connected stay up until their token expires.
   - The API does not `depends_on` Keycloak in Compose.
 - **Revocation is not immediate.** A signed-out or disabled user's access token stays valid until it expires (5 min in the demo realm). That is the trade-off for not calling the IdP on every request (introspection, option 3).
+  - The same holds across browser tabs: each tab has its own in-memory session, so signing out in one tab ends the Keycloak session, and the other tabs show "Session expired" when their next refresh fails, within 5 minutes.
+- **A reload signs in again.** Tokens are not stored, so reloading the console sends it through Keycloak once more. While the Keycloak session lives (30 min idle, 10 h at most, Keycloak's defaults) that is a redirect with no password prompt; a shift longer than 10 h asks for the password once more.
 - **Demo only:** the realm, its known passwords and `start-dev` (plain HTTP, embedded store). A real deployment brings its own IdP or a hardened Keycloak:
   - `start` mode;
   - HTTPS;

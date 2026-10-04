@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const apiTarget = process.env.API_URL ?? 'http://localhost:13000';
+const keycloakTarget = process.env.KEYCLOAK_URL ?? 'http://localhost:18081';
 
 export default defineConfig({
   plugins: [react()],
@@ -12,6 +13,9 @@ export default defineConfig({
     proxy: {
       '/api': apiTarget,
       '/socket.io': { target: apiTarget, ws: true },
+      // Keycloak builds the token issuer from the forwarded host, and the API expects this origin
+      // (OIDC_ISSUER in apps/api/.env.example). changeOrigin must stay off so the Host is kept.
+      '/auth': { target: keycloakTarget, xfwd: true, changeOrigin: false },
     },
   },
   build: {
