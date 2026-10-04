@@ -18,6 +18,12 @@ export interface ReportIncidentRequest {
   position?: LngLat;
 }
 
+/**
+ * Optional request header on `POST /incidents`. Send the same value on every retry of one
+ * submission: the API then creates the incident once and returns the first response again.
+ */
+export const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key';
+
 export interface TransitionIncidentRequest {
   note?: string;
 }

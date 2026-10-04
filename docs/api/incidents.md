@@ -34,7 +34,7 @@ Ordered for an operator: unresolved first, then by severity (most severe first),
 **200** — `Incident[]`
 **400** — unknown enum value or `limit` out of range
 
-Source: `apps/api/src/incidents/incidents.controller.ts:24`
+Source: `apps/api/src/incidents/incidents.controller.ts:30`
 
 ### Get an incident
 
@@ -49,16 +49,20 @@ One incident with its full timeline, oldest entry first.
 **400** — `id` is not a UUID
 **404** — unknown incident
 
-Source: `apps/api/src/incidents/incidents.controller.ts:31`
+Source: `apps/api/src/incidents/incidents.controller.ts:38`
 
 ### Report an incident
 
-<!-- steel:endpoint POST /api/incidents | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: none -->
+<!-- steel:endpoint POST /api/incidents | headers: Idempotency-Key? | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: none -->
 
 `POST /api/incidents` · Status: current
 
 Creates an incident in status `open` with `source: operator` and a sequential `code`.
 Broadcasts `incident.created` after the write commits.
+
+| Header            | Type     | Rules                                                 |
+| ----------------- | -------- | ----------------------------------------------------- |
+| `Idempotency-Key` | `string` | optional, 1–255 printable ASCII characters, no spaces |
 
 | Body field    | Type               | Rules                                                            |
 | ------------- | ------------------ | ---------------------------------------------------------------- |
@@ -69,11 +73,26 @@ Broadcasts `incident.created` after the write commits.
 | `zoneId`      | `uuid`             | required, must exist                                             |
 | `position`    | `[lng, lat]`       | optional, both numbers in range; defaults to the zone's `center` |
 
-**201** — `IncidentDetail` (timeline has one `reported` entry)
-**400** — validation failed, or an unknown field was sent
-**404** — `zoneId` does not exist
+**Retries.** Send a new random `Idempotency-Key` (a UUID works) with each submission, and the
+same key again on every retry of it. The key is kept for 24 h
+([ADR-0009](../adr/0009-idempotent-incident-creation.md)):
 
-Source: `apps/api/src/incidents/incidents.controller.ts:39`
+- Same key, same body: the original `201` response comes back unchanged, even if the incident has
+  changed since. No second incident is created and no second `incident.created` is broadcast.
+- Same key, different body: **422**. Body field order and formatting do not count as different.
+- A request that failed (`400`, `404`, `500`) stores nothing, so retrying it with the same key runs
+  it again.
+- Requests with the same key sent at the same time wait for the first one, then get its response.
+  If the first one takes longer than 5 s, the waiting request fails with **500** and can simply be
+  retried.
+- Without the header, every request creates a new incident.
+
+**201** — `IncidentDetail` (timeline has one `reported` entry)
+**400** — validation failed, an unknown field was sent, or `Idempotency-Key` is malformed
+**404** — `zoneId` does not exist
+**422** — `Idempotency-Key` was already used with a different body
+
+Source: `apps/api/src/incidents/incidents.controller.ts:51`
 
 ### Acknowledge an incident
 
@@ -93,7 +112,7 @@ Broadcasts `incident.updated`.
 **404** — unknown incident
 **409** — the incident is not `open`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:47`
+Source: `apps/api/src/incidents/incidents.controller.ts:75`
 
 ### Resolve an incident
 
@@ -112,4 +131,4 @@ Closes an `open` or `acknowledged` incident, with an optional resolution note. B
 **404** — unknown incident
 **409** — the incident is already `resolved`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:59`
+Source: `apps/api/src/incidents/incidents.controller.ts:90`

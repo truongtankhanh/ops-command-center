@@ -174,7 +174,19 @@
       },
       "post": {
         "operationId": "IncidentsController_report",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "description": "Makes the request safe to retry for 24 h: the same key and body return the first response instead of creating another incident. Use a new random value (e.g. a UUID) per submission.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -196,11 +208,17 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid body or Idempotency-Key"
+          },
           "404": {
             "description": "Zone does not exist"
+          },
+          "422": {
+            "description": "Idempotency-Key reused with a different body"
           }
         },
-        "summary": "Report a new incident on behalf of an operator.",
+        "summary": "Report a new incident on behalf of an operator. A retry with the same `Idempotency-Key` and body returns the first response and creates nothing (ADR-0009).",
         "tags": ["incidents"]
       }
     },
