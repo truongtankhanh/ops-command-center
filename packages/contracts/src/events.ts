@@ -19,3 +19,20 @@ export interface ServerToClientEvents {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ClientToServerEvents {}
+
+/**
+ * Handshake payload for `/events`: `io(url, { auth })`. A connection without a valid access token
+ * is refused. Pass `auth` as a function, `(cb) => cb({ token })`, so every reconnect sends the
+ * current token: the server closes a connection when its token expires, and the client reconnects.
+ */
+export interface EventsHandshakeAuth {
+  token: string;
+}
+
+/** `connect_error` messages for a refused handshake, so a client can tell them apart. */
+export const EventsConnectErrors = {
+  /** No token, or one the API does not accept: sign in again. */
+  Unauthorized: 'Unauthorized',
+  /** The API cannot check tokens right now: retry, signing in again will not help. */
+  IdentityProviderUnavailable: 'Identity provider unavailable',
+} as const;

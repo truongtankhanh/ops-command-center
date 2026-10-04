@@ -3,7 +3,9 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
+  IsString,
   IsUrl,
   Max,
   Min,
@@ -38,6 +40,22 @@ export class Env {
   /** PostgreSQL connection string; the only secret the API reads. */
   @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
   DATABASE_URL: string;
+
+  /**
+   * The `iss` every access token must carry: the issuer URL as the browser reaches it. Required in
+   * every environment; there is no way to run the API without authentication (ADR-0010).
+   */
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  OIDC_ISSUER: string;
+
+  /** Where the API fetches the issuer's signing keys; may be an internal address. */
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true, require_tld: false })
+  OIDC_JWKS_URL: string;
+
+  /** The `aud` value that marks a token as meant for this API. */
+  @IsString()
+  @IsNotEmpty()
+  OIDC_AUDIENCE: string;
 
   /** Unset: on, except in production (see `applyEnvironmentDefaults`). */
   @Transform(toBoolean)
@@ -92,6 +110,10 @@ function productionProblems(env: Env): string[] {
     problems.push('CAMERA_SOURCE: mock needs DEMO_MODE=true in production');
   }
   if (env.SEED_ON_BOOT) problems.push('SEED_ON_BOOT: true needs DEMO_MODE=true in production');
+  // Passwords and tokens travel through the issuer's pages; plain HTTP is for the demo only.
+  if (/^http:/i.test(env.OIDC_ISSUER ?? '')) {
+    problems.push('OIDC_ISSUER: http needs DEMO_MODE=true in production; use https');
+  }
   return problems;
 }
 

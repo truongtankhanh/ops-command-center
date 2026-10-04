@@ -1,12 +1,14 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiExtraModels,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiUnauthorizedResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
 import type { Camera, StreamDescriptor } from '@occ/contracts';
@@ -20,6 +22,8 @@ import {
 } from './dto/camera.dto';
 
 @ApiTags('cameras')
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
 @ApiExtraModels(MockStreamDescriptorDto, HlsStreamDescriptorDto, WebRtcStreamDescriptorDto)
 @Controller('cameras')
 export class CamerasController {

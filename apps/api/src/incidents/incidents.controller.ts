@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiHeader,
@@ -8,9 +9,12 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiTags,
+  ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { IDEMPOTENCY_KEY_HEADER, type Incident, type IncidentDetail } from '@occ/contracts';
+import { CurrentUser } from '../auth/auth.decorators';
+import type { AuthenticatedUser } from '../auth/token-verifier';
 import { ApiErrorDto } from '../common/api-error.dto';
 import { IncidentDetailDto, IncidentDto } from './dto/incident.dto';
 import {
@@ -22,6 +26,8 @@ import { IdempotencyKeyHeader, IdempotencyKeyPipe } from './idempotency-key.pipe
 import { IncidentsService } from './incidents.service';
 
 @ApiTags('incidents')
+@ApiBearerAuth()
+@ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidents: IncidentsService) {}
@@ -45,8 +51,8 @@ export class IncidentsController {
   }
 
   /**
-   * Report a new incident on behalf of an operator. A retry with the same `Idempotency-Key` and
-   * body returns the first response and creates nothing (ADR-0009).
+   * Report a new incident on behalf of an operator. A retry by the same user with the same
+   * `Idempotency-Key` and body returns the first response and creates nothing (ADR-0009).
    */
   @Post()
   @ApiHeader({
@@ -54,7 +60,8 @@ export class IncidentsController {
     required: false,
     description:
       'Makes the request safe to retry for 24 h: the same key and body return the first response ' +
-      'instead of creating another incident. Use a new random value (e.g. a UUID) per submission.',
+      'instead of creating another incident. Keys are per user. Use a new random value (e.g. a ' +
+      'UUID) per submission.',
     schema: { type: 'string', minLength: 1, maxLength: 255 },
   })
   @ApiCreatedResponse({ type: IncidentDetailDto })
@@ -66,9 +73,14 @@ export class IncidentsController {
   })
   report(
     @Body() body: ReportIncidentDto,
+    @CurrentUser() user: AuthenticatedUser,
     @IdempotencyKeyHeader(IdempotencyKeyPipe) idempotencyKey?: string,
   ): Promise<IncidentDetail> {
-    return this.incidents.report(body, 'operator', idempotencyKey);
+    return this.incidents.report(
+      body,
+      'operator',
+      idempotencyKey === undefined ? undefined : { subject: user.subject, key: idempotencyKey },
+    );
   }
 
   /** Mark an open incident as being handled. */

@@ -35,11 +35,52 @@ services:
       # Demo stack, not production: keep /api/docs on. The image runs NODE_ENV=production,
       # so "Try it out" stays disabled (ADR-0005).
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+      # Every request needs a token from the realm below (ADR-0010). The issuer is the URL the
+      # browser signs in through (Keycloak behind the console's nginx); set OCC_PUBLIC_URL when the
+      # console is opened from another address. Signing keys come from Keycloak directly.
+      OIDC_ISSUER: ${OCC_PUBLIC_URL:-http://localhost:18080}/auth/realms/occ
+      OIDC_JWKS_URL: http://keycloak:8080/auth/realms/occ/protocol/openid-connect/certs
+      OIDC_AUDIENCE: occ-api
     depends_on:
       postgres:
         condition: service_healthy
+    # No depends_on keycloak: the API fetches signing keys on first use, so it boots and stays
+    # healthy while Keycloak is down; only authenticated requests fail then (503).
     # No host port: the API (docs included) is reached through the console on :18080, which
     # balances across replicas. That is what lets `docker compose up --scale api=2` work (ADR-0008).
+
+  # Demo identity provider (ADR-0010): dev mode, plain HTTP, demo users whose password is their
+  # username. Not a production setup: a real deployment brings its own IdP and sets OIDC_*.
+  # No volume: the realm is re-imported from ops/keycloak on every start, so it never drifts.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8
+    command: start-dev --import-realm
+    environment:
+      KC_HTTP_RELATIVE_PATH: /auth
+      # No fixed hostname: URLs and the token issuer follow the forwarded host, so sign-in works
+      # through nginx (:18080) and the console's dev server (:15173) alike. The API still accepts
+      # exactly one issuer (OIDC_ISSUER).
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: 'true'
+    volumes:
+      - ./ops/keycloak:/opt/keycloak/data/import:ro
+    # Loopback only, for `pnpm dev`; remap with KEYCLOAK_PORT if 18081 is taken.
+    ports:
+      - '127.0.0.1:${KEYCLOAK_PORT:-18081}:8080'
+    # The image has no curl or wget; bash's /dev/tcp asks the management port instead.
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /auth/health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q '"UP"' <&3
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
   console:
     build:

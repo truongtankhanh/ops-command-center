@@ -22,9 +22,21 @@ already hold.
 Event names and payload types are defined once in `@occ/contracts` (`IncidentEvents`,
 `ServerToClientEvents`).
 
+**Authentication.** The namespace accepts only connections that carry an OIDC access token, the
+same one the REST API takes ([ADR-0010](../adr/0010-oidc-authentication.md)). Send it in the
+handshake's `auth` payload (`EventsHandshakeAuth`), never in the URL, and pass `auth` as a function
+so every reconnect sends the current token:
+`io('/events', { transports: ['websocket'], auth: (cb) => cb({ token }) })`.
+
+- A refused handshake raises `connect_error` and never connects. Its message is one of
+  `EventsConnectErrors`: `Unauthorized` (no token, or one the API does not accept — sign in again)
+  or `Identity provider unavailable` (the API cannot check tokens right now — retry later).
+- When the token expires, the server closes the connection. Socket.IO reconnects on its own with
+  the current token, and the same refetch covers anything missed in between.
+
 ### Incident created
 
-<!-- steel:endpoint EVENT /events incident.created | payload: Incident | auth: none -->
+<!-- steel:endpoint EVENT /events incident.created | payload: Incident | auth: bearer (handshake) -->
 
 `incident.created` · Status: current
 
@@ -36,7 +48,7 @@ Source: `apps/api/src/realtime/events.gateway.ts:40`
 
 ### Incident updated
 
-<!-- steel:endpoint EVENT /events incident.updated | payload: Incident | auth: none -->
+<!-- steel:endpoint EVENT /events incident.updated | payload: Incident | auth: bearer (handshake) -->
 
 `incident.updated` · Status: current
 

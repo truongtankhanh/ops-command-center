@@ -2,7 +2,7 @@
   "name": "@occ/api",
   "version": "0.1.0",
   "private": true,
-  "description": "Ops API \u2014 incidents, zones, cameras, real-time events.",
+  "description": "Ops API — incidents, zones, cameras, real-time events.",
   "license": "MIT",
   "files": [
     "dist"
@@ -32,6 +32,7 @@
     "@occ/contracts": "workspace:*",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "jose": "^6.2.12",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

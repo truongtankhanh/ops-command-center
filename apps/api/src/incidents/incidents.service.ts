@@ -13,7 +13,12 @@ import { EntityNotFoundError } from '../common/domain-errors';
 import { OutboxRelay } from '../outbox/outbox-relay.service';
 import { ZoneEntity } from '../zones/zone.entity';
 import { DEFAULT_INCIDENT_LIMIT } from './dto/incident-requests.dto';
-import { claimIdempotencyKey, fingerprint, storeIdempotentResponse } from './idempotency';
+import {
+  claimIdempotencyKey,
+  fingerprint,
+  type IdempotencyKeyId,
+  storeIdempotentResponse,
+} from './idempotency';
 import { nextIncidentCode } from './incident-code';
 import { IncidentEntity } from './incident.entity';
 import { persistIncident } from './persist-incident';
@@ -56,22 +61,23 @@ export class IncidentsService {
   }
 
   /**
-   * With `idempotencyKey`, a repeat of the same request returns the stored first response and
-   * creates nothing; the same key with a different body throws `IdempotencyKeyReusedError`.
+   * With `idempotencyKey`, a repeat of the same request by the same user returns the stored first
+   * response and creates nothing; the same key with a different body throws
+   * `IdempotencyKeyReusedError`. Another user's identical key is a different key.
    */
   async report(
     request: ReportIncidentRequest,
     source: IncidentSource,
-    idempotencyKey?: string,
+    idempotencyKey?: IdempotencyKeyId,
   ): Promise<IncidentDetail> {
     const idempotency = idempotencyKey
-      ? { key: idempotencyKey, requestHash: fingerprint(request) }
+      ? { id: idempotencyKey, requestHash: fingerprint(request) }
       : undefined;
 
     const { detail, created } = await this.dataSource.transaction(async (manager) => {
       // Before the zone lookup and `nextval`, so a replay burns no incident code.
       if (idempotency) {
-        const claim = await claimIdempotencyKey(manager, idempotency.key, idempotency.requestHash);
+        const claim = await claimIdempotencyKey(manager, idempotency.id, idempotency.requestHash);
         if (!claim.claimed) return { detail: claim.body, created: false };
       }
 
@@ -97,7 +103,7 @@ export class IncidentsService {
       );
       // Read inside the transaction: the stored response must commit together with the incident.
       const detail = await this.loadDetail(manager, incident.id);
-      if (idempotency) await storeIdempotentResponse(manager, idempotency.key, detail);
+      if (idempotency) await storeIdempotentResponse(manager, idempotency.id, detail);
       return { detail, created: true };
     });
 

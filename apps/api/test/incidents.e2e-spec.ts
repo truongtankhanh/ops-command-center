@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
+import { type AddressInfo, createServer } from 'node:net';
 import type { INestApplication } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import {
   type ClientToServerEvents,
   EVENTS_NAMESPACE,
+  EventsConnectErrors,
+  type EventsHandshakeAuth,
   IDEMPOTENCY_KEY_HEADER,
   type Incident,
   IncidentEvents,
@@ -15,13 +19,18 @@ import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
-import { validateEnv } from '../src/config/env.validation';
+import { TokenVerifier } from '../src/auth/token-verifier';
+import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
 import { IncidentEntity } from '../src/incidents/incident.entity';
 import { persistIncident } from '../src/incidents/persist-incident';
 import { OutboxEvents } from '../src/outbox/outbox-events';
 import { OutboxEntity } from '../src/outbox/outbox.entity';
 import { SimulatorLeader } from '../src/simulator/simulator-leader.service';
+import { bearer, hs256Token, signToken, unsignedToken } from './support/tokens';
+
+/** The suite's default access token, from the test issuer (`global-setup.ts`). Set in `beforeAll`. */
+let token: string;
 
 /**
  * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
@@ -41,6 +50,7 @@ describe('Incidents (e2e)', () => {
     const admin = await new DataSource({ type: 'postgres', url: DATABASE_URL }).initialize();
     await admin.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
     await admin.destroy();
+    token = await signToken();
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = configureApp(moduleRef.createNestApplication());
@@ -49,10 +59,11 @@ describe('Incidents (e2e)', () => {
 
     socket = io(`${baseUrl.replace('[::1]', 'localhost')}${EVENTS_NAMESPACE}`, {
       transports: ['websocket'],
+      auth: { token },
     });
     await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
 
-    const zones = await request(app.getHttpServer()).get('/api/zones').expect(200);
+    const zones = await api(app).get('/api/zones').expect(200);
     zone = (zones.body as Zone[]).find((z) => z.code === 'BLD-LIB')!;
   });
 
@@ -62,9 +73,9 @@ describe('Incidents (e2e)', () => {
   });
 
   it('seeds the reference campus on an empty database', async () => {
-    const zones = await request(app.getHttpServer()).get('/api/zones').expect(200);
-    const cameras = await request(app.getHttpServer()).get('/api/cameras').expect(200);
-    const incidents = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+    const zones = await api(app).get('/api/zones').expect(200);
+    const cameras = await api(app).get('/api/cameras').expect(200);
+    const incidents = await api(app).get('/api/incidents').expect(200);
 
     expect(zones.body).toHaveLength(9);
     expect(cameras.body).toHaveLength(12);
@@ -74,7 +85,7 @@ describe('Incidents (e2e)', () => {
   });
 
   it('orders incidents unresolved first, then by severity', async () => {
-    const res = await request(app.getHttpServer()).get('/api/incidents').expect(200);
+    const res = await api(app).get('/api/incidents').expect(200);
     const statuses = (res.body as Incident[]).map((i) => i.status);
     const firstResolved = statuses.indexOf('resolved');
 
@@ -83,9 +94,7 @@ describe('Incidents (e2e)', () => {
   });
 
   it('filters by status and severity', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/incidents?status=resolved&severity=critical')
-      .expect(200);
+    const res = await api(app).get('/api/incidents?status=resolved&severity=critical').expect(200);
 
     expect(res.body).toHaveLength(1);
     expect(res.body[0]).toMatchObject({ status: 'resolved', severity: 'critical' });
@@ -93,7 +102,7 @@ describe('Incidents (e2e)', () => {
 
   it('runs the full lifecycle and broadcasts every change', async () => {
     const created = waitFor(socket, IncidentEvents.Created);
-    const report = await request(app.getHttpServer())
+    const report = await api(app)
       .post('/api/incidents')
       .send({
         type: 'medical',
@@ -113,7 +122,7 @@ describe('Incidents (e2e)', () => {
     expect(await created).toMatchObject({ id: report.body.id, version: 1 });
 
     const acknowledged = waitFor(socket, IncidentEvents.Updated);
-    const ack = await request(app.getHttpServer())
+    const ack = await api(app)
       .post(`/api/incidents/${report.body.id}/acknowledge`)
       .send({ note: 'Medic on the way' })
       .expect(200);
@@ -121,7 +130,7 @@ describe('Incidents (e2e)', () => {
     expect(await acknowledged).toMatchObject({ status: 'acknowledged', version: 2 });
 
     const resolved = waitFor(socket, IncidentEvents.Updated);
-    const done = await request(app.getHttpServer())
+    const done = await api(app)
       .post(`/api/incidents/${report.body.id}/resolve`)
       .send({})
       .expect(200);
@@ -185,7 +194,7 @@ describe('Incidents (e2e)', () => {
   });
 
   it('delivers a pending outbox row through the poll, without a nudge', async () => {
-    const res = await request(app.getHttpServer()).get('/api/incidents?limit=1').expect(200);
+    const res = await api(app).get('/api/incidents?limit=1').expect(200);
     const incident = res.body[0] as Incident;
     const payload = { ...incident, version: incident.version + 100 };
 
@@ -203,11 +212,9 @@ describe('Incidents (e2e)', () => {
   });
 
   it('rejects an invalid transition with 409', async () => {
-    const res = await request(app.getHttpServer())
-      .get('/api/incidents?status=resolved&limit=1')
-      .expect(200);
+    const res = await api(app).get('/api/incidents?status=resolved&limit=1').expect(200);
 
-    const conflict = await request(app.getHttpServer())
+    const conflict = await api(app)
       .post(`/api/incidents/${res.body[0].id}/acknowledge`)
       .send({})
       .expect(409);
@@ -215,7 +222,7 @@ describe('Incidents (e2e)', () => {
   });
 
   it('validates input and returns 400 with field messages', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await api(app)
       .post('/api/incidents')
       .send({ type: 'alien_landing', severity: 'high', title: '', zoneId: zone.id, extra: 1 })
       .expect(400);
@@ -230,7 +237,7 @@ describe('Incidents (e2e)', () => {
   });
 
   it('returns 404 for an unknown zone or incident', async () => {
-    await request(app.getHttpServer())
+    await api(app)
       .post('/api/incidents')
       .send({
         type: 'medical',
@@ -239,20 +246,105 @@ describe('Incidents (e2e)', () => {
         zoneId: '00000000-0000-4000-8000-000000000000',
       })
       .expect(404);
-    await request(app.getHttpServer())
-      .get('/api/incidents/00000000-0000-4000-8000-000000000000')
-      .expect(404);
+    await api(app).get('/api/incidents/00000000-0000-4000-8000-000000000000').expect(404);
   });
 
   it('resolves a camera stream through the configured source', async () => {
-    const cameras = await request(app.getHttpServer())
-      .get(`/api/cameras?zoneId=${zone.id}`)
-      .expect(200);
-    const stream = await request(app.getHttpServer())
-      .get(`/api/cameras/${cameras.body[0].id}/stream`)
-      .expect(200);
+    const cameras = await api(app).get(`/api/cameras?zoneId=${zone.id}`).expect(200);
+    const stream = await api(app).get(`/api/cameras/${cameras.body[0].id}/stream`).expect(200);
 
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
+  });
+
+  /** Every route but health needs an access token; `/events` checks it at the handshake (ADR-0010). */
+  describe('authentication', () => {
+    it('rejects requests without a token (401) before validating them', async () => {
+      const server = app.getHttpServer();
+      const withoutToken = [
+        request(server).get('/api/zones'),
+        request(server).get('/api/cameras'),
+        request(server).get('/api/incidents'),
+        // An invalid body too: guards run before validation, so this is 401, not 400.
+        request(server).post('/api/incidents').send({ type: 'alien_landing' }),
+      ];
+      for (const req of withoutToken) {
+        const res = await req.expect(401);
+        expect(res.headers['www-authenticate']).toBe('Bearer realm="occ"');
+        expect(res.body).toMatchObject({
+          statusCode: 401,
+          error: 'UNAUTHORIZED',
+          message: 'Missing bearer token',
+        });
+      }
+    });
+
+    it('rejects every token it cannot verify (401), without saying why', async () => {
+      const rejected: [string, string][] = [
+        ['another scheme', 'Basic abc'],
+        ['no token', 'Bearer'],
+        ['not a JWT', bearer('not-a-jwt')],
+        ['expired', bearer(await signToken({ expiresIn: -120 }))],
+        ['another audience', bearer(await signToken({ aud: 'another-api' }))],
+        ['another issuer', bearer(await signToken({ iss: 'http://127.0.0.1/realms/other' }))],
+        ['an unpublished key', bearer(await signToken({ key: 'other' }))],
+        ['alg none', bearer(unsignedToken())],
+        ['HS256', bearer(await hs256Token())],
+        ['no subject', bearer(await signToken({ sub: null }))],
+      ];
+      for (const [label, authorization] of rejected) {
+        const res = await request(app.getHttpServer())
+          .get('/api/zones')
+          .set('Authorization', authorization);
+        // The label makes a failure say which token got through.
+        expect([label, res.status]).toEqual([label, 401]);
+        expect(res.headers['www-authenticate']).toBe('Bearer realm="occ", error="invalid_token"');
+        expect(res.body.message).toBe('Invalid access token');
+      }
+    });
+
+    it('leaves health and the API docs open', async () => {
+      const health = await request(app.getHttpServer()).get('/api/health').expect(200);
+      expect(health.body).toEqual({ status: 'ok', database: 'up' });
+
+      // Swagger is served outside the Nest router, so the guard never sees it (ADR-0005 governs it).
+      const docs = await request(app.getHttpServer()).get('/api/docs-json').expect(200);
+      expect(docs.body.components.securitySchemes.bearer).toMatchObject({
+        type: 'http',
+        scheme: 'bearer',
+      });
+    });
+
+    it('refuses a socket without a valid token', async () => {
+      for (const options of [{}, { auth: { token: 'not-a-jwt' } }]) {
+        await expect(
+          connectEvents(app, ['websocket'], { reconnection: false, ...options }),
+        ).rejects.toThrow(EventsConnectErrors.Unauthorized);
+      }
+    });
+
+    it('closes a socket when its token expires, and lets it reconnect with a fresh one', async () => {
+      // A function, as the console passes it: called again on every reconnect.
+      let handshakes = 0;
+      const auth = (cb: (data: EventsHandshakeAuth) => void) => {
+        handshakes += 1;
+        const next = handshakes === 1 ? signToken({ expiresIn: 2 }) : Promise.resolve(token);
+        void next.then((fresh) => cb({ token: fresh }));
+      };
+      const client = await connectEvents(app, ['websocket'], { auth });
+      try {
+        const disconnected = new Promise<string>((resolve) =>
+          client.once('disconnect', (reason) => resolve(reason)),
+        );
+        const reconnected = new Promise<void>((resolve) => client.once('connect', () => resolve()));
+
+        // A transport close, as on resync: the client reconnects by itself, with a fresh token.
+        expect(await disconnected).toBe('transport close');
+        await reconnected;
+        expect(handshakes).toBe(2);
+      } finally {
+        client.close();
+      }
+    });
   });
 
   /** Retries of `POST /api/incidents` with the same key create one incident (ADR-0009). */
@@ -347,6 +439,21 @@ describe('Incidents (e2e)', () => {
       expect(second.body.id).not.toBe(first.body.id);
       expect(await countIncidents(app, 'Idem after expiry')).toBe(1);
     });
+
+    it('keeps keys per user', async () => {
+      const key = randomUUID();
+      const title = 'Idem per user';
+      const [asA, asB] = await Promise.all([
+        signToken({ sub: 'e2e-user-a' }),
+        signToken({ sub: 'e2e-user-b' }),
+      ]);
+
+      // The same key from another user is another key, not a replay of someone else's response.
+      const first = await reportIncident(app, newBody(title), key, asA).expect(201);
+      const second = await reportIncident(app, newBody(title), key, asB).expect(201);
+      expect(second.body.id).not.toBe(first.body.id);
+      expect(await countIncidents(app, title)).toBe(2);
+    });
   });
 
   /**
@@ -363,7 +470,7 @@ describe('Incidents (e2e)', () => {
       const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
       appB = configureApp(moduleRef.createNestApplication());
       await appB.listen(0);
-      socketB = await connectEvents(appB, ['websocket']);
+      socketB = await connectEvents(appB, ['websocket'], { auth: { token } });
     });
 
     afterAll(async () => {
@@ -378,7 +485,7 @@ describe('Incidents (e2e)', () => {
       try {
         const onB = waitFor(socketB, IncidentEvents.Created);
         const onA = waitFor(socket, IncidentEvents.Created);
-        const report = await request(app.getHttpServer())
+        const report = await api(app)
           .post('/api/incidents')
           .send({
             type: 'medical',
@@ -393,10 +500,7 @@ describe('Incidents (e2e)', () => {
         // A listener delivers batches one at a time in commit order, so a duplicate `created`
         // would reach B before this later update does.
         const acknowledged = waitFor(socketB, IncidentEvents.Updated);
-        await request(app.getHttpServer())
-          .post(`/api/incidents/${report.body.id}/acknowledge`)
-          .send({})
-          .expect(200);
+        await api(app).post(`/api/incidents/${report.body.id}/acknowledge`).send({}).expect(200);
         expect(await acknowledged).toMatchObject({ id: report.body.id, version: 2 });
         expect(createdOnB.filter((incident) => incident.id === report.body.id)).toHaveLength(1);
       } finally {
@@ -433,7 +537,16 @@ describe('Incidents (e2e)', () => {
     });
 
     it('refuses long-polling clients', async () => {
-      await expect(connectEvents(appB, ['polling'], { reconnection: false })).rejects.toThrow();
+      // With a valid token, so the refusal can only be about the transport, not authentication.
+      const refused = await connectEvents(appB, ['polling'], {
+        reconnection: false,
+        auth: { token },
+      }).then(
+        () => undefined,
+        (error: Error) => error,
+      );
+      expect(refused).toBeInstanceOf(Error);
+      expect(refused?.message).not.toBe(EventsConnectErrors.Unauthorized);
     });
 
     it('creates one incident when instances race on the same key', async () => {
@@ -451,6 +564,41 @@ describe('Incidents (e2e)', () => {
       expect(await countIncidents(app, title)).toBe(1);
     });
   });
+
+  /**
+   * Keycloak down: the API keeps running but cannot check any token (ADR-0010). App C uses the
+   * real `TokenVerifier`, pointed at a port nothing listens on.
+   */
+  describe('with the identity provider unreachable', () => {
+    let appC: INestApplication;
+
+    beforeAll(async () => {
+      const deadJwksUrl = `http://127.0.0.1:${await unusedPort()}/certs`;
+      const config = {
+        get: (name: keyof Env) => (name === 'OIDC_JWKS_URL' ? deadJwksUrl : process.env[name]),
+      } as unknown as ConfigService<Env, true>;
+      const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+        .overrideProvider(TokenVerifier)
+        .useValue(new TokenVerifier(config))
+        .compile();
+      appC = configureApp(moduleRef.createNestApplication());
+      await appC.listen(0);
+    });
+
+    afterAll(async () => {
+      await appC?.close();
+    });
+
+    it('answers 503 on REST and refuses sockets while it cannot fetch signing keys', async () => {
+      // 503, not 401: signing in again cannot help, so the console must not send the user there.
+      const res = await api(appC).get('/api/zones').expect(503);
+      expect(res.body).toMatchObject({ statusCode: 503, message: 'Identity provider unavailable' });
+
+      await expect(
+        connectEvents(appC, ['websocket'], { reconnection: false, auth: { token } }),
+      ).rejects.toThrow(EventsConnectErrors.IdentityProviderUnavailable);
+    });
+  });
 });
 
 /** The suite drops the whole schema: refuse any database whose name does not end in `_test`. */
@@ -463,11 +611,30 @@ function assertTestDatabase(databaseUrl: string): void {
   }
 }
 
+/** A supertest agent for `target` that sends `withToken` as the bearer token on every request. */
+function api(target: INestApplication, withToken = token): ReturnType<typeof request.agent> {
+  return request.agent(target.getHttpServer()).set('Authorization', bearer(withToken));
+}
+
 /** `POST /api/incidents` on `target`, with an `Idempotency-Key` when `key` is given. */
-function reportIncident(target: INestApplication, body: object, key?: string): request.Test {
-  const req = request(target.getHttpServer()).post('/api/incidents');
+function reportIncident(
+  target: INestApplication,
+  body: object,
+  key?: string,
+  withToken = token,
+): request.Test {
+  const req = api(target, withToken).post('/api/incidents');
   if (key !== undefined) req.set(IDEMPOTENCY_KEY_HEADER, key);
   return req.send(body);
+}
+
+/** A loopback port nothing listens on: bound once, then released. */
+async function unusedPort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  return port;
 }
 
 function countIncidents(target: INestApplication, title: string): Promise<number> {

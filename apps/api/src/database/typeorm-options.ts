@@ -9,6 +9,7 @@ import { InitialSchema1790800000000 } from './migrations/1790800000000-initial-s
 import { IncidentVersion1790924435743 } from './migrations/1790924435743-incident-version';
 import { Outbox1790929369576 } from './migrations/1790929369576-outbox';
 import { IdempotencyKey1791083081820 } from './migrations/1791083081820-idempotency-key';
+import { IdempotencyKeySubject1791088055281 } from './migrations/1791088055281-idempotency-key-subject';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -51,6 +52,7 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
     IncidentVersion1790924435743,
     Outbox1790929369576,
     IdempotencyKey1791083081820,
+    IdempotencyKeySubject1791088055281,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,

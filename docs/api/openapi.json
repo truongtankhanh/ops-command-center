@@ -44,8 +44,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "All zones of the campus with their outlines.",
         "tags": ["zones"]
       }
@@ -77,8 +85,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Cameras, optionally filtered by zone.",
         "tags": ["cameras"]
       }
@@ -106,8 +122,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "How the client should render this camera — resolved by the configured CameraSource.",
         "tags": ["cameras"]
       }
@@ -167,8 +191,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Missing or invalid bearer token"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Incidents ordered for an operator: unresolved first, then by severity, then newest.",
         "tags": ["incidents"]
       },
@@ -179,7 +211,7 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": false,
-            "description": "Makes the request safe to retry for 24 h: the same key and body return the first response instead of creating another incident. Use a new random value (e.g. a UUID) per submission.",
+            "description": "Makes the request safe to retry for 24 h: the same key and body return the first response instead of creating another incident. Keys are per user. Use a new random value (e.g. a UUID) per submission.",
             "schema": {
               "type": "string",
               "minLength": 1,
@@ -211,6 +243,9 @@
           "400": {
             "description": "Invalid body or Idempotency-Key"
           },
+          "401": {
+            "description": "Missing or invalid bearer token"
+          },
           "404": {
             "description": "Zone does not exist"
           },
@@ -218,7 +253,12 @@
             "description": "Idempotency-Key reused with a different body"
           }
         },
-        "summary": "Report a new incident on behalf of an operator. A retry with the same `Idempotency-Key` and body returns the first response and creates nothing (ADR-0009).",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report a new incident on behalf of an operator. A retry by the same user with the same `Idempotency-Key` and body returns the first response and creates nothing (ADR-0009).",
         "tags": ["incidents"]
       }
     },
@@ -246,10 +286,18 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid bearer token"
+          },
           "404": {
             "description": ""
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "One incident with its full timeline.",
         "tags": ["incidents"]
       }
@@ -288,10 +336,18 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid bearer token"
+          },
           "409": {
             "description": "Incident is not open"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Mark an open incident as being handled.",
         "tags": ["incidents"]
       }
@@ -330,10 +386,18 @@
               }
             }
           },
+          "401": {
+            "description": "Missing or invalid bearer token"
+          },
           "409": {
             "description": "Incident is already resolved"
           }
         },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
         "summary": "Close an incident, optionally with a resolution note.",
         "tags": ["incidents"]
       }
@@ -342,7 +406,7 @@
   "info": {
     "title": "Ops Command Center API",
     "version": "0.1.0",
-    "description": "Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace — see events.md."
+    "description": "Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace — see events.md. Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; `/events` takes the same token in the handshake as `auth.token`."
   },
   "tags": [],
   "components": {
@@ -706,6 +770,13 @@
             "maxLength": 1000
           }
         }
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
       }
     }
   },

@@ -21,9 +21,12 @@ export function configureApp(app: INestApplication): INestApplication {
       new DocumentBuilder()
         .setTitle('Ops Command Center API')
         .setDescription(
-          'Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace.',
+          'Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace. ' +
+            'Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; ' +
+            '`/events` takes the same token in the handshake as `auth.token`.',
         )
         .setVersion('0.1.0')
+        .addBearerAuth()
         .build(),
     );
     // Production only serves docs on explicit opt-in, and never lets the page fire requests.
