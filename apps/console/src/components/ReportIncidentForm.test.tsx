@@ -1,6 +1,6 @@
-import type { IncidentDetail, Zone } from '@occ/contracts';
+import { IDEMPOTENCY_KEY_HEADER, type IncidentDetail, type Zone } from '@occ/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { useConsole } from '../store';
@@ -34,6 +34,14 @@ const created: IncidentDetail = {
 };
 
 const fetchMock = vi.fn<typeof fetch>();
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/** The `Idempotency-Key` sent with the `call`-th request. */
+function sentKey(call: number): string | undefined {
+  const headers = fetchMock.mock.calls[call]![1]!.headers as Record<string, string>;
+  return headers[IDEMPOTENCY_KEY_HEADER];
+}
 
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -108,6 +116,80 @@ describe('ReportIncidentForm', () => {
     await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
 
     expect(await form.findByRole('alert')).toHaveTextContent('Zone was not found');
+    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  it('sends a v4 Idempotency-Key with the report', async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+    expect(sentKey(0)).toMatch(UUID_V4);
+  });
+
+  it('reuses the key when the operator retries, even after editing', async () => {
+    fetchMock
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(new Response(JSON.stringify(created), { status: 201 }));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+    await form.findByRole('alert');
+
+    // The first attempt may have reached the API, so an edited retry must not look like a new report.
+    // `fillRequired` leaves a trailing space, so this reads "… entrance (east door)".
+    await userEvent.type(form.getByLabelText('Title'), '(east door)');
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentKey(1)).toBe(sentKey(0));
+    expect(JSON.parse(fetchMock.mock.calls[1]![1]!.body as string).title).toBe(
+      'Person down at entrance (east door)',
+    );
+  });
+
+  it('uses a new key for a newly opened form', async () => {
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+    for (let opened = 0; opened < 2; opened++) {
+      const { form } = renderForm();
+      await fillRequired(form);
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+      await form.findByRole('alert');
+      cleanup(); // closing the form unmounts it, as App does
+    }
+
+    expect(sentKey(0)).toMatch(UUID_V4);
+    expect(sentKey(1)).toMatch(UUID_V4);
+    expect(sentKey(1)).not.toBe(sentKey(0));
+  });
+
+  it('explains a 422 in operator terms and keeps the input', async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          statusCode: 422,
+          message: 'This Idempotency-Key was already used with a different request body',
+        }),
+        { status: 422 },
+      ),
+    );
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    const alert = await form.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'This report was already sent with different details. Check the incident feed before reporting it again.',
+    );
+    expect(alert).not.toHaveTextContent('Idempotency-Key');
     expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
   });

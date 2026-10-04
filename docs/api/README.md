@@ -5,7 +5,7 @@ endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) 
 The running API also serves interactive docs at `/api/docs` in development; in production they are off
 unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
-Last reconciled: 2026-10-01
+Last reconciled: 2026-10-04
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
@@ -37,3 +37,7 @@ Last reconciled: 2026-10-01
 
 - **Positions** are `[longitude, latitude]` (GeoJSON order). Timestamps are ISO 8601 UTC.
 - **Ids** are UUIDs; a malformed id in a path returns **400**.
+- **422** means the request is well-formed but cannot be applied, e.g. an `Idempotency-Key`
+  reused with a different body.
+- **Retries.** `POST /api/incidents` accepts an optional `Idempotency-Key` header that makes it
+  safe to retry; see [incidents.md](incidents.md#report-an-incident).

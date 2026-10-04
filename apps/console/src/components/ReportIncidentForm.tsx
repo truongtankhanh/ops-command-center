@@ -5,12 +5,17 @@ import {
   type IncidentType,
 } from '@occ/contracts';
 import { type FormEvent, useEffect, useState } from 'react';
+import { ApiRequestError } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
+import { newIdempotencyKey } from '../lib/idempotency';
 import { typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
 
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
+/** The API's 422 for this form: the key was used for a report with other details. */
+const REPORT_ALREADY_SENT =
+  'This report was already sent with different details. Check the incident feed before reporting it again.';
 
 /** Operator-reported incident. Limits mirror the API's validation rules. */
 export function ReportIncidentForm() {
@@ -24,6 +29,9 @@ export function ReportIncidentForm() {
   const [zoneId, setZoneId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  // One key per opened form, reused by every retry. Not renewed when a field changes: if a failed
+  // attempt actually reached the API, an edited retry must get a 422, not create a duplicate.
+  const [idempotencyKey] = useState(newIdempotencyKey);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && closeReport();
@@ -38,11 +46,14 @@ export function ReportIncidentForm() {
     if (!ready || report.isPending) return;
     report.mutate(
       {
-        type,
-        severity,
-        zoneId,
-        title: title.trim(),
-        ...(description.trim() ? { description: description.trim() } : {}),
+        request: {
+          type,
+          severity,
+          zoneId,
+          title: title.trim(),
+          ...(description.trim() ? { description: description.trim() } : {}),
+        },
+        idempotencyKey,
       },
       { onSuccess: (incident) => select(incident.id) },
     );
@@ -124,7 +135,9 @@ export function ReportIncidentForm() {
 
         {report.error && (
           <p className="form-error" role="alert">
-            {report.error.message}
+            {report.error instanceof ApiRequestError && report.error.status === 422
+              ? REPORT_ALREADY_SENT
+              : report.error.message}
           </p>
         )}
 

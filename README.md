@@ -79,6 +79,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform          |
 | [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client  |
 | [0008](docs/adr/0008-multi-replica-fan-out.md)              | Several API replicas: Postgres `NOTIFY` fans every event out to all of them; one simulator leader; boot serialised by advisory locks |
+| [0009](docs/adr/0009-idempotent-incident-creation.md)       | `Idempotency-Key` on incident creation — a retried report replays the first response instead of creating a duplicate                 |
 
 ### Design details worth a look
 

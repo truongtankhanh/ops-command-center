@@ -146,15 +146,16 @@ A production deployment guide is not published yet.
 
 ## 8. Cross-cutting concerns
 
-| Concern        | Approach                                                                                                                                                                                                                   |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Configuration  | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                                                                                                          |
-| Validation     | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                                                                                                               |
-| Errors         | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                                                                                                         |
-| Schema changes | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                    |
-| Event delivery | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md)) |
-| API docs       | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                       |
-| Quality gates  | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                               |
+| Concern                    | Approach                                                                                                                                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configuration              | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                                                                                                                |
+| Validation                 | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                                                                                                                     |
+| Errors                     | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                                                                                                               |
+| Schema changes             | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                          |
+| Event delivery             | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md))       |
+| Retries / duplicate writes | `POST /api/incidents` takes an optional `Idempotency-Key`; the key and the first response commit with the incident, so a retry replays it instead of creating a duplicate ([ADR-0009](adr/0009-idempotent-incident-creation.md)) |
+| API docs                   | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                             |
+| Quality gates              | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                                     |
 
 ## 9. Decisions
 
@@ -168,3 +169,4 @@ A production deployment guide is not published yet.
 | [0006](adr/0006-config-and-secrets-per-environment.md) | Configuration and secrets per environment                |
 | [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events                 |
 | [0008](adr/0008-multi-replica-fan-out.md)              | Several API replicas, events fanned out through Postgres |
+| [0009](adr/0009-idempotent-incident-creation.md)       | Idempotent incident creation with an `Idempotency-Key`   |

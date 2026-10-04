@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import {
   type ClientToServerEvents,
   EVENTS_NAMESPACE,
+  IDEMPOTENCY_KEY_HEADER,
   type Incident,
   IncidentEvents,
   type ServerToClientEvents,
@@ -253,6 +255,100 @@ describe('Incidents (e2e)', () => {
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
   });
 
+  /** Retries of `POST /api/incidents` with the same key create one incident (ADR-0009). */
+  describe('with an Idempotency-Key', () => {
+    const newBody = (title: string) => ({
+      type: 'medical',
+      severity: 'low',
+      title,
+      zoneId: zone.id,
+    });
+
+    it('replays the first response for a retry with the same key', async () => {
+      const key = randomUUID();
+      const title = 'Idem replay';
+
+      const first = await reportIncident(app, newBody(title), key).expect(201);
+      const second = await reportIncident(app, newBody(title), key).expect(201);
+      // `json` storage keeps key order, so the replay is byte-identical, not just equal.
+      expect(second.text).toBe(first.text);
+
+      // Same values, keys in another order: the fingerprint ignores order.
+      const reordered = { zoneId: zone.id, title, severity: 'low', type: 'medical' };
+      const third = await reportIncident(app, reordered, key).expect(201);
+      expect(third.text).toBe(first.text);
+
+      expect(await countIncidents(app, title)).toBe(1);
+      // The gateway only broadcasts outbox rows, so one row means one `incident.created`.
+      const outbox = await app
+        .get(DataSource)
+        .getRepository(OutboxEntity)
+        .find({ where: { aggregateId: first.body.id } });
+      expect(outbox.map((row) => row.event)).toEqual([IncidentEvents.Created]);
+    });
+
+    it('creates one incident for concurrent requests with the same key', async () => {
+      const key = randomUUID();
+      const title = 'Idem concurrent';
+
+      const responses = await Promise.all(
+        Array.from({ length: 5 }, () => reportIncident(app, newBody(title), key)),
+      );
+
+      expect(responses.map((res) => res.status)).toEqual([201, 201, 201, 201, 201]);
+      expect(new Set(responses.map((res) => res.text)).size).toBe(1);
+      expect(await countIncidents(app, title)).toBe(1);
+    });
+
+    it('rejects the same key with a different body (422)', async () => {
+      const key = randomUUID();
+      await reportIncident(app, newBody('Idem original'), key).expect(201);
+
+      const reused = await reportIncident(app, newBody('Idem changed'), key).expect(422);
+      expect(reused.body).toMatchObject({ statusCode: 422, error: 'UNPROCESSABLE_ENTITY' });
+      expect(reused.body.message).toContain('Idempotency-Key');
+      expect(reused.body.message).not.toContain(key); // client input is not echoed back
+      expect(await countIncidents(app, 'Idem changed')).toBe(0);
+    });
+
+    it('rejects a malformed key (400)', async () => {
+      const title = 'Idem malformed';
+      for (const key of ['has space', 'k'.repeat(256)]) {
+        const res = await reportIncident(app, newBody(title), key).expect(400);
+        expect(res.body.message).toEqual([expect.stringContaining('Idempotency-Key')]);
+      }
+      expect(await countIncidents(app, title)).toBe(0);
+    });
+
+    it('lets a failed request be retried with the same key', async () => {
+      const key = randomUUID();
+      const title = 'Idem after 404';
+      const unknownZone = '00000000-0000-4000-8000-000000000000';
+
+      // The 404 rolls back the key with everything else, so it is free for the corrected retry.
+      await reportIncident(app, { ...newBody(title), zoneId: unknownZone }, key).expect(404);
+      await reportIncident(app, newBody(title), key).expect(201);
+      expect(await countIncidents(app, title)).toBe(1);
+    });
+
+    it('treats an expired key as new', async () => {
+      const key = randomUUID();
+      const first = await reportIncident(app, newBody('Idem before expiry'), key).expect(201);
+
+      await app
+        .get(DataSource)
+        .query(
+          `UPDATE "idempotency_key" SET "expires_at" = now() - interval '1 second' WHERE "key" = $1`,
+          [key],
+        );
+
+      // A different body would be a 422 on a live key; on an expired one it is a new request.
+      const second = await reportIncident(app, newBody('Idem after expiry'), key).expect(201);
+      expect(second.body.id).not.toBe(first.body.id);
+      expect(await countIncidents(app, 'Idem after expiry')).toBe(1);
+    });
+  });
+
   /**
    * A second application on the same database, as a second API replica would be (ADR-0008). Each
    * app has its own event bus, relay, listener and simulator leader, so the only path between the
@@ -339,6 +435,21 @@ describe('Incidents (e2e)', () => {
     it('refuses long-polling clients', async () => {
       await expect(connectEvents(appB, ['polling'], { reconnection: false })).rejects.toThrow();
     });
+
+    it('creates one incident when instances race on the same key', async () => {
+      const key = randomUUID();
+      const title = 'Idem across instances';
+      const body = { type: 'medical', severity: 'low', title, zoneId: zone.id };
+
+      // The claim is a primary-key insert in PostgreSQL, so it excludes across replicas (ADR-0009).
+      const responses = await Promise.all(
+        [app, appB, app, appB].map((target) => reportIncident(target, body, key)),
+      );
+
+      expect(responses.map((res) => res.status)).toEqual([201, 201, 201, 201]);
+      expect(new Set(responses.map((res) => res.text)).size).toBe(1);
+      expect(await countIncidents(app, title)).toBe(1);
+    });
   });
 });
 
@@ -350,6 +461,17 @@ function assertTestDatabase(databaseUrl: string): void {
       `Refusing to drop schema "public" in database "${name}": e2e needs a *_test database.`,
     );
   }
+}
+
+/** `POST /api/incidents` on `target`, with an `Idempotency-Key` when `key` is given. */
+function reportIncident(target: INestApplication, body: object, key?: string): request.Test {
+  const req = request(target.getHttpServer()).post('/api/incidents');
+  if (key !== undefined) req.set(IDEMPOTENCY_KEY_HEADER, key);
+  return req.send(body);
+}
+
+function countIncidents(target: INestApplication, title: string): Promise<number> {
+  return target.get(DataSource).getRepository(IncidentEntity).countBy({ title });
 }
 
 type EventsSocket = Socket<ServerToClientEvents, ClientToServerEvents>;

@@ -20,3 +20,10 @@ export class InvalidTransitionError extends DomainError {
     super(`Cannot ${action} ${subject}: it is already ${from}`);
   }
 }
+
+/** A retry must repeat the original request; a different body under the same key is a client bug. */
+export class IdempotencyKeyReusedError extends DomainError {
+  constructor() {
+    super('This Idempotency-Key was already used with a different request body');
+  }
+}

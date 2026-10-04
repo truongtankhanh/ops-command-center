@@ -1,11 +1,12 @@
-import type {
-  Camera,
-  Incident,
-  IncidentDetail,
-  ReportIncidentRequest,
-  StreamDescriptor,
-  TransitionIncidentRequest,
-  Zone,
+import {
+  type Camera,
+  IDEMPOTENCY_KEY_HEADER,
+  type Incident,
+  type IncidentDetail,
+  type ReportIncidentRequest,
+  type StreamDescriptor,
+  type TransitionIncidentRequest,
+  type Zone,
 } from '@occ/contracts';
 import { replaceEqualDeep, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents';
@@ -81,11 +82,23 @@ export function useTransition(action: Transition) {
   });
 }
 
-/** Report a new incident; the response is written straight into the cache. */
+/**
+ * Report a new incident; the response is written straight into the cache. Retrying with the same
+ * `idempotencyKey` returns the incident the first attempt created instead of a duplicate (ADR-0009).
+ */
 export function useReportIncident() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: ReportIncidentRequest) => api.post<IncidentDetail>('/incidents', request),
+    mutationFn: ({
+      request,
+      idempotencyKey,
+    }: {
+      request: ReportIncidentRequest;
+      idempotencyKey: string;
+    }) =>
+      api.post<IncidentDetail>('/incidents', request, {
+        [IDEMPOTENCY_KEY_HEADER]: idempotencyKey,
+      }),
     onSuccess: (detail) => {
       queryClient.setQueryData<IncidentDetail>(queryKeys.incident(detail.id), (cached) =>
         newerIncident(cached, detail),

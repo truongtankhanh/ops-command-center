@@ -3,12 +3,14 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiHeader,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
   ApiTags,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
-import type { Incident, IncidentDetail } from '@occ/contracts';
+import { IDEMPOTENCY_KEY_HEADER, type Incident, type IncidentDetail } from '@occ/contracts';
 import { ApiErrorDto } from '../common/api-error.dto';
 import { IncidentDetailDto, IncidentDto } from './dto/incident.dto';
 import {
@@ -16,6 +18,7 @@ import {
   ReportIncidentDto,
   TransitionIncidentDto,
 } from './dto/incident-requests.dto';
+import { IdempotencyKeyHeader, IdempotencyKeyPipe } from './idempotency-key.pipe';
 import { IncidentsService } from './incidents.service';
 
 @ApiTags('incidents')
@@ -41,13 +44,31 @@ export class IncidentsController {
     return this.incidents.get(id);
   }
 
-  /** Report a new incident on behalf of an operator. */
+  /**
+   * Report a new incident on behalf of an operator. A retry with the same `Idempotency-Key` and
+   * body returns the first response and creates nothing (ADR-0009).
+   */
   @Post()
+  @ApiHeader({
+    name: IDEMPOTENCY_KEY_HEADER,
+    required: false,
+    description:
+      'Makes the request safe to retry for 24 h: the same key and body return the first response ' +
+      'instead of creating another incident. Use a new random value (e.g. a UUID) per submission.',
+    schema: { type: 'string', minLength: 1, maxLength: 255 },
+  })
   @ApiCreatedResponse({ type: IncidentDetailDto })
-  @ApiBadRequestResponse({ type: ApiErrorDto, description: 'Invalid body' })
+  @ApiBadRequestResponse({ type: ApiErrorDto, description: 'Invalid body or Idempotency-Key' })
   @ApiNotFoundResponse({ type: ApiErrorDto, description: 'Zone does not exist' })
-  report(@Body() body: ReportIncidentDto): Promise<IncidentDetail> {
-    return this.incidents.report(body, 'operator');
+  @ApiUnprocessableEntityResponse({
+    type: ApiErrorDto,
+    description: 'Idempotency-Key reused with a different body',
+  })
+  report(
+    @Body() body: ReportIncidentDto,
+    @IdempotencyKeyHeader(IdempotencyKeyPipe) idempotencyKey?: string,
+  ): Promise<IncidentDetail> {
+    return this.incidents.report(body, 'operator', idempotencyKey);
   }
 
   /** Mark an open incident as being handled. */

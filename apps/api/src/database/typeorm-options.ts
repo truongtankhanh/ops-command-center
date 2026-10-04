@@ -1,5 +1,6 @@
 import type { DataSourceOptions } from 'typeorm';
 import { CameraEntity } from '../cameras/camera.entity';
+import { IdempotencyKeyEntity } from '../incidents/idempotency-key.entity';
 import { IncidentEventEntity } from '../incidents/incident-event.entity';
 import { IncidentEntity } from '../incidents/incident.entity';
 import { OutboxEntity } from '../outbox/outbox.entity';
@@ -7,6 +8,7 @@ import { ZoneEntity } from '../zones/zone.entity';
 import { InitialSchema1790800000000 } from './migrations/1790800000000-initial-schema';
 import { IncidentVersion1790924435743 } from './migrations/1790924435743-incident-version';
 import { Outbox1790929369576 } from './migrations/1790929369576-outbox';
+import { IdempotencyKey1791083081820 } from './migrations/1791083081820-idempotency-key';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -33,6 +35,7 @@ export const entities = [
   IncidentEntity,
   IncidentEventEntity,
   OutboxEntity,
+  IdempotencyKeyEntity,
 ];
 
 /** Shared by the Nest app and the TypeORM CLI, so both see the same schema. */
@@ -43,7 +46,12 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
   connectTimeoutMS: POOL_WAIT_MS,
   extra: SESSION_TIMEOUTS,
   entities,
-  migrations: [InitialSchema1790800000000, IncidentVersion1790924435743, Outbox1790929369576],
+  migrations: [
+    InitialSchema1790800000000,
+    IncidentVersion1790924435743,
+    Outbox1790929369576,
+    IdempotencyKey1791083081820,
+  ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,
   synchronize: false,
