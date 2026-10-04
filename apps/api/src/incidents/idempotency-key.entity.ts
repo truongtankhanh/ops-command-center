@@ -8,6 +8,13 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm'
  */
 @Entity('idempotency_key')
 export class IdempotencyKeyEntity {
+  /**
+   * The token's `sub`. Keys are per user, so two users sending the same key never share a
+   * response (ADR-0010).
+   */
+  @PrimaryColumn({ type: 'varchar', length: 255 })
+  subject: string;
+
   /** As the client sent it; case-sensitive. */
   @PrimaryColumn({ type: 'varchar', length: 255 })
   key: string;

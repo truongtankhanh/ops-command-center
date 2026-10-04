@@ -3,8 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
+import { getAccessToken, renewSession } from '../auth/session';
 import { useConsole } from '../store';
 import { ReportIncidentForm } from './ReportIncidentForm';
+
+// The session module is tested on its own; here it only decides which token the client sends.
+vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const zone: Zone = {
   id: '6f1c2b1e-0000-4000-8000-000000000001',
@@ -37,10 +41,19 @@ const fetchMock = vi.fn<typeof fetch>();
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
+/** The headers sent with the `call`-th request. */
+function sentHeaders(call: number): Record<string, string> {
+  return fetchMock.mock.calls[call]![1]!.headers as Record<string, string>;
+}
+
 /** The `Idempotency-Key` sent with the `call`-th request. */
 function sentKey(call: number): string | undefined {
-  const headers = fetchMock.mock.calls[call]![1]!.headers as Record<string, string>;
-  return headers[IDEMPOTENCY_KEY_HEADER];
+  return sentHeaders(call)[IDEMPOTENCY_KEY_HEADER];
+}
+
+/** An `ApiError` response; a body can be read only once, so build one per call. */
+function apiError(status: number, message: string): Response {
+  return new Response(JSON.stringify({ statusCode: status, message }), { status });
 }
 
 function renderForm() {
@@ -67,6 +80,9 @@ describe('ReportIncidentForm', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
+    // Signed out by default: no bearer header, and nothing to renew.
+    vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
+    vi.mocked(renewSession).mockReset().mockResolvedValue(false);
     useConsole.setState({ reporting: true, selectedIncidentId: null });
   });
 
@@ -192,6 +208,71 @@ describe('ReportIncidentForm', () => {
     expect(alert).not.toHaveTextContent('Idempotency-Key');
     expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  it('sends the access token with the report, next to the Idempotency-Key', async () => {
+    vi.mocked(getAccessToken).mockResolvedValue('token-1');
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+    expect(sentHeaders(0)).toMatchObject({
+      Authorization: 'Bearer token-1',
+      'Content-Type': 'application/json',
+    });
+    expect(sentKey(0)).toMatch(UUID_V4);
+  });
+
+  it('renews an expired token and sends the report once more with the same key', async () => {
+    vi.mocked(getAccessToken).mockResolvedValueOnce('expired').mockResolvedValueOnce('fresh');
+    vi.mocked(renewSession).mockResolvedValue(true);
+    fetchMock
+      .mockResolvedValueOnce(apiError(401, 'Invalid access token'))
+      .mockResolvedValueOnce(new Response(JSON.stringify(created), { status: 201 }));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentHeaders(0).Authorization).toBe('Bearer expired');
+    expect(sentHeaders(1).Authorization).toBe('Bearer fresh');
+    expect(sentKey(1)).toBe(sentKey(0));
+    expect(renewSession).toHaveBeenCalledTimes(1);
+    expect(form.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps the input and does not resend when the session cannot be renewed', async () => {
+    vi.mocked(getAccessToken).mockResolvedValue('expired');
+    fetchMock.mockResolvedValue(apiError(401, 'Invalid access token'));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    expect(await form.findByRole('alert')).toHaveTextContent('Invalid access token');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(renewSession).toHaveBeenCalledTimes(1);
+    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  it('treats an identity-provider outage as an error, not as an expired session', async () => {
+    vi.mocked(getAccessToken).mockResolvedValue('token-1');
+    fetchMock.mockResolvedValue(apiError(503, 'Identity provider unavailable'));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    expect(await form.findByRole('alert')).toHaveTextContent('Identity provider unavailable');
+    expect(renewSession).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
   });
 
   it('closes on Cancel and on Escape', async () => {

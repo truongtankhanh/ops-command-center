@@ -1,0 +1,93 @@
+{
+  "realm": "occ",
+  "displayName": "Ops Command Center",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": {
+    "realm": [
+      {
+        "name": "operator",
+        "description": "Reports, acknowledges and resolves incidents (enforced from IMP-10)"
+      },
+      {
+        "name": "supervisor",
+        "description": "Operator rights plus oversight of every incident (enforced from IMP-10)"
+      },
+      {
+        "name": "viewer",
+        "description": "Read-only access (enforced from IMP-10)"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "occ-console",
+      "name": "Ops Command Center console",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "+"
+      },
+      "protocolMappers": [
+        {
+          "name": "occ-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "occ-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "operator",
+      "enabled": true,
+      "email": "operator@occ.example",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Operator",
+      "credentials": [{ "type": "password", "value": "operator", "temporary": false }],
+      "realmRoles": ["operator"]
+    },
+    {
+      "username": "supervisor",
+      "enabled": true,
+      "email": "supervisor@occ.example",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Supervisor",
+      "credentials": [{ "type": "password", "value": "supervisor", "temporary": false }],
+      "realmRoles": ["supervisor"]
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "email": "viewer@occ.example",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Viewer",
+      "credentials": [{ "type": "password", "value": "viewer", "temporary": false }],
+      "realmRoles": ["viewer"]
+    }
+  ]
+}

@@ -1,5 +1,8 @@
 import { INCIDENT_SEVERITIES } from '@occ/contracts';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIncidents } from '../api/queries';
+import { signOut } from '../auth/session';
+import { useSession } from '../auth/store';
 import { countActiveBySeverity } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
@@ -9,6 +12,8 @@ const CONNECTION_LABEL = { live: 'Live', connecting: 'Connecting…', offline: '
 export function Header() {
   const { data: incidents = [] } = useIncidents();
   const connection = useConsole((s) => s.connection);
+  const user = useSession((s) => s.user);
+  const queryClient = useQueryClient();
   const now = useNow(1000);
   const counts = countActiveBySeverity(incidents);
 
@@ -43,6 +48,22 @@ export function Header() {
           hour12: false,
         })}
       </time>
+      <div className="session-user">
+        <span>{user?.displayName}</span>
+        <button
+          type="button"
+          className="button"
+          onClick={() => {
+            // signOut() switches the session status before its first await, so the console
+            // unmounts in this render and nothing refetches into the cleared cache: the next
+            // operator at this workstation sees none of this session's data.
+            void signOut();
+            queryClient.clear();
+          }}
+        >
+          Sign out
+        </button>
+      </div>
     </header>
   );
 }

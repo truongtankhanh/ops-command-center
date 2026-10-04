@@ -18,6 +18,8 @@ docker compose up --build
 # API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
+Sign in as `operator`, `supervisor` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). Roles are not enforced until IMP-10.
+
 The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
 
 ```bash
@@ -80,6 +82,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client  |
 | [0008](docs/adr/0008-multi-replica-fan-out.md)              | Several API replicas: Postgres `NOTIFY` fans every event out to all of them; one simulator leader; boot serialised by advisory locks |
 | [0009](docs/adr/0009-idempotent-incident-creation.md)       | `Idempotency-Key` on incident creation — a retried report replays the first response instead of creating a duplicate                 |
+| [0010](docs/adr/0010-oidc-authentication.md)                | OIDC sign-in through a self-hosted Keycloak; every request and socket carries an access token checked by the API                     |
 
 ### Design details worth a look
 
@@ -96,14 +99,14 @@ Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service fro
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env      # point DATABASE_URL at your database
-docker compose up -d postgres               # optional: a local database on 127.0.0.1:15432
+docker compose up -d postgres keycloak      # database on 127.0.0.1:15432, sign-in on 127.0.0.1:18081
 
 pnpm dev                                     # API on :13000, console on :15173
 ```
 
-The Compose `postgres` service listens on `127.0.0.1` only. If port 15432 is taken, start it with `POSTGRES_PORT=15433 docker compose up -d postgres` and use the same port in `DATABASE_URL`.
+The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DATABASE_URL`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
 
-The console's dev server proxies `/api` and `/socket.io` to the API, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`).
+The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
 API configuration (`apps/api/.env`):
 
@@ -120,10 +123,13 @@ API configuration (`apps/api/.env`):
 | `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —                             | Media server endpoints when `CAMERA_SOURCE=mediamtx`                                            |
 | `MEDIAMTX_PROTOCOL`                        | `hls`                         | `hls` or `webrtc`                                                                               |
 | `DEMO_MODE`                                | `false`                       | Lets a `production` deploy use mock cameras and seeding; only the Compose demo sets it          |
+| `OIDC_ISSUER`                              | — (required)                  | Expected token issuer, as the browser reaches it; production needs `https` unless `DEMO_MODE`   |
+| `OIDC_JWKS_URL`                            | — (required)                  | Where the API fetches the issuer's signing keys; may be an internal address                     |
+| `OIDC_AUDIENCE`                            | — (required)                  | Expected token audience (`occ-api` in the demo realm)                                           |
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED`, `POSTGRES_PORT`, `KEYCLOAK_PORT` and `OCC_PUBLIC_URL` (the address the console is opened from, if not `http://localhost:18080`) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
 
 ## Quality
 

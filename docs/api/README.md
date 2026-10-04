@@ -17,7 +17,18 @@ Last reconciled: 2026-10-04
 
 ## Conventions that apply to every endpoint
 
-- **Base path** `/api`. No authentication yet (planned in OCC-21).
+- **Base path** `/api`.
+- **Authentication.** Every endpoint except `GET /api/health` needs an OIDC access token from the
+  configured issuer, sent as `Authorization: Bearer <token>`
+  ([ADR-0010](../adr/0010-oidc-authentication.md)). The `/events` namespace takes the same token in
+  its handshake — see [events.md](events.md).
+  - **401** — the token is missing, malformed, expired, or not issued for this API. The response
+    carries `WWW-Authenticate: Bearer realm="occ"` (with `error="invalid_token"` when a token was
+    sent but rejected). Sign in again.
+  - **503** `Identity provider unavailable` — the API cannot fetch the issuer's signing keys right
+    now, so it cannot check any token. Retry later; signing in again will not help.
+  - Authentication runs before validation: a request without a valid token gets **401** even if its
+    body is also invalid.
 - **Validation.** Bodies and query strings are validated; unknown fields are rejected, not
   ignored. A validation failure returns **400** with every problem listed in `message`.
 - **Errors** always have this shape:

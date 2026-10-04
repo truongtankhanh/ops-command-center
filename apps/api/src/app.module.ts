@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { AuthModule } from './auth/auth.module';
 import { CamerasModule } from './cameras/cameras.module';
 import { envFilePath } from './config/env-files';
 import { type Env, validateEnv } from './config/env.validation';
@@ -40,6 +41,7 @@ import { ZonesModule } from './zones/zones.module';
       },
     }),
     EventEmitterModule.forRoot(),
+    AuthModule,
     ZonesModule,
     CamerasModule,
     IncidentsModule,

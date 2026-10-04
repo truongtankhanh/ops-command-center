@@ -19,7 +19,7 @@ the same `id`, the one with the higher `version` is newer.
 
 ### List incidents
 
-<!-- steel:endpoint GET /api/incidents | query: limit?, severity?, status? | returns: Incident[] | auth: none -->
+<!-- steel:endpoint GET /api/incidents | query: limit?, severity?, status? | returns: Incident[] | auth: bearer -->
 
 `GET /api/incidents` · Status: current
 
@@ -33,12 +33,13 @@ Ordered for an operator: unresolved first, then by severity (most severe first),
 
 **200** — `Incident[]`
 **400** — unknown enum value or `limit` out of range
+**401** — missing or invalid bearer token
 
-Source: `apps/api/src/incidents/incidents.controller.ts:30`
+Source: `apps/api/src/incidents/incidents.controller.ts:36`
 
 ### Get an incident
 
-<!-- steel:endpoint GET /api/incidents/:id | params: id | returns: IncidentDetail | auth: none -->
+<!-- steel:endpoint GET /api/incidents/:id | params: id | returns: IncidentDetail | auth: bearer -->
 
 `GET /api/incidents/:id` · Status: current
 
@@ -47,13 +48,14 @@ One incident with its full timeline, oldest entry first.
 **200** — `IncidentDetail` = `Incident` + `timeline: { id, kind, note, at }[]`, where `kind` is
 `reported`, `acknowledged` or `resolved` and `note` is the operator's note or `null`
 **400** — `id` is not a UUID
+**401** — missing or invalid bearer token
 **404** — unknown incident
 
-Source: `apps/api/src/incidents/incidents.controller.ts:38`
+Source: `apps/api/src/incidents/incidents.controller.ts:44`
 
 ### Report an incident
 
-<!-- steel:endpoint POST /api/incidents | headers: Idempotency-Key? | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: none -->
+<!-- steel:endpoint POST /api/incidents | headers: Idempotency-Key? | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: bearer -->
 
 `POST /api/incidents` · Status: current
 
@@ -75,7 +77,9 @@ Broadcasts `incident.created` after the write commits.
 
 **Retries.** Send a new random `Idempotency-Key` (a UUID works) with each submission, and the
 same key again on every retry of it. The key is kept for 24 h
-([ADR-0009](../adr/0009-idempotent-incident-creation.md)):
+([ADR-0009](../adr/0009-idempotent-incident-creation.md)). Keys are per user: the same key sent by
+another user is a different key, so it never returns that user's response
+([ADR-0010](../adr/0010-oidc-authentication.md)).
 
 - Same key, same body: the original `201` response comes back unchanged, even if the incident has
   changed since. No second incident is created and no second `incident.created` is broadcast.
@@ -89,14 +93,15 @@ same key again on every retry of it. The key is kept for 24 h
 
 **201** — `IncidentDetail` (timeline has one `reported` entry)
 **400** — validation failed, an unknown field was sent, or `Idempotency-Key` is malformed
+**401** — missing or invalid bearer token
 **404** — `zoneId` does not exist
 **422** — `Idempotency-Key` was already used with a different body
 
-Source: `apps/api/src/incidents/incidents.controller.ts:51`
+Source: `apps/api/src/incidents/incidents.controller.ts:57`
 
 ### Acknowledge an incident
 
-<!-- steel:endpoint POST /api/incidents/:id/acknowledge | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: none -->
+<!-- steel:endpoint POST /api/incidents/:id/acknowledge | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer -->
 
 `POST /api/incidents/:id/acknowledge` · Status: current
 
@@ -109,14 +114,15 @@ Broadcasts `incident.updated`.
 | `note`     | `string` | optional, ≤ 1000 characters |
 
 **200** — `IncidentDetail`
+**401** — missing or invalid bearer token
 **404** — unknown incident
 **409** — the incident is not `open`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:75`
+Source: `apps/api/src/incidents/incidents.controller.ts:87`
 
 ### Resolve an incident
 
-<!-- steel:endpoint POST /api/incidents/:id/resolve | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: none -->
+<!-- steel:endpoint POST /api/incidents/:id/resolve | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer -->
 
 `POST /api/incidents/:id/resolve` · Status: current
 
@@ -128,7 +134,8 @@ Closes an `open` or `acknowledged` incident, with an optional resolution note. B
 | `note`     | `string` | optional, ≤ 1000 characters |
 
 **200** — `IncidentDetail`
+**401** — missing or invalid bearer token
 **404** — unknown incident
 **409** — the incident is already `resolved`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:90`
+Source: `apps/api/src/incidents/incidents.controller.ts:102`

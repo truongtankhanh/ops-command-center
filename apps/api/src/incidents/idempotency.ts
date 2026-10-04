@@ -36,8 +36,17 @@ function sortKeys(value: unknown): unknown {
 }
 
 /**
- * Takes `key` for this transaction, or returns the response it already produced. Must run inside
- * the transaction that creates the incident, before any other write.
+ * A key as stored: the client's value, scoped to the user who sent it (ADR-0010). An object, not
+ * two string parameters, so subject and key cannot be swapped by accident.
+ */
+export interface IdempotencyKeyId {
+  subject: string;
+  key: string;
+}
+
+/**
+ * Takes the key for this transaction, or returns the response it already produced. Must run
+ * inside the transaction that creates the incident, before any other write.
  *
  * The insert comes first on purpose: a concurrent request with the same key blocks on the primary
  * key until this transaction ends (bounded by the session `lock_timeout`), then sees the committed
@@ -45,25 +54,28 @@ function sortKeys(value: unknown): unknown {
  */
 export async function claimIdempotencyKey(
   manager: EntityManager,
-  key: string,
+  id: IdempotencyKeyId,
   requestHash: string,
 ): Promise<IdempotencyClaim> {
   const claimed: unknown[] = await manager.query(
-    `INSERT INTO "idempotency_key" ("key", "request_hash", "expires_at")
-     VALUES ($1, $2, now() + $3::integer * interval '1 millisecond')
-     ON CONFLICT ("key") DO UPDATE
+    `INSERT INTO "idempotency_key" ("subject", "key", "request_hash", "expires_at")
+     VALUES ($1, $2, $3, now() + $4::integer * interval '1 millisecond')
+     ON CONFLICT ("subject", "key") DO UPDATE
        SET "request_hash" = EXCLUDED."request_hash", "response_status" = NULL,
            "response_body" = NULL, "incident_id" = NULL, "created_at" = now(),
            "expires_at" = EXCLUDED."expires_at"
        WHERE "idempotency_key"."expires_at" <= now()
      RETURNING "key"`,
-    [key, requestHash, IDEMPOTENCY_TTL_MS],
+    [id.subject, id.key, requestHash, IDEMPOTENCY_TTL_MS],
   );
   if (claimed.length > 0) return { claimed: true };
 
   // READ COMMITTED: this statement sees the row the other transaction just committed. The
   // `ON CONFLICT` above locked it, so the expiry cleanup cannot delete it in between.
-  const existing = await manager.findOneByOrFail(IdempotencyKeyEntity, { key });
+  const existing = await manager.findOneByOrFail(IdempotencyKeyEntity, {
+    subject: id.subject,
+    key: id.key,
+  });
   if (existing.requestHash !== requestHash) throw new IdempotencyKeyReusedError();
   if (!existing.responseBody) {
     throw new Error('Idempotency key row committed without a response');
@@ -74,12 +86,12 @@ export async function claimIdempotencyKey(
 /** Records the response for a key this transaction claimed. */
 export async function storeIdempotentResponse(
   manager: EntityManager,
-  key: string,
+  id: IdempotencyKeyId,
   detail: IncidentDetail,
 ): Promise<void> {
   await manager.update(
     IdempotencyKeyEntity,
-    { key },
+    { subject: id.subject, key: id.key },
     { responseStatus: STORED_STATUS, responseBody: detail, incidentId: detail.id },
   );
 }

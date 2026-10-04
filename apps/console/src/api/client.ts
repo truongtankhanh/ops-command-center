@@ -1,4 +1,5 @@
 import type { ApiError } from '@occ/contracts';
+import { getAccessToken, renewSession } from '../auth/session';
 
 /** An API failure with the server's message, ready to show to an operator. */
 export class ApiRequestError extends Error {
@@ -10,11 +11,28 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** Query retry policy: a 4xx will not change on retry; network errors and 5xx get two more tries. */
+export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiRequestError && error.status < 500) return false;
+  return failureCount < 2;
+}
+
+async function request<T>(path: string, init?: RequestInit, replayed = false): Promise<T> {
+  const token = await getAccessToken();
   const response = await fetch(`/api${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
+    // Last, so no caller can replace the bearer token.
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
+  // The API checks the token before anything else, so a 401 request changed nothing and can be
+  // sent once more with a renewed token, whatever its method (ADR-0010).
+  if (response.status === 401 && token && !replayed && (await renewSession())) {
+    return request<T>(path, init, true);
+  }
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiError | null;
     const message = Array.isArray(body?.message) ? body.message.join('; ') : body?.message;

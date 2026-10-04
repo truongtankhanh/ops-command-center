@@ -133,7 +133,9 @@ The API resolves a camera to a `StreamDescriptor` (`{ kind: 'mock' }` today, `{ 
 
 ## 7. Deployment
 
-The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API; one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
+The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `keycloak` and `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API, and `/auth` to Keycloak; one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
+
+Keycloak is the demo identity provider ([ADR-0010](adr/0010-oidc-authentication.md)): dev mode, plain HTTP, and a realm with demo users re-imported from `ops/keycloak` on every start. The API fetches its signing keys on first use and does not depend on it to boot; while it is down, authenticated requests get `503`.
 
 The API can run as several replicas (`docker compose up --scale api=2`; [ADR-0008](adr/0008-multi-replica-fan-out.md)):
 
@@ -154,6 +156,7 @@ A production deployment guide is not published yet.
 | Schema changes             | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                          |
 | Event delivery             | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md))       |
 | Retries / duplicate writes | `POST /api/incidents` takes an optional `Idempotency-Key`; the key and the first response commit with the incident, so a retry replays it instead of creating a duplicate ([ADR-0009](adr/0009-idempotent-incident-creation.md)) |
+| Identity / access          | OIDC access tokens from Keycloak, checked on every route but health and at the `/events` handshake; roles enforced from IMP-10 ([ADR-0010](adr/0010-oidc-authentication.md))                                                     |
 | API docs                   | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                             |
 | Quality gates              | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                                     |
 
@@ -170,3 +173,4 @@ A production deployment guide is not published yet.
 | [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events                 |
 | [0008](adr/0008-multi-replica-fan-out.md)              | Several API replicas, events fanned out through Postgres |
 | [0009](adr/0009-idempotent-incident-creation.md)       | Idempotent incident creation with an `Idempotency-Key`   |
+| [0010](adr/0010-oidc-authentication.md)                | OIDC authentication for REST and WebSocket               |

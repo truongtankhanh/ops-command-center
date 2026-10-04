@@ -2,7 +2,7 @@
 
 ### List zones
 
-<!-- steel:endpoint GET /api/zones | returns: Zone[] | auth: none -->
+<!-- steel:endpoint GET /api/zones | returns: Zone[] | auth: bearer -->
 
 `GET /api/zones` · Status: current
 
@@ -10,6 +10,7 @@ Every zone of the campus with its outline, ordered by name. Reference data — c
 it for the session.
 
 **200** — `Zone[]`
+**401** — missing or invalid bearer token
 
 | Field     | Type                                           | Notes                                                |
 | --------- | ---------------------------------------------- | ---------------------------------------------------- |
@@ -20,4 +21,4 @@ it for the session.
 | `polygon` | `[lng, lat][]`                                 | closed ring                                          |
 | `center`  | `[lng, lat]`                                   | default position for incidents reported in this zone |
 
-Source: `apps/api/src/zones/zones.controller.ts:13`
+Source: `apps/api/src/zones/zones.controller.ts:16`

@@ -2,7 +2,7 @@
 
 ### List cameras
 
-<!-- steel:endpoint GET /api/cameras | query: zoneId? | returns: Camera[] | auth: none -->
+<!-- steel:endpoint GET /api/cameras | query: zoneId? | returns: Camera[] | auth: bearer -->
 
 `GET /api/cameras` · Status: current
 
@@ -14,12 +14,13 @@ Cameras ordered by code, optionally limited to one zone.
 
 **200** — `Camera[]` (`id`, `code`, `name`, `zoneId`, `position: [lng, lat]`, `online`)
 **400** — `zoneId` is not a UUID
+**401** — missing or invalid bearer token
 
-Source: `apps/api/src/cameras/cameras.controller.ts:13`
+Source: `apps/api/src/cameras/cameras.controller.ts:33`
 
 ### Resolve a camera's stream
 
-<!-- steel:endpoint GET /api/cameras/:id/stream | params: id | returns: StreamDescriptor | auth: none -->
+<!-- steel:endpoint GET /api/cameras/:id/stream | params: id | returns: StreamDescriptor | auth: bearer -->
 
 `GET /api/cameras/:id/stream` · Status: current
 
@@ -40,6 +41,7 @@ How a client should render this camera. The answer comes from the configured cam
 
 Every variant also has `cameraId` and `label`.
 
+**401** — missing or invalid bearer token
 **404** — unknown camera
 
-Source: `apps/api/src/cameras/cameras.controller.ts:21`
+Source: `apps/api/src/cameras/cameras.controller.ts:42`

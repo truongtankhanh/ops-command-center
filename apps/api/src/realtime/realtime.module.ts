@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { EventsGateway } from './events.gateway';
 
-@Module({ providers: [EventsGateway] })
+@Module({ imports: [AuthModule], providers: [EventsGateway] })
 export class RealtimeModule {}

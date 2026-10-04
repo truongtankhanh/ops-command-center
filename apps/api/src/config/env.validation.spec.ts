@@ -5,6 +5,9 @@ describe('validateEnv', () => {
   const valid = {
     NODE_ENV: 'development',
     DATABASE_URL: 'postgres://app:placeholder@localhost:5432/ops',
+    OIDC_ISSUER: 'http://localhost:15173/auth/realms/occ',
+    OIDC_JWKS_URL: 'http://localhost:18081/auth/realms/occ/protocol/openid-connect/certs',
+    OIDC_AUDIENCE: 'occ-api',
   };
 
   it.each([
@@ -46,6 +49,20 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('OIDC', () => {
+    it.each(['OIDC_ISSUER', 'OIDC_JWKS_URL', 'OIDC_AUDIENCE'])(
+      'requires %s in every environment: there is no way to turn authentication off',
+      (name) => {
+        expect(() => validateEnv({ ...valid, [name]: undefined })).toThrow(new RegExp(name));
+      },
+    );
+
+    it('accepts an internal JWKS address, such as the Compose service host', () => {
+      const jwksUrl = 'http://keycloak:8080/auth/realms/occ/protocol/openid-connect/certs';
+      expect(validateEnv({ ...valid, OIDC_JWKS_URL: jwksUrl }).OIDC_JWKS_URL).toBe(jwksUrl);
+    });
+  });
+
   it('applies the documented development defaults', () => {
     expect(validateEnv(valid)).toMatchObject({
       NODE_ENV: 'development',
@@ -58,7 +75,12 @@ describe('validateEnv', () => {
   });
 
   describe('in production', () => {
-    const production = { ...valid, NODE_ENV: 'production' };
+    // An https issuer, so only the rule a case is about can fail.
+    const production = {
+      ...valid,
+      NODE_ENV: 'production',
+      OIDC_ISSUER: 'https://sso.example.org/realms/occ',
+    };
     const mediamtx = {
       CAMERA_SOURCE: 'mediamtx',
       MEDIAMTX_HLS_URL: 'http://mediamtx:8888',
@@ -86,6 +108,23 @@ describe('validateEnv', () => {
         CAMERA_SOURCE: 'mediamtx',
         SEED_ON_BOOT: false,
       });
+    });
+
+    it('rejects an http issuer without DEMO_MODE', () => {
+      const env = {
+        ...production,
+        ...mediamtx,
+        OIDC_ISSUER: 'http://localhost:18080/auth/realms/occ',
+      };
+
+      expect(() => validateEnv(env)).toThrow(/OIDC_ISSUER: http needs DEMO_MODE=true/);
+    });
+
+    it('allows an http issuer when DEMO_MODE opts in, as the Compose demo does', () => {
+      const issuer = 'http://localhost:18080/auth/realms/occ';
+      const env = { ...production, ...mediamtx, OIDC_ISSUER: issuer, DEMO_MODE: 'true' };
+
+      expect(validateEnv(env).OIDC_ISSUER).toBe(issuer);
     });
 
     it('allows the demo behaviour when DEMO_MODE opts in', () => {
