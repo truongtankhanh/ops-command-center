@@ -1,8 +1,8 @@
 import {
+  type BeforeApplicationShutdown,
   Injectable,
   Logger,
   type OnApplicationBootstrap,
-  type OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,6 +13,7 @@ import { IncidentEntity } from '../incidents/incident.entity';
 import { IncidentsService } from '../incidents/incidents.service';
 import { ZoneEntity } from '../zones/zone.entity';
 import { pickWeighted, scenariosFor } from './scenarios';
+import { SimulatorLeader } from './simulator-leader.service';
 
 const MAX_ACTIVE = 8;
 const ACK_AFTER_MS = 20_000;
@@ -22,9 +23,10 @@ const RESOLVE_AFTER_MS = 45_000;
  * Demo traffic generator: reports incidents and plays the role of other operators
  * acknowledging and resolving them. It goes through `IncidentsService` exactly like
  * a real operator, so it exercises the same rules, persistence and events.
+ * With several replicas, only the one holding the `SimulatorLeader` lock ticks.
  */
 @Injectable()
-export class SimulatorService implements OnApplicationBootstrap, OnApplicationShutdown {
+export class SimulatorService implements OnApplicationBootstrap, BeforeApplicationShutdown {
   private readonly logger = new Logger(SimulatorService.name);
   private timer?: NodeJS.Timeout;
   private running = false;
@@ -34,17 +36,24 @@ export class SimulatorService implements OnApplicationBootstrap, OnApplicationSh
     private readonly incidentsService: IncidentsService,
     @InjectRepository(IncidentEntity) private readonly incidents: Repository<IncidentEntity>,
     @InjectRepository(ZoneEntity) private readonly zones: Repository<ZoneEntity>,
+    private readonly leader: SimulatorLeader,
   ) {}
 
   onApplicationBootstrap(): void {
     if (!this.config.get('SIMULATOR_ENABLED', { infer: true })) return;
     const interval = this.config.get('SIMULATOR_INTERVAL_MS', { infer: true });
-    this.timer = setInterval(() => void this.tick(), interval);
-    this.logger.log(`Simulator on — one tick every ${interval} ms`);
+    this.timer = setInterval(() => void this.tickIfLeader(), interval);
+    this.logger.log(`Simulator on — one tick every ${interval} ms on the leading replica`);
   }
 
-  onApplicationShutdown(): void {
+  /** Before TypeORM closes the pool, so the leader can unlock and hand back its connection. */
+  async beforeApplicationShutdown(): Promise<void> {
     clearInterval(this.timer);
+    await this.leader.release();
+  }
+
+  private async tickIfLeader(): Promise<void> {
+    if (await this.leader.isLeader()) await this.tick();
   }
 
   /** One step of simulated activity. Public so it can be driven directly in tests. */

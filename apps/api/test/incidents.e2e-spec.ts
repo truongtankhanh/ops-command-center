@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import {
   type ClientToServerEvents,
@@ -8,7 +9,7 @@ import {
   type ServerToClientEvents,
   type Zone,
 } from '@occ/contracts';
-import { io, type Socket } from 'socket.io-client';
+import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
@@ -16,8 +17,9 @@ import { validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
 import { IncidentEntity } from '../src/incidents/incident.entity';
 import { persistIncident } from '../src/incidents/persist-incident';
-import { OutboxRelay } from '../src/outbox/outbox-relay.service';
+import { OutboxEvents } from '../src/outbox/outbox-events';
 import { OutboxEntity } from '../src/outbox/outbox.entity';
+import { SimulatorLeader } from '../src/simulator/simulator-leader.service';
 
 /**
  * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
@@ -131,8 +133,8 @@ describe('Incidents (e2e)', () => {
     ]);
     expect(done.body.timeline[1].note).toBe('Medic on the way');
 
-    // The relay emits before it commits `published_at`; awaiting a drain makes the check exact.
-    await app.get(OutboxRelay).drain();
+    // No drain needed: an event is only sent when the claim that sets `published_at` commits, so
+    // every row a client has heard about is already published (ADR-0008).
     const outbox = await app
       .get(DataSource)
       .getRepository(OutboxEntity)
@@ -192,7 +194,7 @@ describe('Incidents (e2e)', () => {
     await outbox.insert(OutboxEntity.create(IncidentEvents.Updated, payload));
 
     expect(await delivered).toMatchObject({ id: payload.id, version: payload.version });
-    await app.get(OutboxRelay).drain();
+    // Already set: the event was only sent when the claim that marked the row committed.
     const [row] = await outbox.find({ order: { id: 'DESC' }, take: 1 });
     expect(row).toMatchObject({ aggregateId: payload.id });
     expect(row!.publishedAt).not.toBeNull();
@@ -250,6 +252,94 @@ describe('Incidents (e2e)', () => {
 
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
   });
+
+  /**
+   * A second application on the same database, as a second API replica would be (ADR-0008). Each
+   * app has its own event bus, relay, listener and simulator leader, so the only path between the
+   * two is PostgreSQL.
+   */
+  describe('with a second instance', () => {
+    let appB: INestApplication;
+    let socketB: EventsSocket;
+
+    beforeAll(async () => {
+      // B finds the schema migrated and the campus seeded, so it does neither.
+      const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+      appB = configureApp(moduleRef.createNestApplication());
+      await appB.listen(0);
+      socketB = await connectEvents(appB, ['websocket']);
+    });
+
+    afterAll(async () => {
+      socketB?.disconnect();
+      await appB?.close();
+    });
+
+    it('fans an event out to a client on another instance, exactly once', async () => {
+      const createdOnB: Incident[] = [];
+      const record = (incident: Incident) => void createdOnB.push(incident);
+      socketB.on(IncidentEvents.Created, record);
+      try {
+        const onB = waitFor(socketB, IncidentEvents.Created);
+        const onA = waitFor(socket, IncidentEvents.Created);
+        const report = await request(app.getHttpServer())
+          .post('/api/incidents')
+          .send({
+            type: 'medical',
+            severity: 'medium',
+            title: 'Reported through A',
+            zoneId: zone.id,
+          })
+          .expect(201);
+        expect(await onB).toMatchObject({ id: report.body.id, version: 1 });
+        expect(await onA).toMatchObject({ id: report.body.id, version: 1 });
+
+        // A listener delivers batches one at a time in commit order, so a duplicate `created`
+        // would reach B before this later update does.
+        const acknowledged = waitFor(socketB, IncidentEvents.Updated);
+        await request(app.getHttpServer())
+          .post(`/api/incidents/${report.body.id}/acknowledge`)
+          .send({})
+          .expect(200);
+        expect(await acknowledged).toMatchObject({ id: report.body.id, version: 2 });
+        expect(createdOnB.filter((incident) => incident.id === report.body.id)).toHaveLength(1);
+      } finally {
+        socketB.off(IncidentEvents.Created, record);
+      }
+    });
+
+    it('elects exactly one simulator leader and fails over on release', async () => {
+      // The simulator timer is off in e2e, so only these calls take the lock. B's close() gives
+      // up its lead; A's leader stays stopped, which nothing else in the suite needs.
+      const leaderA = app.get(SimulatorLeader);
+      const leaderB = appB.get(SimulatorLeader);
+
+      expect(await leaderA.isLeader()).toBe(true);
+      expect(await leaderB.isLeader()).toBe(false);
+      await leaderA.release();
+      expect(await leaderB.isLeader()).toBe(true);
+    });
+
+    it('makes clients on an instance reconnect when its listener resyncs', async () => {
+      const disconnected = new Promise<string>((resolve) =>
+        socketB.once('disconnect', (reason) => resolve(reason)),
+      );
+      const reconnected = new Promise<void>((resolve) => socketB.once('connect', () => resolve()));
+
+      // What B's listener emits after its LISTEN connection comes back (ADR-0008).
+      appB.get(EventEmitter2).emit(OutboxEvents.Resynced);
+
+      // A transport close, not a server disconnect: only then does the client reconnect by itself.
+      expect(await disconnected).toBe('transport close');
+      await reconnected;
+      expect(socketB.connected).toBe(true);
+      expect(socket.connected).toBe(true); // A's clients are not affected
+    });
+
+    it('refuses long-polling clients', async () => {
+      await expect(connectEvents(appB, ['polling'], { reconnection: false })).rejects.toThrow();
+    });
+  });
 });
 
 /** The suite drops the whole schema: refuse any database whose name does not end in `_test`. */
@@ -260,6 +350,25 @@ function assertTestDatabase(databaseUrl: string): void {
       `Refusing to drop schema "public" in database "${name}": e2e needs a *_test database.`,
     );
   }
+}
+
+type EventsSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+
+/** Connects to an app's `/events` namespace. Rejects, and closes the client, if refused. */
+async function connectEvents(
+  target: INestApplication,
+  transports: ('websocket' | 'polling')[],
+  options: Partial<ManagerOptions & SocketOptions> = {},
+): Promise<EventsSocket> {
+  const url = (await target.getUrl()).replace('[::1]', 'localhost');
+  const client: EventsSocket = io(`${url}${EVENTS_NAMESPACE}`, { transports, ...options });
+  return new Promise((resolve, reject) => {
+    client.once('connect', () => resolve(client));
+    client.once('connect_error', (error) => {
+      client.close();
+      reject(error);
+    });
+  });
 }
 
 function waitFor<E extends keyof ServerToClientEvents>(

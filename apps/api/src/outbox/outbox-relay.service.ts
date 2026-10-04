@@ -4,8 +4,8 @@ import {
   Logger,
   type OnApplicationBootstrap,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource, In, IsNull, LessThan } from 'typeorm';
+import { OUTBOX_CHANNEL } from './outbox-events';
 import { OutboxEntity } from './outbox.entity';
 
 /** Fallback for rows no nudge announced: written by a process that died, or by another instance. */
@@ -15,9 +15,12 @@ const RETENTION_MS = 24 * 60 * 60_000;
 const CLEANUP_INTERVAL_MS = 60 * 60_000;
 
 /**
- * Publishes pending outbox rows on the in-process event bus, where listeners such as
- * `EventsGateway` pick them up (ADR-0007). Delivery is at-least-once: a crash between publishing
- * and committing republishes the batch, so listeners must tolerate duplicates.
+ * Publishes pending outbox rows to every API replica (ADR-0007, ADR-0008). Each batch is claimed,
+ * announced with one `NOTIFY` of its ids and marked published in a single transaction. Postgres
+ * delivers the notification only when that transaction commits, to every replica's
+ * `OutboxListener`, which emits the events on its own bus. A batch that fails to commit stays
+ * pending and is announced again, so delivery is at-least-once and listeners must tolerate
+ * duplicates.
  */
 @Injectable()
 export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShutdown {
@@ -29,10 +32,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
   private drainAgain = false;
   private stopped = false;
 
-  constructor(
-    private readonly dataSource: DataSource,
-    private readonly events: EventEmitter2,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   onApplicationBootstrap(): void {
     this.pollTimer = setInterval(() => void this.drain(), POLL_INTERVAL_MS);
@@ -81,11 +81,12 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
     }
   }
 
-  /** Claims, publishes and marks one batch in one transaction. Returns the number of rows. */
+  /** Claims, announces and marks one batch in one transaction. Returns the number of rows. */
   private publishBatch(): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       // SKIP LOCKED: another instance's in-flight batch is skipped, not waited for.
       const rows = await manager.find(OutboxEntity, {
+        select: { id: true },
         where: { publishedAt: IsNull() },
         order: { id: 'ASC' },
         take: BATCH_SIZE,
@@ -93,27 +94,13 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
       });
       if (rows.length === 0) return 0;
 
-      for (const row of rows) this.publish(row);
-      await manager.update(
-        OutboxEntity,
-        { id: In(rows.map((row) => row.id)) },
-        { publishedAt: () => 'now()' },
-      );
+      const ids = rows.map((row) => row.id);
+      // Ids, not payloads: a NOTIFY payload is capped at 8000 bytes, which a long incident
+      // description can exceed. Listeners read the rows by id.
+      await manager.query('SELECT pg_notify($1, $2)', [OUTBOX_CHANNEL, JSON.stringify(ids)]);
+      await manager.update(OutboxEntity, { id: In(ids) }, { publishedAt: () => 'now()' });
       return rows.length;
     });
-  }
-
-  private publish(row: OutboxEntity): void {
-    try {
-      this.events.emit(row.event, row.payload);
-    } catch (error) {
-      // A failing listener must not hold back every later event: the row still counts as
-      // published (ADR-0007). `@OnEvent` listeners already log their own errors by default.
-      this.logger.error(
-        `Listener failed on ${row.event} (outbox ${row.id}): ${(error as Error).message}`,
-        (error as Error).stack,
-      );
-    }
   }
 
   private cleanup(): Promise<void> {

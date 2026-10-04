@@ -1,8 +1,10 @@
 # ADR-0007: Transactional outbox for incident events
 
-- **Status:** Accepted
+- **Status:** Accepted, fan-out amended by [ADR-0008](0008-multi-replica-fan-out.md)
 - **Date:** 2026-10-02
 - **Amends:** [ADR-0003](0003-realtime-domain-events-socketio.md) (how events are delivered; the in-process bus and the Socket.IO gateway stay)
+
+> **Amended 2026-10-03 by ADR-0008.** The relay no longer emits on the in-process bus. It sends one `NOTIFY` of the batch's ids in its claim transaction, and every API replica's `OutboxListener` reads those rows and emits them after the commit. The outbox, the write path, the relay's claim/poll/nudge/retention and the at-least-once guarantee below still stand.
 
 ## Context
 
@@ -23,7 +25,7 @@ For a security operations console, "the incident was resolved but my screen stil
 Option 2.
 
 - **Write path.** `persistIncident(manager, incident, outboxEvent)` inserts one `outbox` row (`event` = the `IncidentEvents` name, `payload` = the `Incident` with its new `version`) in the caller's transaction. The change and its event commit or roll back together. `IncidentsService` passes `outboxEvent` for report, acknowledge and resolve. The boot-time seed does not: nobody is listening while it runs, and consoles load their data by fetching.
-- **Relay.** `OutboxRelay` (one per API process) claims up to 100 pending rows in `id` order with `SELECT … FOR UPDATE SKIP LOCKED`, emits each on the in-process bus (so `EventsGateway` is unchanged), sets `published_at`, and commits, until a batch comes back short. It runs:
+- **Relay.** `OutboxRelay` (one per API process) claims up to 100 pending rows in `id` order with `SELECT … FOR UPDATE SKIP LOCKED`, emits each on the in-process bus (so `EventsGateway` is unchanged), sets `published_at`, and commits, until a batch comes back short. _Since ADR-0008 it sends a `NOTIFY` of the ids instead of emitting; each replica's listener emits after the commit._ It runs:
   - right after each write commits (`IncidentsService` nudges it in-process), so normal latency stays in milliseconds;
   - every second, for rows nobody nudged (written by a process that died, or by another instance);
   - once at boot.
@@ -33,13 +35,14 @@ Option 2.
 
 ## Consequences
 
-- **Delivery is at-least-once.** A crash after emitting and before committing republishes the batch. Every listener must tolerate duplicates. The console does: it keeps the copy with the higher `version` (IMP-05), so a repeated `incident.updated` is a no-op. A repeated `incident.created` re-triggers the "new" highlight, which is cosmetic.
+- **Delivery is at-least-once.** ~~A crash after emitting and before committing republishes the batch.~~ Since ADR-0008, a batch is announced again only when its commit failed, and then nothing was delivered the first time. Every listener must tolerate duplicates. The console does: it keeps the copy with the higher `version` (IMP-05), so a repeated `incident.updated` is a no-op. A repeated `incident.created` re-triggers the "new" highlight, which is cosmetic.
 - **Order is guaranteed only within one batch.** Rows from concurrent transactions can become visible out of `id` order, and with several instances `SKIP LOCKED` lets batches publish in parallel. Clients must order by `version`, not by arrival. They already do.
 - **A committed change is always announced.** After a crash, the next process publishes the leftover rows at boot or within one poll interval.
 - **Proving it.** The e2e suite inserts a pending row directly, with no nudge, and expects it to be broadcast with `published_at` set. After a restart the in-memory nudge is gone and only the poll can deliver a committed row. That is exactly the state the test creates, without timing a real kill.
 - **Cost.** One extra `INSERT` per write. When idle, one short transaction per second per instance, served by the partial index on pending rows. The table stays small because of retention.
-- **Listeners run inside the relay's transaction.** The relay emits while it holds the batch's row locks and its pool connection, so every listener must be synchronous and cheap, like the gateway's in-memory broadcast. A listener that needs real I/O must hand the work off and return. The emit stays before the commit on purpose: emitting after it would make delivery at-most-once. IMP-14 should measure how long relay transactions take.
+- ~~**Listeners run inside the relay's transaction.** The relay emits while it holds the batch's row locks and its pool connection, so every listener must be synchronous and cheap, like the gateway's in-memory broadcast. A listener that needs real I/O must hand the work off and return. The emit stays before the commit on purpose: emitting after it would make delivery at-most-once. IMP-14 should measure how long relay transactions take.~~
+  **Since ADR-0008, listeners run after the commit,** in each replica's `OutboxListener`, outside the relay's transaction. `NOTIFY` is transactional, so delivering after the commit no longer makes delivery at-most-once. A slow listener now delays only later events on its own replica, not the relay. IMP-14 should still measure commit → broadcast time.
 - **A new event name needs a migration.** The `event` column has a `CHECK` that lists the allowed names.
 - **Rollback: code first, then the migration.** Deploy the previous image first. The old code ignores the `outbox` table, so it can stay. Revert `Outbox1790929369576` only to withdraw the outbox for good, and run the revert from a checkout that still has it. Reverting while this code runs fails every incident write, because the `INSERT` into the missing table rolls the change back. Rows still pending at the switch are never relayed (old code emits in-process), and the revert drops them. Consoles converge on their next refetch, as under ADR-0003.
-- **What comes next.** IMP-07 (several API replicas) builds cross-replica fan-out on the relay. IMP-13 can carry a correlation ID in the payload. IMP-14 can measure commit → broadcast latency at publish time.
+- **What comes next.** IMP-07 (several API replicas) builds cross-replica fan-out on the relay; done in [ADR-0008](0008-multi-replica-fan-out.md). IMP-13 can carry a correlation ID in the payload. IMP-14 can measure commit → broadcast latency at publish time.
 - Revisit if a broker is introduced for other reasons, or if event volume makes polling or a single table a bottleneck.

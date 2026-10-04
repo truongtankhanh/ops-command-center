@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { CamerasModule } from './cameras/cameras.module';
 import { envFilePath } from './config/env-files';
 import { type Env, validateEnv } from './config/env.validation';
+import { runMigrationsOnBoot } from './database/migrate-on-boot';
 import { SeedService } from './database/seed/seed.service';
 import { typeormOptions } from './database/typeorm-options';
 import { HealthController } from './health/health.controller';
@@ -25,6 +27,17 @@ import { ZonesModule } from './zones/zones.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>
         typeormOptions(config.get('DATABASE_URL', { infer: true })),
+      dataSourceFactory: async (options) => {
+        const dataSource = await new DataSource(options!).initialize();
+        try {
+          await runMigrationsOnBoot(dataSource);
+        } catch (error) {
+          // @nestjs/typeorm retries the factory; don't leave this attempt's pool open.
+          await dataSource.destroy();
+          throw error;
+        }
+        return dataSource;
+      },
     }),
     EventEmitterModule.forRoot(),
     ZonesModule,

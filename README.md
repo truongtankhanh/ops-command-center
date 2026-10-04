@@ -15,8 +15,16 @@ The demo runs on **Langbiang Tech Campus**, a fictional site with synthetic inci
 ```bash
 docker compose up --build
 # Console      http://localhost:18080
-# API + docs   http://localhost:13000/api/docs   (read-only; off by default in production — ADR-0005)
+# API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
+
+The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
+
+```bash
+docker compose up --build --scale api=2
+```
+
+To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`docker compose logs api` shows which replica each console connected to).
 
 ## What it does
 
@@ -59,22 +67,23 @@ docs/
 
 The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
-| ADR                                                         | Decision                                                                                                                            |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                                 |
-| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                                  |
-| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events on an in-process bus, broadcast by a Socket.IO gateway that only listens (delivery amended by 0007)                   |
-| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                              |
-| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                                      |
-| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform         |
-| [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client |
+| ADR                                                         | Decision                                                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                                  |
+| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                                   |
+| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events on an in-process bus, broadcast by a Socket.IO gateway that only listens (delivery amended by 0007)                    |
+| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                               |
+| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                                       |
+| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform          |
+| [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client  |
+| [0008](docs/adr/0008-multi-replica-fan-out.md)              | Several API replicas: Postgres `NOTIFY` fans every event out to all of them; one simulator leader; boot serialised by advisory locks |
 
 ### Design details worth a look
 
 - **Type-safe contract end to end.** `packages/contracts` defines the domain types and the WebSocket event map. The API's OpenAPI DTOs `implement` those interfaces and both socket ends are typed with the same event map, so a renamed field or event fails to compile on both sides.
 - **Lifecycle rules live in the entity.** `IncidentEntity.acknowledge()` / `resolve()` enforce transitions and append timeline events; the service only orchestrates. Domain errors map to HTTP status codes in one exception filter.
 - **Concurrency-safe transitions.** Status changes run in a transaction with a row lock (`SELECT … FOR UPDATE`), so two operators cannot both acknowledge the same incident. Codes like `INC-000042` come from a database sequence.
-- **Events through a transactional outbox, cache patching on the client.** Each change writes its event in the same transaction, and a relay publishes it, so a crash between commit and broadcast cannot lose it. Consoles update the TanStack Query cache from event payloads instead of refetching, ignore duplicates and stale copies by `version`, and refetch once on reconnect to converge.
+- **Events through a transactional outbox, cache patching on the client.** Each change writes its event in the same transaction, and a relay publishes it, so a crash between commit and broadcast cannot lose it. Postgres `LISTEN/NOTIFY` hands every event to every API replica, so it reaches consoles on all of them, with no broker to run. Consoles update the TanStack Query cache from event payloads instead of refetching, ignore duplicates and stale copies by `version`, and refetch once on reconnect to converge.
 - **The simulator is a client, not a backdoor.** It goes through `IncidentsService` like an operator, so demo data never bypasses validation, persistence or events.
 
 ## Running locally
