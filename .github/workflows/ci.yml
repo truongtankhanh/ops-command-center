@@ -50,3 +50,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose build
+      - name: Boot the stack with two API replicas
+        run: docker compose up -d --wait --wait-timeout 180 --scale api=2
+      - name: Check both replicas are healthy behind nginx
+        run: |
+          healthy=$(docker compose ps api --format '{{.Health}}' | grep -c '^healthy$')
+          test "$healthy" -eq 2
+          curl -fsS --retry 5 --retry-connrefused http://localhost:18080/api/health
+      - name: Stack logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

@@ -24,7 +24,9 @@ The API can run as several replicas behind the console's nginx. Every console se
 docker compose up --build --scale api=2
 ```
 
-To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`docker compose logs api` shows which replica each console connected to).
+To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`docker compose logs api` shows which replica each console connected to, from the gateway's debug-level connection log).
+
+The demo is sized for two replicas. Each holds a pool of 10 database connections, so beyond about eight replicas the default PostgreSQL `max_connections` of 100 runs out.
 
 ## What it does
 
@@ -88,7 +90,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 
 ## Running locally
 
-Requirements: Node 24, pnpm 10, PostgreSQL 16+ (or use the `postgres` service from Compose).
+Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service from Compose).
 
 ```bash
 pnpm install
@@ -120,7 +122,7 @@ API configuration (`apps/api/.env`):
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED` and `POSTGRES_PORT` can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
 
 ## Quality
 
@@ -139,7 +141,7 @@ cp apps/api/.env.test.example apps/api/.env.test
 docker compose exec postgres createdb -U postgres ops_test
 ```
 
-CI runs all of the above on every push and pull request, then builds both Docker images.
+CI runs all of the above on every push and pull request, then builds both Docker images, boots the stack with two API replicas and checks that both are healthy behind nginx.
 
 ## Roadmap
 
