@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCameras, useIncidents, useZones } from '../api/queries';
 import { isActive } from '../lib/incidents';
 import { useConsole } from '../store';
+import { mapColors } from '../styles/tokens';
 import styles from './CampusMap.module.css';
 
 /**
@@ -15,14 +16,7 @@ import styles from './CampusMap.module.css';
 const OFFLINE_STYLE: StyleSpecification = {
   version: 8,
   sources: {},
-  layers: [{ id: 'ground', type: 'background', paint: { 'background-color': '#13222e' } }],
-};
-
-const ZONE_FILL: Record<Zone['kind'], string> = {
-  building: '#24404f',
-  parking: '#1d3542',
-  gate: '#2c4a3f',
-  outdoor: '#1e3a33',
+  layers: [{ id: 'ground', type: 'background', paint: { 'background-color': mapColors.ground } }],
 };
 
 export function CampusMap() {
@@ -128,12 +122,12 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
           'match',
           ['get', 'kind'],
           'building',
-          ZONE_FILL.building,
+          mapColors.zoneFill.building,
           'parking',
-          ZONE_FILL.parking,
+          mapColors.zoneFill.parking,
           'gate',
-          ZONE_FILL.gate,
-          ZONE_FILL.outdoor,
+          mapColors.zoneFill.gate,
+          mapColors.zoneFill.outdoor,
         ],
       },
     });
@@ -141,7 +135,7 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
       id: 'zone-outline',
       type: 'line',
       source: 'zones',
-      paint: { 'line-color': '#3b5668', 'line-width': 1.2 },
+      paint: { 'line-color': mapColors.zoneOutline, 'line-width': 1.2 },
     });
 
     const labels = zones.map((zone) => {

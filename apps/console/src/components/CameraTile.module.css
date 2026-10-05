@@ -4,7 +4,7 @@
   margin: 0;
   border-radius: var(--radius-s);
   overflow: hidden;
-  background: #0d1820;
+  background: var(--camera-ground);
 }
 
 .tile canvas {
@@ -20,11 +20,14 @@
   bottom: 0;
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  padding: 4px 8px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--font-ui);
-  font-size: 13px;
-  background: linear-gradient(transparent, rgb(0 0 0 / 0.65));
+  font-size: var(--type-s);
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--camera-ground) 65%, transparent)
+  );
 }
 
 .label span:first-child {
@@ -37,6 +40,6 @@
   display: grid;
   place-items: center;
   height: 100%;
-  color: var(--text-faint);
+  color: var(--text-secondary);
   font-family: var(--font-ui);
 }

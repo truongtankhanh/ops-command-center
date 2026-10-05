@@ -1,33 +1,116 @@
 /*
  * Night-shift palette: a dark harbour blue that stays calm over a 12-hour shift.
  * Saturated colour is reserved for severity, so colour always means something.
+ * Which token goes on which surface, and the contrast each pair reaches: docs/design/tokens.md.
  */
 :root {
-  --ground: #13222e;
-  --panel: #182b38;
-  --panel-raised: #1f3646;
-  --line: #2b4252;
-  --text: #dce7ee;
-  --text-muted: #8fa6b4;
-  --text-faint: #5f7887;
+  /* Surfaces: 0 ground, map, inputs · 1 header, feed, sheet · 2 selected row, cards · 3 menu, toast, banner. */
+  --surface-0: #0c1821;
+  --surface-1: #13222d;
+  --surface-2: #1a2d3a;
+  --surface-3: #223848;
+  --camera-ground: #070f15;
 
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 6px 16px rgb(0 0 0 / 0.35);
+  --shadow-3: 0 16px 40px rgb(0 0 0 / 0.5);
+
+  /* Subtle is decorative; strong marks input boundaries (≥ 3:1 on surface-0 and surface-1 only). */
+  --border-subtle: #25394a;
+  --border-strong: #5a7488;
+
+  --text-primary: #e4edf3;
+  --text-secondary: #a6b8c5;
+  --text-tertiary: #91a5b4;
+
+  --accent: #8c9bff;
+  --accent-hover: #a8b3ff;
+  --accent-tint: rgb(140 155 255 / 0.14);
+  --on-accent: #0c1821;
+
+  /* Critical text never sits on surface-3 (3.9:1): use the icon there. */
   --sev-critical: #ff5a4e;
   --sev-high: #ff9f43;
   --sev-medium: #f2d04b;
   --sev-low: #6cc3d5;
-  --resolved: #6f8f7f;
+  --sev-critical-bg: color-mix(in srgb, var(--sev-critical) 15%, transparent);
+  --sev-high-bg: color-mix(in srgb, var(--sev-high) 15%, transparent);
+  --sev-medium-bg: color-mix(in srgb, var(--sev-medium) 15%, transparent);
+  --sev-low-bg: color-mix(in srgb, var(--sev-low) 15%, transparent);
+  --sev-critical-border: color-mix(in srgb, var(--sev-critical) 45%, transparent);
+  --sev-high-border: color-mix(in srgb, var(--sev-high) 45%, transparent);
+  --sev-medium-border: color-mix(in srgb, var(--sev-medium) 45%, transparent);
+  --sev-low-border: color-mix(in srgb, var(--sev-low) 45%, transparent);
 
-  --zone-building: #24404f;
-  --zone-parking: #1d3542;
-  --zone-gate: #2c4a3f;
-  --zone-outdoor: #1e3a33;
+  /* Status is neutral-based so it never competes with severity. */
+  --status-open: var(--text-primary);
+  --status-acknowledged: var(--text-secondary);
+  --status-resolved: #86bba0;
+  --status-resolved-bg: color-mix(in srgb, var(--status-resolved) 14%, transparent);
 
-  --focus: #ffffff;
-  --radius-s: 4px;
-  --radius-m: 8px;
+  /* System feedback only (connection, banners, form errors) — never on an incident. */
+  --success: #5ccf98;
+  --warning: #f0b85e;
+  --danger: #ff7f8a;
 
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;
+
+  --type-xs: 12px;
+  --type-s: 13px;
+  --type-m: 14px;
+  --type-body: 15px;
+  --type-l: 16px;
+  --type-xl: 20px;
+  --type-2xl: 24px;
+  --type-3xl: 32px;
+  --leading-xs: 16px;
+  --leading-s: 18px;
+  --leading-m: 20px;
+  --leading-body: 22px;
+  --leading-l: 22px;
+  --leading-xl: 26px;
+  --leading-2xl: 28px;
+  --leading-3xl: 36px;
+  /* Only the weights main.tsx bundles: Barlow 400/500, Barlow Semi Condensed 500/600. */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* 4 px grid; the half steps are for icon-to-text gaps and tight chip padding. */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  --radius-s: 4px;
+  --radius-m: 6px;
+  --radius-l: 10px;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --duration-arrive: 1600ms;
+  --duration-pulse: 1800ms;
+  /* The `ease-out` keyword, named so animations share one curve. */
+  --ease-out: cubic-bezier(0, 0, 0.58, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 2px;
+
+  --z-sheet: 10;
+  --z-banner: 20;
+  --z-popover: 30;
+  --z-toast: 40;
+  /* The session-expired banner blocks every write, so it stays above everything. */
+  --z-session: 50;
 
   color-scheme: dark;
 }
