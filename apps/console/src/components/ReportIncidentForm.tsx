@@ -11,6 +11,9 @@ import { newIdempotencyKey } from '../lib/idempotency';
 import { typeLabel } from '../lib/incidents';
 import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
+import button from '../styles/button.module.css';
+import panel from '../styles/panel.module.css';
+import styles from './ReportIncidentForm.module.css';
 
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
@@ -72,14 +75,14 @@ export function ReportIncidentForm() {
   };
 
   return (
-    <aside id="report-incident-panel" className="detail" aria-label="Report an incident">
-      <form className="report-form" onSubmit={submit} noValidate>
-        <div className="detail-toprow">
-          <h2 className="detail-title">Report an incident</h2>
+    <aside id="report-incident-panel" className={panel.panel} aria-label="Report an incident">
+      <form className={styles.form} onSubmit={submit} noValidate>
+        <div className={panel.toprow}>
+          <h2 className={`${panel.title} ${styles.title}`}>Report an incident</h2>
         </div>
 
-        <label className="field">
-          <span className="field-label">Type</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Type</span>
           <select value={type} onChange={(e) => setType(e.target.value as IncidentType)} required>
             <option value="" disabled>
               Choose a type
@@ -92,9 +95,9 @@ export function ReportIncidentForm() {
           </select>
         </label>
 
-        <fieldset className="field">
-          <legend className="field-label">Severity</legend>
-          <div className="segmented">
+        <fieldset className={styles.field}>
+          <legend className={styles.fieldLabel}>Severity</legend>
+          <div className={styles.segmented}>
             {INCIDENT_SEVERITIES.map((value) => (
               <label key={value} data-severity={value}>
                 <input
@@ -110,8 +113,8 @@ export function ReportIncidentForm() {
           </div>
         </fieldset>
 
-        <label className="field">
-          <span className="field-label">Location</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Location</span>
           <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} required>
             <option value="" disabled>
               Choose a zone
@@ -124,8 +127,8 @@ export function ReportIncidentForm() {
           </select>
         </label>
 
-        <label className="field">
-          <span className="field-label">Title</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Title</span>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -135,8 +138,8 @@ export function ReportIncidentForm() {
           />
         </label>
 
-        <label className="field">
-          <span className="field-label">Details (optional)</span>
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>Details (optional)</span>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -146,20 +149,21 @@ export function ReportIncidentForm() {
         </label>
 
         {report.error && (
-          <p className="form-error" role="alert">
+          <p className={panel.error} role="alert">
             {reportErrorMessage(report.error)}
           </p>
         )}
 
-        <div className="action-buttons">
+        <div className={panel.actions}>
           <button
             type="submit"
-            className="button button-primary"
+            className={button.button}
+            data-variant="primary"
             disabled={!ready || report.isPending}
           >
             {report.isPending ? 'Reporting…' : 'Report incident'}
           </button>
-          <button type="button" className="button" onClick={closeReport}>
+          <button type="button" className={button.button} onClick={closeReport}>
             Cancel
           </button>
         </div>

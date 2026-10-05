@@ -4,6 +4,9 @@ import { usePermission } from '../auth/usePermission';
 import { FEED_FILTERS, formatAge, matchesFilter, statusLabel, typeLabel } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
+import button from '../styles/button.module.css';
+import text from '../styles/text.module.css';
+import styles from './IncidentFeed.module.css';
 
 const EMPTY_MESSAGE = {
   active: 'No active incidents. New reports appear here as they come in.',
@@ -22,12 +25,13 @@ export function IncidentFeed() {
   const visible = (incidents ?? []).filter((incident) => matchesFilter(incident, filter));
 
   return (
-    <aside className="feed" aria-label="Incidents">
+    <aside className={styles.feed} aria-label="Incidents">
       {canReport && (
-        <div className="feed-actions">
+        <div className={styles.actions}>
           <button
             type="button"
-            className="button button-primary"
+            className={button.button}
+            data-variant="primary"
             aria-expanded={reporting}
             aria-controls="report-incident-panel"
             onClick={startReport}
@@ -36,12 +40,12 @@ export function IncidentFeed() {
           </button>
         </div>
       )}
-      <div className="feed-tabs" role="tablist" aria-label="Filter incidents">
+      <div className={styles.tabs} role="tablist" aria-label="Filter incidents">
         {FEED_FILTERS.map(({ value, label }) => (
           <button
             key={value}
             role="tab"
-            className="feed-tab"
+            className={styles.tab}
             aria-selected={filter === value}
             onClick={() => setFilter(value)}
           >
@@ -51,13 +55,13 @@ export function IncidentFeed() {
       </div>
 
       {isPending ? (
-        <p className="feed-empty">Loading incidents…</p>
+        <p className={text.empty}>Loading incidents…</p>
       ) : isError ? (
-        <p className="feed-empty">Incidents could not be loaded. Check that the API is running.</p>
+        <p className={text.empty}>Incidents could not be loaded. Check that the API is running.</p>
       ) : visible.length === 0 ? (
-        <p className="feed-empty">{EMPTY_MESSAGE[filter]}</p>
+        <p className={text.empty}>{EMPTY_MESSAGE[filter]}</p>
       ) : (
-        <ul className="feed-list">
+        <ul className={styles.list}>
           {visible.map((incident) => (
             <li key={incident.id}>
               <IncidentRow incident={incident} zone={zoneName.get(incident.zoneId)} now={now} />
@@ -76,20 +80,20 @@ function IncidentRow({ incident, zone, now }: { incident: Incident; zone?: strin
 
   return (
     <button
-      className="incident-row"
+      className={styles.row}
       data-severity={incident.severity}
       data-status={incident.status}
       data-fresh={fresh}
       aria-current={selected}
       onClick={() => select(selected ? null : incident.id)}
     >
-      <span className="incident-row-edge" aria-hidden />
-      <span className="incident-row-title">{incident.title}</span>
-      <time className="incident-row-age" dateTime={incident.reportedAt}>
+      <span className={styles.edge} aria-hidden />
+      <span className={styles.title}>{incident.title}</span>
+      <time className={styles.age} dateTime={incident.reportedAt}>
         {formatAge(incident.reportedAt, now)}
       </time>
-      <span className="incident-row-meta">
-        <span className="status-tag" data-status={incident.status}>
+      <span className={styles.meta}>
+        <span className={styles.statusTag} data-status={incident.status}>
           {statusLabel(incident.status)}
         </span>
         <span>{typeLabel(incident.type)}</span>

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCameras, useIncidents, useZones } from '../api/queries';
 import { isActive } from '../lib/incidents';
 import { useConsole } from '../store';
+import styles from './CampusMap.module.css';
 
 /**
  * The campus as a site plan. Works fully offline (on-prem): zones are drawn from API data.
@@ -75,18 +76,17 @@ export function CampusMap() {
   }, [map, selectedPosition]);
 
   return (
-    <section className="map" aria-label="Campus map">
-      <div ref={container} className="map-canvas" />
-      <div className="map-legend" aria-hidden>
+    <section className={styles.map} aria-label="Campus map">
+      <div ref={container} className={styles.canvas} />
+      <div className={styles.legend} aria-hidden>
         <span>
-          <i className="legend-swatch" style={{ background: 'var(--sev-high)' }} /> Open
+          <i className={`${styles.legendSwatch} ${styles.swatchOpen}`} /> Open
         </span>
         <span>
-          <i className="legend-swatch" style={{ border: '2px solid var(--sev-high)' }} /> Being
-          handled
+          <i className={`${styles.legendSwatch} ${styles.swatchHandled}`} /> Being handled
         </span>
         <span>
-          <i className="camera-marker" /> Camera
+          <i className={styles.cameraMarker} /> Camera
         </span>
       </div>
     </section>
@@ -146,7 +146,7 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
 
     const labels = zones.map((zone) => {
       const el = document.createElement('div');
-      el.className = 'zone-label';
+      el.className = styles.zoneLabel!;
       el.textContent = zone.name;
       // Label sits just above the zone's top edge, clear of the markers inside it.
       const top = Math.max(...zone.polygon.map(([, lat]) => lat));
@@ -175,7 +175,7 @@ function useCameraMarkers(map: maplibregl.Map | null, cameras: Camera[] | undefi
     if (!map || !cameras) return;
     const markers = cameras.map((camera) => {
       const el = document.createElement('div');
-      el.className = 'camera-marker';
+      el.className = styles.cameraMarker!;
       el.dataset.online = String(camera.online);
       el.title = `${camera.code} ${camera.name}${camera.online ? '' : ' (offline)'}`;
       return new maplibregl.Marker({ element: el }).setLngLat(camera.position).addTo(map);
@@ -199,7 +199,7 @@ function useIncidentMarkers(
       .reverse() // most important drawn last, on top
       .map((incident) => {
         const el = document.createElement('button');
-        el.className = 'incident-marker';
+        el.className = styles.incidentMarker!;
         el.dataset.severity = incident.severity;
         el.dataset.status = incident.status;
         el.setAttribute('aria-pressed', String(incident.id === selectedId));

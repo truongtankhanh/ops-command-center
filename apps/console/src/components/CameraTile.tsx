@@ -1,6 +1,8 @@
 import type { Camera, StreamDescriptor } from '@occ/contracts';
 import { useEffect, useRef } from 'react';
 import { useStream } from '../api/queries';
+import text from '../styles/text.module.css';
+import styles from './CameraTile.module.css';
 
 /**
  * Renders a camera by its StreamDescriptor (ADR-0002). The tile knows nothing about
@@ -10,17 +12,17 @@ export function CameraTile({ camera }: { camera: Camera }) {
   const { data: stream, isError } = useStream(camera.id);
 
   return (
-    <figure className="camera-tile" style={{ margin: 0 }}>
+    <figure className={styles.tile}>
       {!camera.online ? (
-        <div className="camera-tile-offline">No signal</div>
+        <div className={styles.offline}>No signal</div>
       ) : isError ? (
-        <div className="camera-tile-offline">Stream unavailable</div>
+        <div className={styles.offline}>Stream unavailable</div>
       ) : stream ? (
         <StreamView stream={stream} />
       ) : null}
-      <figcaption className="camera-tile-label">
+      <figcaption className={styles.label}>
         <span>{camera.name}</span>
-        <span className="muted">{camera.code}</span>
+        <span className={text.muted}>{camera.code}</span>
       </figcaption>
     </figure>
   );
@@ -33,7 +35,7 @@ function StreamView({ stream }: { stream: StreamDescriptor }) {
     case 'hls':
     case 'webrtc':
       // Real players arrive with MediaMTX in M2 (roadmap OCC-16).
-      return <div className="camera-tile-offline">Live player arrives in M2</div>;
+      return <div className={styles.offline}>Live player arrives in M2</div>;
   }
 }
 

@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { signInAgain } from '../auth/session';
 import { useSession } from '../auth/store';
 import { useSignOut } from '../auth/useSignOut';
+import button from '../styles/button.module.css';
+import text from '../styles/text.module.css';
+import styles from './AuthGate.module.css';
 
 /**
  * Renders the console only once the operator is signed in with a role, so no query or socket
@@ -53,7 +56,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 /** Fixed over the console, so the layout and any half-filled form stay as they are. */
 function SessionExpiredBanner() {
   return (
-    <div className="session-banner" role="alert">
+    <div className={styles.sessionBanner} role="alert">
       Your session has expired.
       <SignInButton>Sign in again</SignInButton>
     </div>
@@ -70,8 +73,8 @@ function AuthScreen({
   children: ReactNode;
 }) {
   return (
-    <main className="auth-screen" aria-busy={busy}>
-      <h1 className="header-title">Operations</h1>
+    <main className={styles.screen} aria-busy={busy}>
+      <h1 className={text.appTitle}>Operations</h1>
       <p role={busy ? 'status' : 'alert'}>{children}</p>
       {action}
     </main>
@@ -80,7 +83,12 @@ function AuthScreen({
 
 function SignInButton({ children }: { children: ReactNode }) {
   return (
-    <button type="button" className="button button-primary" onClick={() => void signInAgain()}>
+    <button
+      type="button"
+      className={button.button}
+      data-variant="primary"
+      onClick={() => void signInAgain()}
+    >
       {children}
     </button>
   );
@@ -89,7 +97,7 @@ function SignInButton({ children }: { children: ReactNode }) {
 function SignOutButton() {
   const signOut = useSignOut();
   return (
-    <button type="button" className="button button-primary" onClick={signOut}>
+    <button type="button" className={button.button} data-variant="primary" onClick={signOut}>
       Sign out
     </button>
   );

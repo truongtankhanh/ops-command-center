@@ -152,8 +152,11 @@ describe('IncidentDetail', () => {
         renderDetail();
 
         expect(screen.getByRole('heading', { name: 'Response' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Acknowledge' })).toHaveClass('button-primary');
-        expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveClass('button-primary');
+        expect(screen.getByRole('button', { name: 'Acknowledge' })).toHaveAttribute(
+          'data-variant',
+          'primary',
+        );
+        expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveAttribute('data-variant');
       },
     );
 
@@ -163,7 +166,10 @@ describe('IncidentDetail', () => {
       renderDetail(detail({ status: 'acknowledged' }));
 
       expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Resolve' })).toHaveClass('button-primary');
+      expect(screen.getByRole('button', { name: 'Resolve' })).toHaveAttribute(
+        'data-variant',
+        'primary',
+      );
     });
 
     it('offers no response to a viewer', () => {

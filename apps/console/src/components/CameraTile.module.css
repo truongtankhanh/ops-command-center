@@ -1,0 +1,42 @@
+.tile {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  margin: 0;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  background: #0d1820;
+}
+
+.tile canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 0.65));
+}
+
+.label span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.offline {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+}

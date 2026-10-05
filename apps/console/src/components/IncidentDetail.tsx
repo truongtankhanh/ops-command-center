@@ -6,7 +6,11 @@ import { usePermission } from '../auth/usePermission';
 import { statusLabel, typeLabel } from '../lib/incidents';
 import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
+import button from '../styles/button.module.css';
+import panel from '../styles/panel.module.css';
+import text from '../styles/text.module.css';
 import { CameraTile } from './CameraTile';
+import styles from './IncidentDetail.module.css';
 
 const EVENT_LABEL: Record<IncidentEventKind, string> = {
   reported: 'Reported',
@@ -26,11 +30,11 @@ export function IncidentDetail({ id }: { id: string }) {
 
   useCloseOnEscape(close, note.trim() !== '');
 
-  if (isPending) return <aside className="detail" aria-busy="true" />;
+  if (isPending) return <aside className={panel.panel} aria-busy="true" />;
   if (isError || !incident) {
     return (
-      <aside className="detail">
-        <p className="feed-empty">This incident could not be loaded.</p>
+      <aside className={panel.panel}>
+        <p className={text.empty}>This incident could not be loaded.</p>
       </aside>
     );
   }
@@ -58,20 +62,20 @@ function DetailBody({
   const showResolve = incident.status !== 'resolved' && canResolve;
 
   return (
-    <aside className="detail" aria-label={`Incident ${incident.code}`}>
-      <div className="detail-head" data-severity={incident.severity} data-status={incident.status}>
-        <div className="detail-toprow">
+    <aside className={panel.panel} aria-label={`Incident ${incident.code}`}>
+      <div className={styles.head} data-severity={incident.severity} data-status={incident.status}>
+        <div className={panel.toprow}>
           <span>{incident.code}</span>
-          <button className="detail-close" onClick={onClose} aria-label="Close incident">
+          <button className={styles.close} onClick={onClose} aria-label="Close incident">
             Close
           </button>
         </div>
-        <h2 className="detail-title">{incident.title}</h2>
-        <dl className="detail-facts">
+        <h2 className={panel.title}>{incident.title}</h2>
+        <dl className={styles.facts}>
           <dt>Status</dt>
           <dd>{statusLabel(incident.status)}</dd>
           <dt>Severity</dt>
-          <dd style={{ textTransform: 'capitalize' }}>{incident.severity}</dd>
+          <dd className={styles.severity}>{incident.severity}</dd>
           <dt>Type</dt>
           <dd>{typeLabel(incident.type)}</dd>
           <dt>Location</dt>
@@ -79,7 +83,7 @@ function DetailBody({
           <dt>Reported by</dt>
           <dd>{incident.source === 'simulator' ? 'Sensor (simulated)' : 'Operator'}</dd>
         </dl>
-        {incident.description && <p className="detail-description">{incident.description}</p>}
+        {incident.description && <p className={styles.description}>{incident.description}</p>}
       </div>
 
       {(showAcknowledge || showResolve) && (
@@ -92,30 +96,28 @@ function DetailBody({
         />
       )}
 
-      <section className="detail-section">
+      <section className={styles.section}>
         <h3>Timeline</h3>
-        <ol className="timeline">
+        <ol className={styles.timeline}>
           {incident.timeline.map((event) => (
             <li key={event.id} data-actor-kind={event.actor.kind}>
-              <span className="timeline-kind">{EVENT_LABEL[event.kind]}</span>
-              <time className="timeline-time" dateTime={event.at}>
+              <span className={styles.timelineKind}>{EVENT_LABEL[event.kind]}</span>
+              <time className={styles.timelineTime} dateTime={event.at}>
                 {time(event.at)}
               </time>
-              <span className="timeline-actor">{event.actor.displayName}</span>
-              {event.note && <p className="timeline-note">{event.note}</p>}
+              <span className={styles.timelineActor}>{event.actor.displayName}</span>
+              {event.note && <p className={styles.timelineNote}>{event.note}</p>}
             </li>
           ))}
         </ol>
       </section>
 
-      <section className="detail-section">
+      <section className={styles.section}>
         <h3>Cameras in {zone?.name ?? 'this zone'}</h3>
         {zoneCameras.length === 0 ? (
-          <p className="muted" style={{ margin: 0 }}>
-            No cameras cover this zone.
-          </p>
+          <p className={`${text.muted} ${styles.noCameras}`}>No cameras cover this zone.</p>
         ) : (
-          <div className="detail-cameras">
+          <div className={styles.cameras}>
             {zoneCameras.map((camera) => (
               <CameraTile key={camera.id} camera={camera} />
             ))}
@@ -152,10 +154,10 @@ function Actions({
     );
 
   return (
-    <section className="detail-section">
+    <section className={styles.section}>
       <h3>Response</h3>
-      <form className="action-form" onSubmit={(event) => event.preventDefault()}>
-        <label className="muted" htmlFor="incident-note">
+      <form className={styles.actionForm} onSubmit={(event) => event.preventDefault()}>
+        <label className={text.muted} htmlFor="incident-note">
           Note for the timeline (optional)
         </label>
         <textarea
@@ -165,11 +167,12 @@ function Actions({
           placeholder="e.g. Guard dispatched from the main gate"
           maxLength={1000}
         />
-        <div className="action-buttons">
+        <div className={panel.actions}>
           {showAcknowledge && (
             <button
               type="button"
-              className="button button-primary"
+              className={button.button}
+              data-variant="primary"
               disabled={busy}
               onClick={() => run(acknowledge)}
             >
@@ -179,7 +182,9 @@ function Actions({
           {showResolve && (
             <button
               type="button"
-              className={showAcknowledge ? 'button' : 'button button-primary'}
+              className={button.button}
+              // Only one primary action at a time: Resolve is it once Acknowledge is gone.
+              data-variant={showAcknowledge ? undefined : 'primary'}
               disabled={busy}
               onClick={() => run(resolve)}
             >
@@ -188,7 +193,7 @@ function Actions({
           )}
         </div>
         {error && (
-          <p className="form-error" role="alert">
+          <p className={panel.error} role="alert">
             {error instanceof ApiRequestError && error.status === 403
               ? NO_LONGER_ALLOWED
               : error.message}

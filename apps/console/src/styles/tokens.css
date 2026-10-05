@@ -1,0 +1,33 @@
+/*
+ * Night-shift palette: a dark harbour blue that stays calm over a 12-hour shift.
+ * Saturated colour is reserved for severity, so colour always means something.
+ */
+:root {
+  --ground: #13222e;
+  --panel: #182b38;
+  --panel-raised: #1f3646;
+  --line: #2b4252;
+  --text: #dce7ee;
+  --text-muted: #8fa6b4;
+  --text-faint: #5f7887;
+
+  --sev-critical: #ff5a4e;
+  --sev-high: #ff9f43;
+  --sev-medium: #f2d04b;
+  --sev-low: #6cc3d5;
+  --resolved: #6f8f7f;
+
+  --zone-building: #24404f;
+  --zone-parking: #1d3542;
+  --zone-gate: #2c4a3f;
+  --zone-outdoor: #1e3a33;
+
+  --focus: #ffffff;
+  --radius-s: 4px;
+  --radius-m: 8px;
+
+  --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+
+  color-scheme: dark;
+}

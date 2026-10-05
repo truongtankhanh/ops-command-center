@@ -1,3 +1,4 @@
+import styles from './App.module.css';
 import { CameraStrip } from './components/CameraStrip';
 import { CampusMap } from './components/CampusMap';
 import { Header } from './components/Header';
@@ -13,11 +14,15 @@ export function App() {
   const reporting = useConsole((s) => s.reporting);
 
   return (
-    <div className="console">
+    <div className={styles.console}>
       <Header />
-      <main className={selectedId || reporting ? 'workspace has-detail' : 'workspace'}>
+      <main
+        className={
+          selectedId || reporting ? `${styles.workspace} ${styles.hasDetail}` : styles.workspace
+        }
+      >
         <IncidentFeed />
-        <div className="stage">
+        <div className={styles.stage}>
           <CampusMap />
           <CameraStrip />
         </div>

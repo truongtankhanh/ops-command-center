@@ -1,0 +1,33 @@
+/* Shared by every component with a button until the UI-05 `Button` primitive replaces it. */
+
+.button {
+  flex: 1;
+  padding: 9px 14px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--panel-raised);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--text-muted);
+}
+
+/* The variant is an attribute, not a class, so tests can assert it whatever the hashed class name. */
+.button[data-variant='primary'] {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--ground);
+}
+
+.button[data-variant='primary']:hover:not(:disabled) {
+  background: #ffffff;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

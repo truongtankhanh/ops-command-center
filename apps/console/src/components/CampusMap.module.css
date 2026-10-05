@@ -1,0 +1,117 @@
+.map {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.canvas {
+  /* MapLibre sets position: relative on its container, so size it explicitly. */
+  width: 100%;
+  height: 100%;
+}
+
+.zoneLabel {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-muted);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.cameraMarker {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 2px solid var(--text-muted);
+  background: var(--ground);
+}
+
+.cameraMarker[data-online='false'] {
+  border-style: dashed;
+  border-color: var(--text-faint);
+}
+
+/*
+ * No `position` here: MapLibre's `.maplibregl-marker` positions the marker (absolute), which also
+ * anchors the pulse below. A `position` in this module would win or lose against maplibre-gl.css
+ * depending on bundle order.
+ */
+.incidentMarker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--ground);
+  background: var(--sev);
+  cursor: pointer;
+  padding: 0;
+}
+
+.incidentMarker[data-status='acknowledged'] {
+  background: var(--ground);
+  border: 3px solid var(--sev);
+}
+
+.incidentMarker[aria-pressed='true'] {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.incidentMarker[data-severity='critical'][data-status='open']::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  border: 2px solid var(--sev);
+  animation: pulse 1.8s ease-out infinite;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.legend {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  border-radius: var(--radius-s);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.swatchOpen {
+  background: var(--sev-high);
+}
+
+.swatchHandled {
+  border: 2px solid var(--sev-high);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .incidentMarker[data-severity='critical'][data-status='open']::after {
+    animation: none;
+  }
+}

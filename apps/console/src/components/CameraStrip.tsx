@@ -1,6 +1,7 @@
 import { useCameras, useIncidents } from '../api/queries';
 import { prioritise } from '../lib/cameras';
 import { useConsole } from '../store';
+import styles from './CameraStrip.module.css';
 import { CameraTile } from './CameraTile';
 
 const TILE_COUNT = 4;
@@ -15,7 +16,7 @@ export function CameraStrip() {
   const tiles = prioritise(cameras, zoneId).slice(0, TILE_COUNT);
 
   return (
-    <section className="camera-strip" aria-label="Cameras">
+    <section className={styles.strip} aria-label="Cameras">
       {tiles.map((camera) => (
         <CameraTile key={camera.id} camera={camera} />
       ))}

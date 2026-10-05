@@ -1,0 +1,124 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.site {
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 15px;
+}
+
+.severityStrip {
+  display: flex;
+  gap: 18px;
+  margin-left: auto;
+  list-style: none;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.severityCount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+}
+
+.severityCount strong {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.severityCount[data-zero='true'] strong {
+  color: var(--text-faint);
+}
+
+.severityCount::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--sev);
+  align-self: center;
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+  min-width: 112px;
+}
+
+.connection::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.connection[data-state='live']::before {
+  background: #4fd18b;
+}
+
+.connection[data-state='offline'] {
+  color: var(--sev-critical);
+}
+
+.connection[data-state='offline']::before {
+  background: var(--sev-critical);
+}
+
+.clock {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  font-weight: 500;
+  min-width: 64px;
+  text-align: right;
+}
+
+.sessionUser {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-ui);
+  color: var(--text-muted);
+}
+
+/* An element selector, so it outranks button.module.css whatever order the bundle puts them in. */
+.sessionUser button {
+  flex: none;
+  padding: 5px 12px;
+  font-size: 15px;
+}
+
+.sessionAccess {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    padding: 10px 16px;
+  }
+
+  .severityStrip {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+}

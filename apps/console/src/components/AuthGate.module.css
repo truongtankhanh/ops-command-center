@@ -1,0 +1,38 @@
+.screen {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  height: 100%;
+  padding: 16px;
+  text-align: center;
+}
+
+.screen p {
+  margin: 0;
+  max-width: 44ch;
+  color: var(--text-muted);
+}
+
+/* Above the detail sheet (z-index 10): the operator must see it whatever is open. */
+.sessionBanner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100% - 32px);
+  padding: 10px 14px;
+  border: 1px solid var(--sev-critical);
+  border-radius: var(--radius-m);
+  background: var(--panel-raised);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  transform: translateX(-50%);
+}
+
+/* An element selector, so it outranks button.module.css whatever order the bundle puts them in. */
+.sessionBanner button {
+  flex: none;
+}

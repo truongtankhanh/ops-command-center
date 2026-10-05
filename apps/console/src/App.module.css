@@ -1,0 +1,45 @@
+.console {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  min-height: 0;
+}
+
+.workspace.hasDetail {
+  grid-template-columns: 360px 1fr 400px;
+}
+
+.stage {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Small screens: the detail becomes a sheet (panel.module.css), then the map stacks above the feed. */
+
+@media (max-width: 1100px) {
+  .workspace,
+  .workspace.hasDetail {
+    grid-template-columns: 300px 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace,
+  .workspace.hasDetail {
+    grid-template-columns: 1fr;
+    grid-template-rows: 46vh auto;
+    overflow-y: auto;
+  }
+
+  .stage {
+    order: -1;
+  }
+}

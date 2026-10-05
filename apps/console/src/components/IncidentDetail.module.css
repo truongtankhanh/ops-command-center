@@ -1,0 +1,158 @@
+.head {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--line);
+  border-top: 4px solid var(--sev);
+}
+
+.head[data-status='resolved'] {
+  border-top-color: var(--resolved);
+}
+
+.close {
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-s);
+}
+
+.close:hover {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.facts dt {
+  color: var(--text-muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.severity {
+  text-transform: capitalize;
+}
+
+.description {
+  margin: 12px 0 0;
+  color: var(--text);
+  max-width: 60ch;
+}
+
+.section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.section h3 {
+  margin: 0 0 10px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.actionForm {
+  display: grid;
+  gap: 10px;
+}
+
+.actionForm textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  padding: 8px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--line);
+  background: var(--ground);
+  color: var(--text);
+  font: inherit;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline li {
+  position: relative;
+  padding: 0 0 14px 22px;
+}
+
+.timeline li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+
+.timeline li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 17px;
+  bottom: 0;
+  width: 2px;
+  background: var(--line);
+}
+
+.timelineKind {
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+.timelineTime {
+  color: var(--text-muted);
+  margin-left: 8px;
+  font-size: 14px;
+}
+
+/* A display name can be up to 255 characters and the panel is narrow: let it wrap anywhere. */
+.timelineActor {
+  margin-left: 8px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Decorative separator: the empty alternative text keeps screen readers from reading it. */
+.timelineActor::before {
+  content: '·';
+  content: '·' / '';
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+/* The names ("Simulator", "Demo seed", "System") already say it is not a person; colour only adds to it. */
+.timeline [data-actor-kind='system'] .timelineActor {
+  color: var(--text-muted);
+}
+
+.timelineNote {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.cameras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.noCameras {
+  margin: 0;
+}

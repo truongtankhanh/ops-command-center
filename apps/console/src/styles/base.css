@@ -1,0 +1,50 @@
+/* Element defaults. Component styles live in each component's `*.module.css` (ADR-0016). */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/*
+ * Severity colour: any element with `data-severity` exposes `--sev` to itself and its children.
+ * Global on purpose: the feed, the detail, the map markers and the report form all read it.
+ */
+
+[data-severity='critical'] {
+  --sev: var(--sev-critical);
+}
+[data-severity='high'] {
+  --sev: var(--sev-high);
+}
+[data-severity='medium'] {
+  --sev: var(--sev-medium);
+}
+[data-severity='low'] {
+  --sev: var(--sev-low);
+}

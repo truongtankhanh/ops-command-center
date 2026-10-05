@@ -6,6 +6,9 @@ import { useSignOut } from '../auth/useSignOut';
 import { countActiveBySeverity } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
+import button from '../styles/button.module.css';
+import text from '../styles/text.module.css';
+import styles from './Header.module.css';
 
 const CONNECTION_LABEL = { live: 'Live', connecting: 'Connecting…', offline: 'Offline' } as const;
 
@@ -19,17 +22,17 @@ export function Header() {
   const counts = countActiveBySeverity(incidents);
 
   return (
-    <header className="header">
+    <header className={styles.header}>
       <div>
-        <h1 className="header-title">Operations</h1>
-        <div className="header-site">Langbiang Tech Campus</div>
+        <h1 className={text.appTitle}>Operations</h1>
+        <div className={styles.site}>Langbiang Tech Campus</div>
       </div>
 
-      <ul className="severity-strip" aria-label="Active incidents by severity">
+      <ul className={styles.severityStrip} aria-label="Active incidents by severity">
         {[...INCIDENT_SEVERITIES].reverse().map((severity) => (
           <li
             key={severity}
-            className="severity-count"
+            className={styles.severityCount}
             data-severity={severity}
             data-zero={counts[severity] === 0}
           >
@@ -39,21 +42,21 @@ export function Header() {
         ))}
       </ul>
 
-      <div className="connection" data-state={connection} role="status">
+      <div className={styles.connection} data-state={connection} role="status">
         {CONNECTION_LABEL[connection]}
       </div>
-      <time className="clock" dateTime={new Date(now).toISOString()}>
+      <time className={styles.clock} dateTime={new Date(now).toISOString()}>
         {new Date(now).toLocaleTimeString([], {
           hour: '2-digit',
           minute: '2-digit',
           hour12: false,
         })}
       </time>
-      <div className="session-user">
+      <div className={styles.sessionUser}>
         {/* Explains why the actions are missing; the API still refuses them (ADR-0011). */}
-        {readOnly && <span className="session-access">View only</span>}
+        {readOnly && <span className={styles.sessionAccess}>View only</span>}
         <span>{user?.displayName}</span>
-        <button type="button" className="button" onClick={signOut}>
+        <button type="button" className={button.button} onClick={signOut}>
           Sign out
         </button>
       </div>
