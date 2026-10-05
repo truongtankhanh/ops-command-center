@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Insecure context</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./console.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<main class="auth" aria-busy="false">
+<div class="auth-card">
+<div class="auth-brand">
+<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#223848"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#8c9bff"></circle></svg>
+<h1 class="brand-name" style="font-size: 22px">Ops Command Center</h1>
+<span class="brand-site">Langbiang Tech Campus</span>
+</div>
+<div class="auth-state">
+<span class="auth-state-ic is-warning"><svg class="ic ic-l" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>
+<p class="auth-msg" role="alert">Sign-in needs HTTPS or localhost. Open the console at <code>http://localhost:18080</code>, or serve it over HTTPS.</p>
+</div>
+</div>
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":960,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

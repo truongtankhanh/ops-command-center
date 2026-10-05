@@ -2,3 +2,5 @@ dist
 coverage
 pnpm-lock.yaml
 .turbo
+# Verbatim copy of the design canvas source (docs/design/brief.md)
+docs/design/mockups
