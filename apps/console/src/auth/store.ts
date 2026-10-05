@@ -1,3 +1,4 @@
+import type { Role } from '@occ/contracts';
 import { create } from 'zustand';
 
 export type SessionStatus =
@@ -5,6 +6,8 @@ export type SessionStatus =
 
 export interface SessionUser {
   displayName: string;
+  /** The known roles in the current access token; empty means the user may do nothing. */
+  roles: readonly Role[];
 }
 
 interface SessionState {
@@ -20,7 +23,8 @@ interface SessionState {
 
 /**
  * What the UI shows about the session. Written by `./session`; tokens never live here, they stay
- * in the OIDC client's in-memory store (ADR-0010).
+ * in the OIDC client's in-memory store (ADR-0010). The roles are read from the token only to hide
+ * actions the user cannot take; the API decides what is allowed (ADR-0011).
  */
 export const useSession = create<SessionState>((set) => ({
   status: 'signing-in',

@@ -15,8 +15,9 @@ Cameras ordered by code, optionally limited to one zone.
 **200** — `Camera[]` (`id`, `code`, `name`, `zoneId`, `position: [lng, lat]`, `online`)
 **400** — `zoneId` is not a UUID
 **401** — missing or invalid bearer token
+**403** — the token has no role
 
-Source: `apps/api/src/cameras/cameras.controller.ts:33`
+Source: `apps/api/src/cameras/cameras.controller.ts:35`
 
 ### Resolve a camera's stream
 
@@ -42,6 +43,7 @@ How a client should render this camera. The answer comes from the configured cam
 Every variant also has `cameraId` and `label`.
 
 **401** — missing or invalid bearer token
+**403** — the token has no role
 **404** — unknown camera
 
-Source: `apps/api/src/cameras/cameras.controller.ts:42`
+Source: `apps/api/src/cameras/cameras.controller.ts:44`

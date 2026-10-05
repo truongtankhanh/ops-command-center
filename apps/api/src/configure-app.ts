@@ -23,7 +23,9 @@ export function configureApp(app: INestApplication): INestApplication {
         .setDescription(
           'Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace. ' +
             'Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; ' +
-            '`/events` takes the same token in the handshake as `auth.token`.',
+            '`/events` takes the same token in the handshake as `auth.token`. ' +
+            'Writes need the `operator` or `supervisor` role; a token with none of `operator`, ' +
+            '`supervisor` and `viewer` gets 403.',
         )
         .setVersion('0.1.0')
         .addBearerAuth()

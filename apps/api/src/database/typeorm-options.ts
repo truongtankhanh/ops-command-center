@@ -10,6 +10,7 @@ import { IncidentVersion1790924435743 } from './migrations/1790924435743-inciden
 import { Outbox1790929369576 } from './migrations/1790929369576-outbox';
 import { IdempotencyKey1791083081820 } from './migrations/1791083081820-idempotency-key';
 import { IdempotencyKeySubject1791088055281 } from './migrations/1791088055281-idempotency-key-subject';
+import { IncidentEventActor1791151300130 } from './migrations/1791151300130-incident-event-actor';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -53,6 +54,7 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
     Outbox1790929369576,
     IdempotencyKey1791083081820,
     IdempotencyKeySubject1791088055281,
+    IncidentEventActor1791151300130,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,

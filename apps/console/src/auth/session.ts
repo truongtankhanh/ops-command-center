@@ -1,3 +1,4 @@
+import { ROLES, type Role } from '@occ/contracts';
 import {
   InMemoryWebStorage,
   UserManager,
@@ -34,8 +35,12 @@ function userManager(): UserManager {
     automaticSilentRenew: false,
     monitorSession: false,
   });
+  // Raised on sign-in and after every renewal, so the roles always match the current token.
   manager.events.addUserLoaded((user) =>
-    useSession.getState().signedIn({ displayName: displayName(user.profile) }),
+    useSession.getState().signedIn({
+      displayName: displayName(user.profile),
+      roles: realmRoles(user.access_token),
+    }),
   );
   manager.events.addAccessTokenExpiring(() => void renewSession());
   return manager;
@@ -44,6 +49,36 @@ function userManager(): UserManager {
 /** Same order as the API's `TokenVerifier`, so the console and the API name a user alike. */
 function displayName(profile: UserProfile): string {
   return [profile.name, profile.preferred_username].find((name) => name?.trim()) ?? profile.sub;
+}
+
+/**
+ * Same rule as the API's `TokenVerifier`: Keycloak's `realm_access.roles` from the access token
+ * (the ID token does not carry it), reduced to the known roles. Anything unreadable means no
+ * roles. The signature is not checked: the result only hides actions, the API decides (ADR-0011).
+ */
+function realmRoles(accessToken: string | undefined): Role[] {
+  const payload = jwtPayload(accessToken);
+  if (typeof payload !== 'object' || payload === null) return [];
+  const realmAccess = (payload as { realm_access?: unknown }).realm_access;
+  if (typeof realmAccess !== 'object' || realmAccess === null) return [];
+  const { roles } = realmAccess as { roles?: unknown };
+  if (!Array.isArray(roles)) return [];
+  return ROLES.filter((role) => roles.includes(role));
+}
+
+/** The decoded payload of a JWT, or `undefined` when it is not one. */
+function jwtPayload(token: string | undefined): unknown {
+  const segments = token?.split('.');
+  if (segments?.length !== 3) return undefined;
+  try {
+    const base64 = segments[1]!.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    // atob() yields one character per byte; the bytes are UTF-8 (a name may not be ASCII).
+    const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return undefined;
+  }
 }
 
 /**

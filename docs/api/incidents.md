@@ -11,6 +11,20 @@ to connected clients — see [events.md](events.md).
 `version` starts at 1 and goes up by one on every change to the incident. Between two copies of
 the same `id`, the one with the higher `version` is newer.
 
+Every timeline entry has an `actor`: who caused it
+([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)).
+
+| `actor` field | Notes                                                                |
+| ------------- | -------------------------------------------------------------------- |
+| `kind`        | `user` (a signed-in person) or `system` (the API itself)             |
+| `subject`     | a user's identity-provider subject; `simulator`, `seed` or `system`¹ |
+| `displayName` | the name to show, as it was when the entry was written               |
+
+¹ `system` marks entries recorded before actors existed.
+
+Reading needs any role; reporting, acknowledging and resolving need `operator` or `supervisor`
+(see [README](README.md)). Every endpoint below answers **403** to a token without a role.
+
 | Enum       | Values                                                                                   |
 | ---------- | ---------------------------------------------------------------------------------------- |
 | `type`     | `intrusion`, `fire_alarm`, `equipment_fault`, `medical`, `crowding`, `suspicious_object` |
@@ -34,8 +48,9 @@ Ordered for an operator: unresolved first, then by severity (most severe first),
 **200** — `Incident[]`
 **400** — unknown enum value or `limit` out of range
 **401** — missing or invalid bearer token
+**403** — the token has no role
 
-Source: `apps/api/src/incidents/incidents.controller.ts:36`
+Source: `apps/api/src/incidents/incidents.controller.ts:42`
 
 ### Get an incident
 
@@ -45,22 +60,25 @@ Source: `apps/api/src/incidents/incidents.controller.ts:36`
 
 One incident with its full timeline, oldest entry first.
 
-**200** — `IncidentDetail` = `Incident` + `timeline: { id, kind, note, at }[]`, where `kind` is
-`reported`, `acknowledged` or `resolved` and `note` is the operator's note or `null`
+**200** — `IncidentDetail` = `Incident` + `timeline: { id, kind, note, at, actor }[]`, where `kind`
+is `reported`, `acknowledged` or `resolved`, `note` is the operator's note or `null`, and `actor`
+is who caused the entry
 **400** — `id` is not a UUID
 **401** — missing or invalid bearer token
+**403** — the token has no role
 **404** — unknown incident
 
-Source: `apps/api/src/incidents/incidents.controller.ts:44`
+Source: `apps/api/src/incidents/incidents.controller.ts:50`
 
 ### Report an incident
 
-<!-- steel:endpoint POST /api/incidents | headers: Idempotency-Key? | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: bearer -->
+<!-- steel:endpoint POST /api/incidents | headers: Idempotency-Key? | body: ReportIncidentDto{description?, position?, severity, title, type, zoneId} | returns: IncidentDetail | auth: bearer, permission: incident:report -->
 
 `POST /api/incidents` · Status: current
 
-Creates an incident in status `open` with `source: operator` and a sequential `code`.
-Broadcasts `incident.created` after the write commits.
+Creates an incident in status `open` with `source: operator` and a sequential `code`. The
+`reported` entry names the caller as its actor. Broadcasts `incident.created` after the write
+commits.
 
 | Header            | Type     | Rules                                                 |
 | ----------------- | -------- | ----------------------------------------------------- |
@@ -94,20 +112,21 @@ another user is a different key, so it never returns that user's response
 **201** — `IncidentDetail` (timeline has one `reported` entry)
 **400** — validation failed, an unknown field was sent, or `Idempotency-Key` is malformed
 **401** — missing or invalid bearer token
+**403** — the token has no role, or its role cannot report (`viewer`)
 **404** — `zoneId` does not exist
 **422** — `Idempotency-Key` was already used with a different body
 
-Source: `apps/api/src/incidents/incidents.controller.ts:57`
+Source: `apps/api/src/incidents/incidents.controller.ts:63`
 
 ### Acknowledge an incident
 
-<!-- steel:endpoint POST /api/incidents/:id/acknowledge | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer -->
+<!-- steel:endpoint POST /api/incidents/:id/acknowledge | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer, permission: incident:acknowledge -->
 
 `POST /api/incidents/:id/acknowledge` · Status: current
 
-Marks an `open` incident as being handled and records the optional note on the timeline. The
-incident row is locked during the change, so two operators cannot both acknowledge it.
-Broadcasts `incident.updated`.
+Marks an `open` incident as being handled and records the optional note on the timeline, with
+the caller as its actor. The incident row is locked during the change, so two operators cannot
+both acknowledge it. Broadcasts `incident.updated`.
 
 | Body field | Type     | Rules                       |
 | ---------- | -------- | --------------------------- |
@@ -115,19 +134,20 @@ Broadcasts `incident.updated`.
 
 **200** — `IncidentDetail`
 **401** — missing or invalid bearer token
+**403** — the token has no role, or its role cannot acknowledge (`viewer`)
 **404** — unknown incident
 **409** — the incident is not `open`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:87`
+Source: `apps/api/src/incidents/incidents.controller.ts:95`
 
 ### Resolve an incident
 
-<!-- steel:endpoint POST /api/incidents/:id/resolve | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer -->
+<!-- steel:endpoint POST /api/incidents/:id/resolve | params: id | body: TransitionIncidentDto{note?} | returns: IncidentDetail | auth: bearer, permission: incident:resolve -->
 
 `POST /api/incidents/:id/resolve` · Status: current
 
-Closes an `open` or `acknowledged` incident, with an optional resolution note. Broadcasts
-`incident.updated`.
+Closes an `open` or `acknowledged` incident, with an optional resolution note and the caller as
+the entry's actor. Broadcasts `incident.updated`.
 
 | Body field | Type     | Rules                       |
 | ---------- | -------- | --------------------------- |
@@ -135,7 +155,8 @@ Closes an `open` or `acknowledged` incident, with an optional resolution note. B
 
 **200** — `IncidentDetail`
 **401** — missing or invalid bearer token
+**403** — the token has no role, or its role cannot resolve (`viewer`)
 **404** — unknown incident
 **409** — the incident is already `resolved`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:102`
+Source: `apps/api/src/incidents/incidents.controller.ts:112`

@@ -4,6 +4,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiHeader,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -13,9 +14,10 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { IDEMPOTENCY_KEY_HEADER, type Incident, type IncidentDetail } from '@occ/contracts';
-import { CurrentUser } from '../auth/auth.decorators';
+import { CurrentUser, RequirePermission } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/token-verifier';
 import { ApiErrorDto } from '../common/api-error.dto';
+import { userActor } from './actors';
 import { IncidentDetailDto, IncidentDto } from './dto/incident.dto';
 import {
   ListIncidentsQueryDto,
@@ -28,6 +30,10 @@ import { IncidentsService } from './incidents.service';
 @ApiTags('incidents')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
+@ApiForbiddenResponse({
+  type: ApiErrorDto,
+  description: 'No role grants access, or the role lacks the permission',
+})
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidents: IncidentsService) {}
@@ -55,6 +61,7 @@ export class IncidentsController {
    * `Idempotency-Key` and body returns the first response and creates nothing (ADR-0009).
    */
   @Post()
+  @RequirePermission('incident:report')
   @ApiHeader({
     name: IDEMPOTENCY_KEY_HEADER,
     required: false,
@@ -79,12 +86,14 @@ export class IncidentsController {
     return this.incidents.report(
       body,
       'operator',
+      userActor(user),
       idempotencyKey === undefined ? undefined : { subject: user.subject, key: idempotencyKey },
     );
   }
 
   /** Mark an open incident as being handled. */
   @Post(':id/acknowledge')
+  @RequirePermission('incident:acknowledge')
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: IncidentDetailDto })
@@ -94,12 +103,14 @@ export class IncidentsController {
   acknowledge(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TransitionIncidentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<IncidentDetail> {
-    return this.incidents.acknowledge(id, body.note);
+    return this.incidents.acknowledge(id, userActor(user), body.note);
   }
 
   /** Close an incident, optionally with a resolution note. */
   @Post(':id/resolve')
+  @RequirePermission('incident:resolve')
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: IncidentDetailDto })
@@ -109,7 +120,8 @@ export class IncidentsController {
   resolve(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TransitionIncidentDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<IncidentDetail> {
-    return this.incidents.resolve(id, body.note);
+    return this.incidents.resolve(id, userActor(user), body.note);
   }
 }

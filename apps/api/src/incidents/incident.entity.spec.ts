@@ -1,21 +1,27 @@
 import { InvalidTransitionError } from '../common/domain-errors';
+import { SystemActors } from './actors';
 import { IncidentEntity } from './incident.entity';
+
+const actor = SystemActors.seed;
 
 const reportedAt = new Date('2026-10-01T08:00:00Z');
 const later = (minutes: number) => new Date(reportedAt.getTime() + minutes * 60_000);
 
 const newIncident = () =>
-  IncidentEntity.report({
-    code: 'INC-000001',
-    type: 'intrusion',
-    severity: 'high',
-    title: 'Door forced open',
-    zoneId: 'zone-1',
-    lng: 108.44,
-    lat: 11.95,
-    source: 'operator',
-    at: reportedAt,
-  });
+  IncidentEntity.report(
+    {
+      code: 'INC-000001',
+      type: 'intrusion',
+      severity: 'high',
+      title: 'Door forced open',
+      zoneId: 'zone-1',
+      lng: 108.44,
+      lat: 11.95,
+      source: 'operator',
+      at: reportedAt,
+    },
+    actor,
+  );
 
 describe('IncidentEntity lifecycle', () => {
   it('starts open with a "reported" timeline entry', () => {
@@ -28,7 +34,7 @@ describe('IncidentEntity lifecycle', () => {
 
   it('acknowledges an open incident and records who/when on the timeline', () => {
     const incident = newIncident();
-    incident.acknowledge(later(2), 'Guard dispatched');
+    incident.acknowledge(later(2), actor, 'Guard dispatched');
 
     expect(incident.status).toBe('acknowledged');
     expect(incident.acknowledgedAt).toEqual(later(2));
@@ -40,12 +46,12 @@ describe('IncidentEntity lifecycle', () => {
 
   it('resolves from open or acknowledged', () => {
     const direct = newIncident();
-    direct.resolve(later(1));
+    direct.resolve(later(1), actor);
     expect(direct.status).toBe('resolved');
 
     const handled = newIncident();
-    handled.acknowledge(later(1));
-    handled.resolve(later(5), 'False alarm');
+    handled.acknowledge(later(1), actor);
+    handled.resolve(later(5), actor, 'False alarm');
     expect(handled.status).toBe('resolved');
     expect(handled.resolvedAt).toEqual(later(5));
     expect(handled.pendingEvents.map((e) => e.kind)).toEqual([
@@ -58,15 +64,15 @@ describe('IncidentEntity lifecycle', () => {
   it.each([
     [
       'acknowledge an acknowledged incident',
-      (i: IncidentEntity) => (i.acknowledge(later(1)), () => i.acknowledge(later(2))),
+      (i: IncidentEntity) => (i.acknowledge(later(1), actor), () => i.acknowledge(later(2), actor)),
     ],
     [
       'acknowledge a resolved incident',
-      (i: IncidentEntity) => (i.resolve(later(1)), () => i.acknowledge(later(2))),
+      (i: IncidentEntity) => (i.resolve(later(1), actor), () => i.acknowledge(later(2), actor)),
     ],
     [
       'resolve a resolved incident',
-      (i: IncidentEntity) => (i.resolve(later(1)), () => i.resolve(later(2))),
+      (i: IncidentEntity) => (i.resolve(later(1), actor), () => i.resolve(later(2), actor)),
     ],
   ])('refuses to %s', (_, arrange) => {
     const incident = newIncident();

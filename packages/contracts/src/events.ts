@@ -35,4 +35,6 @@ export const EventsConnectErrors = {
   Unauthorized: 'Unauthorized',
   /** The API cannot check tokens right now: retry, signing in again will not help. */
   IdentityProviderUnavailable: 'Identity provider unavailable',
+  /** Signed in, but no role grants access: signing in again will not help. */
+  Forbidden: 'Forbidden',
 } as const;

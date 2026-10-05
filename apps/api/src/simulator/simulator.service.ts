@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, Repository } from 'typeorm';
 import { randomPointIn } from '../common/geo';
 import type { Env } from '../config/env.validation';
+import { SystemActors } from '../incidents/actors';
 import { IncidentEntity } from '../incidents/incident.entity';
 import { IncidentsService } from '../incidents/incidents.service';
 import { ZoneEntity } from '../zones/zone.entity';
@@ -22,7 +23,8 @@ const RESOLVE_AFTER_MS = 45_000;
 /**
  * Demo traffic generator: reports incidents and plays the role of other operators
  * acknowledging and resolving them. It goes through `IncidentsService` exactly like
- * a real operator, so it exercises the same rules, persistence and events.
+ * a real operator, so it exercises the same rules, persistence and events. Its timeline entries
+ * name the `simulator` system actor, never a person.
  * With several replicas, only the one holding the `SimulatorLeader` lock ticks.
  */
 @Injectable()
@@ -92,6 +94,7 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
         position: randomPointIn(zone.polygon, random),
       },
       'simulator',
+      SystemActors.simulator,
     );
   }
 
@@ -105,7 +108,11 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
       order: { acknowledgedAt: 'ASC' },
     });
     if (toResolve && random() < 0.6) {
-      await this.incidentsService.resolve(toResolve.id, 'Handled by field team (simulated).');
+      await this.incidentsService.resolve(
+        toResolve.id,
+        SystemActors.simulator,
+        'Handled by field team (simulated).',
+      );
     }
 
     const toAcknowledge = await this.incidents.findOne({
@@ -117,7 +124,7 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
       order: { reportedAt: 'ASC' },
     });
     if (toAcknowledge && random() < 0.5) {
-      await this.incidentsService.acknowledge(toAcknowledge.id);
+      await this.incidentsService.acknowledge(toAcknowledge.id, SystemActors.simulator);
     }
   }
 }

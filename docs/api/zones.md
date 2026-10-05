@@ -11,6 +11,7 @@ it for the session.
 
 **200** — `Zone[]`
 **401** — missing or invalid bearer token
+**403** — the token has no role
 
 | Field     | Type                                           | Notes                                                |
 | --------- | ---------------------------------------------- | ---------------------------------------------------- |
@@ -21,4 +22,4 @@ it for the session.
 | `polygon` | `[lng, lat][]`                                 | closed ring                                          |
 | `center`  | `[lng, lat]`                                   | default position for incidents reported in this zone |
 
-Source: `apps/api/src/zones/zones.controller.ts:16`
+Source: `apps/api/src/zones/zones.controller.ts:23`

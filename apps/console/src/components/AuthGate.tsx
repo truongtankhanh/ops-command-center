@@ -1,17 +1,29 @@
 import type { ReactNode } from 'react';
 import { signInAgain } from '../auth/session';
 import { useSession } from '../auth/store';
+import { useSignOut } from '../auth/useSignOut';
 
 /**
- * Renders the console only once the operator is signed in, so no query or socket starts without
- * a token. Every other session state gets a full-screen message instead.
+ * Renders the console only once the operator is signed in with a role, so no query or socket
+ * starts without a token, or with one the API would refuse (ADR-0011). Every other session state
+ * gets a full-screen message instead.
  */
 export function AuthGate({ children }: { children: ReactNode }) {
   const status = useSession((s) => s.status);
   const expired = useSession((s) => s.expired);
+  // Derived, not a status: a renewal that grants a role brings the console back by itself.
+  const noRole = useSession((s) => s.user?.roles.length === 0);
 
   switch (status) {
     case 'signed-in':
+      // Signing in again would return the same roles, so the only way out is another account.
+      if (noRole) {
+        return (
+          <AuthScreen action={<SignOutButton />}>
+            This account has no access to the console. Ask an administrator to give it a role.
+          </AuthScreen>
+        );
+      }
       return (
         <>
           {expired && <SessionExpiredBanner />}
@@ -70,6 +82,15 @@ function SignInButton({ children }: { children: ReactNode }) {
   return (
     <button type="button" className="button button-primary" onClick={() => void signInAgain()}>
       {children}
+    </button>
+  );
+}
+
+function SignOutButton() {
+  const signOut = useSignOut();
+  return (
+    <button type="button" className="button button-primary" onClick={signOut}>
+      Sign out
     </button>
   );
 }

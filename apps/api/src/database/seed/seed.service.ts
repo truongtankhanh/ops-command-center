@@ -4,6 +4,7 @@ import { DataSource, type EntityManager } from 'typeorm';
 import { CameraEntity } from '../../cameras/camera.entity';
 import { offset } from '../../common/geo';
 import type { Env } from '../../config/env.validation';
+import { SystemActors } from '../../incidents/actors';
 import { nextIncidentCode } from '../../incidents/incident-code';
 import { IncidentEntity } from '../../incidents/incident.entity';
 import { persistIncident } from '../../incidents/persist-incident';
@@ -75,29 +76,38 @@ export class SeedService implements OnApplicationBootstrap {
       );
     }
 
-    // Oldest first, so codes increase with time like they would in production.
+    // Oldest first, so codes increase with time like they would in production. The people in the
+    // seed story are fictional, so their timeline entries name the `seed` system actor.
+    const actor = SystemActors.seed;
     for (const seed of [...INCIDENTS].sort((a, b) => b.minutesAgo - a.minutesAgo)) {
       const zone = zones.get(seed.zone)!;
       const reportedAt = new Date(now.getTime() - seed.minutesAgo * MINUTE);
       const [lng, lat] = offset(zone.center, 6, -4);
-      const incident = IncidentEntity.report({
-        code: await nextIncidentCode(manager),
-        type: seed.type,
-        severity: seed.severity,
-        title: seed.title,
-        description: seed.description,
-        zoneId: zone.id,
-        lng,
-        lat,
-        source: 'operator',
-        at: reportedAt,
-      });
+      const incident = IncidentEntity.report(
+        {
+          code: await nextIncidentCode(manager),
+          type: seed.type,
+          severity: seed.severity,
+          title: seed.title,
+          description: seed.description,
+          zoneId: zone.id,
+          lng,
+          lat,
+          source: 'operator',
+          at: reportedAt,
+        },
+        actor,
+      );
       if (seed.acknowledgedAfter !== undefined) {
-        incident.acknowledge(new Date(reportedAt.getTime() + seed.acknowledgedAfter * MINUTE));
+        incident.acknowledge(
+          new Date(reportedAt.getTime() + seed.acknowledgedAfter * MINUTE),
+          actor,
+        );
       }
       if (seed.resolvedAfter !== undefined) {
         incident.resolve(
           new Date(reportedAt.getTime() + seed.resolvedAfter * MINUTE),
+          actor,
           seed.resolution ?? null,
         );
       }

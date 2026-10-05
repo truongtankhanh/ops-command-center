@@ -95,6 +95,22 @@ function setSecureContext(secure: boolean) {
   Object.defineProperty(window, 'isSecureContext', { value: secure, configurable: true });
 }
 
+/** Base64url without padding, as in a JWT. */
+function base64url(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
+/** An unsigned access token: the console reads its claims but never checks the signature. */
+function accessToken(claims: object): string {
+  return `${base64url('{"alg":"none"}')}.${base64url(JSON.stringify(claims))}.sig`;
+}
+
+const PROFILE = { sub: 'user-1', name: 'Demo Operator' };
+
 describe('session', () => {
   beforeEach(() => {
     oidc.FakeUserManager.instances.length = 0;
@@ -248,7 +264,84 @@ describe('session', () => {
 
       manager.userLoaded!({ profile });
 
-      expect(useSession.getState().user).toEqual({ displayName });
+      expect(useSession.getState().user).toEqual({ displayName, roles: [] });
+    });
+
+    it('reads the known realm roles from the access token', async () => {
+      const { useSession, manager } = await loadStarted();
+      const roles = ['viewer', 'default-roles-occ', 'operator', 'operator'];
+
+      manager.userLoaded!({
+        profile: PROFILE,
+        access_token: accessToken({ realm_access: { roles } }),
+      });
+
+      // Known roles only, in the API's order, once each.
+      expect(useSession.getState().user).toEqual({
+        displayName: 'Demo Operator',
+        roles: ['operator', 'viewer'],
+      });
+    });
+
+    it.each([
+      { label: 'the access token is missing', token: undefined },
+      { label: 'the token is not a JWT', token: 'opaque-token' },
+      { label: 'the payload is not base64', token: 'a.%%%.c' },
+      { label: 'the payload is not JSON', token: `a.${base64url('not json')}.c` },
+      { label: 'realm_access is missing', token: accessToken({}) },
+      { label: 'realm_access is null', token: accessToken({ realm_access: null }) },
+      { label: 'realm_access is a string', token: accessToken({ realm_access: 'operator' }) },
+      {
+        label: 'roles is not an array',
+        token: accessToken({ realm_access: { roles: 'operator' } }),
+      },
+    ])('signs in with no roles when $label', async ({ token }) => {
+      const { useSession, manager } = await loadStarted();
+
+      expect(() => manager.userLoaded!({ profile: PROFILE, access_token: token })).not.toThrow();
+
+      expect(useSession.getState()).toMatchObject({ status: 'signed-in', user: { roles: [] } });
+    });
+
+    it('decodes a base64url payload', async () => {
+      const { useSession, manager } = await loadStarted();
+      const token = accessToken({
+        realm_access: { roles: ['operator'] },
+        name: 'Nguyễn Văn A',
+        note: '???>>>',
+      });
+      // These claims encode to `-` and `_`, which atob() rejects unless they are translated.
+      expect(token.split('.')[1]).toMatch(/[-_]/);
+
+      manager.userLoaded!({ profile: PROFILE, access_token: token });
+
+      expect(useSession.getState().user?.roles).toEqual(['operator']);
+    });
+
+    it('follows the roles of the latest token', async () => {
+      const { useSession, manager } = await loadStarted();
+      manager.userLoaded!({
+        profile: PROFILE,
+        access_token: accessToken({ realm_access: { roles: ['operator'] } }),
+      });
+
+      // A renewal raises the same event with the new token.
+      manager.userLoaded!({
+        profile: PROFILE,
+        access_token: accessToken({ realm_access: { roles: ['viewer'] } }),
+      });
+
+      expect(useSession.getState().user?.roles).toEqual(['viewer']);
+    });
+
+    it('keeps the roles, never the token, in the session store', async () => {
+      const { useSession, manager } = await loadStarted();
+      const token = accessToken({ realm_access: { roles: ['operator'] } });
+
+      manager.userLoaded!({ profile: PROFILE, access_token: token });
+
+      expect(useSession.getState().user?.roles).toEqual(['operator']);
+      expect(JSON.stringify(useSession.getState())).not.toContain(token.split('.')[1]);
     });
 
     it('renews the session when the access token is about to expire', async () => {

@@ -48,7 +48,7 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
  * receives every event through its `OutboxListener` (ADR-0008). It only listens — services never
  * call it directly. WebSocket transport only: long-polling needs sticky sessions, and replicas
  * sit behind a round-robin proxy. A console connects with an access token and is disconnected when
- * that token expires (ADR-0010).
+ * that token expires (ADR-0010). Any known role may listen; a user with none is refused (ADR-0011).
  */
 @WebSocketGateway({ namespace: EVENTS_NAMESPACE, transports: ['websocket'] })
 export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -116,8 +116,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   private async authenticate(socket: EventsSocket): Promise<void> {
     const { token } = socket.handshake.auth as Partial<EventsHandshakeAuth>;
     if (typeof token !== 'string') throw new Error(EventsConnectErrors.Unauthorized);
+    let verified: VerifiedToken;
     try {
-      socket.data = await this.tokens.verify(token);
+      verified = await this.tokens.verify(token);
     } catch (error) {
       if (error instanceof InvalidTokenError) throw new Error(EventsConnectErrors.Unauthorized);
       if (error instanceof IdentityProviderUnavailableError) {
@@ -127,5 +128,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       this.logger.error('Handshake authentication failed', (error as Error)?.stack);
       throw new Error('Internal server error');
     }
+    // The roles stay those of this token until it expires and the connection is closed.
+    if (verified.user.roles.length === 0) throw new Error(EventsConnectErrors.Forbidden);
+    socket.data = verified;
   }
 }

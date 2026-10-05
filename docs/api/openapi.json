@@ -47,6 +47,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token"
+          },
+          "403": {
+            "description": "No role grants access"
           }
         },
         "security": [
@@ -88,6 +91,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token"
+          },
+          "403": {
+            "description": "No role grants access"
           }
         },
         "security": [
@@ -125,6 +131,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token"
+          },
+          "403": {
+            "description": "No role grants access"
           }
         },
         "security": [
@@ -194,6 +203,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token"
+          },
+          "403": {
+            "description": "No role grants access, or the role lacks the permission"
           }
         },
         "security": [
@@ -246,6 +258,9 @@
           "401": {
             "description": "Missing or invalid bearer token"
           },
+          "403": {
+            "description": "No role grants access, or the role lacks the permission"
+          },
           "404": {
             "description": "Zone does not exist"
           },
@@ -288,6 +303,9 @@
           },
           "401": {
             "description": "Missing or invalid bearer token"
+          },
+          "403": {
+            "description": "No role grants access, or the role lacks the permission"
           },
           "404": {
             "description": ""
@@ -339,6 +357,9 @@
           "401": {
             "description": "Missing or invalid bearer token"
           },
+          "403": {
+            "description": "No role grants access, or the role lacks the permission"
+          },
           "409": {
             "description": "Incident is not open"
           }
@@ -389,6 +410,9 @@
           "401": {
             "description": "Missing or invalid bearer token"
           },
+          "403": {
+            "description": "No role grants access, or the role lacks the permission"
+          },
           "409": {
             "description": "Incident is already resolved"
           }
@@ -406,7 +430,7 @@
   "info": {
     "title": "Ops Command Center API",
     "version": "0.1.0",
-    "description": "Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace — see events.md. Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; `/events` takes the same token in the handshake as `auth.token`."
+    "description": "Incidents, zones and cameras. Live updates on the `/events` Socket.IO namespace — see events.md. Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; `/events` takes the same token in the handshake as `auth.token`. Writes need the `operator` or `supervisor` role; a token with none of `operator`, `supervisor` and `viewer` gets 403."
   },
   "tags": [],
   "components": {
@@ -601,6 +625,24 @@
           "version"
         ]
       },
+      "ActorDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": ["user", "system"],
+            "type": "string"
+          },
+          "subject": {
+            "type": "string",
+            "example": "f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d"
+          },
+          "displayName": {
+            "type": "string",
+            "example": "Demo Operator"
+          }
+        },
+        "required": ["kind", "subject", "displayName"]
+      },
       "IncidentEventDto": {
         "type": "object",
         "properties": {
@@ -618,9 +660,12 @@
           "at": {
             "type": "string",
             "format": "date-time"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/ActorDto"
           }
         },
-        "required": ["id", "kind", "note", "at"]
+        "required": ["id", "kind", "note", "at", "actor"]
       },
       "IncidentDetailDto": {
         "type": "object",

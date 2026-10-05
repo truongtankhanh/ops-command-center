@@ -5,7 +5,7 @@ import {
   type IncidentType,
 } from '@occ/contracts';
 import { type FormEvent, useEffect, useState } from 'react';
-import { ApiRequestError } from '../api/client';
+import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { typeLabel } from '../lib/incidents';
@@ -16,6 +16,14 @@ const DESCRIPTION_MAX = 2000;
 /** The API's 422 for this form: the key was used for a report with other details. */
 const REPORT_ALREADY_SENT =
   'This report was already sent with different details. Check the incident feed before reporting it again.';
+
+/** The API's message, except for the statuses an operator needs explained in their own terms. */
+function reportErrorMessage(error: Error): string {
+  if (!(error instanceof ApiRequestError)) return error.message;
+  if (error.status === 422) return REPORT_ALREADY_SENT;
+  if (error.status === 403) return NO_LONGER_ALLOWED;
+  return error.message;
+}
 
 /** Operator-reported incident. Limits mirror the API's validation rules. */
 export function ReportIncidentForm() {
@@ -135,9 +143,7 @@ export function ReportIncidentForm() {
 
         {report.error && (
           <p className="form-error" role="alert">
-            {report.error instanceof ApiRequestError && report.error.status === 422
-              ? REPORT_ALREADY_SENT
-              : report.error.message}
+            {reportErrorMessage(report.error)}
           </p>
         )}
 
