@@ -1,9 +1,10 @@
 import type { IncidentDetail as Detail, IncidentEventKind } from '@occ/contracts';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
 import { statusLabel, typeLabel } from '../lib/incidents';
+import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
 import { CameraTile } from './CameraTile';
 
@@ -19,13 +20,11 @@ const time = (iso: string) =>
 export function IncidentDetail({ id }: { id: string }) {
   const { data: incident, isPending, isError } = useIncident(id);
   const select = useConsole((s) => s.select);
+  const close = useCallback(() => select(null), [select]);
+  // Kept here rather than in the response form, so Escape knows whether closing would lose it.
+  const [note, setNote] = useState('');
 
-  // Escape closes the panel.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && select(null);
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [select]);
+  useCloseOnEscape(close, note.trim() !== '');
 
   if (isPending) return <aside className="detail" aria-busy="true" />;
   if (isError || !incident) {
@@ -35,10 +34,20 @@ export function IncidentDetail({ id }: { id: string }) {
       </aside>
     );
   }
-  return <DetailBody incident={incident} onClose={() => select(null)} />;
+  return <DetailBody incident={incident} note={note} onNoteChange={setNote} onClose={close} />;
 }
 
-function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => void }) {
+function DetailBody({
+  incident,
+  note,
+  onNoteChange,
+  onClose,
+}: {
+  incident: Detail;
+  note: string;
+  onNoteChange: (note: string) => void;
+  onClose: () => void;
+}) {
   const { data: zones = [] } = useZones();
   const { data: cameras = [] } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
@@ -74,7 +83,13 @@ function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => vo
       </div>
 
       {(showAcknowledge || showResolve) && (
-        <Actions incident={incident} showAcknowledge={showAcknowledge} showResolve={showResolve} />
+        <Actions
+          incident={incident}
+          note={note}
+          onNoteChange={onNoteChange}
+          showAcknowledge={showAcknowledge}
+          showResolve={showResolve}
+        />
       )}
 
       <section className="detail-section">
@@ -114,14 +129,17 @@ function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => vo
 /** Only the actions the user's roles grant are shown; the API refuses the rest anyway (ADR-0011). */
 function Actions({
   incident,
+  note,
+  onNoteChange,
   showAcknowledge,
   showResolve,
 }: {
   incident: Detail;
+  note: string;
+  onNoteChange: (note: string) => void;
   showAcknowledge: boolean;
   showResolve: boolean;
 }) {
-  const [note, setNote] = useState('');
   const acknowledge = useTransition('acknowledge');
   const resolve = useTransition('resolve');
   const busy = acknowledge.isPending || resolve.isPending;
@@ -130,7 +148,7 @@ function Actions({
   const run = (mutation: typeof acknowledge) =>
     mutation.mutate(
       { id: incident.id, note: note.trim() || undefined },
-      { onSuccess: () => setNote('') },
+      { onSuccess: () => onNoteChange('') },
     );
 
   return (
@@ -143,7 +161,7 @@ function Actions({
         <textarea
           id="incident-note"
           value={note}
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => onNoteChange(event.target.value)}
           placeholder="e.g. Guard dispatched from the main gate"
           maxLength={1000}
         />

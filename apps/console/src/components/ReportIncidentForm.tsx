@@ -4,15 +4,17 @@ import {
   type IncidentSeverity,
   type IncidentType,
 } from '@occ/contracts';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { typeLabel } from '../lib/incidents';
+import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
 
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
+const DEFAULT_SEVERITY: IncidentSeverity = 'medium';
 /** The API's 422 for this form: the key was used for a report with other details. */
 const REPORT_ALREADY_SENT =
   'This report was already sent with different details. Check the incident feed before reporting it again.';
@@ -33,7 +35,7 @@ export function ReportIncidentForm() {
   const closeReport = useConsole((s) => s.closeReport);
 
   const [type, setType] = useState<IncidentType | ''>('');
-  const [severity, setSeverity] = useState<IncidentSeverity>('medium');
+  const [severity, setSeverity] = useState<IncidentSeverity>(DEFAULT_SEVERITY);
   const [zoneId, setZoneId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -41,11 +43,13 @@ export function ReportIncidentForm() {
   // attempt actually reached the API, an edited retry must get a 422, not create a duplicate.
   const [idempotencyKey] = useState(newIdempotencyKey);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && closeReport();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [closeReport]);
+  const hasDraft =
+    type !== '' ||
+    severity !== DEFAULT_SEVERITY ||
+    zoneId !== '' ||
+    title.trim() !== '' ||
+    description.trim() !== '';
+  useCloseOnEscape(closeReport, hasDraft);
 
   const ready = type !== '' && zoneId !== '' && title.trim() !== '';
 

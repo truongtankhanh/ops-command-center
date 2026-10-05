@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import type { ApiError } from '@occ/contracts';
 import type { Request, Response } from 'express';
-import { DomainError, EntityNotFoundError, InvalidTransitionError } from './domain-errors';
+import {
+  DomainError,
+  EntityNotFoundError,
+  InvalidTransitionError,
+  PositionOutsideZoneError,
+} from './domain-errors';
 
 /** One place that turns any thrown error into the `ApiError` body clients rely on. */
 @Catch()
@@ -49,6 +54,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     }
     if (exception instanceof InvalidTransitionError) {
       return { statusCode: HttpStatus.CONFLICT, message: exception.message };
+    }
+    // An invalid body like any other, so not the fallback 422: clients read a 422 on
+    // POST /incidents as a reused Idempotency-Key (ADR-0009).
+    if (exception instanceof PositionOutsideZoneError) {
+      return { statusCode: HttpStatus.BAD_REQUEST, message: exception.message };
     }
     if (exception instanceof DomainError) {
       return { statusCode: HttpStatus.UNPROCESSABLE_ENTITY, message: exception.message };

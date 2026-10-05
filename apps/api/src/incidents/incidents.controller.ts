@@ -83,7 +83,10 @@ export class IncidentsController {
     schema: { type: 'string', minLength: 1, maxLength: 255 },
   })
   @ApiCreatedResponse({ type: IncidentDetailDto })
-  @ApiBadRequestResponse({ type: ApiErrorDto, description: 'Invalid body or Idempotency-Key' })
+  @ApiBadRequestResponse({
+    type: ApiErrorDto,
+    description: 'Invalid body or Idempotency-Key, or position outside the zone',
+  })
   @ApiNotFoundResponse({ type: ApiErrorDto, description: 'Zone does not exist' })
   @ApiUnprocessableEntityResponse({
     type: ApiErrorDto,

@@ -1,4 +1,5 @@
-import { offset, randomPointIn, rectangle } from './geo';
+import type { LngLat } from '@occ/contracts';
+import { isInPolygon, offset, randomPointIn, rectangle } from './geo';
 
 describe('geo helpers', () => {
   const center: [number, number] = [108.4415, 11.953];
@@ -23,5 +24,46 @@ describe('geo helpers', () => {
       expect(lng).toBeGreaterThanOrEqual(Math.min(...lngs) + span * 0.2 - 1e-7);
       expect(lng).toBeLessThanOrEqual(Math.max(...lngs) - span * 0.2 + 1e-7);
     }
+  });
+
+  describe('isInPolygon', () => {
+    const ring = rectangle(center, 100, 50);
+    const [southWest, southEast, northEast] = ring as [LngLat, LngLat, LngLat];
+
+    it('accepts the centre and any simulator point', () => {
+      expect(isInPolygon(center, ring)).toBe(true);
+      for (const roll of [0, 0.5, 0.999]) {
+        const point = randomPointIn(ring, () => roll);
+        expect(isInPolygon(point, ring)).toBe(true);
+      }
+    });
+
+    it('rejects points outside, including ones beside the ring', () => {
+      expect(isInPolygon(offset(center, 0, 40), ring)).toBe(false);
+      expect(isInPolygon(offset(center, 60, 0), ring)).toBe(false);
+      expect(isInPolygon(offset(northEast, 1, 1), ring)).toBe(false);
+    });
+
+    it('counts a vertex or a point on an edge as inside', () => {
+      expect(isInPolygon(southWest, ring)).toBe(true);
+      const midSouthEdge: LngLat = [(southWest[0] + southEast[0]) / 2, southWest[1]];
+      expect(isInPolygon(midSouthEdge, ring)).toBe(true);
+    });
+
+    it('handles a concave ring', () => {
+      // An L shape: the notch at the top right is outside.
+      const l: LngLat[] = [
+        [0, 0],
+        [2, 0],
+        [2, 1],
+        [1, 1],
+        [1, 2],
+        [0, 2],
+        [0, 0],
+      ];
+      expect(isInPolygon([0.5, 1.5], l)).toBe(true);
+      expect(isInPolygon([1.5, 0.5], l)).toBe(true);
+      expect(isInPolygon([1.5, 1.5], l)).toBe(false);
+    });
   });
 });

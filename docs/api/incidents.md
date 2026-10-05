@@ -84,14 +84,14 @@ commits.
 | ----------------- | -------- | ----------------------------------------------------- |
 | `Idempotency-Key` | `string` | optional, 1–255 printable ASCII characters, no spaces |
 
-| Body field    | Type               | Rules                                                            |
-| ------------- | ------------------ | ---------------------------------------------------------------- |
-| `type`        | `IncidentType`     | required                                                         |
-| `severity`    | `IncidentSeverity` | required                                                         |
-| `title`       | `string`           | required, 1–160 characters                                       |
-| `description` | `string`           | optional, ≤ 2000 characters                                      |
-| `zoneId`      | `uuid`             | required, must exist                                             |
-| `position`    | `[lng, lat]`       | optional, both numbers in range; defaults to the zone's `center` |
+| Body field    | Type               | Rules                                                                                                        |
+| ------------- | ------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `type`        | `IncidentType`     | required                                                                                                     |
+| `severity`    | `IncidentSeverity` | required                                                                                                     |
+| `title`       | `string`           | required, 1–160 characters                                                                                   |
+| `description` | `string`           | optional, ≤ 2000 characters                                                                                  |
+| `zoneId`      | `uuid`             | required, must exist                                                                                         |
+| `position`    | `[lng, lat]`       | optional, both numbers in range, inside the zone's `polygon` or on its edge; defaults to the zone's `center` |
 
 **Retries.** Send a new random `Idempotency-Key` (a UUID works) with each submission, and the
 same key again on every retry of it. The key is kept for 24 h
@@ -110,7 +110,8 @@ another user is a different key, so it never returns that user's response
 - Without the header, every request creates a new incident.
 
 **201** — `IncidentDetail` (timeline has one `reported` entry)
-**400** — validation failed, an unknown field was sent, or `Idempotency-Key` is malformed
+**400** — validation failed, an unknown field was sent, `position` is outside the zone, or
+`Idempotency-Key` is malformed
 **401** — missing or invalid bearer token
 **403** — the token has no role, or its role cannot report (`viewer`)
 **404** — `zoneId` does not exist

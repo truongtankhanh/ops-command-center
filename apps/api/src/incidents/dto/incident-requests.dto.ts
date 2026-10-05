@@ -108,7 +108,10 @@ export class ReportIncidentDto implements ReportIncidentRequest {
   @IsUUID()
   zoneId: string;
 
-  /** [lng, lat], longitude -180..180 and latitude -90..90. Defaults to the zone centre. */
+  /**
+   * [lng, lat], longitude -180..180 and latitude -90..90, inside the zone's polygon or on its edge.
+   * Defaults to the zone centre.
+   */
   @ApiPropertyOptional({ type: [Number], minItems: 2, maxItems: 2, example: [108.4415, 11.953] })
   @IsOptional()
   @IsLngLat()

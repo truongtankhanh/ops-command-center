@@ -301,4 +301,24 @@ describe('ReportIncidentForm', () => {
     await userEvent.keyboard('{Escape}');
     expect(useConsole.getState().reporting).toBe(false);
   });
+
+  it('stays open with the input on Escape once anything is entered, but still closes on Cancel', async () => {
+    const { form } = renderForm();
+    await userEvent.type(form.getByLabelText('Title'), 'Smoke near the stairwell');
+
+    await userEvent.keyboard('{Escape}');
+    expect(useConsole.getState().reporting).toBe(true);
+    expect(form.getByLabelText('Title')).toHaveValue('Smoke near the stairwell');
+
+    await userEvent.click(form.getByRole('button', { name: 'Cancel' }));
+    expect(useConsole.getState().reporting).toBe(false);
+  });
+
+  it('counts a changed severity as input to keep', async () => {
+    const { form } = renderForm();
+    await userEvent.click(form.getByLabelText('Critical'));
+
+    await userEvent.keyboard('{Escape}');
+    expect(useConsole.getState().reporting).toBe(true);
+  });
 });

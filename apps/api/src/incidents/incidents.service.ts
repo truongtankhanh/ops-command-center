@@ -10,7 +10,8 @@ import {
   type ReportIncidentRequest,
 } from '@occ/contracts';
 import { DataSource, type EntityManager } from 'typeorm';
-import { EntityNotFoundError } from '../common/domain-errors';
+import { EntityNotFoundError, PositionOutsideZoneError } from '../common/domain-errors';
+import { isInPolygon } from '../common/geo';
 import { OutboxRelay } from '../outbox/outbox-relay.service';
 import { ZoneEntity } from '../zones/zone.entity';
 import { DEFAULT_INCIDENT_LIMIT } from './dto/incident-requests.dto';
@@ -86,6 +87,9 @@ export class IncidentsService {
 
       const zone = await manager.findOneBy(ZoneEntity, { id: request.zoneId });
       if (!zone) throw new EntityNotFoundError('Zone', request.zoneId);
+      if (request.position && !isInPolygon(request.position, zone.polygon)) {
+        throw new PositionOutsideZoneError(zone.code);
+      }
       const [lng, lat] = request.position ?? zone.center;
 
       const incident = await persistIncident(

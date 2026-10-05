@@ -253,7 +253,7 @@
             }
           },
           "400": {
-            "description": "Invalid body or Idempotency-Key"
+            "description": "Invalid body or Idempotency-Key, or position outside the zone"
           },
           "401": {
             "description": "Missing or invalid bearer token"
@@ -767,7 +767,7 @@
         "type": "object",
         "properties": {
           "position": {
-            "description": "[lng, lat]. Defaults to the zone centre.",
+            "description": "[lng, lat], inside the zone's polygon or on its edge. Defaults to the zone centre.",
             "minItems": 2,
             "maxItems": 2,
             "type": "array",

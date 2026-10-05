@@ -191,6 +191,33 @@ describe('IncidentDetail', () => {
     });
   });
 
+  describe('closing', () => {
+    beforeEach(() => {
+      signInAs('operator');
+      useConsole.setState({ selectedIncidentId: detail().id });
+    });
+
+    it('closes on Escape while there is no note', async () => {
+      renderDetail();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+
+    it('stays open with the note on Escape, but still closes on Close', async () => {
+      renderDetail();
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard dispatched');
+
+      await userEvent.keyboard('{Escape}');
+      expect(useConsole.getState().selectedIncidentId).toBe(detail().id);
+      expect(screen.getByLabelText(NOTE_LABEL)).toHaveValue('Guard dispatched');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Close incident' }));
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+  });
+
   describe('transitions', () => {
     beforeEach(() => signInAs('operator'));
 

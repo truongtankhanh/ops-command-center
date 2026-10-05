@@ -1,6 +1,10 @@
 import { type ArgumentsHost, BadRequestException } from '@nestjs/common';
 import { ApiExceptionFilter } from './api-exception.filter';
-import { EntityNotFoundError, InvalidTransitionError } from './domain-errors';
+import {
+  EntityNotFoundError,
+  InvalidTransitionError,
+  PositionOutsideZoneError,
+} from './domain-errors';
 
 function hostFor(path = '/api/incidents/1') {
   const json = jest.fn();
@@ -21,6 +25,7 @@ describe('ApiExceptionFilter', () => {
     [new EntityNotFoundError('Incident', '1'), 404, 'NOT_FOUND'],
     [new InvalidTransitionError('INC-000001', 'resolved', 'resolve'), 409, 'CONFLICT'],
     [new BadRequestException(['title should not be empty']), 400, 'BAD_REQUEST'],
+    [new PositionOutsideZoneError('BLD-LIB'), 400, 'BAD_REQUEST'],
   ])('maps %p to %i', (error, statusCode, name) => {
     const { host, status, json } = hostFor();
 

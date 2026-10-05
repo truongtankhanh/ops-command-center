@@ -14,7 +14,7 @@ export interface ReportIncidentRequest {
   title: string;
   description?: string;
   zoneId: string;
-  /** Defaults to the zone center when omitted. */
+  /** Must lie inside the zone's polygon or on its edge. Defaults to the zone center when omitted. */
   position?: LngLat;
 }
 

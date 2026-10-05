@@ -21,6 +21,13 @@ export class InvalidTransitionError extends DomainError {
   }
 }
 
+/** A reported position must agree with the zone it names, or the map and the zone disagree. */
+export class PositionOutsideZoneError extends DomainError {
+  constructor(zoneCode: string) {
+    super(`position is outside zone ${zoneCode}`);
+  }
+}
+
 /** A retry must repeat the original request; a different body under the same key is a client bug. */
 export class IdempotencyKeyReusedError extends DomainError {
   constructor() {

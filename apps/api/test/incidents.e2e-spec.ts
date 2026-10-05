@@ -261,6 +261,27 @@ describe('Incidents (e2e)', () => {
     );
   });
 
+  it('rejects a position outside the zone with 400 and creates nothing', async () => {
+    const before = await api(app).get('/api/incidents?limit=200').expect(200);
+    const north = Math.max(...zone.polygon.map(([, lat]) => lat));
+
+    const res = await api(app)
+      .post('/api/incidents')
+      .send({
+        type: 'medical',
+        severity: 'low',
+        title: 'Outside the library',
+        zoneId: zone.id,
+        position: [zone.center[0], north + 0.001],
+      })
+      .expect(400);
+
+    expect(res.body).toMatchObject({ statusCode: 400, error: 'BAD_REQUEST' });
+    expect(res.body.message).toContain(zone.code);
+    const after = await api(app).get('/api/incidents?limit=200').expect(200);
+    expect(after.body).toHaveLength(before.body.length);
+  });
+
   it('returns 404 for an unknown zone or incident', async () => {
     await api(app)
       .post('/api/incidents')
