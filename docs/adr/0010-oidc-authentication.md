@@ -77,7 +77,7 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - `exp` and `nbf`, with 30 s of clock tolerance;
   - that `sub` is present.
   - The user is `{ subject: sub, displayName: name ?? preferred_username ?? sub }`. Roles are not read yet. Done in IMP-10 ([ADR-0011](0011-role-based-authorization-and-timeline-actor.md)).
-- **REST.** `AuthGuard` is a global `APP_GUARD`, so a new route is protected without anyone remembering to add a guard. `@Public()` opts out; today only `GET /api/health` uses it, because Docker and CI probe it without a token. Swagger UI is served outside the Nest router, so the guard does not apply to it; its exposure stays governed by ADR-0005.
+- **REST.** `AuthGuard` is a global `APP_GUARD`, so a new route is protected without anyone remembering to add a guard. `@Public()` opts out; today only the health probes (`GET /api/health/live` and `/ready`, ADR-0013) use it, because Docker and CI probe them without a token. Swagger UI is served outside the Nest router, so the guard does not apply to it; its exposure stays governed by ADR-0005.
   - No or malformed `Authorization: Bearer …` → `401` with `WWW-Authenticate: Bearer realm="occ"`, plus `error="invalid_token"` when a token was sent but rejected.
   - The JWKS cannot be fetched → `503` "Identity provider unavailable". A `401` would send the operator to a sign-in page that cannot help.
 - **WebSocket.** Nest guards do not run on the handshake, so `/events` authenticates in namespace middleware with the same verifier.
@@ -94,9 +94,9 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
 
 ## Consequences
 
-- **Every route but health needs a token.** A client without one gets `401`, the console must sign in, and the simulator and seed are unaffected because they call services in-process.
+- **Every route but the health probes needs a token.** A client without one gets `401`, the console must sign in, and the simulator and seed are unaffected because they call services in-process.
 - **The identity provider is on the request path, but not the boot path.**
-  - Keys are fetched lazily, so the API boots, and `/api/health` stays green, while Keycloak is down. Restarting the API would not fix Keycloak.
+  - Keys are fetched lazily, so the API boots, and its health probes stay green, while Keycloak is down (ADR-0013 keeps Keycloak out of readiness). Restarting the API would not fix Keycloak.
   - During an outage, REST answers `503` and new sockets are refused. Sockets already connected stay up until their token expires.
   - The API does not `depends_on` Keycloak in Compose.
 - **Revocation is not immediate.** A signed-out or disabled user's access token stays valid until it expires (5 min in the demo realm). That is the trade-off for not calling the IdP on every request (introspection, option 3).
@@ -128,4 +128,4 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - a token with the wrong issuer;
   - a token signed by another key.
 
-  It also checks that `/api/health` stays open, that a socket without a token is refused, that a socket is closed when its token expires, and that two users with the same idempotency key get two incidents.
+  It also checks that the health probes stay open, that a socket without a token is refused, that a socket is closed when its token expires, and that two users with the same idempotency key get two incidents.

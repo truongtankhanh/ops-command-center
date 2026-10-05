@@ -175,3 +175,4 @@ A production deployment guide is not published yet.
 | [0009](adr/0009-idempotent-incident-creation.md)                | Idempotent incident creation with an `Idempotency-Key`   |
 | [0010](adr/0010-oidc-authentication.md)                         | OIDC authentication for REST and WebSocket               |
 | [0011](adr/0011-role-based-authorization-and-timeline-actor.md) | Role-based authorization and the timeline actor          |
+| [0013](adr/0013-liveness-and-readiness-probes.md)               | Separate liveness and readiness probes                   |

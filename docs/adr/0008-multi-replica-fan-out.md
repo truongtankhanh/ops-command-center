@@ -53,7 +53,7 @@ Option 4, with the changes needed for replicas to coexist.
   - Every committed change is still announced, and still at-least-once from the outbox's point of view. A batch is announced again only if its commit failed, and then nothing was delivered the first time, so duplicates are now rarer than under ADR-0007.
   - Listeners now run after the commit, outside the relay's transaction. The "listeners must be synchronous and cheap" constraint of ADR-0007 no longer applies to the relay.
   - Clients still keep the higher `version`, and nothing changes for them.
-- **A per-replica gap.** While one replica's LISTEN connection is down, its consoles miss notifications: per replica, delivery is at-most-once during that window. The outbox rows are safe, and the resync refetch repairs the consoles once the connection is back. Consoles on other replicas are unaffected. The health endpoint does not report the listener's state; that belongs to the readiness probe in IMP-12.
+- **A per-replica gap.** While one replica's LISTEN connection is down, its consoles miss notifications: per replica, delivery is at-most-once during that window. The outbox rows are safe, and the resync refetch repairs the consoles once the connection is back. Consoles on other replicas are unaffected. `GET /api/health/ready` reports the listener's state, so a replica whose connection is down is not ready (ADR-0013).
 - **Cost.**
   - One primary-key read of up to 100 rows per batch on each replica.
   - Up to two pool connections per replica held for the process's lifetime (listener, simulator leader), out of 10.

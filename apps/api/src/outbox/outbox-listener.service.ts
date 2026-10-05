@@ -54,6 +54,14 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
     await this.listen();
   }
 
+  /**
+   * Whether this replica receives notifications now. False while reconnecting: consoles connected
+   * here miss live events until it is back, so readiness reports it (ADR-0008).
+   */
+  isListening(): boolean {
+    return this.connection !== undefined && !this.stopped;
+  }
+
   /** Runs before TypeORM closes the pool, so the connection can be returned clean. */
   async beforeApplicationShutdown(): Promise<void> {
     this.stopped = true;

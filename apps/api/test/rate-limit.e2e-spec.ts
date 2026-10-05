@@ -111,10 +111,12 @@ describe('Rate limiting (e2e)', () => {
     await reportInvalid(app, token).set('X-Forwarded-For', '203.0.113.7').expect(429);
   });
 
-  it('never throttles the health probe', async () => {
-    for (let i = 0; i < 150; i++) {
-      const res = await request(app.getHttpServer()).get('/api/health').expect(200);
-      expect(res.headers['x-ratelimit-limit']).toBeUndefined();
+  it('never throttles the health probes', async () => {
+    for (const path of ['/api/health/live', '/api/health/ready']) {
+      for (let i = 0; i < 150; i++) {
+        const res = await request(app.getHttpServer()).get(path).expect(200);
+        expect(res.headers['x-ratelimit-limit']).toBeUndefined();
+      }
     }
   });
 

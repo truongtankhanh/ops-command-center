@@ -10,7 +10,7 @@ import { type Env, validateEnv } from './config/env.validation';
 import { runMigrationsOnBoot } from './database/migrate-on-boot';
 import { SeedService } from './database/seed/seed.service';
 import { typeormOptions } from './database/typeorm-options';
-import { HealthController } from './health/health.controller';
+import { HealthModule } from './health/health.module';
 import { IncidentsModule } from './incidents/incidents.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -49,8 +49,8 @@ import { ZonesModule } from './zones/zones.module';
     IncidentsModule,
     RealtimeModule,
     SimulatorModule,
+    HealthModule,
   ],
-  controllers: [HealthController],
   providers: [SeedService],
 })
 export class AppModule {}

@@ -22,6 +22,10 @@ WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=3s --start-period=20s \
-  CMD wget -qO- http://127.0.0.1:3000/api/health > /dev/null || exit 1
+# Liveness, never readiness (ADR-0013): Swarm or an autoheal restarts on this, and restarting every
+# replica fixes no database outage. Boot gating still holds: the API listens only once the database
+# is connected and migrated. The start period covers the 60 s migration-lock wait plus TypeORM's
+# connection retries; a fast boot turns healthy on its first success.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=90s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health/live > /dev/null || exit 1
 CMD ["node", "dist/main.js"]

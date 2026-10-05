@@ -327,9 +327,14 @@ describe('Incidents (e2e)', () => {
       }
     });
 
-    it('leaves health and the API docs open', async () => {
-      const health = await request(app.getHttpServer()).get('/api/health').expect(200);
-      expect(health.body).toEqual({ status: 'ok', database: 'up' });
+    it('leaves the health probes and the API docs open', async () => {
+      const live = await request(app.getHttpServer()).get('/api/health/live').expect(200);
+      expect(live.body).toEqual({ status: 'ok', info: {}, error: {}, details: {} });
+      const ready = await request(app.getHttpServer()).get('/api/health/ready').expect(200);
+      expect(ready.body).toMatchObject({
+        status: 'ok',
+        info: { database: { status: 'up' }, outbox_listener: { status: 'up' } },
+      });
 
       // Swagger is served outside the Nest router, so the guard never sees it (ADR-0005 governs it).
       const docs = await request(app.getHttpServer()).get('/api/docs-json').expect(200);

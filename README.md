@@ -85,6 +85,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0010](docs/adr/0010-oidc-authentication.md)                         | OIDC sign-in through a self-hosted Keycloak; every request and socket carries an access token checked by the API                     |
 | [0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md) | Permissions per role (`viewer` read-only), checked by the API; every timeline entry records its actor                                |
 | [0012](docs/adr/0012-rate-limiting.md)                               | Rate limits per IP in nginx and per user and route in the API, counted in PostgreSQL across replicas                                 |
+| [0013](docs/adr/0013-liveness-and-readiness-probes.md)               | Liveness checks the process only, readiness the database and this replica's `LISTEN`; Docker probes liveness                         |
 
 ### Design details worth a look
 

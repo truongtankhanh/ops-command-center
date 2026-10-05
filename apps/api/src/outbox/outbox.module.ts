@@ -7,6 +7,6 @@ import { OutboxEntity } from './outbox.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([OutboxEntity])],
   providers: [OutboxRelay, OutboxListener],
-  exports: [OutboxRelay],
+  exports: [OutboxRelay, OutboxListener],
 })
 export class OutboxModule {}

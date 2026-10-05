@@ -48,7 +48,7 @@ Two layers, each keyed on what it can trust.
   | `POST /api/incidents/:id/resolve`     | 30 / min       | Same, separate bucket                                                   |
   | `GET /api/cameras/:id/stream`         | 300 / min      | One call per camera opened, so it grows with the camera count           |
   | Any other route                       | 120 / min      | Far above what a person at a console sends                              |
-  | `GET /api/health`                     | none           | A throttled probe would mark a healthy replica down (`@SkipThrottle()`) |
+  | `GET /api/health/live`, `/ready`      | none           | A throttled probe would mark a healthy replica down (`@SkipThrottle()`) |
 
   All values live in `apps/api/src/rate-limit/rate-limits.ts`.
 
@@ -75,7 +75,7 @@ Two layers, each keyed on what it can trust.
 ## Consequences
 
 - **Cost.** One write per throttled request, on an `UNLOGGED` table, which skips the WAL. It shares the pool with the request itself, which needs the database anyway.
-- **Database outage: fail closed.** A storage error fails the request with `500`. Every throttled route reads the same database, so the request would fail anyway, and failing open would only hide the cause. `/api/health` is exempt and keeps reporting the outage.
+- **Database outage: fail closed.** A storage error fails the request with `500`. Every throttled route reads the same database, so the request would fail anyway, and failing open would only hide the cause. The health probes are exempt, and `/api/health/ready` keeps reporting the outage (ADR-0013).
 - **Counters are not durable.** An `UNLOGGED` table is emptied after a PostgreSQL crash and is not copied to streaming replicas. A crash or failover resets every counter: a short window with no API limits, while the nginx layer keeps working.
 - **Idempotent retries count.** A retry with the same `Idempotency-Key` (ADR-0009) is counted like any request: the guard runs before the key is read. 10 per minute leaves ample room for a person pressing retry.
 - **Limits change only with a deploy.** They are code constants, reviewed like any other change. There are no runtime overrides, per-tenant limits or quotas: the product is single-tenant.
@@ -91,7 +91,7 @@ Two layers, each keyed on what it can trust.
   - exact counting under concurrency;
   - separate buckets per user and per route;
   - that `X-Forwarded-For` cannot reset a count;
-  - that health is never throttled;
+  - that neither health probe is ever throttled;
   - that a `401` writes nothing;
   - that a window can expire.
 
@@ -99,7 +99,7 @@ Two layers, each keyed on what it can trust.
   - **In CI.** The `images` job's step "Check nginx rate-limits the edge" bursts `/socket.io/` until nginx answers `429`, and asserts the body has every `ApiError` field with `error: "TOO_MANY_REQUESTS"`.
   - **By hand, the header overwrite.** `docker compose exec console nginx -T 2>/dev/null | grep -E '^\s*proxy_set_header X-Forwarded-For'` prints exactly three lines (`/api/`, `/socket.io/`, `/auth/`), each ending in `$remote_addr;`. Any `$proxy_add_x_forwarded_for` is the regression the rollback note below warns about.
   - **By hand, the edge key.** Send 50 requests to `http://localhost:18080/socket.io/`, each with a different `X-Forwarded-For` (`curl -s -o /dev/null -w '%{http_code}\n' -H "X-Forwarded-For: 198.51.100.$i" …`). Some must come back `429`: a spoofed header does not buy a fresh bucket. If none do, a `real-ip.conf` trusts too wide a CIDR.
-  - **Not observable end to end.** The address the API derives (`req.ip`) is not logged. Today the only routes keyed by `ip:` are `@Public()` ones, and the only one, `/api/health`, skips throttling. Checking it through the stack needs a token, and the console client has no password grant (ADR-0010). The API side is covered by the e2e case above.
+  - **Not observable end to end.** The address the API derives (`req.ip`) is not logged. Today the only routes keyed by `ip:` are `@Public()` ones, and the only ones, the health probes, skip throttling. Checking it through the stack needs a token, and the console client has no password grant (ADR-0010). The API side is covered by the e2e case above.
 
 - **Rollback.** Revert the code and run the migration's `down`, which drops `throttler_hit`; only in-flight counters are lost. Revert `nginx.conf` together with the API: an API trusting one hop behind an nginx that appends to a client's header again would key on a client-chosen address.
 - **Revisit** when:
