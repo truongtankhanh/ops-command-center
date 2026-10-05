@@ -5,35 +5,35 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  border-left: 1px solid var(--line);
-  background: var(--panel);
+  border-left: 1px solid var(--border-subtle);
+  background: var(--surface-1);
 }
 
 .toprow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-family: var(--font-ui);
 }
 
 .title {
-  margin: 6px 0 8px;
+  margin: var(--space-1) 0 var(--space-2);
   font-family: var(--font-ui);
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.15;
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-2xl);
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .error {
   margin: 0;
-  color: var(--sev-critical);
-  font-size: 14px;
+  color: var(--danger);
+  font-size: var(--type-m);
 }
 
 /* Small screens: the panel becomes a sheet over the workspace. */
@@ -44,7 +44,7 @@
     top: 0;
     bottom: 0;
     width: min(420px, 100%);
-    z-index: 10;
-    box-shadow: -12px 0 32px rgb(0 0 0 / 0.4);
+    z-index: var(--z-sheet);
+    box-shadow: var(--shadow-3);
   }
 }

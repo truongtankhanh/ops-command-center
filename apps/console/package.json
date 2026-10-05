@@ -9,9 +9,10 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint src",
+    "lint": "eslint src scripts && node scripts/contrast.ts --check",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tokens:contrast": "node scripts/contrast.ts && prettier --write ../../docs/design/tokens.md"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",

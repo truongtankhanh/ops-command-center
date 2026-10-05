@@ -2,33 +2,33 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 14px;
+  gap: var(--space-3);
   height: 100%;
-  padding: 16px;
+  padding: var(--space-4);
   text-align: center;
 }
 
 .screen p {
   margin: 0;
   max-width: 44ch;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
-/* Above the detail sheet (z-index 10): the operator must see it whatever is open. */
+/* Above the sheet and every other layer (--z-session): operators must see it whatever is open. */
 .sessionBanner {
   position: fixed;
-  top: 12px;
+  top: var(--space-3);
   left: 50%;
-  z-index: 20;
+  z-index: var(--z-session);
   display: flex;
   align-items: center;
-  gap: 14px;
-  max-width: calc(100% - 32px);
-  padding: 10px 14px;
-  border: 1px solid var(--sev-critical);
-  border-radius: var(--radius-m);
-  background: var(--panel-raised);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.4);
+  gap: var(--space-3);
+  max-width: calc(100% - 2 * var(--space-4));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
   transform: translateX(-50%);
 }
 

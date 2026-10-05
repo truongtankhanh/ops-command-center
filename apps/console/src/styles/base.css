@@ -12,10 +12,14 @@ body,
 }
 
 body {
-  background: var(--ground);
-  color: var(--text);
+  background: var(--surface-0);
+  color: var(--text-primary);
   font-family: var(--font-body);
-  font-size: 15px;
+  font-size: var(--type-body);
+  /*
+   * Unitless on purpose (= --leading-body at 15px): it scales for every element that sets only a
+   * font-size. A px value here would be inherited as is, e.g. 22px lines on 24px text.
+   */
   line-height: 1.45;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
@@ -27,8 +31,8 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 /*

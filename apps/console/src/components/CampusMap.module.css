@@ -12,8 +12,8 @@
 
 .zoneLabel {
   font-family: var(--font-ui);
-  font-size: 13px;
-  color: var(--text-muted);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
   pointer-events: none;
   white-space: nowrap;
 }
@@ -21,14 +21,14 @@
 .cameraMarker {
   width: 12px;
   height: 12px;
-  border-radius: 3px;
-  border: 2px solid var(--text-muted);
-  background: var(--ground);
+  border-radius: var(--radius-s);
+  border: 2px solid var(--text-tertiary);
+  background: var(--surface-0);
 }
 
 .cameraMarker[data-online='false'] {
   border-style: dashed;
-  border-color: var(--text-faint);
+  border-color: var(--border-strong);
 }
 
 /*
@@ -40,19 +40,19 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 3px solid var(--ground);
+  border: 3px solid var(--surface-0);
   background: var(--sev);
   cursor: pointer;
   padding: 0;
 }
 
 .incidentMarker[data-status='acknowledged'] {
-  background: var(--ground);
+  background: var(--surface-0);
   border: 3px solid var(--sev);
 }
 
 .incidentMarker[aria-pressed='true'] {
-  outline: 2px solid var(--focus);
+  outline: var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -62,7 +62,7 @@
   inset: -9px;
   border-radius: 50%;
   border: 2px solid var(--sev);
-  animation: pulse 1.8s ease-out infinite;
+  animation: pulse var(--duration-pulse) var(--ease-out) infinite;
 }
 
 @keyframes pulse {
@@ -78,22 +78,22 @@
 
 .legend {
   position: absolute;
-  left: 14px;
-  bottom: 14px;
+  left: var(--space-3);
+  bottom: var(--space-3);
   display: flex;
-  gap: 16px;
-  padding: 8px 12px;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--panel) 92%, transparent);
-  border: 1px solid var(--line);
-  font-size: 13px;
-  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
 }
 
 .legend span {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
 }
 
 .legendSwatch {

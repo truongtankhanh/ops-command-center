@@ -1,21 +1,21 @@
 .header {
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--line);
-  background: var(--panel);
+  gap: var(--space-7);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-1);
 }
 
 .site {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 
 .severityStrip {
   display: flex;
-  gap: 18px;
+  gap: var(--space-4);
   margin-left: auto;
   list-style: none;
   padding: 0;
@@ -26,26 +26,26 @@
 .severityCount {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--space-1-5);
   font-family: var(--font-ui);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .severityCount strong {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
 }
 
 .severityCount[data-zero='true'] strong {
-  color: var(--text-faint);
+  color: var(--text-tertiary);
 }
 
 .severityCount::before {
   content: '';
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-s);
   background: var(--sev);
   align-self: center;
 }
@@ -53,9 +53,9 @@
 .connection {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-family: var(--font-ui);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   min-width: 112px;
 }
 
@@ -64,25 +64,25 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-faint);
+  background: var(--text-tertiary);
 }
 
 .connection[data-state='live']::before {
-  background: #4fd18b;
+  background: var(--success);
 }
 
 .connection[data-state='offline'] {
-  color: var(--sev-critical);
+  color: var(--warning);
 }
 
 .connection[data-state='offline']::before {
-  background: var(--sev-critical);
+  background: var(--warning);
 }
 
 .clock {
   font-family: var(--font-ui);
-  font-size: 22px;
-  font-weight: 500;
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-medium);
   min-width: 64px;
   text-align: right;
 }
@@ -90,30 +90,30 @@
 .sessionUser {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   font-family: var(--font-ui);
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 /* An element selector, so it outranks button.module.css whatever order the bundle puts them in. */
 .sessionUser button {
   flex: none;
-  padding: 5px 12px;
-  font-size: 15px;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--type-body);
 }
 
 .sessionAccess {
-  padding: 2px 8px;
-  border: 1px solid var(--line);
+  padding: var(--space-0-5) var(--space-2);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-s);
-  font-size: 14px;
+  font-size: var(--type-m);
 }
 
 @media (max-width: 720px) {
   .header {
     flex-wrap: wrap;
-    gap: 10px 18px;
-    padding: 10px 16px;
+    gap: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-4);
   }
 
   .severityStrip {

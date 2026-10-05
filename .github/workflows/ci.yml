@@ -61,13 +61,23 @@ jobs:
       # port publishes it, and each replica serves it, labelled with its environment.
       - name: Check metrics stay off the edge and every replica serves them
         run: |
-          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/api/metrics)
-          test "$code" = 404
-          test -z "$(docker compose port api 9464 2>/dev/null)"
+          # `bash -e` stops silently on a failed `test`, so each check names itself in the log.
+          fail() { echo "::error::$1"; exit 1; }
+          # `|| true`: an unreachable nginx makes curl exit non-zero; it still prints 000 as the code.
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/api/metrics || true)
+          test "$code" = 404 || fail "/api/metrics through nginx returned $code, want 404"
+          # Ask the engine, not `docker compose port`: Compose lists an EXPOSEd port as published on 0
+          # and prints `:0` for it. `docker port` prints only real host bindings, per replica.
+          for id in $(docker compose ps -q api); do
+            binding=$(docker port "$id" 9464 2>/dev/null || true)
+            test -z "$binding" || fail "api container $id publishes 9464 on the host: $binding"
+          done
           for replica in 1 2; do
             # Read whole before grep: `grep -q` exits early and pipefail would flag wget's SIGPIPE.
-            body=$(docker compose exec -T --index "$replica" api wget -qO- http://127.0.0.1:9464/metrics)
-            grep -q '^process_start_time_seconds{.*env="demo"' <<< "$body"
+            body=$(docker compose exec -T --index "$replica" api wget -qO- http://127.0.0.1:9464/metrics) ||
+              fail "api replica $replica does not serve /metrics on 9464"
+            grep -q '^process_start_time_seconds{.*env="demo"' <<< "$body" ||
+              fail "api replica $replica metrics lack process_start_time_seconds with env=\"demo\""
           done
       - name: Check nginx rate-limits the edge
         run: |
@@ -84,9 +94,12 @@ jobs:
           docker compose stop postgres
           probe() { docker compose exec -T --index "$1" api wget -qO /dev/null "http://127.0.0.1:3000/api/health/$2"; }
           for replica in 1 2; do
-            probe "$replica" live
+            if ! probe "$replica" live; then
+              echo "::error::api replica $replica is not live with the database stopped"
+              exit 1
+            fi
             if probe "$replica" ready; then
-              echo "api replica $replica reports ready with the database stopped"
+              echo "::error::api replica $replica reports ready with the database stopped"
               exit 1
             fi
           done

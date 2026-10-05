@@ -1,37 +1,37 @@
 .head {
-  padding: 18px 20px 16px;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-4) var(--space-5) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
   border-top: 4px solid var(--sev);
 }
 
 .head[data-status='resolved'] {
-  border-top-color: var(--resolved);
+  border-top-color: var(--status-resolved);
 }
 
 .close {
   border: 0;
   background: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px 6px;
+  padding: var(--space-1) var(--space-1-5);
   border-radius: var(--radius-s);
 }
 
 .close:hover {
-  color: var(--text);
-  background: var(--panel-raised);
+  color: var(--text-primary);
+  background: var(--surface-2);
 }
 
 .facts {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 14px;
-  margin: 12px 0 0;
-  font-size: 14px;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-3) 0 0;
+  font-size: var(--type-m);
 }
 
 .facts dt {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .facts dd {
@@ -43,38 +43,38 @@
 }
 
 .description {
-  margin: 12px 0 0;
-  color: var(--text);
+  margin: var(--space-3) 0 0;
+  color: var(--text-primary);
   max-width: 60ch;
 }
 
 .section {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--line);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .section h3 {
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-2);
   font-family: var(--font-ui);
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: var(--type-l);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
 }
 
 .actionForm {
   display: grid;
-  gap: 10px;
+  gap: var(--space-2);
 }
 
 .actionForm textarea {
   width: 100%;
   min-height: 64px;
   resize: vertical;
-  padding: 8px 10px;
+  padding: var(--space-2);
   border-radius: var(--radius-s);
-  border: 1px solid var(--line);
-  background: var(--ground);
-  color: var(--text);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-0);
+  color: var(--text-primary);
   font: inherit;
 }
 
@@ -86,7 +86,7 @@
 
 .timeline li {
   position: relative;
-  padding: 0 0 14px 22px;
+  padding: 0 0 var(--space-3) var(--space-5);
 }
 
 .timeline li::before {
@@ -97,7 +97,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--text-tertiary);
 }
 
 .timeline li:not(:last-child)::after {
@@ -107,24 +107,24 @@
   top: 17px;
   bottom: 0;
   width: 2px;
-  background: var(--line);
+  background: var(--border-subtle);
 }
 
 .timelineKind {
   font-family: var(--font-ui);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 
 .timelineTime {
-  color: var(--text-muted);
-  margin-left: 8px;
-  font-size: 14px;
+  color: var(--text-secondary);
+  margin-left: var(--space-2);
+  font-size: var(--type-m);
 }
 
 /* A display name can be up to 255 characters and the panel is narrow: let it wrap anywhere. */
 .timelineActor {
-  margin-left: 8px;
-  font-size: 14px;
+  margin-left: var(--space-2);
+  font-size: var(--type-m);
   overflow-wrap: anywhere;
 }
 
@@ -132,25 +132,25 @@
 .timelineActor::before {
   content: '·';
   content: '·' / '';
-  margin-right: 8px;
-  color: var(--text-muted);
+  margin-right: var(--space-2);
+  color: var(--text-secondary);
 }
 
 /* The names ("Simulator", "Demo seed", "System") already say it is not a person; colour only adds to it. */
 .timeline [data-actor-kind='system'] .timelineActor {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .timelineNote {
-  margin: 2px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
+  margin: var(--space-0-5) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--type-m);
 }
 
 .cameras {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .noCameras {

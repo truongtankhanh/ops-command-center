@@ -3,18 +3,18 @@
 /* The product title: the header and the sign-in screens. */
 .appTitle {
   font-family: var(--font-ui);
-  font-weight: 600;
-  font-size: 19px;
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-xl);
   letter-spacing: 0.01em;
   margin: 0;
 }
 
 /* A message in place of content: loading, empty or failed. */
 .empty {
-  padding: 32px 20px;
-  color: var(--text-muted);
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-secondary);
 }
 
 .muted {
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
