@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-05
+- **Amended by:** [ADR-0015](0015-metrics-and-tracing.md) (`429`s per route in the HTTP metrics)
 
 ## Context
 

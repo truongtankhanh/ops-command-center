@@ -33,6 +33,7 @@
     "@nestjs/websockets": "^12.1.2",
     "@occ/camera-adapter": "workspace:*",
     "@occ/contracts": "workspace:*",
+    "@prometheus-io/client": "^0.16.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "jose": "^6.2.12",

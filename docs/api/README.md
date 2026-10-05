@@ -9,7 +9,7 @@ Last reconciled: 2026-10-05
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
-| Health           | 1         | [health.md](health.md)       |
+| Health           | 2         | [health.md](health.md)       |
 | Zones            | 1         | [zones.md](zones.md)         |
 | Cameras          | 2         | [cameras.md](cameras.md)     |
 | Incidents        | 5         | [incidents.md](incidents.md) |
@@ -18,7 +18,8 @@ Last reconciled: 2026-10-05
 ## Conventions that apply to every endpoint
 
 - **Base path** `/api`.
-- **Authentication.** Every endpoint except `GET /api/health` needs an OIDC access token from the
+- **Authentication.** Every endpoint except the health probes (`/api/health/live`, `/api/health/ready`)
+  needs an OIDC access token from the
   configured issuer, sent as `Authorization: Bearer <token>`
   ([ADR-0010](../adr/0010-oidc-authentication.md)). The `/events` namespace takes the same token in
   its handshake — see [events.md](events.md).
@@ -67,3 +68,23 @@ Last reconciled: 2026-10-05
   reused with a different body.
 - **Retries.** `POST /api/incidents` accepts an optional `Idempotency-Key` header that makes it
   safe to retry; see [incidents.md](incidents.md#report-an-incident).
+- **Rate limits** ([ADR-0012](../adr/0012-rate-limiting.md)). Per signed-in user and per route, in
+  fixed one-minute windows counted across every API replica:
+
+  | Route                                                             | Requests per minute |
+  | ----------------------------------------------------------------- | ------------------: |
+  | `POST /api/incidents`                                             |                  10 |
+  | `POST /api/incidents/:id/acknowledge`, `…/resolve` (each its own) |                  30 |
+  | `GET /api/cameras/:id/stream`                                     |                 300 |
+  | Everything else                                                   |                 120 |
+
+  Limited responses carry `X-RateLimit-Limit` and `X-RateLimit-Remaining`. Over the limit:
+  **429** `TOO_MANY_REQUESTS` (`Too many requests. Try again shortly.`) with `Retry-After` in
+  seconds. Throttling runs after authentication and roles and before validation: a refused token
+  is not counted, an invalid body is. The console's nginx also limits per client address in front
+  of the API, and answers with the same body and `Retry-After: 1`.
+
+- **Request ID.** Every response carries `X-Request-Id`: the one the proxy sent, when it matches
+  `^[A-Za-z0-9-]{8,64}$`, or a new UUID. Every server log line for that request carries it, so
+  quote it when reporting a problem ([ADR-0014](../adr/0014-structured-logging-and-correlation.md)).
+  The console's nginx replaces any value a client sends.

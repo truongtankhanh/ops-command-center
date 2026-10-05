@@ -57,6 +57,18 @@ jobs:
           healthy=$(docker compose ps api --format '{{.Health}}' | grep -c '^healthy$')
           test "$healthy" -eq 2
           curl -fsS --retry 5 --retry-connrefused http://localhost:18080/api/health/ready
+      # The scrape port is for the Compose network only (ADR-0015): nginx never proxies it, no host
+      # port publishes it, and each replica serves it, labelled with its environment.
+      - name: Check metrics stay off the edge and every replica serves them
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/api/metrics)
+          test "$code" = 404
+          test -z "$(docker compose port api 9464 2>/dev/null)"
+          for replica in 1 2; do
+            # Read whole before grep: `grep -q` exits early and pipefail would flag wget's SIGPIPE.
+            body=$(docker compose exec -T --index "$replica" api wget -qO- http://127.0.0.1:9464/metrics)
+            grep -q '^process_start_time_seconds{.*env="demo"' <<< "$body"
+          done
       - name: Check nginx rate-limits the edge
         run: |
           for i in $(seq 1 50); do

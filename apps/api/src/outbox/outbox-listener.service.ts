@@ -8,6 +8,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource, In, type QueryRunner } from 'typeorm';
 import { runJob, runWithRequestId } from '../logging/request-context';
+import { RealtimeMetrics } from '../metrics/realtime.metrics';
 import { OUTBOX_CHANNEL, OutboxEvents } from './outbox-events';
 import { OutboxEntity } from './outbox.entity';
 
@@ -48,6 +49,7 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
   constructor(
     private readonly dataSource: DataSource,
     private readonly events: EventEmitter2,
+    private readonly metrics: RealtimeMetrics,
   ) {}
 
   /** Awaited, and Nest runs it before `app.listen()`: no console connects before this listens. */
@@ -121,7 +123,7 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
   private async deliver(ids: string[]): Promise<void> {
     try {
       const rows = await this.dataSource.getRepository(OutboxEntity).find({
-        select: { id: true, event: true, payload: true, requestId: true },
+        select: { id: true, event: true, payload: true, requestId: true, createdAt: true },
         where: { id: In(ids) },
         order: { id: 'ASC' },
       });
@@ -148,6 +150,8 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
   private emitNow(row: OutboxEntity): void {
     try {
       this.events.emit(row.event, row.payload);
+      // Commit to broadcast on this replica, the real-time quality goal (ADR-0015).
+      this.metrics.observeDelivery(row.event, row.createdAt);
     } catch (error) {
       // A failing listener must not hold back later events (ADR-0007). `@OnEvent` listeners
       // already log their own errors by default.

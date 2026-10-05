@@ -22,6 +22,8 @@ WORKDIR /app
 COPY --from=build --chown=node:node /out ./
 USER node
 EXPOSE 3000
+# Prometheus scrape port (ADR-0015). Keep it on an internal network: never publish it.
+EXPOSE 9464
 # Liveness, never readiness (ADR-0013): Swarm or an autoheal restarts on this, and restarting every
 # replica fixes no database outage. Boot gating still holds: the API listens only once the database
 # is connected and migrated. The start period covers the 60 s migration-lock wait plus TypeORM's

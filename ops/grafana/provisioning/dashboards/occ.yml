@@ -1,0 +1,11 @@
+# Dashboards are files in ops/grafana/dashboards (ADR-0015): change them there, not in the UI.
+apiVersion: 1
+
+providers:
+  - name: occ
+    folder: OCC
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -120,6 +120,31 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('METRICS_PORT', () => {
+    it('defaults to 9464 when unset', () => {
+      expect(validateEnv(valid).METRICS_PORT).toBe(9464);
+    });
+
+    it('accepts another port', () => {
+      expect(validateEnv({ ...valid, METRICS_PORT: '19464' }).METRICS_PORT).toBe(19464);
+    });
+
+    it.each([
+      ['zero', '0'],
+      ['above 65535', '65536'],
+      ['fractional', '9464.5'],
+      ['not a number', 'abc'],
+    ])('rejects a value that is %s, naming the key', (_, value) => {
+      expect(() => validateEnv({ ...valid, METRICS_PORT: value })).toThrow(/METRICS_PORT/);
+    });
+
+    it('rejects the API port: the scrape endpoint has a listener of its own (ADR-0015)', () => {
+      expect(() => validateEnv({ ...valid, PORT: '13000', METRICS_PORT: '13000' })).toThrow(
+        /METRICS_PORT: must differ from PORT/,
+      );
+    });
+  });
+
   it('lets development turn rate limiting off', () => {
     expect(validateEnv({ ...valid, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
   });

@@ -51,6 +51,16 @@ export class Env {
   PORT = 3000;
 
   /**
+   * Port of the Prometheus scrape endpoint, `GET /metrics` (ADR-0015). Served apart from `PORT`, so
+   * nginx never proxies it; only the network decides who reaches it.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  METRICS_PORT = 9464;
+
+  /**
    * Proxies in front of the API whose `X-Forwarded-For` entry is trusted for `req.ip` (ADR-0012).
    * 1 = the console's nginx, which overwrites the header. Keep 1 even with a load balancer in front:
    * nginx resolves that with `real-ip.conf`. 0 only if the API port is reachable without nginx.
@@ -171,6 +181,11 @@ function rateLimitProblems(env: Env): string[] {
   return ['RATE_LIMIT_ENABLED: false is not allowed in production'];
 }
 
+/** The scrape endpoint has its own listener; sharing the API's port would fail at boot anyway. */
+function metricsProblems(env: Env): string[] {
+  return env.METRICS_PORT === env.PORT ? ['METRICS_PORT: must differ from PORT'] : [];
+}
+
 export function validateEnv(raw: Record<string, unknown>): Env {
   const env = plainToInstance(Env, raw);
   applyEnvironmentDefaults(env);
@@ -180,6 +195,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     ),
     ...productionProblems(env),
     ...rateLimitProblems(env),
+    ...metricsProblems(env),
   ];
   if (problems.length > 0) {
     const details = problems.map((problem) => `  - ${problem}`).join('\n');

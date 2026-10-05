@@ -1,0 +1,15 @@
+# Compose demo only (ADR-0015). Started with: docker compose --profile observability up --build
+global:
+  scrape_interval: 15s
+  scrape_timeout: 5s
+
+scrape_configs:
+  # Every api replica, not just the one a single DNS lookup returns: Docker's DNS answers `api`
+  # with one A record per replica (ADR-0008), re-read every 10 s as replicas come and go.
+  # Each target's `instance` is the replica's address; its log lines carry `hostname` instead.
+  - job_name: occ-api
+    dns_sd_configs:
+      - names: [api]
+        type: A
+        port: 9464
+        refresh_interval: 10s

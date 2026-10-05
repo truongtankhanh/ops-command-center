@@ -30,6 +30,15 @@ To check it, open the console in two browser windows and acknowledge an incident
 
 The demo is sized for two replicas. Each holds a pool of 10 database connections, so beyond about eight replicas the default PostgreSQL `max_connections` of 100 runs out.
 
+Metrics and a Grafana dashboard come with an opt-in profile ([ADR-0015](docs/adr/0015-metrics-and-tracing.md)):
+
+```bash
+docker compose --profile observability up --build --scale api=2
+# Grafana      http://localhost:13001   (read-only without signing in; dashboard "OCC API")
+```
+
+The dashboard shows commit-to-broadcast delivery latency against the one-second goal, connected consoles, HTTP rate, errors and latency per route, and process health, one environment at a time. Prometheus scrapes every replica on port 9464 over the Compose network. That port is published nowhere and nginx never proxies it.
+
 ## What it does
 
 - **Live incident feed** — new reports appear on every open console within a second, ordered by what needs attention first: unresolved, then severity, then age.
@@ -48,11 +57,16 @@ flowchart LR
   api[Ops API<br/><i>NestJS · TypeORM</i>]
   db[(PostgreSQL)]
   cams[[CameraSource<br/><i>mock · MediaMTX</i>]]
+  idp[Keycloak<br/><i>OIDC</i>]
+  obs[Prometheus · Grafana<br/><i>opt-in profile</i>]
 
   console -- REST /api --> api
   console -- Socket.IO /events --> api
+  console -- sign-in --> idp
+  api -- signing keys --> idp
   api --> db
   api --> cams
+  obs -. scrape :9464 .-> api
 ```
 
 ```
@@ -62,6 +76,10 @@ apps/
 packages/
   contracts/        Shared types + event names: the API ↔ console contract
   camera-adapter/   CameraSource port with mock and MediaMTX implementations
+ops/
+  keycloak/         Demo realm, re-imported on every start
+  prometheus/       Scrape config: every API replica on its metrics port
+  grafana/          Provisioned datasource and the "OCC API" dashboard
 docs/
   api/              API reference + OpenAPI 3.1, generated from code and drift-checked
   architecture.md   System design, domain model, real-time flow
@@ -86,6 +104,8 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md) | Permissions per role (`viewer` read-only), checked by the API; every timeline entry records its actor                                |
 | [0012](docs/adr/0012-rate-limiting.md)                               | Rate limits per IP in nginx and per user and route in the API, counted in PostgreSQL across replicas                                 |
 | [0013](docs/adr/0013-liveness-and-readiness-probes.md)               | Liveness checks the process only, readiness the database and this replica's `LISTEN`; Docker probes liveness                         |
+| [0014](docs/adr/0014-structured-logging-and-correlation.md)          | JSON logs with redaction; one `requestId` from nginx through the outbox to every replica; log level raised at runtime with a TTL     |
+| [0015](docs/adr/0015-metrics-and-tracing.md)                         | Prometheus metrics on a port of its own that nginx never proxies; bounded labels; tracing deferred with its sampling recorded        |
 
 ### Design details worth a look
 
@@ -93,6 +113,8 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 - **Lifecycle rules live in the entity.** `IncidentEntity.acknowledge()` / `resolve()` enforce transitions and append timeline events; the service only orchestrates. Domain errors map to HTTP status codes in one exception filter.
 - **Concurrency-safe transitions.** Status changes run in a transaction with a row lock (`SELECT … FOR UPDATE`), so two operators cannot both acknowledge the same incident. Codes like `INC-000042` come from a database sequence.
 - **Events through a transactional outbox, cache patching on the client.** Each change writes its event in the same transaction, and a relay publishes it, so a crash between commit and broadcast cannot lose it. Postgres `LISTEN/NOTIFY` hands every event to every API replica, so it reaches consoles on all of them, with no broker to run. Consoles update the TanStack Query cache from event payloads instead of refetching, ignore duplicates and stale copies by `version`, and refetch once on reconnect to converge.
+- **One change, one ID, end to end.** The `requestId` nginx sets (or the API generates) is echoed to the client, stored with the outbox row and restored on every replica that broadcasts it, so nginx's access line, the API's request log and anything logged while delivering that change, on any replica, share one ID.
+- **The one-second promise is measured.** `incident_event_delivery_seconds` times each event from its outbox row to its broadcast, on every replica; the dashboard plots p50/p95/p99 against the goal.
 - **The simulator is a client, not a backdoor.** It goes through `IncidentsService` like an operator, so demo data never bypasses validation, persistence or events.
 
 ## Running locally
@@ -104,7 +126,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env      # point DATABASE_URL at your database
 docker compose up -d postgres keycloak      # database on 127.0.0.1:15432, sign-in on 127.0.0.1:18081
 
-pnpm dev                                     # API on :13000, console on :15173
+pnpm dev                                     # API on :13000 (metrics on :9464), console on :15173
 ```
 
 The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DATABASE_URL`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
@@ -119,6 +141,9 @@ API configuration (`apps/api/.env`):
 | ------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | `NODE_ENV`                                 | — (required)                  | `development`, `test` or `production` (Jest sets `test`, the Docker image sets `production`)    |
 | `PORT`                                     | `3000`                        | HTTP and WebSocket port (`.env.example` sets `13000` for `pnpm dev`)                            |
+| `METRICS_PORT`                             | `9464`                        | Prometheus `GET /metrics` on a listener of its own; must differ from `PORT`; never public       |
+| `LOG_LEVEL`                                | `debug`, `info` in production | Lowest level logged (`warn` in tests); raise it at runtime with `log-level` (ADR-0014)          |
+| `DEPLOYMENT_ENV`                           | `local`, none in production   | Environment label (`env`) on every log line and metric; staging and production must set it      |
 | `TRUST_PROXY_HOPS`                         | `1`                           | Proxy hops trusted for the client address (nginx); `0` if the API port is exposed (ADR-0012)    |
 | `RATE_LIMIT_ENABLED`                       | `true`                        | Per-user rate limits; may be `false` in development and test, never in production (ADR-0012)    |
 | `DATABASE_URL`                             | —                             | PostgreSQL connection string (`postgres://` or `postgresql://`)                                 |
@@ -136,19 +161,36 @@ API configuration (`apps/api/.env`):
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (URL-safe, applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND` and `OCC_PUBLIC_URL` can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `DEPLOYMENT_ENV` (`demo`), `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (URL-safe, applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND`, `OCC_PUBLIC_URL`, `GRAFANA_PORT` and `GRAFANA_ADMIN_PASSWORD` (demo only) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
 
 The console listens on `127.0.0.1:18080` only, like Postgres and Keycloak: the demo users' passwords are their usernames, so a console reachable from the network lets anyone on it sign in. To open it from another machine, set both `CONSOLE_BIND=0.0.0.0` and `OCC_PUBLIC_URL` (the address that machine uses, e.g. `http://192.168.1.20:18080`), and only on a network you trust.
 
 The console's nginx is the only way into the API, and it decides the client address that rate limits use ([ADR-0012](docs/adr/0012-rate-limiting.md)). In Compose it is the edge. If a load balancer or TLS terminator sits in front of it, mount `/etc/nginx/conf.d/real-ip.conf` into the `console` container with `set_real_ip_from <LB CIDR>; real_ip_header X-Forwarded-For; real_ip_recursive on;`, listing only that load balancer's addresses. Keep `TRUST_PROXY_HOPS=1` on the API either way.
 
+## Operations
+
+**Logs.** The API writes one JSON object per line to stdout, with `service`, `env`, `version` and, inside a request or a background job, `requestId`; `pnpm dev` renders the same objects through `pino-pretty`. Every response carries the `X-Request-Id` it ran under, so a user or support can quote it, and `docker compose logs | grep <id>` finds nginx's access line, the API's request log and any line logged while delivering that change on any replica (a failed delivery, for instance). Tokens, passwords, connection strings, emails and display names are redacted in every environment ([ADR-0014](docs/adr/0014-structured-logging-and-correlation.md)).
+
+**Log level at runtime.** Raise the level on every replica for a while, without a restart. The change expires by itself and records who made it:
+
+```bash
+pnpm --filter @occ/api log-level set debug --ttl 30 --by "jane / INC-123"     # development
+docker compose exec api node dist/logging/log-level.cli.js set debug --ttl 30 --by "jane / INC-123"
+pnpm --filter @occ/api log-level show                                          # or: clear
+```
+
+**Health probes.** `GET /api/health/live` answers while the process serves HTTP and never checks a dependency; the Docker `HEALTHCHECK` uses it. `GET /api/health/ready` also needs the database and this replica's `LISTEN` connection. Both are public, never rate-limited, and left out of the request log and the metrics ([ADR-0013](docs/adr/0013-liveness-and-readiness-probes.md)).
+
+**Metrics.** Each replica serves Prometheus metrics at `GET /metrics` on `METRICS_PORT` (9464), a listener apart from the API: nginx never proxies it, so keep it on an internal network. It exposes HTTP request rate, status codes and latency per route template, commit-to-broadcast delivery latency (`incident_event_delivery_seconds`), connected consoles per replica, and Node.js process metrics, each labelled `service` and `env`. `docker compose --profile observability up` adds Prometheus and the Grafana dashboard ([ADR-0015](docs/adr/0015-metrics-and-tracing.md)). There is no tracing yet; its design and sampling per environment are recorded in the same ADR.
+
 ## Quality
 
 ```bash
+pnpm format:check  # Prettier
 pnpm lint          # ESLint (flat config) across the monorepo
 pnpm typecheck     # strict TypeScript everywhere
 pnpm test          # unit tests: domain rules, error mapping, adapters, console logic and components
-pnpm test:e2e      # API against a real PostgreSQL: migrations, seed, lifecycle, validation, WebSocket events
+pnpm test:e2e      # API against a real PostgreSQL: migrations, seed, lifecycle, auth and roles, idempotency, rate limits, two instances, WebSocket events, metrics
 pnpm build
 ```
 
@@ -159,11 +201,11 @@ cp apps/api/.env.test.example apps/api/.env.test
 docker compose exec postgres createdb -U postgres ops_test
 ```
 
-CI runs all of the above on every push and pull request, then builds both Docker images, boots the stack with two API replicas and checks that both are healthy behind nginx.
+CI runs all of the above on every push and pull request, then builds both Docker images, boots the stack with two API replicas and checks that both are healthy behind nginx, that each serves metrics on a port the edge cannot reach, that nginx rate-limits the edge, and that each replica stays live but reports not ready while the database is stopped.
 
 ## Roadmap
 
-M1 (this release) delivers the full loop with synthetic data. Next: real video through MediaMTX and a heatmap layer (M2), a read-only video-wall app and OIDC roles (M3), then observability and SLA escalation (M4). Ticket-level breakdown in [docs/roadmap.md](docs/roadmap.md).
+M1 delivers the full loop with synthetic data. Since then, OIDC sign-in with roles and an audited timeline (OCC-21, OCC-22), structured logging with correlation IDs (OCC-23) and Prometheus metrics with a Grafana dashboard (OCC-24) have landed. Next: real video through MediaMTX and a heatmap layer (M2), a read-only video-wall app (M3), and an end-to-end console smoke test and SLA escalation (M4). Ticket-level breakdown in [docs/roadmap.md](docs/roadmap.md).
 
 ## License
 

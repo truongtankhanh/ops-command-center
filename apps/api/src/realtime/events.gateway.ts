@@ -23,6 +23,7 @@ import {
   TokenVerifier,
   type VerifiedToken,
 } from '../auth/token-verifier';
+import { RealtimeMetrics } from '../metrics/realtime.metrics';
 import { OutboxEvents } from '../outbox/outbox-events';
 
 /** Set by the handshake middleware on every socket that is let in. */
@@ -58,7 +59,10 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   @WebSocketServer()
   server: EventsNamespace;
 
-  constructor(private readonly tokens: TokenVerifier) {}
+  constructor(
+    private readonly tokens: TokenVerifier,
+    private readonly metrics: RealtimeMetrics,
+  ) {}
 
   /**
    * Nest guards never see the handshake (they wrap message handlers, and this namespace has none),
@@ -66,6 +70,8 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
    * `EventsConnectErrors` and never connects.
    */
   afterInit(server: EventsNamespace): void {
+    // Sockets here have passed the handshake below: connected consoles, counted on scrape.
+    this.metrics.trackConsoles(() => server.sockets.size);
     server.use((socket, next) => {
       this.authenticate(socket).then(
         () => next(),

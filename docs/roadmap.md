@@ -39,14 +39,14 @@ Goal: the full loop works end to end with synthetic data.
 | ------ | ------------------------------------------------------------------------------ |
 | OCC-19 | `apps/video-wall`: read-only, multi-screen layout, auto-rotating camera groups |
 | OCC-20 | Extract shared UI and data hooks into `packages/ui` and `packages/data`        |
-| OCC-21 | OIDC sign-in (any provider) + roles: operator, supervisor, viewer              |
-| OCC-22 | Permission checks on actions; actor recorded on every timeline event           |
+| OCC-21 | ✅ OIDC sign-in (any provider) + roles: operator, supervisor, viewer           |
+| OCC-22 | ✅ Permission checks on actions; actor recorded on every timeline event        |
 
 ## M4 — Operations hardening
 
-| #      | Ticket                                                           |
-| ------ | ---------------------------------------------------------------- |
-| OCC-23 | Structured logging + request correlation IDs                     |
-| OCC-24 | Metrics endpoint (Prometheus) and a Grafana dashboard in Compose |
-| OCC-25 | Playwright end-to-end smoke test of the console                  |
-| OCC-26 | Incident SLA timers and escalation rules                         |
+| #      | Ticket                                                              |
+| ------ | ------------------------------------------------------------------- |
+| OCC-23 | ✅ Structured logging + request correlation IDs                     |
+| OCC-24 | ✅ Metrics endpoint (Prometheus) and a Grafana dashboard in Compose |
+| OCC-25 | Playwright end-to-end smoke test of the console                     |
+| OCC-26 | Incident SLA timers and escalation rules                            |

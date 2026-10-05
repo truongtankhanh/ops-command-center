@@ -103,5 +103,37 @@ services:
     ports:
       - '${CONSOLE_BIND:-127.0.0.1}:18080:80'
 
+  # Metrics (ADR-0015), opt-in: docker compose --profile observability up --build
+  # Scrapes every api replica on its metrics port, which only this network reaches: the api
+  # publishes no host port and nginx never proxies it. No volume: history lasts as long as the
+  # container, which is enough for a demo.
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    profiles: [observability]
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  # Dashboards for the demo (ADR-0015): the provisioned "OCC API" dashboard is the home page.
+  # Anonymous visitors get Viewer; the demo admin password is not a template for any other
+  # environment (ADR-0006). Loopback only, like the console; remap with GRAFANA_PORT.
+  grafana:
+    image: grafana/grafana:13.2
+    profiles: [observability]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: 'true'
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/occ-api.json
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - '127.0.0.1:${GRAFANA_PORT:-13001}:3000'
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata:

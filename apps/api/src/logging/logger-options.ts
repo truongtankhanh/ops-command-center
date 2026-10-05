@@ -17,10 +17,14 @@ import {
 } from './redaction';
 import { currentRequestId } from './request-context';
 
-const SERVICE = 'occ-api';
+/** Also the `service` label on every metric (ADR-0015), so logs and metrics filter alike. */
+export const SERVICE = 'occ-api';
 
-/** Probes are polled every few seconds; ADR-0013 keeps them out of the log. */
-const UNLOGGED_PATHS = new Set(['/api/health/live', '/api/health/ready']);
+/**
+ * Probes are polled every few seconds; ADR-0013 keeps them out of the log, and out of the HTTP
+ * metrics too (ADR-0015).
+ */
+export const UNLOGGED_PATHS = new Set(['/api/health/live', '/api/health/ready']);
 
 /** apps/api/package.json, from src/logging or dist/logging alike. */
 const VERSION = (
