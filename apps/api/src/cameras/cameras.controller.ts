@@ -9,11 +9,14 @@ import {
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import type { Camera, StreamDescriptor } from '@occ/contracts';
 import { ApiErrorDto } from '../common/api-error.dto';
+import { CAMERA_STREAM_RATE_LIMIT } from '../rate-limit/rate-limits';
 import { CamerasService } from './cameras.service';
 import {
   CameraDto,
@@ -26,6 +29,10 @@ import {
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
 @ApiForbiddenResponse({ type: ApiErrorDto, description: 'No role grants access' })
+@ApiTooManyRequestsResponse({
+  type: ApiErrorDto,
+  description: 'Rate limit exceeded; see Retry-After',
+})
 @ApiExtraModels(MockStreamDescriptorDto, HlsStreamDescriptorDto, WebRtcStreamDescriptorDto)
 @Controller('cameras')
 export class CamerasController {
@@ -42,6 +49,7 @@ export class CamerasController {
 
   /** How to render this camera: an HLS or WebRTC stream URL, or a seed for a synthetic feed. */
   @Get(':id/stream')
+  @Throttle({ default: CAMERA_STREAM_RATE_LIMIT })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({
     description: 'Shape depends on `kind`',

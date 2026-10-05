@@ -37,6 +37,22 @@ export class Env {
   @Max(65535)
   PORT = 3000;
 
+  /**
+   * Proxies in front of the API whose `X-Forwarded-For` entry is trusted for `req.ip` (ADR-0012).
+   * 1 = the console's nginx, which overwrites the header. Keep 1 even with a load balancer in front:
+   * nginx resolves that with `real-ip.conf`. 0 only if the API port is reachable without nginx.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(5)
+  TRUST_PROXY_HOPS = 1;
+
+  /** Per-user rate limits (ADR-0012). Off only for tests and local work; production refuses it. */
+  @Transform(toBoolean)
+  @IsBoolean()
+  RATE_LIMIT_ENABLED = true;
+
   /** PostgreSQL connection string; the only secret the API reads. */
   @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
   DATABASE_URL: string;
@@ -117,6 +133,12 @@ function productionProblems(env: Env): string[] {
   return problems;
 }
 
+/** Not demo behaviour: the demo enforces production's limits, so `DEMO_MODE` does not lift it. */
+function rateLimitProblems(env: Env): string[] {
+  if (env.NODE_ENV !== 'production' || env.RATE_LIMIT_ENABLED !== false) return [];
+  return ['RATE_LIMIT_ENABLED: false is not allowed in production'];
+}
+
 export function validateEnv(raw: Record<string, unknown>): Env {
   const env = plainToInstance(Env, raw);
   applyEnvironmentDefaults(env);
@@ -125,6 +147,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
       (e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`,
     ),
     ...productionProblems(env),
+    ...rateLimitProblems(env),
   ];
   if (problems.length > 0) {
     const details = problems.map((problem) => `  - ${problem}`).join('\n');

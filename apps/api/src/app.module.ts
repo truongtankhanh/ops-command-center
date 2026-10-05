@@ -12,6 +12,7 @@ import { SeedService } from './database/seed/seed.service';
 import { typeormOptions } from './database/typeorm-options';
 import { HealthController } from './health/health.controller';
 import { IncidentsModule } from './incidents/incidents.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SimulatorModule } from './simulator/simulator.module';
 import { ZonesModule } from './zones/zones.module';
@@ -42,6 +43,7 @@ import { ZonesModule } from './zones/zones.module';
     }),
     EventEmitterModule.forRoot(),
     AuthModule,
+    RateLimitModule,
     ZonesModule,
     CamerasModule,
     IncidentsModule,

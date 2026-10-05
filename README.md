@@ -84,6 +84,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0009](docs/adr/0009-idempotent-incident-creation.md)                | `Idempotency-Key` on incident creation — a retried report replays the first response instead of creating a duplicate                 |
 | [0010](docs/adr/0010-oidc-authentication.md)                         | OIDC sign-in through a self-hosted Keycloak; every request and socket carries an access token checked by the API                     |
 | [0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md) | Permissions per role (`viewer` read-only), checked by the API; every timeline entry records its actor                                |
+| [0012](docs/adr/0012-rate-limiting.md)                               | Rate limits per IP in nginx and per user and route in the API, counted in PostgreSQL across replicas                                 |
 
 ### Design details worth a look
 
@@ -109,12 +110,16 @@ The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If po
 
 The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
+An optional basemap under the campus plan comes from `VITE_MAP_STYLE_URL` (a MapLibre style URL), which the dev server reads from `apps/console/.env`. It is a build-time value and does not reach the Compose image: `.dockerignore` keeps every `.env` file out of the build, and the Dockerfile takes no build arguments.
+
 API configuration (`apps/api/.env`):
 
 | Variable                                   | Default                       | Purpose                                                                                         |
 | ------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
 | `NODE_ENV`                                 | — (required)                  | `development`, `test` or `production` (Jest sets `test`, the Docker image sets `production`)    |
 | `PORT`                                     | `3000`                        | HTTP and WebSocket port (`.env.example` sets `13000` for `pnpm dev`)                            |
+| `TRUST_PROXY_HOPS`                         | `1`                           | Proxy hops trusted for the client address (nginx); `0` if the API port is exposed (ADR-0012)    |
+| `RATE_LIMIT_ENABLED`                       | `true`                        | Per-user rate limits; may be `false` in development and test, never in production (ADR-0012)    |
 | `DATABASE_URL`                             | —                             | PostgreSQL connection string (`postgres://` or `postgresql://`)                                 |
 | `API_DOCS_ENABLED`                         | on, off in production         | Serve Swagger UI and the raw spec at `/api/docs` (ADR-0005)                                     |
 | `SEED_ON_BOOT`                             | `true`, `false` in production | Seed the reference campus when the database is empty; production needs `DEMO_MODE` to enable it |
@@ -130,7 +135,11 @@ API configuration (`apps/api/.env`):
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED`, `POSTGRES_PORT`, `KEYCLOAK_PORT` and `OCC_PUBLIC_URL` (the address the console is opened from, if not `http://localhost:18080`) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (URL-safe, applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND` and `OCC_PUBLIC_URL` can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
+
+The console listens on `127.0.0.1:18080` only, like Postgres and Keycloak: the demo users' passwords are their usernames, so a console reachable from the network lets anyone on it sign in. To open it from another machine, set both `CONSOLE_BIND=0.0.0.0` and `OCC_PUBLIC_URL` (the address that machine uses, e.g. `http://192.168.1.20:18080`), and only on a network you trust.
+
+The console's nginx is the only way into the API, and it decides the client address that rate limits use ([ADR-0012](docs/adr/0012-rate-limiting.md)). In Compose it is the edge. If a load balancer or TLS terminator sits in front of it, mount `/etc/nginx/conf.d/real-ip.conf` into the `console` container with `set_real_ip_from <LB CIDR>; real_ip_header X-Forwarded-For; real_ip_recursive on;`, listing only that load balancer's addresses. Keep `TRUST_PROXY_HOPS=1` on the API either way.
 
 ## Quality
 

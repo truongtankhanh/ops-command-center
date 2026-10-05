@@ -4,9 +4,12 @@ name: ops-command-center
 services:
   postgres:
     image: postgres:17-alpine
+    # Demo credentials, not a template for any other environment (ADR-0006). POSTGRES_PASSWORD only
+    # takes effect when the pgdata volume is first created; it must be URL-safe (it is reused in
+    # the api's DATABASE_URL).
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ops
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -24,7 +27,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/ops
+      # Demo credentials, same as the postgres service (ADR-0006).
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ops
       SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}
@@ -37,7 +41,8 @@ services:
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
       # Every request needs a token from the realm below (ADR-0010). The issuer is the URL the
       # browser signs in through (Keycloak behind the console's nginx); set OCC_PUBLIC_URL when the
-      # console is opened from another address. Signing keys come from Keycloak directly.
+      # console is opened from another address (with CONSOLE_BIND, see `console`). Signing keys
+      # come from Keycloak directly.
       OIDC_ISSUER: ${OCC_PUBLIC_URL:-http://localhost:18080}/auth/realms/occ
       OIDC_JWKS_URL: http://keycloak:8080/auth/realms/occ/protocol/openid-connect/certs
       OIDC_AUDIENCE: occ-api
@@ -89,8 +94,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # Loopback only by default, like postgres and keycloak: the demo users' passwords are their
+    # usernames, so a LAN-reachable console lets anyone on the network sign in. To open it from
+    # another machine, set CONSOLE_BIND=0.0.0.0 together with OCC_PUBLIC_URL.
     ports:
-      - '18080:80'
+      - '${CONSOLE_BIND:-127.0.0.1}:18080:80'
 
 volumes:
   pgdata:

@@ -12,6 +12,8 @@ import { OutboxEntity } from './outbox.entity';
 
 const RECONNECT_INITIAL_MS = 1_000;
 const RECONNECT_MAX_MS = 15_000;
+/** How much of a malformed payload is logged; any database session can send one. */
+const LOGGED_PAYLOAD_MAX_CHARS = 200;
 
 interface Notification {
   channel: string;
@@ -98,7 +100,9 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
     if (this.stopped || notification.channel !== OUTBOX_CHANNEL) return;
     const ids = parseIds(notification.payload);
     if (!ids) {
-      this.logger.warn(`Ignoring malformed ${OUTBOX_CHANNEL} payload: ${notification.payload}`);
+      this.logger.warn(
+        `Ignoring malformed ${OUTBOX_CHANNEL} payload: ${describePayload(notification.payload)}`,
+      );
       return;
     }
     this.queue = this.queue.then(() => this.deliver(ids));
@@ -184,4 +188,14 @@ function parseIds(payload: string | undefined): string[] | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * A payload as one quoted, escaped log fragment, cut to `LOGGED_PAYLOAD_MAX_CHARS`: a newline or
+ * control character in it cannot start a forged log line, and a huge one cannot flood the log.
+ */
+function describePayload(payload: string | undefined): string {
+  if (payload === undefined) return '(none)';
+  const shown = JSON.stringify(payload.slice(0, LOGGED_PAYLOAD_MAX_CHARS));
+  return payload.length > LOGGED_PAYLOAD_MAX_CHARS ? `${shown}… (${payload.length} chars)` : shown;
 }

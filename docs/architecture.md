@@ -133,7 +133,7 @@ The API resolves a camera to a `StreamDescriptor` (`{ kind: 'mock' }` today, `{ 
 
 ## 7. Deployment
 
-The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `keycloak` and `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API, and `/auth` to Keycloak; one origin, no CORS). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
+The repository ships a Docker Compose stack for demos and evaluation, not a production deployment. It runs on a single host: `postgres`, `api`, `keycloak` and `console` (static build served by nginx, which also reverse-proxies `/api` and `/socket.io` — the transport for the `/events` namespace — to the API, and `/auth` to Keycloak; one origin, no CORS). nginx is also the edge rate limiter, per client address, and the only place that decides the client address the API trusts ([ADR-0012](adr/0012-rate-limiting.md)). On boot the API runs pending migrations and seeds the reference campus when the database is empty.
 
 Keycloak is the demo identity provider ([ADR-0010](adr/0010-oidc-authentication.md)): dev mode, plain HTTP, and a realm with demo users re-imported from `ops/keycloak` on every start. The API fetches its signing keys on first use and does not depend on it to boot; while it is down, authenticated requests get `503`.
 

@@ -79,6 +79,12 @@ Permission-based authorization on top of ADR-0010's authentication, and an actor
 - **The IdP contract grows.** A real deployment's IdP must put the user's roles in `realm_access.roles` of the access token (Keycloak does by default; another IdP needs a mapper), using the names `operator`, `supervisor`, `viewer`. Otherwise every user gets `403`.
 - **Role changes are not immediate**, the same trade-off as revocation in ADR-0010: REST sees a changed role with the next token (5 min in the demo realm); a connected socket keeps its handshake roles until it reconnects at token expiry.
 - **Display names are personal data in the audit log.** They are shown to everyone who can read the incident, which is the point, and they stay after an account is renamed or removed. A deletion request would need a deliberate redaction step.
+- **The actor's subject goes to every reader, on purpose** (confirmed 2026-10-05, IMP-11 security scan). `viewer` included, every timeline entry carries the IdP `sub`.
+  - It is an opaque identifier, not a credential, and every reader has already authenticated.
+  - It is the only field that tells two users with the same display name apart.
+  - The console deliberately never renders it.
+  - Removing it would need a second actor type: `Actor` is also the type the write path stores. That cost outweighs the exposure.
+  - Revisit if an untrusted client starts reading timelines, or if the IdP's `sub` turns out to carry personal data (an email, say).
 - **Patched idempotent responses are not byte-identical.** Bodies stored before the upgrade went through `jsonb`, which reorders keys, and gained `actor`. Only keys from the 24 h before the deploy are affected.
 - **Deploy all replicas at once.** After the migration, an older replica cannot insert timeline entries (the actor columns are `NOT NULL` with no default) and does not check roles. Compose restarts every replica together.
 - **A large `incident_event`** would need the `CHECK` split into its own migrations (`NOT VALID`, then `VALIDATE`) to keep writers unblocked during the scan. Not needed at the demo's size.

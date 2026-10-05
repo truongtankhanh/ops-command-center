@@ -1,11 +1,19 @@
 import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { Express } from 'express';
 import { ApiExceptionFilter } from './common/api-exception.filter';
 import type { Env } from './config/env.validation';
 
 /** HTTP setup shared by `main.ts` and the e2e tests, so tests run the real configuration. */
 export function configureApp(app: INestApplication): INestApplication {
+  const config = app.get(ConfigService<Env, true>);
+  // `req.ip` is the client nginx saw, never a value the client wrote (ADR-0012).
+  (app.getHttpAdapter().getInstance() as Express).set(
+    'trust proxy',
+    config.get('TRUST_PROXY_HOPS', { infer: true }),
+  );
+
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
@@ -14,7 +22,6 @@ export function configureApp(app: INestApplication): INestApplication {
   app.enableShutdownHooks();
 
   // Exposure policy per environment: docs/adr/0005-api-docs-exposure-per-environment.md
-  const config = app.get(ConfigService<Env, true>);
   if (isApiDocsEnabled(config)) {
     const document = SwaggerModule.createDocument(
       app,

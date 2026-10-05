@@ -1,7 +1,16 @@
 # ADR-0005: API docs exposure per environment
 
-- **Status:** Accepted
+- **Status:** Accepted, revisited 2026-10-05 after OIDC sign-in ([ADR-0010](0010-oidc-authentication.md))
 - **Date:** 2026-10-02
+
+> **Revisited 2026-10-05 (IMP-11).** OIDC sign-in has landed, so option 2 was reconsidered and **not** taken: the decision below stands. Swagger is served outside the Nest router, so `AuthGuard` never sees it. Gating it would need a browser sign-in flow for the docs page, which the API, an OIDC resource server, does not have. Gating would protect little:
+>
+> - the spec is already public in the repository (`docs/api/openapi.json`);
+> - production serves no docs by default;
+> - where a deploy turns docs on in production, "Try it out" is off;
+> - every route the page describes requires a token and a role (ADR-0010, ADR-0011).
+>
+> The spec documents the bearer scheme, as the last consequence below asked; `apps/api/test/incidents.e2e-spec.ts` asserts it. Revisit if the spec gains anything not meant for every reader, or if the API gains endpoints whose existence should stay private.
 
 ## Context
 
@@ -34,4 +43,4 @@ Consumers lose nothing: the console builds against `@occ/contracts`, and the spe
 
 - A production deploy that forgets about docs gets the safe posture: nothing served.
 - Turning docs on in production is a visible, reviewable config change, and still cannot execute requests.
-- Revisit when OIDC sign-in lands (OCC-21): option 2 becomes possible, and the spec should then document the auth scheme.
+- Revisit when OIDC sign-in lands (OCC-21): option 2 becomes possible, and the spec should then document the auth scheme. _(Revisited 2026-10-05: see the note at the top.)_

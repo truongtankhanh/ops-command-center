@@ -10,13 +10,19 @@ import {
   ApiOkResponse,
   ApiParam,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IDEMPOTENCY_KEY_HEADER, type Incident, type IncidentDetail } from '@occ/contracts';
 import { CurrentUser, RequirePermission } from '../auth/auth.decorators';
 import type { AuthenticatedUser } from '../auth/token-verifier';
 import { ApiErrorDto } from '../common/api-error.dto';
+import {
+  REPORT_INCIDENT_RATE_LIMIT,
+  TRANSITION_INCIDENT_RATE_LIMIT,
+} from '../rate-limit/rate-limits';
 import { userActor } from './actors';
 import { IncidentDetailDto, IncidentDto } from './dto/incident.dto';
 import {
@@ -33,6 +39,10 @@ import { IncidentsService } from './incidents.service';
 @ApiForbiddenResponse({
   type: ApiErrorDto,
   description: 'No role grants access, or the role lacks the permission',
+})
+@ApiTooManyRequestsResponse({
+  type: ApiErrorDto,
+  description: 'Rate limit exceeded; see Retry-After',
 })
 @Controller('incidents')
 export class IncidentsController {
@@ -62,6 +72,7 @@ export class IncidentsController {
    */
   @Post()
   @RequirePermission('incident:report')
+  @Throttle({ default: REPORT_INCIDENT_RATE_LIMIT })
   @ApiHeader({
     name: IDEMPOTENCY_KEY_HEADER,
     required: false,
@@ -94,6 +105,7 @@ export class IncidentsController {
   /** Mark an open incident as being handled. */
   @Post(':id/acknowledge')
   @RequirePermission('incident:acknowledge')
+  @Throttle({ default: TRANSITION_INCIDENT_RATE_LIMIT })
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: IncidentDetailDto })
@@ -111,6 +123,7 @@ export class IncidentsController {
   /** Close an incident, optionally with a resolution note. */
   @Post(':id/resolve')
   @RequirePermission('incident:resolve')
+  @Throttle({ default: TRANSITION_INCIDENT_RATE_LIMIT })
   @HttpCode(200)
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiOkResponse({ type: IncidentDetailDto })

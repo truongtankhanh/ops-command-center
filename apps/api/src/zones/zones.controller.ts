@@ -4,6 +4,7 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiTags,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import type { Zone } from '@occ/contracts';
@@ -15,6 +16,10 @@ import { ZonesService } from './zones.service';
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
 @ApiForbiddenResponse({ type: ApiErrorDto, description: 'No role grants access' })
+@ApiTooManyRequestsResponse({
+  type: ApiErrorDto,
+  description: 'Rate limit exceeded; see Retry-After',
+})
 @Controller('zones')
 export class ZonesController {
   constructor(private readonly zones: ZonesService) {}

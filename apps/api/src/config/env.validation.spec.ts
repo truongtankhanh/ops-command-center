@@ -67,11 +67,35 @@ describe('validateEnv', () => {
     expect(validateEnv(valid)).toMatchObject({
       NODE_ENV: 'development',
       PORT: 3000,
+      TRUST_PROXY_HOPS: 1,
+      RATE_LIMIT_ENABLED: true,
       SEED_ON_BOOT: true,
       SIMULATOR_ENABLED: false,
       CAMERA_SOURCE: 'mock',
       DEMO_MODE: false,
     });
+  });
+
+  describe('TRUST_PROXY_HOPS', () => {
+    it.each([
+      ['0', 0],
+      ['2', 2],
+    ])('accepts %s', (value, hops) => {
+      expect(validateEnv({ ...valid, TRUST_PROXY_HOPS: value }).TRUST_PROXY_HOPS).toBe(hops);
+    });
+
+    it.each([
+      ['negative', '-1'],
+      ['fractional', '1.5'],
+      ['above the cap', '6'],
+      ['not a number', 'all'],
+    ])('rejects a value that is %s, naming the key', (_, value) => {
+      expect(() => validateEnv({ ...valid, TRUST_PROXY_HOPS: value })).toThrow(/TRUST_PROXY_HOPS/);
+    });
+  });
+
+  it('lets development turn rate limiting off', () => {
+    expect(validateEnv({ ...valid, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
   });
 
   describe('in production', () => {
@@ -125,6 +149,25 @@ describe('validateEnv', () => {
       const env = { ...production, ...mediamtx, OIDC_ISSUER: issuer, DEMO_MODE: 'true' };
 
       expect(validateEnv(env).OIDC_ISSUER).toBe(issuer);
+    });
+
+    it('refuses to turn rate limiting off', () => {
+      expect(() =>
+        validateEnv({ ...production, ...mediamtx, RATE_LIMIT_ENABLED: 'false' }),
+      ).toThrow(/RATE_LIMIT_ENABLED: false is not allowed in production/);
+    });
+
+    it('refuses to turn rate limiting off even with DEMO_MODE: the demo enforces it too', () => {
+      const env = {
+        ...production,
+        CAMERA_SOURCE: 'mock',
+        DEMO_MODE: 'true',
+        RATE_LIMIT_ENABLED: 'false',
+      };
+
+      expect(() => validateEnv(env)).toThrow(
+        /RATE_LIMIT_ENABLED: false is not allowed in production/,
+      );
     });
 
     it('allows the demo behaviour when DEMO_MODE opts in', () => {
