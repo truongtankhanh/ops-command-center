@@ -1,5 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { signOut } from '../auth/session';
@@ -17,7 +17,7 @@ describe('Header', () => {
     resetStore(useSession);
     resetStore(useConsole);
     vi.mocked(signOut).mockReset();
-    useSession.getState().signedIn({ displayName: 'Demo Operator' });
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
     // useIncidents never goes stale, so a seeded list means no request. The pending fetch is a
     // guard: clearing the cache may refetch while the mocked signOut leaves the header mounted.
     vi.stubGlobal(
@@ -34,6 +34,17 @@ describe('Header', () => {
   it('shows who is signed in, with a way to sign out', () => {
     expect(screen.getByText('Demo Operator')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('does not mark an operator as view only', () => {
+    expect(screen.queryByText('View only')).toBeNull();
+  });
+
+  it('marks a viewer as view only', () => {
+    act(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] }));
+
+    expect(screen.getByText('View only')).toBeInTheDocument();
+    expect(screen.getByText('Demo Viewer')).toBeInTheDocument();
   });
 
   it('signs out and clears the cached data in one click', async () => {

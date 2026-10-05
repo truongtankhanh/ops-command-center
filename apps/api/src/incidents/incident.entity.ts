@@ -1,4 +1,5 @@
 import type {
+  Actor,
   Incident,
   IncidentDetail,
   IncidentSeverity,
@@ -22,7 +23,8 @@ import { IncidentEventEntity } from './incident-event.entity';
 
 /**
  * An incident and its lifecycle rules. Status changes only happen through
- * `acknowledge()` and `resolve()`, which also append to the timeline.
+ * `acknowledge()` and `resolve()`, which also append to the timeline. Every timeline entry
+ * records who caused it: the actor is a required argument, never a default (ADR-0011).
  */
 @Entity('incident')
 @Index(['status', 'reportedAt'])
@@ -91,18 +93,22 @@ export class IncidentEntity {
    */
   pendingEvents: IncidentEventEntity[] = [];
 
-  static report(props: {
-    code: string;
-    type: IncidentType;
-    severity: IncidentSeverity;
-    title: string;
-    description?: string | null;
-    zoneId: string;
-    lng: number;
-    lat: number;
-    source: IncidentSource;
-    at: Date;
-  }): IncidentEntity {
+  /** `actor` is not part of `props`: `props` is copied onto the entity as columns. */
+  static report(
+    props: {
+      code: string;
+      type: IncidentType;
+      severity: IncidentSeverity;
+      title: string;
+      description?: string | null;
+      zoneId: string;
+      lng: number;
+      lat: number;
+      source: IncidentSource;
+      at: Date;
+    },
+    actor: Actor,
+  ): IncidentEntity {
     const incident = Object.assign(new IncidentEntity(), {
       ...props,
       description: props.description ?? null,
@@ -111,30 +117,35 @@ export class IncidentEntity {
       acknowledgedAt: null,
       resolvedAt: null,
     });
-    incident.record('reported', props.at, null);
+    incident.record('reported', props.at, actor, null);
     return incident;
   }
 
-  acknowledge(at: Date, note: string | null = null): void {
+  acknowledge(at: Date, actor: Actor, note: string | null = null): void {
     if (this.status !== 'open') {
       throw new InvalidTransitionError(this.code, this.status, 'acknowledge');
     }
     this.status = 'acknowledged';
     this.acknowledgedAt = at;
-    this.record('acknowledged', at, note);
+    this.record('acknowledged', at, actor, note);
   }
 
-  resolve(at: Date, note: string | null = null): void {
+  resolve(at: Date, actor: Actor, note: string | null = null): void {
     if (this.status === 'resolved') {
       throw new InvalidTransitionError(this.code, this.status, 'resolve');
     }
     this.status = 'resolved';
     this.resolvedAt = at;
-    this.record('resolved', at, note);
+    this.record('resolved', at, actor, note);
   }
 
-  private record(kind: IncidentEventEntity['kind'], at: Date, note: string | null): void {
-    (this.pendingEvents ??= []).push(IncidentEventEntity.create(kind, at, note));
+  private record(
+    kind: IncidentEventEntity['kind'],
+    at: Date,
+    actor: Actor,
+    note: string | null,
+  ): void {
+    (this.pendingEvents ??= []).push(IncidentEventEntity.create(kind, at, actor, note));
   }
 
   toContract(): Incident {

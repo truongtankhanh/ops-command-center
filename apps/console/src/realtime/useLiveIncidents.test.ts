@@ -222,6 +222,19 @@ describe('useLiveIncidents', () => {
       expect(renewSession).not.toHaveBeenCalled();
     });
 
+    it('retries a forbidden connection after a second, without renewing', async () => {
+      renderLive();
+
+      refuse(EventsConnectErrors.Forbidden);
+      expect(connection()).toBe('offline');
+      await vi.advanceTimersByTimeAsync(999);
+      expect(socket.connect).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(socket.connect).toHaveBeenCalledTimes(1);
+      expect(renewSession).not.toHaveBeenCalled();
+    });
+
     it('renews the token before retrying an unauthorized connection', async () => {
       vi.mocked(renewSession).mockResolvedValue(true);
       renderLive();

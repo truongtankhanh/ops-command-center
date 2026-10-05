@@ -76,7 +76,7 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - the algorithm, which must be `RS256` (`none` and algorithm confusion are rejected);
   - `exp` and `nbf`, with 30 s of clock tolerance;
   - that `sub` is present.
-  - The user is `{ subject: sub, displayName: name ?? preferred_username ?? sub }`. Roles are not read yet.
+  - The user is `{ subject: sub, displayName: name ?? preferred_username ?? sub }`. Roles are not read yet. Done in IMP-10 ([ADR-0011](0011-role-based-authorization-and-timeline-actor.md)).
 - **REST.** `AuthGuard` is a global `APP_GUARD`, so a new route is protected without anyone remembering to add a guard. `@Public()` opts out; today only `GET /api/health` uses it, because Docker and CI probe it without a token. Swagger UI is served outside the Nest router, so the guard does not apply to it; its exposure stays governed by ADR-0005.
   - No or malformed `Authorization: Bearer …` → `401` with `WWW-Authenticate: Bearer realm="occ"`, plus `error="invalid_token"` when a token was sent but rejected.
   - The JWKS cannot be fetched → `503` "Identity provider unavailable". A `401` would send the operator to a sign-in page that cannot help.
@@ -115,7 +115,7 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
 - **Heavier stack.** Keycloak is a JVM: roughly 0.5–1 GB of RAM and 20–60 s to become ready. `pnpm dev` now needs `docker compose up -d postgres keycloak`.
 - **Idempotency keys reset once.** The migration that adds `subject` deletes live keys, so a retry of a request made before the deploy creates a new incident.
 - **Deploy all replicas at once.** An old replica rejects keyed reports after the migration (its `ON CONFLICT ("key")` no longer matches a constraint), and accepts unauthenticated requests anyway, so a rolling deploy across this change is not meaningful.
-- **Roles exist but are not enforced.** Every authenticated user can do everything until IMP-10 adds permission checks and records the actor on the timeline.
+- **Roles exist but are not enforced.** Every authenticated user can do everything until IMP-10 adds permission checks and records the actor on the timeline. Done in IMP-10 ([ADR-0011](0011-role-based-authorization-and-timeline-actor.md)).
 - **Revisit:**
   - ADR-0005's "gate docs behind authentication" option becomes possible; IMP-11 decides it.
   - Per-connection limits on `/events` belong to IMP-11.

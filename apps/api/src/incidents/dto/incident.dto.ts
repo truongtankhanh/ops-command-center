@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  ACTOR_KINDS,
+  type Actor,
+  type ActorKind,
   INCIDENT_EVENT_KINDS,
   INCIDENT_SEVERITIES,
   INCIDENT_SOURCES,
@@ -77,6 +80,20 @@ export class IncidentDto implements Incident {
   version: number;
 }
 
+export class ActorDto implements Actor {
+  /** `user`: a signed-in person. `system`: the API itself (simulator, demo seed, older entries). */
+  @ApiProperty({ enum: ACTOR_KINDS })
+  kind: ActorKind;
+
+  /** The identity provider's subject for a user; `simulator`, `seed` or `system` otherwise. */
+  @ApiProperty({ example: 'f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d' })
+  subject: string;
+
+  /** Name to show, as it was when the entry was written. */
+  @ApiProperty({ example: 'Demo Operator' })
+  displayName: string;
+}
+
 export class IncidentEventDto implements IncidentEvent {
   @ApiProperty({ format: 'uuid' })
   id: string;
@@ -90,6 +107,10 @@ export class IncidentEventDto implements IncidentEvent {
 
   @ApiProperty({ format: 'date-time' })
   at: string;
+
+  /** Who caused this entry. */
+  @ApiProperty({ type: ActorDto })
+  actor: ActorDto;
 }
 
 export class IncidentDetailDto extends IncidentDto implements IncidentDetail {

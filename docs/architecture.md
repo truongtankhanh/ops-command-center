@@ -14,12 +14,12 @@ The reference scenario is **Langbiang Tech Campus**, a fictional technology camp
 
 ### Quality goals
 
-| Goal                  | What it means here                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Live**              | A new incident reaches every open console in under a second, without refresh                                 |
-| **Swappable sources** | Mock cameras in development, real RTSP/ONVIF cameras in production — same code path, chosen by configuration |
-| **Auditable**         | Every state change of an incident is recorded with a timestamp; transitions are validated server-side        |
-| **Runs anywhere**     | One `docker compose up` brings up the full stack on a single on-prem machine; no cloud dependency            |
+| Goal                  | What it means here                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Live**              | A new incident reaches every open console in under a second, without refresh                                        |
+| **Swappable sources** | Mock cameras in development, real RTSP/ONVIF cameras in production — same code path, chosen by configuration        |
+| **Auditable**         | Every state change of an incident is recorded with a timestamp and its actor; transitions are validated server-side |
+| **Runs anywhere**     | One `docker compose up` brings up the full stack on a single on-prem machine; no cloud dependency                   |
 
 ## 2. Context
 
@@ -84,7 +84,7 @@ stateDiagram-v2
   resolved --> [*]
 ```
 
-Transitions live in the `Incident` entity itself (`acknowledge()`, `resolve()`), not in controllers. An invalid transition throws a domain error, mapped to **HTTP 409 Conflict**. Every successful transition appends an `IncidentEvent`, so the timeline is the audit log.
+Transitions live in the `Incident` entity itself (`acknowledge()`, `resolve()`), not in controllers. An invalid transition throws a domain error, mapped to **HTTP 409 Conflict**. Every successful transition appends an `IncidentEvent` naming its actor (the signed-in user, or a system actor for the simulator and seed), so the timeline is the audit log ([ADR-0011](adr/0011-role-based-authorization-and-timeline-actor.md)).
 
 ## 5. Real-time flow
 
@@ -148,29 +148,30 @@ A production deployment guide is not published yet.
 
 ## 8. Cross-cutting concerns
 
-| Concern                    | Approach                                                                                                                                                                                                                         |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Configuration              | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                                                                                                                |
-| Validation                 | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                                                                                                                     |
-| Errors                     | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                                                                                                               |
-| Schema changes             | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                          |
-| Event delivery             | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md))       |
-| Retries / duplicate writes | `POST /api/incidents` takes an optional `Idempotency-Key`; the key and the first response commit with the incident, so a retry replays it instead of creating a duplicate ([ADR-0009](adr/0009-idempotent-incident-creation.md)) |
-| Identity / access          | OIDC access tokens from Keycloak, checked on every route but health and at the `/events` handshake; roles enforced from IMP-10 ([ADR-0010](adr/0010-oidc-authentication.md))                                                     |
-| API docs                   | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                             |
-| Quality gates              | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                                     |
+| Concern                    | Approach                                                                                                                                                                                                                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Configuration              | `@nestjs/config`, validated at startup — the API refuses to boot with invalid env                                                                                                                                                                                                            |
+| Validation                 | `class-validator` DTOs + global `ValidationPipe` (whitelist, forbid unknown)                                                                                                                                                                                                                 |
+| Errors                     | Domain errors mapped to HTTP status in one exception filter; consistent error body                                                                                                                                                                                                           |
+| Schema changes             | TypeORM migrations only; `synchronize` is never enabled                                                                                                                                                                                                                                      |
+| Event delivery             | Transactional outbox + relay; at-least-once, clients keep the higher `version` ([ADR-0007](adr/0007-transactional-outbox.md)); Postgres `NOTIFY` fans out to every replica ([ADR-0008](adr/0008-multi-replica-fan-out.md))                                                                   |
+| Retries / duplicate writes | `POST /api/incidents` takes an optional `Idempotency-Key`; the key and the first response commit with the incident, so a retry replays it instead of creating a duplicate ([ADR-0009](adr/0009-idempotent-incident-creation.md))                                                             |
+| Identity / access          | OIDC access tokens from Keycloak, checked on every route but health and at the `/events` handshake ([ADR-0010](adr/0010-oidc-authentication.md)); writes need `operator` or `supervisor`, a user with no role gets 403 ([ADR-0011](adr/0011-role-based-authorization-and-timeline-actor.md)) |
+| API docs                   | OpenAPI generated from code at `/api/docs`; off by default in production ([ADR-0005](adr/0005-api-docs-exposure-per-environment.md))                                                                                                                                                         |
+| Quality gates              | ESLint, typecheck, unit + e2e tests and build on every push (GitHub Actions)                                                                                                                                                                                                                 |
 
 ## 9. Decisions
 
-| ADR                                                    | Decision                                                 |
-| ------------------------------------------------------ | -------------------------------------------------------- |
-| [0001](adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo              |
-| [0002](adr/0002-camera-source-adapter.md)              | Camera access behind a `CameraSource` adapter            |
-| [0003](adr/0003-realtime-domain-events-socketio.md)    | Domain events in-process, broadcast with Socket.IO       |
-| [0004](adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL with TypeORM, migrations only                 |
-| [0005](adr/0005-api-docs-exposure-per-environment.md)  | API docs exposure per environment                        |
-| [0006](adr/0006-config-and-secrets-per-environment.md) | Configuration and secrets per environment                |
-| [0007](adr/0007-transactional-outbox.md)               | Transactional outbox for incident events                 |
-| [0008](adr/0008-multi-replica-fan-out.md)              | Several API replicas, events fanned out through Postgres |
-| [0009](adr/0009-idempotent-incident-creation.md)       | Idempotent incident creation with an `Idempotency-Key`   |
-| [0010](adr/0010-oidc-authentication.md)                | OIDC authentication for REST and WebSocket               |
+| ADR                                                             | Decision                                                 |
+| --------------------------------------------------------------- | -------------------------------------------------------- |
+| [0001](adr/0001-monorepo-pnpm-turborepo.md)                     | Monorepo with pnpm workspaces and Turborepo              |
+| [0002](adr/0002-camera-source-adapter.md)                       | Camera access behind a `CameraSource` adapter            |
+| [0003](adr/0003-realtime-domain-events-socketio.md)             | Domain events in-process, broadcast with Socket.IO       |
+| [0004](adr/0004-postgres-typeorm-migrations.md)                 | PostgreSQL with TypeORM, migrations only                 |
+| [0005](adr/0005-api-docs-exposure-per-environment.md)           | API docs exposure per environment                        |
+| [0006](adr/0006-config-and-secrets-per-environment.md)          | Configuration and secrets per environment                |
+| [0007](adr/0007-transactional-outbox.md)                        | Transactional outbox for incident events                 |
+| [0008](adr/0008-multi-replica-fan-out.md)                       | Several API replicas, events fanned out through Postgres |
+| [0009](adr/0009-idempotent-incident-creation.md)                | Idempotent incident creation with an `Idempotency-Key`   |
+| [0010](adr/0010-oidc-authentication.md)                         | OIDC authentication for REST and WebSocket               |
+| [0011](adr/0011-role-based-authorization-and-timeline-actor.md) | Role-based authorization and the timeline actor          |

@@ -3,6 +3,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiExtraModels,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
@@ -24,6 +25,7 @@ import {
 @ApiTags('cameras')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
+@ApiForbiddenResponse({ type: ApiErrorDto, description: 'No role grants access' })
 @ApiExtraModels(MockStreamDescriptorDto, HlsStreamDescriptorDto, WebRtcStreamDescriptorDto)
 @Controller('cameras')
 export class CamerasController {

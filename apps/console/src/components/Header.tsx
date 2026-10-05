@@ -1,8 +1,8 @@
 import { INCIDENT_SEVERITIES } from '@occ/contracts';
-import { useQueryClient } from '@tanstack/react-query';
 import { useIncidents } from '../api/queries';
-import { signOut } from '../auth/session';
 import { useSession } from '../auth/store';
+import { useReadOnly } from '../auth/usePermission';
+import { useSignOut } from '../auth/useSignOut';
 import { countActiveBySeverity } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
@@ -13,7 +13,8 @@ export function Header() {
   const { data: incidents = [] } = useIncidents();
   const connection = useConsole((s) => s.connection);
   const user = useSession((s) => s.user);
-  const queryClient = useQueryClient();
+  const readOnly = useReadOnly();
+  const signOut = useSignOut();
   const now = useNow(1000);
   const counts = countActiveBySeverity(incidents);
 
@@ -49,18 +50,10 @@ export function Header() {
         })}
       </time>
       <div className="session-user">
+        {/* Explains why the actions are missing; the API still refuses them (ADR-0011). */}
+        {readOnly && <span className="session-access">View only</span>}
         <span>{user?.displayName}</span>
-        <button
-          type="button"
-          className="button"
-          onClick={() => {
-            // signOut() switches the session status before its first await, so the console
-            // unmounts in this render and nothing refetches into the cleared cache: the next
-            // operator at this workstation sees none of this session's data.
-            void signOut();
-            queryClient.clear();
-          }}
-        >
+        <button type="button" className="button" onClick={signOut}>
           Sign out
         </button>
       </div>

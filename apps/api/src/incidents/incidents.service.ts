@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  type Actor,
   INCIDENT_SEVERITIES,
   type Incident,
   type IncidentDetail,
@@ -30,7 +31,8 @@ const SEVERITY_ORDER = `ARRAY[${INCIDENT_SEVERITIES.map((s) => `'${s}'`).join(',
  * domain event in the outbox, so an event exists exactly when its change committed. `OutboxRelay`
  * publishes it to listeners (e.g. the WebSocket gateway); this service only nudges it (ADR-0007).
  * Reporting with an idempotency key is safe to retry: the same key returns the first response
- * instead of creating a second incident (ADR-0009).
+ * instead of creating a second incident (ADR-0009). Every write takes the actor to record on the
+ * timeline; callers pass the signed-in user or a system actor, never request input (ADR-0011).
  */
 @Injectable()
 export class IncidentsService {
@@ -68,6 +70,7 @@ export class IncidentsService {
   async report(
     request: ReportIncidentRequest,
     source: IncidentSource,
+    actor: Actor,
     idempotencyKey?: IdempotencyKeyId,
   ): Promise<IncidentDetail> {
     const idempotency = idempotencyKey
@@ -87,18 +90,21 @@ export class IncidentsService {
 
       const incident = await persistIncident(
         manager,
-        IncidentEntity.report({
-          code: await nextIncidentCode(manager),
-          type: request.type,
-          severity: request.severity,
-          title: request.title,
-          description: request.description,
-          zoneId: zone.id,
-          lng,
-          lat,
-          source,
-          at: this.now(),
-        }),
+        IncidentEntity.report(
+          {
+            code: await nextIncidentCode(manager),
+            type: request.type,
+            severity: request.severity,
+            title: request.title,
+            description: request.description,
+            zoneId: zone.id,
+            lng,
+            lat,
+            source,
+            at: this.now(),
+          },
+          actor,
+        ),
         IncidentEvents.Created,
       );
       // Read inside the transaction: the stored response must commit together with the incident.
@@ -111,12 +117,12 @@ export class IncidentsService {
     return detail;
   }
 
-  acknowledge(id: string, note?: string): Promise<IncidentDetail> {
-    return this.transition(id, (incident, at) => incident.acknowledge(at, note ?? null));
+  acknowledge(id: string, actor: Actor, note?: string): Promise<IncidentDetail> {
+    return this.transition(id, (incident, at) => incident.acknowledge(at, actor, note ?? null));
   }
 
-  resolve(id: string, note?: string): Promise<IncidentDetail> {
-    return this.transition(id, (incident, at) => incident.resolve(at, note ?? null));
+  resolve(id: string, actor: Actor, note?: string): Promise<IncidentDetail> {
+    return this.transition(id, (incident, at) => incident.resolve(at, actor, note ?? null));
   }
 
   /** Loads the incident under a row lock so concurrent operators cannot both transition it. */

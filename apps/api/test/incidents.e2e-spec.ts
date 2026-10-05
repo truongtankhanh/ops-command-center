@@ -22,15 +22,20 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
 import { persistIncident } from '../src/incidents/persist-incident';
 import { OutboxEvents } from '../src/outbox/outbox-events';
 import { OutboxEntity } from '../src/outbox/outbox.entity';
 import { SimulatorLeader } from '../src/simulator/simulator-leader.service';
+import { SimulatorService } from '../src/simulator/simulator.service';
 import { bearer, hs256Token, signToken, unsignedToken } from './support/tokens';
 
 /** The suite's default access token, from the test issuer (`global-setup.ts`). Set in `beforeAll`. */
 let token: string;
+
+/** The default token's user (`sub` and `name` in `support/tokens.ts`) as a timeline actor. */
+const OPERATOR_ACTOR = { kind: 'user', subject: 'e2e-operator', displayName: 'E2E Operator' };
 
 /**
  * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
@@ -61,7 +66,11 @@ describe('Incidents (e2e)', () => {
       transports: ['websocket'],
       auth: { token },
     });
-    await new Promise<void>((resolve) => socket.on('connect', () => resolve()));
+    // Reject on a refused handshake, so `beforeAll` fails with its reason instead of timing out.
+    await new Promise<void>((resolve, reject) => {
+      socket.once('connect', () => resolve());
+      socket.once('connect_error', reject);
+    });
 
     const zones = await api(app).get('/api/zones').expect(200);
     zone = (zones.body as Zone[]).find((z) => z.code === 'BLD-LIB')!;
@@ -82,6 +91,13 @@ describe('Incidents (e2e)', () => {
     expect(incidents.body).toHaveLength(5);
     // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
     expect(await app.get(DataSource).getRepository(OutboxEntity).count()).toBe(0);
+
+    // Only seeded incidents exist yet; a resolved one has the longest timeline.
+    const [seeded] = (await api(app).get('/api/incidents?status=resolved&limit=1').expect(200))
+      .body;
+    const detail = await api(app).get(`/api/incidents/${seeded.id}`).expect(200);
+    expect(detail.body.timeline.length).toBeGreaterThan(1);
+    for (const entry of detail.body.timeline) expect(entry.actor).toEqual(SystemActors.seed);
   });
 
   it('orders incidents unresolved first, then by severity', async () => {
@@ -143,6 +159,12 @@ describe('Incidents (e2e)', () => {
       'resolved',
     ]);
     expect(done.body.timeline[1].note).toBe('Medic on the way');
+    // Every entry names the user whose request caused it (ADR-0011).
+    expect(done.body.timeline.map((e: { actor: unknown }) => e.actor)).toEqual([
+      OPERATOR_ACTOR,
+      OPERATOR_ACTOR,
+      OPERATOR_ACTOR,
+    ]);
 
     // No drain needed: an event is only sent when the claim that sets `published_at` commits, so
     // every row a client has heard about is already published (ADR-0008).
@@ -165,18 +187,21 @@ describe('Incidents (e2e)', () => {
     const rolledBack = dataSource.transaction(async (manager) => {
       const saved = await persistIncident(
         manager,
-        IncidentEntity.report({
-          // Fixed code: a sequence value is not given back on rollback.
-          code: 'INC-ROLLBACK',
-          type: 'medical',
-          severity: 'low',
-          title: 'Rolled back',
-          zoneId: zone.id,
-          lng: zone.center[0],
-          lat: zone.center[1],
-          source: 'operator',
-          at: new Date(),
-        }),
+        IncidentEntity.report(
+          {
+            // Fixed code: a sequence value is not given back on rollback.
+            code: 'INC-ROLLBACK',
+            type: 'medical',
+            severity: 'low',
+            title: 'Rolled back',
+            zoneId: zone.id,
+            lng: zone.center[0],
+            lat: zone.center[1],
+            source: 'operator',
+            at: new Date(),
+          },
+          SystemActors.seed,
+        ),
         IncidentEvents.Created,
       );
       incidentId = saved.id;
@@ -344,6 +369,153 @@ describe('Incidents (e2e)', () => {
       } finally {
         client.close();
       }
+    });
+  });
+
+  /** Every timeline entry records who caused it, and only the server decides who that is (ADR-0011). */
+  describe('actors', () => {
+    it('records the simulator as the actor of its changes', async () => {
+      // Awaiting the broadcast keeps it from reaching a later `waitFor`.
+      const created = waitFor(socket, IncidentEvents.Created);
+      // `() => 0` is deterministic: no simulator incident exists yet, so the tick only reports one.
+      await app.get(SimulatorService).tick(() => 0);
+      const incident = await created;
+
+      const detail = await api(app).get(`/api/incidents/${incident.id}`).expect(200);
+      expect(detail.body.source).toBe('simulator');
+      expect(detail.body.timeline.map((e: { actor: unknown }) => e.actor)).toEqual([
+        SystemActors.simulator,
+      ]);
+    });
+
+    it('never takes the actor from the request', async () => {
+      const report = await api(app)
+        .post('/api/incidents')
+        .send({ type: 'medical', severity: 'low', title: 'Actor not from body', zoneId: zone.id })
+        .expect(201);
+
+      const spoofed = await api(app)
+        .post(`/api/incidents/${report.body.id}/acknowledge`)
+        .send({ actor: { kind: 'system', subject: 'spoof', displayName: 'Spoofed' } })
+        .expect(400);
+      expect(spoofed.body.message).toEqual([expect.stringContaining('actor')]);
+
+      const detail = await api(app).get(`/api/incidents/${report.body.id}`).expect(200);
+      expect(detail.body).toMatchObject({ status: 'open', version: 1 });
+      expect(detail.body.timeline.map((e: { actor: unknown }) => e.actor)).toEqual([
+        OPERATOR_ACTOR,
+      ]);
+    });
+  });
+
+  /** What each role may do: viewers read, operators and supervisors also write (ADR-0011). */
+  describe('roles', () => {
+    let viewer: string;
+    const newBody = (title: string) => ({
+      type: 'medical',
+      severity: 'low',
+      title,
+      zoneId: zone.id,
+    });
+
+    beforeAll(async () => {
+      viewer = await signToken({ sub: 'e2e-viewer', name: 'E2E Viewer', roles: ['viewer'] });
+    });
+
+    it('lets a viewer read but not report, acknowledge or resolve (403)', async () => {
+      const target = await reportIncident(app, newBody('Viewer target')).expect(201);
+      const id = target.body.id as string;
+
+      const writes: [string, request.Test][] = [
+        ['incident:report', reportIncident(app, newBody('Viewer target'), undefined, viewer)],
+        [
+          'incident:acknowledge',
+          api(app, viewer).post(`/api/incidents/${id}/acknowledge`).send({}),
+        ],
+        ['incident:resolve', api(app, viewer).post(`/api/incidents/${id}/resolve`).send({})],
+      ];
+      for (const [permission, req] of writes) {
+        const res = await req;
+        // The permission makes a failure say which write got through.
+        expect([permission, res.status]).toEqual([permission, 403]);
+        expect(res.body).toMatchObject({
+          statusCode: 403,
+          error: 'FORBIDDEN',
+          message: `Missing permission: ${permission}`,
+        });
+      }
+
+      const after = await api(app).get(`/api/incidents/${id}`).expect(200);
+      expect(after.body).toMatchObject({ status: 'open', version: 1 });
+      expect(await countIncidents(app, 'Viewer target')).toBe(1);
+    });
+
+    it('lets a viewer read everything and listen to /events', async () => {
+      await api(app, viewer).get('/api/zones').expect(200);
+      const cameras = await api(app, viewer).get('/api/cameras').expect(200);
+      await api(app, viewer).get(`/api/cameras/${cameras.body[0].id}/stream`).expect(200);
+      const incidents = await api(app, viewer).get('/api/incidents').expect(200);
+      await api(app, viewer).get(`/api/incidents/${incidents.body[0].id}`).expect(200);
+
+      const client = await connectEvents(app, ['websocket'], {
+        reconnection: false,
+        auth: { token: viewer },
+      });
+      try {
+        expect(client.connected).toBe(true);
+      } finally {
+        client.close();
+      }
+    });
+
+    it('refuses a user with no known role (403, socket Forbidden)', async () => {
+      const cases: [string, string[] | null][] = [
+        ['no realm_access', null],
+        ['unknown role only', ['admin']],
+      ];
+      for (const [label, roles] of cases) {
+        const roleless = await signToken({ sub: 'e2e-roleless', roles });
+        const requests = [
+          api(app, roleless).get('/api/zones'),
+          reportIncident(app, newBody('Role-less'), undefined, roleless),
+        ];
+        for (const req of requests) {
+          const res = await req;
+          expect([label, res.status]).toEqual([label, 403]);
+          expect(res.body.message).toBe('No role grants access to this API');
+        }
+        await expect(
+          connectEvents(app, ['websocket'], { reconnection: false, auth: { token: roleless } }),
+        ).rejects.toThrow(EventsConnectErrors.Forbidden);
+      }
+      expect(await countIncidents(app, 'Role-less')).toBe(0);
+    });
+
+    it('answers a viewer 403 before validating the request or finding the incident', async () => {
+      // Guards run before pipes: not 400 for the body, not 404 for the id.
+      await reportIncident(app, { type: 'alien_landing' }, undefined, viewer).expect(403);
+      await api(app, viewer)
+        .post('/api/incidents/00000000-0000-4000-8000-000000000000/acknowledge')
+        .send({})
+        .expect(403);
+    });
+
+    it('lets a supervisor act like an operator', async () => {
+      const supervisor = await signToken({
+        sub: 'e2e-supervisor',
+        name: 'E2E Supervisor',
+        roles: ['supervisor'],
+      });
+      const target = await reportIncident(app, newBody('Supervisor target')).expect(201);
+
+      const ack = await api(app, supervisor)
+        .post(`/api/incidents/${target.body.id}/acknowledge`)
+        .send({})
+        .expect(200);
+      expect(ack.body.timeline.at(-1)).toMatchObject({
+        kind: 'acknowledged',
+        actor: { kind: 'user', subject: 'e2e-supervisor', displayName: 'E2E Supervisor' },
+      });
     });
   });
 
@@ -537,7 +709,8 @@ describe('Incidents (e2e)', () => {
     });
 
     it('refuses long-polling clients', async () => {
-      // With a valid token, so the refusal can only be about the transport, not authentication.
+      // With a valid token and role, so the refusal can only be about the transport, not about
+      // authentication or authorization.
       const refused = await connectEvents(appB, ['polling'], {
         reconnection: false,
         auth: { token },
@@ -547,6 +720,7 @@ describe('Incidents (e2e)', () => {
       );
       expect(refused).toBeInstanceOf(Error);
       expect(refused?.message).not.toBe(EventsConnectErrors.Unauthorized);
+      expect(refused?.message).not.toBe(EventsConnectErrors.Forbidden);
     });
 
     it('creates one incident when instances race on the same key', async () => {

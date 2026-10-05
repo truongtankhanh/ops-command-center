@@ -18,7 +18,7 @@ docker compose up --build
 # API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
-Sign in as `operator`, `supervisor` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). Roles are not enforced until IMP-10.
+Sign in as `operator`, `supervisor` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). `operator` and `supervisor` may report, acknowledge and resolve incidents; `viewer` is read-only, and every timeline entry shows who made it ([ADR-0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md)).
 
 The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
 
@@ -71,18 +71,19 @@ docs/
 
 The full design is in [docs/architecture.md](docs/architecture.md); every endpoint and event is documented in [docs/api](docs/api/README.md). Key decisions, each with context, options and consequences:
 
-| ADR                                                         | Decision                                                                                                                             |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)            | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                                  |
-| [0002](docs/adr/0002-camera-source-adapter.md)              | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                                   |
-| [0003](docs/adr/0003-realtime-domain-events-socketio.md)    | Domain events on an in-process bus, broadcast by a Socket.IO gateway that only listens (delivery amended by 0007)                    |
-| [0004](docs/adr/0004-postgres-typeorm-migrations.md)        | PostgreSQL + TypeORM, migrations only, applied at boot                                                                               |
-| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)  | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                                       |
-| [0006](docs/adr/0006-config-and-secrets-per-environment.md) | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform          |
-| [0007](docs/adr/0007-transactional-outbox.md)               | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client  |
-| [0008](docs/adr/0008-multi-replica-fan-out.md)              | Several API replicas: Postgres `NOTIFY` fans every event out to all of them; one simulator leader; boot serialised by advisory locks |
-| [0009](docs/adr/0009-idempotent-incident-creation.md)       | `Idempotency-Key` on incident creation — a retried report replays the first response instead of creating a duplicate                 |
-| [0010](docs/adr/0010-oidc-authentication.md)                | OIDC sign-in through a self-hosted Keycloak; every request and socket carries an access token checked by the API                     |
+| ADR                                                                  | Decision                                                                                                                             |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [0001](docs/adr/0001-monorepo-pnpm-turborepo.md)                     | Monorepo with pnpm workspaces and Turborepo — a contract change and both sides of it land in one PR                                  |
+| [0002](docs/adr/0002-camera-source-adapter.md)                       | Cameras behind a `CameraSource` adapter — mock in dev/CI, MediaMTX in production, chosen by config                                   |
+| [0003](docs/adr/0003-realtime-domain-events-socketio.md)             | Domain events on an in-process bus, broadcast by a Socket.IO gateway that only listens (delivery amended by 0007)                    |
+| [0004](docs/adr/0004-postgres-typeorm-migrations.md)                 | PostgreSQL + TypeORM, migrations only, applied at boot                                                                               |
+| [0005](docs/adr/0005-api-docs-exposure-per-environment.md)           | Swagger UI on in development, off in production unless explicitly enabled — and then read-only                                       |
+| [0006](docs/adr/0006-config-and-secrets-per-environment.md)          | One validated config path; tests isolated from dev data; production refuses demo defaults; secrets injected by the platform          |
+| [0007](docs/adr/0007-transactional-outbox.md)                        | Transactional outbox — an event commits with its change and a relay publishes it; at-least-once, ordered by `version` on the client  |
+| [0008](docs/adr/0008-multi-replica-fan-out.md)                       | Several API replicas: Postgres `NOTIFY` fans every event out to all of them; one simulator leader; boot serialised by advisory locks |
+| [0009](docs/adr/0009-idempotent-incident-creation.md)                | `Idempotency-Key` on incident creation — a retried report replays the first response instead of creating a duplicate                 |
+| [0010](docs/adr/0010-oidc-authentication.md)                         | OIDC sign-in through a self-hosted Keycloak; every request and socket carries an access token checked by the API                     |
+| [0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md) | Permissions per role (`viewer` read-only), checked by the API; every timeline entry records its actor                                |
 
 ### Design details worth a look
 

@@ -1,14 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { signInAgain } from '../auth/session';
+import { signInAgain, signOut } from '../auth/session';
 import { useSession } from '../auth/store';
-import { resetStore } from '../test-utils';
+import { renderWithQueryClient, resetStore } from '../test-utils';
 import { AuthGate } from './AuthGate';
 
-vi.mock('../auth/session', () => ({ signInAgain: vi.fn() }));
+vi.mock('../auth/session', () => ({ signInAgain: vi.fn(), signOut: vi.fn() }));
 
+/** Inside a query client: signing out from the gate also clears the cache. */
 function renderGate() {
-  return render(
+  return renderWithQueryClient(
     <AuthGate>
       <p>Console</p>
     </AuthGate>,
@@ -19,10 +20,11 @@ describe('AuthGate', () => {
   beforeEach(() => {
     resetStore(useSession);
     vi.mocked(signInAgain).mockReset();
+    vi.mocked(signOut).mockReset();
   });
 
   it('shows the console once the operator is signed in', () => {
-    useSession.getState().signedIn({ displayName: 'Demo Operator' });
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
 
     renderGate();
 
@@ -71,7 +73,7 @@ describe('AuthGate', () => {
   });
 
   it('keeps the console on screen under the expired-session banner', async () => {
-    useSession.getState().signedIn({ displayName: 'Demo Operator' });
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
     useSession.getState().expire();
     renderGate();
 
@@ -80,5 +82,48 @@ describe('AuthGate', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Sign in again' }));
     expect(signInAgain).toHaveBeenCalledTimes(1);
+  });
+
+  describe('a user with no role', () => {
+    beforeEach(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: [] }));
+
+    it('tells the user that the account has no access', () => {
+      renderGate();
+
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This account has no access to the console',
+      );
+      expect(screen.queryByText('Console')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Sign in again' })).toBeNull();
+    });
+
+    it('shows no expired-session banner on the no-access screen', () => {
+      useSession.getState().expire();
+
+      renderGate();
+
+      expect(screen.queryByText(/Your session has expired/)).toBeNull();
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+    });
+
+    it('signs out and clears the cache', async () => {
+      const { client } = renderGate();
+      const clear = vi.spyOn(client, 'clear');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+
+      expect(signOut).toHaveBeenCalledTimes(1);
+      expect(clear).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the console once a renewal grants a role', () => {
+      renderGate();
+
+      act(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] }));
+
+      expect(screen.getByText('Console')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
   });
 });

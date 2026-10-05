@@ -1,6 +1,8 @@
 import type { IncidentDetail as Detail, IncidentEventKind } from '@occ/contracts';
 import { useEffect, useState } from 'react';
+import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
+import { usePermission } from '../auth/usePermission';
 import { statusLabel, typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
 import { CameraTile } from './CameraTile';
@@ -41,6 +43,10 @@ function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => vo
   const { data: cameras = [] } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
   const zoneCameras = cameras.filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
+  const canAcknowledge = usePermission('incident:acknowledge');
+  const canResolve = usePermission('incident:resolve');
+  const showAcknowledge = incident.status === 'open' && canAcknowledge;
+  const showResolve = incident.status !== 'resolved' && canResolve;
 
   return (
     <aside className="detail" aria-label={`Incident ${incident.code}`}>
@@ -67,17 +73,20 @@ function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => vo
         {incident.description && <p className="detail-description">{incident.description}</p>}
       </div>
 
-      {incident.status !== 'resolved' && <Actions incident={incident} />}
+      {(showAcknowledge || showResolve) && (
+        <Actions incident={incident} showAcknowledge={showAcknowledge} showResolve={showResolve} />
+      )}
 
       <section className="detail-section">
         <h3>Timeline</h3>
         <ol className="timeline">
           {incident.timeline.map((event) => (
-            <li key={event.id}>
+            <li key={event.id} data-actor-kind={event.actor.kind}>
               <span className="timeline-kind">{EVENT_LABEL[event.kind]}</span>
               <time className="timeline-time" dateTime={event.at}>
                 {time(event.at)}
               </time>
+              <span className="timeline-actor">{event.actor.displayName}</span>
               {event.note && <p className="timeline-note">{event.note}</p>}
             </li>
           ))}
@@ -102,7 +111,16 @@ function DetailBody({ incident, onClose }: { incident: Detail; onClose: () => vo
   );
 }
 
-function Actions({ incident }: { incident: Detail }) {
+/** Only the actions the user's roles grant are shown; the API refuses the rest anyway (ADR-0011). */
+function Actions({
+  incident,
+  showAcknowledge,
+  showResolve,
+}: {
+  incident: Detail;
+  showAcknowledge: boolean;
+  showResolve: boolean;
+}) {
   const [note, setNote] = useState('');
   const acknowledge = useTransition('acknowledge');
   const resolve = useTransition('resolve');
@@ -130,7 +148,7 @@ function Actions({ incident }: { incident: Detail }) {
           maxLength={1000}
         />
         <div className="action-buttons">
-          {incident.status === 'open' && (
+          {showAcknowledge && (
             <button
               type="button"
               className="button button-primary"
@@ -140,18 +158,22 @@ function Actions({ incident }: { incident: Detail }) {
               Acknowledge
             </button>
           )}
-          <button
-            type="button"
-            className={incident.status === 'open' ? 'button' : 'button button-primary'}
-            disabled={busy}
-            onClick={() => run(resolve)}
-          >
-            Resolve
-          </button>
+          {showResolve && (
+            <button
+              type="button"
+              className={showAcknowledge ? 'button' : 'button button-primary'}
+              disabled={busy}
+              onClick={() => run(resolve)}
+            >
+              Resolve
+            </button>
+          )}
         </div>
         {error && (
           <p className="form-error" role="alert">
-            {error.message}
+            {error instanceof ApiRequestError && error.status === 403
+              ? NO_LONGER_ALLOWED
+              : error.message}
           </p>
         )}
       </form>

@@ -3,7 +3,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
+import { useSession } from '../auth/store';
 import { useConsole } from '../store';
+import { resetStore } from '../test-utils';
 import { IncidentFeed } from './IncidentFeed';
 
 const zone: Zone = {
@@ -46,9 +48,12 @@ function renderFeed() {
 }
 
 describe('IncidentFeed', () => {
-  beforeEach(() =>
-    useConsole.setState({ filter: 'active', selectedIncidentId: null, reporting: false }),
-  );
+  beforeEach(() => {
+    useConsole.setState({ filter: 'active', selectedIncidentId: null, reporting: false });
+    // The Report button is shown only to a role that may report (ADR-0011).
+    resetStore(useSession);
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
+  });
 
   it('shows only active incidents by default, with zone and status', () => {
     renderFeed();
@@ -57,6 +62,16 @@ describe('IncidentFeed', () => {
     expect(screen.getByText('Being handled')).toBeInTheDocument();
     expect(screen.queryByText('Smoke detector')).not.toBeInTheDocument();
     expect(screen.getAllByText('Library')).toHaveLength(2);
+  });
+
+  it('offers no report button to a viewer', () => {
+    useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] });
+
+    renderFeed();
+
+    expect(screen.queryByRole('button', { name: 'Report incident' })).toBeNull();
+    expect(screen.getByText('Door forced open')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Resolved' })).toBeInTheDocument();
   });
 
   it('switches to resolved incidents', async () => {

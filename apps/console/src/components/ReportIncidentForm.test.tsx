@@ -210,6 +210,23 @@ describe('ReportIncidentForm', () => {
     expect(useConsole.getState().reporting).toBe(true);
   });
 
+  it('explains a 403 in operator terms and keeps the input', async () => {
+    vi.mocked(getAccessToken).mockResolvedValue('token-1');
+    fetchMock.mockResolvedValue(apiError(403, 'Missing permission: incident:report'));
+    const { form } = renderForm();
+
+    await fillRequired(form);
+    await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+    const alert = await form.findByRole('alert');
+    expect(alert).toHaveTextContent('Your account is no longer allowed to do this.');
+    expect(alert).not.toHaveTextContent('Missing permission');
+    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(useConsole.getState().reporting).toBe(true);
+    expect(renewSession).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('sends the access token with the report, next to the Idempotency-Key', async () => {
     vi.mocked(getAccessToken).mockResolvedValue('token-1');
     fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));

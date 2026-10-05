@@ -30,6 +30,13 @@ export type IncidentEventKind = (typeof INCIDENT_EVENT_KINDS)[number];
 export const INCIDENT_SOURCES = ['operator', 'simulator'] as const;
 export type IncidentSource = (typeof INCIDENT_SOURCES)[number];
 
+/**
+ * `user`: a signed-in person. `system`: the API itself, e.g. the simulator, the demo seed, or
+ * timeline entries recorded before actors existed.
+ */
+export const ACTOR_KINDS = ['user', 'system'] as const;
+export type ActorKind = (typeof ACTOR_KINDS)[number];
+
 /** [longitude, latitude] — GeoJSON order. */
 export type LngLat = [number, number];
 
@@ -52,11 +59,21 @@ export interface Camera {
   online: boolean;
 }
 
+/** Who caused a timeline entry. */
+export interface Actor {
+  kind: ActorKind;
+  /** The identity provider's `sub` for a user; a fixed name such as `simulator` for the system. */
+  subject: string;
+  /** As it was when the entry was written: renaming the account later does not rewrite history. */
+  displayName: string;
+}
+
 export interface IncidentEvent {
   id: string;
   kind: IncidentEventKind;
   note: string | null;
   at: string;
+  actor: Actor;
 }
 
 export interface Incident {

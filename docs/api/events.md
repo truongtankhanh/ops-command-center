@@ -28,9 +28,15 @@ handshake's `auth` payload (`EventsHandshakeAuth`), never in the URL, and pass `
 so every reconnect sends the current token:
 `io('/events', { transports: ['websocket'], auth: (cb) => cb({ token }) })`.
 
+- Any role may connect: `viewer`, `operator` or `supervisor`
+  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)).
 - A refused handshake raises `connect_error` and never connects. Its message is one of
-  `EventsConnectErrors`: `Unauthorized` (no token, or one the API does not accept — sign in again)
-  or `Identity provider unavailable` (the API cannot check tokens right now — retry later).
+  `EventsConnectErrors`: `Unauthorized` (no token, or one the API does not accept — sign in again),
+  `Identity provider unavailable` (the API cannot check tokens right now — retry later), or
+  `Forbidden` (the token has none of those roles — signing in again as the same user will not
+  help).
+- The roles are those of the handshake token until the connection closes at its expiry, so a role
+  removed during a session stops the live feed at the next reconnect.
 - When the token expires, the server closes the connection. Socket.IO reconnects on its own with
   the current token, and the same refetch covers anything missed in between.
 
@@ -44,7 +50,7 @@ Sent to every connected client when an incident is reported, by an operator or b
 
 Payload: `Incident` (see [incidents.md](incidents.md)).
 
-Source: `apps/api/src/realtime/events.gateway.ts:40`
+Source: `apps/api/src/realtime/events.gateway.ts:93`
 
 ### Incident updated
 
@@ -57,4 +63,4 @@ diff — replace the cached copy by `id` only if the payload's `version` is high
 
 Payload: `Incident`.
 
-Source: `apps/api/src/realtime/events.gateway.ts:45`
+Source: `apps/api/src/realtime/events.gateway.ts:98`

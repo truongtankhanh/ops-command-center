@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { ROLES, type Role } from '@occ/contracts';
 import {
   createRemoteJWKSet,
   customFetch,
@@ -13,7 +14,8 @@ import type { Env } from '../config/env.validation';
 /**
  * OIDC access-token verification, shared by the REST guard and the `/events` handshake so both
  * apply the same rules (ADR-0010). The API is a resource server only: it checks tokens against the
- * issuer's public keys, holds no client secret and keeps no session.
+ * issuer's public keys, holds no client secret and keeps no session. Roles are read from
+ * Keycloak's `realm_access.roles` claim (ADR-0011).
  */
 
 /** Who made a request, as the identity provider asserts it. */
@@ -22,6 +24,8 @@ export interface AuthenticatedUser {
   subject: string;
   /** For people reading what happened, never for access decisions. */
   displayName: string;
+  /** The known roles the token carries; empty means the user may do nothing (ADR-0011). */
+  roles: readonly Role[];
 }
 
 export interface VerifiedToken {
@@ -141,9 +145,23 @@ function toVerifiedToken(payload: JWTPayload): VerifiedToken {
     user: {
       subject: sub,
       displayName: claimText(payload.name) ?? claimText(payload.preferred_username) ?? sub,
+      roles: realmRoles(payload),
     },
     expiresAt: new Date(exp * 1000),
   };
+}
+
+/**
+ * Keycloak's `realm_access.roles`, reduced to the roles this API knows, in `ROLES` order without
+ * duplicates. A missing or malformed claim means no roles, not an invalid token: the signature
+ * and claims checked out, the user just has no access.
+ */
+function realmRoles(payload: JWTPayload): Role[] {
+  const realmAccess = payload.realm_access;
+  if (typeof realmAccess !== 'object' || realmAccess === null) return [];
+  const { roles } = realmAccess as { roles?: unknown };
+  if (!Array.isArray(roles)) return [];
+  return ROLES.filter((role) => roles.includes(role));
 }
 
 function claimText(value: unknown): string | undefined {

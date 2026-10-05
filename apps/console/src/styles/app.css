@@ -202,6 +202,13 @@ button {
   font-size: 15px;
 }
 
+.session-access {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  font-size: 14px;
+}
+
 /* ---------- Feed ---------- */
 
 .feed {
@@ -760,6 +767,26 @@ button {
   color: var(--text-muted);
   margin-left: 8px;
   font-size: 14px;
+}
+
+/* A display name can be up to 255 characters and the panel is narrow: let it wrap anywhere. */
+.timeline-actor {
+  margin-left: 8px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* Decorative separator: the empty alternative text keeps screen readers from reading it. */
+.timeline-actor::before {
+  content: '·';
+  content: '·' / '';
+  margin-right: 8px;
+  color: var(--text-muted);
+}
+
+/* The names ("Simulator", "Demo seed", "System") already say it is not a person; colour only adds to it. */
+.timeline [data-actor-kind='system'] .timeline-actor {
+  color: var(--text-muted);
 }
 
 .timeline-note {

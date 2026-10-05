@@ -13,15 +13,15 @@
     "realm": [
       {
         "name": "operator",
-        "description": "Reports, acknowledges and resolves incidents (enforced from IMP-10)"
+        "description": "Reports, acknowledges and resolves incidents"
       },
       {
         "name": "supervisor",
-        "description": "Operator rights plus oversight of every incident (enforced from IMP-10)"
+        "description": "Same rights as operator for now; supervisor-only actions are not defined yet"
       },
       {
         "name": "viewer",
-        "description": "Read-only access (enforced from IMP-10)"
+        "description": "Read-only: sees incidents, zones, cameras and live updates"
       }
     ]
   },

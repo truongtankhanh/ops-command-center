@@ -9,7 +9,10 @@ import {
 } from 'jose';
 import { TEST_KEY_ID } from './test-issuer';
 
-/** Access tokens for the e2e suite, signed by the test issuer unless a case needs otherwise. */
+/**
+ * Access tokens for the e2e suite, signed by the test issuer unless a case needs otherwise. The
+ * default user is an operator, so it may read and write (ADR-0011).
+ */
 
 export interface TokenOptions {
   /** `null` leaves the claim out. */
@@ -21,6 +24,11 @@ export interface TokenOptions {
   expiresIn?: number;
   /** `'other'` signs with a key the issuer never published. */
   key?: 'issuer' | 'other';
+  /**
+   * Realm roles, written to `realm_access.roles` as Keycloak does. `null` leaves the claim out.
+   * Plain strings, so a case can also send a role the API does not know.
+   */
+  roles?: string[] | null;
 }
 
 interface SigningKey {
@@ -58,9 +66,18 @@ function claims({
   aud = requiredEnv('OIDC_AUDIENCE'),
   iss = requiredEnv('OIDC_ISSUER'),
   expiresIn = 3600,
+  roles = ['operator'],
 }: TokenOptions): JWTPayload {
   const now = Math.floor(Date.now() / 1000);
-  return { ...(sub === null ? {} : { sub }), name, aud, iss, iat: now, exp: now + expiresIn };
+  return {
+    ...(sub === null ? {} : { sub }),
+    name,
+    aud,
+    iss,
+    iat: now,
+    exp: now + expiresIn,
+    ...(roles === null ? {} : { realm_access: { roles } }),
+  };
 }
 
 function getIssuerKey(): Promise<SigningKey> {

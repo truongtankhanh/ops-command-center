@@ -57,6 +57,9 @@ export function useLiveIncidents(): void {
 
     const retryRefused = async (reason: string) => {
       // The API refused this token: renew it first. If that fails, the session banner takes over.
+      // Other refusals are retried without renewing. For `Forbidden`, a new token would not bring
+      // a role back sooner than the scheduled renewal, after which the session gate replaces the
+      // console if the roles are gone (ADR-0011).
       if (reason === EventsConnectErrors.Unauthorized && !(await renewSession())) return;
       if (disposed) return;
       const delay = retryDelay * (0.5 + Math.random());

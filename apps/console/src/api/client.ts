@@ -11,6 +11,12 @@ export class ApiRequestError extends Error {
   }
 }
 
+/**
+ * Shown for a 403 on an action. The console hid the action using the roles in the same token the
+ * API checks, so a 403 means the roles changed between showing the action and sending it.
+ */
+export const NO_LONGER_ALLOWED = 'Your account is no longer allowed to do this.';
+
 /** Query retry policy: a 4xx will not change on retry; network errors and 5xx get two more tries. */
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   if (error instanceof ApiRequestError && error.status < 500) return false;

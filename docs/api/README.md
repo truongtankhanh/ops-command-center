@@ -5,7 +5,7 @@ endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) 
 The running API also serves interactive docs at `/api/docs` in development; in production they are off
 unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
-Last reconciled: 2026-10-04
+Last reconciled: 2026-10-05
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
@@ -29,6 +29,21 @@ Last reconciled: 2026-10-04
     now, so it cannot check any token. Retry later; signing in again will not help.
   - Authentication runs before validation: a request without a valid token gets **401** even if its
     body is also invalid.
+- **Roles.** The token's realm roles decide what the caller may do
+  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)). The map is
+  `ROLE_PERMISSIONS` in `@occ/contracts`:
+
+  | Action                                      | `viewer` | `operator` | `supervisor` |
+  | ------------------------------------------- | :------: | :--------: | :----------: |
+  | Read zones, cameras, stream URLs, incidents |   yes    |    yes     |     yes      |
+  | Subscribe to `/events`                      |   yes    |    yes     |     yes      |
+  | Report, acknowledge, resolve (`incident:*`) |    no    |    yes     |     yes      |
+  - **403** — the token has none of these roles (`No role grants access to this API`), or its roles
+    lack the permission the endpoint needs (`Missing permission: incident:acknowledge`). Signing in
+    again as the same user will not help.
+  - Authorization runs after authentication and before validation: a `viewer` sending an invalid
+    body, or an unknown incident id, gets **403**, not **400** or **404**.
+
 - **Validation.** Bodies and query strings are validated; unknown fields are rejected, not
   ignored. A validation failure returns **400** with every problem listed in `message`.
 - **Errors** always have this shape:

@@ -63,6 +63,23 @@ describe('api client', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects a 403 with the server's message, without renewing or resending", async () => {
+    vi.mocked(getAccessToken).mockResolvedValue('token-1');
+    // A renewal would succeed, so renewing on a 403 would show up as a second request.
+    vi.mocked(renewSession).mockResolvedValue(true);
+    fetchMock.mockResolvedValue(
+      json({ statusCode: 403, message: 'Missing permission: incident:acknowledge' }, 403),
+    );
+
+    await expect(api.post('/incidents/1/acknowledge')).rejects.toMatchObject({
+      status: 403,
+      message: 'Missing permission: incident:acknowledge',
+    });
+
+    expect(renewSession).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the bearer token when a caller passes its own Authorization header', async () => {
     vi.mocked(getAccessToken).mockResolvedValue('token-1');
     fetchMock.mockResolvedValue(json({}));
