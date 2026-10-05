@@ -12,6 +12,7 @@ import { SeedService } from './database/seed/seed.service';
 import { typeormOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
 import { IncidentsModule } from './incidents/incidents.module';
+import { LoggingModule } from './logging/logging.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SimulatorModule } from './simulator/simulator.module';
@@ -25,6 +26,7 @@ import { ZonesModule } from './zones/zones.module';
       envFilePath: envFilePath(),
       validate: validateEnv,
     }),
+    LoggingModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>

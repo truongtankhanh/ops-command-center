@@ -16,6 +16,19 @@ import {
 const toBoolean = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? ['true', '1', 'yes'].includes(value.toLowerCase()) : value;
 
+/** pino's levels, lowest last. Nest's `verbose` is `trace` (ADR-0014). */
+export const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
+export type LogLevel = (typeof LOG_LEVELS)[number];
+
+export const DEPLOYMENT_ENVS = ['local', 'test', 'demo', 'staging', 'production'] as const;
+export type DeploymentEnv = (typeof DEPLOYMENT_ENVS)[number];
+
+const DEFAULT_LOG_LEVELS: Readonly<Record<Env['NODE_ENV'], LogLevel>> = {
+  development: 'debug',
+  test: 'warn',
+  production: 'info',
+};
+
 /**
  * Every environment variable the API reads, with its rules and defaults.
  * The API refuses to start when this does not validate.
@@ -109,6 +122,22 @@ export class Env {
   @Transform(toBoolean)
   @IsBoolean()
   DEMO_MODE = false;
+
+  /**
+   * Lowest level logged at boot; `log-level` raises it for a while at runtime (ADR-0014).
+   * Unset: `debug` in development, `warn` in test, `info` in production.
+   */
+  @IsIn(LOG_LEVELS)
+  LOG_LEVEL: LogLevel;
+
+  /**
+   * Where this process runs, stamped on every log line as `env`. A label only: it changes no
+   * behaviour (ADR-0014). Unset: `local` in development, `test` in test; production has no default.
+   */
+  @IsIn(DEPLOYMENT_ENVS, {
+    message: `$property must be one of ${DEPLOYMENT_ENVS.join(', ')}; production has no default`,
+  })
+  DEPLOYMENT_ENV: DeploymentEnv;
 }
 
 /** Defaults that depend on `NODE_ENV`, which a field initializer cannot see. */
@@ -116,6 +145,9 @@ function applyEnvironmentDefaults(env: Env): void {
   const production = env.NODE_ENV === 'production';
   env.SEED_ON_BOOT ??= !production;
   if (!production) env.CAMERA_SOURCE ??= 'mock';
+  env.LOG_LEVEL ??= DEFAULT_LOG_LEVELS[env.NODE_ENV];
+  // Production has none: a staging deploy that forgot it must not be tagged `production`.
+  if (!production) env.DEPLOYMENT_ENV ??= env.NODE_ENV === 'test' ? 'test' : 'local';
 }
 
 /** Production refuses demo behaviour unless `DEMO_MODE` opts in. */

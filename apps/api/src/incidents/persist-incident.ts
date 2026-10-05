@@ -1,4 +1,5 @@
 import type { EntityManager } from 'typeorm';
+import { currentRequestId } from '../logging/request-context';
 import { OutboxEntity, type OutboxEventName } from '../outbox/outbox.entity';
 import { IncidentEventEntity } from './incident-event.entity';
 import { IncidentEntity } from './incident.entity';
@@ -23,7 +24,11 @@ export async function persistIncident(
     );
   }
   if (outboxEvent) {
-    await manager.insert(OutboxEntity, OutboxEntity.create(outboxEvent, saved.toContract()));
+    // The request or job run behind the change, so its delivery logs share one id (ADR-0014).
+    await manager.insert(
+      OutboxEntity,
+      OutboxEntity.create(outboxEvent, saved.toContract(), currentRequestId()),
+    );
   }
   saved.pendingEvents = [];
   return saved;

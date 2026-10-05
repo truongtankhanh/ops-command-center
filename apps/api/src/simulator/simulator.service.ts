@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, Repository } from 'typeorm';
 import { randomPointIn } from '../common/geo';
 import type { Env } from '../config/env.validation';
+import { runJob } from '../logging/request-context';
 import { SystemActors } from '../incidents/actors';
 import { IncidentEntity } from '../incidents/incident.entity';
 import { IncidentsService } from '../incidents/incidents.service';
@@ -44,7 +45,8 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
   onApplicationBootstrap(): void {
     if (!this.config.get('SIMULATOR_ENABLED', { infer: true })) return;
     const interval = this.config.get('SIMULATOR_INTERVAL_MS', { infer: true });
-    this.timer = setInterval(() => void this.tickIfLeader(), interval);
+    // Each tick is a run of its own: its logs and outbox rows share one id (ADR-0014).
+    this.timer = setInterval(() => void runJob(() => this.tickIfLeader()), interval);
     this.logger.log(`Simulator on — one tick every ${interval} ms on the leading replica`);
   }
 

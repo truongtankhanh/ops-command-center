@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DataSource, In, type QueryRunner } from 'typeorm';
+import { runJob, runWithRequestId } from '../logging/request-context';
 import { OUTBOX_CHANNEL, OutboxEvents } from './outbox-events';
 import { OutboxEntity } from './outbox.entity';
 
@@ -120,7 +121,7 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
   private async deliver(ids: string[]): Promise<void> {
     try {
       const rows = await this.dataSource.getRepository(OutboxEntity).find({
-        select: { id: true, event: true, payload: true },
+        select: { id: true, event: true, payload: true, requestId: true },
         where: { id: In(ids) },
         order: { id: 'ASC' },
       });
@@ -138,6 +139,13 @@ export class OutboxListener implements OnApplicationBootstrap, BeforeApplication
   }
 
   private emit(row: OutboxEntity): void {
+    // Under the id of the request or job that wrote the row, so the broadcast logs on every
+    // replica share it (ADR-0014). Rows from before the column existed get an id of their own.
+    if (row.requestId) runWithRequestId(row.requestId, () => this.emitNow(row));
+    else runJob(() => this.emitNow(row));
+  }
+
+  private emitNow(row: OutboxEntity): void {
     try {
       this.events.emit(row.event, row.payload);
     } catch (error) {

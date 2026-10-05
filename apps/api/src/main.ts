@@ -6,7 +6,8 @@ import type { Env } from './config/env.validation';
 import { configureApp, isApiDocsEnabled } from './configure-app';
 
 async function bootstrap(): Promise<void> {
-  const app = configureApp(await NestFactory.create(AppModule));
+  // Buffered until `configureApp` installs pino, so boot lines get the same JSON format (ADR-0014).
+  const app = configureApp(await NestFactory.create(AppModule, { bufferLogs: true }));
   const config = app.get(ConfigService<Env, true>);
   const port = config.get('PORT', { infer: true });
   await app.listen(port);

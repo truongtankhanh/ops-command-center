@@ -2,11 +2,16 @@ import { type INestApplication, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { Express } from 'express';
+import { Logger } from 'nestjs-pino';
 import { ApiExceptionFilter } from './common/api-exception.filter';
 import type { Env } from './config/env.validation';
+import { requestIdMiddleware } from './logging/request-id.middleware';
 
 /** HTTP setup shared by `main.ts` and the e2e tests, so tests run the real configuration. */
 export function configureApp(app: INestApplication): INestApplication {
+  // First: the whole request, its log line included, runs inside its correlation id (ADR-0014).
+  app.use(requestIdMiddleware);
+  app.useLogger(app.get(Logger));
   const config = app.get(ConfigService<Env, true>);
   // `req.ip` is the client nginx saw, never a value the client wrote (ADR-0012).
   (app.getHttpAdapter().getInstance() as Express).set(

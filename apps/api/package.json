@@ -16,7 +16,8 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config test/jest-e2e.config.js --runInBand",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/data-source.ts",
-    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts"
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
+    "log-level": "ts-node src/logging/log-level.cli.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.1.2",
@@ -35,7 +36,10 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "jose": "^6.2.12",
+    "nestjs-pino": "^5.3.1",
     "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "socket.io": "^4.8.4",
@@ -49,6 +53,7 @@
     "@types/node": "^22.20.4",
     "@types/supertest": "^7",
     "jest": "^30.5.2",
+    "pino-pretty": "^13.2.0",
     "socket.io-client": "^4.8.4",
     "supertest": "^7",
     "ts-jest": "^29.4.14",

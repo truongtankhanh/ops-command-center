@@ -5,6 +5,7 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { runJob } from '../logging/request-context';
 
 const CLEANUP_INTERVAL_MS = 10 * 60_000;
 
@@ -32,7 +33,7 @@ export class ThrottlerHitCleanup implements OnApplicationBootstrap, BeforeApplic
   }
 
   private cleanup(): Promise<void> {
-    this.cleaning ??= this.deleteExpired().finally(() => {
+    this.cleaning ??= runJob(() => this.deleteExpired()).finally(() => {
       this.cleaning = undefined;
     });
     return this.cleaning;

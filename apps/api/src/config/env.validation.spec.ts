@@ -73,6 +73,32 @@ describe('validateEnv', () => {
       SIMULATOR_ENABLED: false,
       CAMERA_SOURCE: 'mock',
       DEMO_MODE: false,
+      LOG_LEVEL: 'debug',
+      DEPLOYMENT_ENV: 'local',
+    });
+  });
+
+  it('applies the documented test defaults', () => {
+    expect(validateEnv({ ...valid, NODE_ENV: 'test' })).toMatchObject({
+      LOG_LEVEL: 'warn',
+      DEPLOYMENT_ENV: 'test',
+    });
+  });
+
+  describe('logging', () => {
+    it('accepts a LOG_LEVEL override', () => {
+      expect(validateEnv({ ...valid, LOG_LEVEL: 'trace' }).LOG_LEVEL).toBe('trace');
+    });
+
+    it.each([
+      ["Nest's name for trace", 'verbose'],
+      ['unknown', 'loud'],
+    ])('rejects a LOG_LEVEL that is %s, naming the key', (_, level) => {
+      expect(() => validateEnv({ ...valid, LOG_LEVEL: level })).toThrow(/LOG_LEVEL/);
+    });
+
+    it('rejects an unknown DEPLOYMENT_ENV, naming the key', () => {
+      expect(() => validateEnv({ ...valid, DEPLOYMENT_ENV: 'prod' })).toThrow(/DEPLOYMENT_ENV/);
     });
   });
 
@@ -103,6 +129,7 @@ describe('validateEnv', () => {
     const production = {
       ...valid,
       NODE_ENV: 'production',
+      DEPLOYMENT_ENV: 'production',
       OIDC_ISSUER: 'https://sso.example.org/realms/occ',
     };
     const mediamtx = {
@@ -125,6 +152,22 @@ describe('validateEnv', () => {
       expect(() => validateEnv({ ...production, ...mediamtx, SEED_ON_BOOT: 'true' })).toThrow(
         /SEED_ON_BOOT: true needs DEMO_MODE=true/,
       );
+    });
+
+    it('requires DEPLOYMENT_ENV, so staging cannot be tagged production by omission', () => {
+      expect(() => validateEnv({ ...production, ...mediamtx, DEPLOYMENT_ENV: undefined })).toThrow(
+        /DEPLOYMENT_ENV: .*production has no default/,
+      );
+    });
+
+    it('accepts staging, which runs the production image', () => {
+      const env = validateEnv({ ...production, ...mediamtx, DEPLOYMENT_ENV: 'staging' });
+
+      expect(env).toMatchObject({ NODE_ENV: 'production', DEPLOYMENT_ENV: 'staging' });
+    });
+
+    it('logs at info by default', () => {
+      expect(validateEnv({ ...production, ...mediamtx }).LOG_LEVEL).toBe('info');
     });
 
     it('does not seed by default', () => {

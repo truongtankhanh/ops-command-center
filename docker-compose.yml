@@ -36,6 +36,9 @@ services:
       # The image runs NODE_ENV=production, which refuses mock cameras and seeding unless the
       # deploy opts in. This stack is the demo, so it does (ADR-0006).
       DEMO_MODE: ${DEMO_MODE:-true}
+      # Stamped on every API log line as `env`; production requires it (ADR-0014). This stack is
+      # the demo, so its logs never pass for staging's or production's.
+      DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-demo}
       # Demo stack, not production: keep /api/docs on. The image runs NODE_ENV=production,
       # so "Try it out" stays disabled (ADR-0005).
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}

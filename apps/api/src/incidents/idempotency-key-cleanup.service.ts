@@ -5,6 +5,7 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { runJob } from '../logging/request-context';
 import { IdempotencyKeyEntity } from './idempotency-key.entity';
 
 const CLEANUP_INTERVAL_MS = 60 * 60_000;
@@ -32,7 +33,7 @@ export class IdempotencyKeyCleanup implements OnApplicationBootstrap, BeforeAppl
   }
 
   private cleanup(): Promise<void> {
-    this.cleaning ??= this.deleteExpired().finally(() => {
+    this.cleaning ??= runJob(() => this.deleteExpired()).finally(() => {
       this.cleaning = undefined;
     });
     return this.cleaning;

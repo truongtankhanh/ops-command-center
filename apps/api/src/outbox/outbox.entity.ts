@@ -32,12 +32,20 @@ export class OutboxEntity {
   @Column({ name: 'published_at', type: 'timestamptz', nullable: true })
   publishedAt: Date | null;
 
-  static create(event: OutboxEventName, incident: Incident): OutboxEntity {
+  /**
+   * The correlation id of the request or job run that wrote the row (ADR-0014). Delivery logs on
+   * every replica carry it; clients never see it. `null` for rows written outside any context.
+   */
+  @Column({ name: 'request_id', type: 'varchar', length: 64, nullable: true })
+  requestId: string | null;
+
+  static create(event: OutboxEventName, incident: Incident, requestId?: string): OutboxEntity {
     return Object.assign(new OutboxEntity(), {
       aggregateId: incident.id,
       event,
       payload: incident,
       publishedAt: null,
+      requestId: requestId ?? null,
     });
   }
 }

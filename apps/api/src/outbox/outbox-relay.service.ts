@@ -5,6 +5,7 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { DataSource, In, IsNull, LessThan } from 'typeorm';
+import { runJob } from '../logging/request-context';
 import { OUTBOX_CHANNEL } from './outbox-events';
 import { OutboxEntity } from './outbox.entity';
 
@@ -58,7 +59,8 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
       this.drainAgain = true;
       return this.draining;
     }
-    this.draining = this.drainUntilEmpty().finally(() => {
+    // A run of its own (ADR-0014): the request that triggered it does not own the other rows.
+    this.draining = runJob(() => this.drainUntilEmpty()).finally(() => {
       this.draining = undefined;
       // A call that arrived after the last pass checked `drainAgain` still gets its pass.
       if (this.drainAgain) void this.drain();
@@ -104,7 +106,7 @@ export class OutboxRelay implements OnApplicationBootstrap, BeforeApplicationShu
   }
 
   private cleanup(): Promise<void> {
-    this.cleaning ??= this.deleteExpired().finally(() => {
+    this.cleaning ??= runJob(() => this.deleteExpired()).finally(() => {
       this.cleaning = undefined;
     });
     return this.cleaning;

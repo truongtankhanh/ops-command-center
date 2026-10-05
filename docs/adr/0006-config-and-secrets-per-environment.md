@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-02
+- **Amended by:** [ADR-0014](0014-structured-logging-and-correlation.md) (`DEPLOYMENT_ENV`; runtime log level)
 
 ## Context
 
@@ -52,14 +53,16 @@ Considered: environment-aware defaults without the opt-in (`CAMERA_SOURCE=mock` 
 
 `NODE_ENV` has no default: a process that does not set it fails at boot rather than running as development. Developers set it in `apps/api/.env`, Jest sets `test`, and the image sets `production`. Staging is not a separate `NODE_ENV`. It runs the production image with `NODE_ENV=production`, and it differs from production only in the values injected into it.
 
-| Environment       | `NODE_ENV`    | Values come from                                                     |
-| ----------------- | ------------- | -------------------------------------------------------------------- |
-| Local development | `development` | `apps/api/.env`, copied from `.env.example` (placeholders)           |
-| Tests (local)     | `test`        | `apps/api/.env.test`, copied from `.env.test.example`; shell wins    |
-| CI                | `test`        | Job-level `env:` with a throwaway Postgres container; no `secrets.*` |
-| Compose demo      | `production`  | Inline values in `docker-compose.yml`, plus `DEMO_MODE=true`         |
-| Staging           | `production`  | Platform secret injection; no `.env` file in the container           |
-| Production        | `production`  | Platform secret injection, scoped to this service; no `.env` file    |
+| Environment       | `NODE_ENV`    | `DEPLOYMENT_ENV` (ADR-0014) | Values come from                                                     |
+| ----------------- | ------------- | --------------------------- | -------------------------------------------------------------------- |
+| Local development | `development` | `local` (default)           | `apps/api/.env`, copied from `.env.example` (placeholders)           |
+| Tests (local)     | `test`        | `test` (default)            | `apps/api/.env.test`, copied from `.env.test.example`; shell wins    |
+| CI                | `test`        | `test` (default)            | Job-level `env:` with a throwaway Postgres container; no `secrets.*` |
+| Compose demo      | `production`  | `demo`                      | Inline values in `docker-compose.yml`, plus `DEMO_MODE=true`         |
+| Staging           | `production`  | `staging` (required)        | Platform secret injection; no `.env` file in the container           |
+| Production        | `production`  | `production` (required)     | Platform secret injection, scoped to this service; no `.env` file    |
+
+**Amendment (ADR-0014).** `DEPLOYMENT_ENV` is a label, not a second behaviour axis: it is stamped on every log line as `env` and changes nothing else, so the `APP_ENV` rejection below still stands. It has no default in production, so a staging deploy cannot be tagged `production` by omission.
 
 The image reads environment variables only and contains no `.env`. Whatever runs it (orchestrator, PaaS, secret manager integration) injects `DATABASE_URL` and owns its rotation. The specific secret manager stays open until there is a deploy target; choosing one is a separate decision.
 
@@ -68,6 +71,8 @@ Considered: an `APP_ENV` variable next to `NODE_ENV` (a second environment axis,
 ### 6. Lifecycle
 
 Configuration is resolved once at boot (`ConfigModule` with `cache: true`) and is immutable for the life of the process. Nothing hot-reloads; changing a value means restarting the process.
+
+**Amendment (ADR-0014).** One runtime override exists, and it is not configuration: the log level can be raised for a limited time through the `log_level_override` table, which every replica polls. `Env` itself stays immutable.
 
 ## Consequences
 
