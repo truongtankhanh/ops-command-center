@@ -94,3 +94,20 @@
 .offline {
   color: var(--text-tertiary);
 }
+
+/*
+ * A camera's view on the map: a 90° sector, apex at the bottom centre, 14 px long. The conic
+ * gradient draws the angle and the radial mask the arc; the box is just wide enough for both edges
+ * (2 × 14 × sin 45° ≈ 20 px). Stronger than the map's faint fill, so it reads at legend size.
+ */
+.view {
+  flex: none;
+  width: 20px;
+  height: 14px;
+  background: conic-gradient(
+    from -45deg at 50% 100%,
+    color-mix(in srgb, var(--text-secondary) 45%, transparent) 0 90deg,
+    transparent 0
+  );
+  mask-image: radial-gradient(circle 14px at 50% 100%, #000 13.5px, transparent 14px);
+}

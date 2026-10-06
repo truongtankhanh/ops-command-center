@@ -1,11 +1,12 @@
 import {
   type Camera,
+  type CameraFieldOfView,
   type Incident,
   type IncidentType,
   type LngLat,
   severityRank,
 } from '@occ/contracts';
-import type { Feature, FeatureCollection, Point } from 'geojson';
+import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
 import { distanceM, offsetM } from './geo';
 import { isActive } from './incidents';
 
@@ -35,6 +36,15 @@ export interface CameraProperties {
   id: string;
   image: string;
 }
+
+export interface CameraViewProperties {
+  id: string;
+  /** An offline camera's view is drawn muted. */
+  online: boolean;
+}
+
+/** No segment of a view's arc spans more than this: 18 for a 90° view, 72 for a full circle. */
+const VIEW_SEGMENT_DEG = 5;
 
 /** A resolved incident is drawn in a neutral form, the same for every severity. */
 export const resolvedImageId = (type: IncidentType): string => `incident-resolved-${type}`;
@@ -150,4 +160,42 @@ export function cameraFeatures(
       properties: { id: camera.id, image: cameraImageId(camera.online) },
     })),
   };
+}
+
+/**
+ * What each camera sees: a circular sector from its position (ADR-0017). A camera whose orientation
+ * is not known gets none. An API replica from before IMP-24 omits `fieldOfView` altogether, which
+ * the contract type does not model, so a missing field counts as unknown too.
+ */
+export function cameraViewFeatures(
+  cameras: readonly Camera[],
+): FeatureCollection<Polygon, CameraViewProperties> {
+  const features: Feature<Polygon, CameraViewProperties>[] = [];
+  for (const camera of cameras) {
+    const view = camera.fieldOfView ?? null;
+    if (view === null) continue;
+    features.push({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [viewRing(camera.position, view)] },
+      properties: { id: camera.id, online: camera.online },
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+/**
+ * A closed ring: the apex, then the arc clockwise from `heading − angle / 2` (bearings clockwise
+ * from north, as in `fanOut`), back to the apex. A 360° view is the arc alone.
+ */
+function viewRing(apex: LngLat, { heading, angle, range }: CameraFieldOfView): LngLat[] {
+  const sweep = Math.min(angle, 360);
+  // At least one segment, so a degenerate angle still yields a ring rather than NaN coordinates.
+  const segments = Math.max(1, Math.ceil(sweep / VIEW_SEGMENT_DEG));
+  const start = heading - sweep / 2;
+  const arc = Array.from({ length: segments + 1 }, (_, i): LngLat => {
+    const bearing = ((start + (sweep * i) / segments) * Math.PI) / 180;
+    return offsetM(apex, range * Math.sin(bearing), range * Math.cos(bearing));
+  });
+  // The arc's last point equals its first only up to rounding; a ring must close exactly.
+  return sweep < 360 ? [apex, ...arc, apex] : [...arc.slice(0, -1), arc[0]!];
 }

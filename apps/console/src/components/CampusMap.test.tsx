@@ -1,12 +1,18 @@
-import type { Incident, Zone } from '@occ/contracts';
+import type { Camera, Incident, SitePlan, Zone } from '@occ/contracts';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { FeatureCollection, Point } from 'geojson';
+import type { FeatureCollection, Geometry, Point } from 'geojson';
 import { queryKeys } from '../api/queries';
 import type { IncidentProperties } from '../lib/mapFeatures';
 import { registerMapImages } from '../lib/mapImages';
-import { MAP_LAYERS, MAP_SOURCES, siteLayers } from '../lib/mapLayers';
-import { CAMPUS_CENTER, siteBounds } from '../lib/sitePlan';
+import {
+  cameraViewLayers,
+  groundLayers,
+  MAP_LAYERS,
+  MAP_SOURCES,
+  zoneOverlayLayers,
+} from '../lib/mapLayers';
+import { siteBounds, type SiteProperties } from '../lib/sitePlan';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { CampusMap } from './CampusMap';
@@ -114,6 +120,9 @@ vi.mock('maplibre-gl', () => ({
   },
 }));
 
+// The session module is tested on its own; a site plan that is not cached goes through the client.
+vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+
 // Rasterising needs an image decoder and fonts; the images themselves are tested in mapImages.test.
 vi.mock('../lib/mapImages', () => ({
   registerMapImages: vi.fn(() => Promise.resolve()),
@@ -157,14 +166,46 @@ const zone = (overrides: Partial<Zone> = {}): Zone => ({
   ...overrides,
 });
 
+/** A site whose boundary encloses the `zone` fixture. */
+const SITE_PLAN: SitePlan = {
+  id: 's1',
+  code: 'LANGBIANG',
+  name: 'Langbiang Tech Campus',
+  center: POSITION,
+  features: [
+    {
+      part: 'boundary',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [108.441, 11.9525],
+            [108.442, 11.9525],
+            [108.442, 11.9535],
+            [108.441, 11.9535],
+            [108.441, 11.9525],
+          ],
+        ],
+      },
+    },
+  ],
+};
+
 /** Renders the map with everything cached, then (unless told not to) lets it finish loading. */
 async function renderMap(
   incidents: Incident[],
-  { load = true, zones = [] as Zone[] }: { load?: boolean; zones?: Zone[] } = {},
+  {
+    load = true,
+    zones = [] as Zone[],
+    sitePlan = SITE_PLAN as SitePlan | null,
+    cameras = [] as Camera[],
+  }: { load?: boolean; zones?: Zone[]; sitePlan?: SitePlan | null; cameras?: Camera[] } = {},
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, zones);
-  client.setQueryData(queryKeys.cameras, []);
+  // `null`: not cached, so the map asks the API for it.
+  if (sitePlan) client.setQueryData(queryKeys.sitePlan, sitePlan);
+  client.setQueryData(queryKeys.cameras, cameras);
   client.setQueryData(queryKeys.incidents, incidents);
   const view = renderWithQueryClient(<CampusMap />, client);
   const map = fake.maps.at(-1)!;
@@ -180,6 +221,27 @@ function lastData(map: InstanceType<typeof fake.FakeMap>, source: string) {
 
 const ids = (data: FeatureCollection<Point, IncidentProperties>) =>
   data.features.map((feature) => feature.properties.id);
+
+/** The parts on the site source as it was last added. */
+function siteParts(map: InstanceType<typeof fake.FakeMap>) {
+  const [, source] = map.addSource.mock.calls
+    .filter(([id]) => id === MAP_SOURCES.site)
+    .at(-1) as unknown as [string, { data: FeatureCollection<Geometry, SiteProperties> }];
+  return source.data.features.map((feature) => feature.properties.part);
+}
+
+/** `GET /api/site-plan` with no site set up — also what an API from before the route answers. */
+function siteNotFound() {
+  const fetchMock = vi.fn(() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ statusCode: 404, message: 'Site plan was not found' }), {
+        status: 404,
+      }),
+    ),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
 
 /** What adding, as opposed to updating, has cost so far. */
 const creations = (map: InstanceType<typeof fake.FakeMap>) => ({
@@ -222,6 +284,7 @@ describe('CampusMap', () => {
     const { map } = await renderMap([incident({ id: 'a' })]);
 
     expect(map.addSource.mock.calls.map(([id]) => id)).toEqual([
+      MAP_SOURCES.cameraViews,
       MAP_SOURCES.cameras,
       MAP_SOURCES.incidents,
       MAP_SOURCES.selected,
@@ -351,7 +414,8 @@ describe('CampusMap', () => {
   });
 
   describe('site plan', () => {
-    const siteLayerIds = siteLayers().map((layer) => layer.id);
+    const groundLayerIds = groundLayers(0).map((layer) => layer.id);
+    const siteLayerIds = [...groundLayerIds, ...zoneOverlayLayers().map((layer) => layer.id)];
     const highlightOf = (zoneId: string) => ['==', ['get', 'id'], zoneId];
 
     it('draws the site plan and zones under the markers once loaded', async () => {
@@ -360,6 +424,7 @@ describe('CampusMap', () => {
       expect(map.addSource.mock.calls.map(([id]) => id)).toEqual([
         MAP_SOURCES.site,
         MAP_SOURCES.zones,
+        MAP_SOURCES.cameraViews,
         MAP_SOURCES.cameras,
         MAP_SOURCES.incidents,
         MAP_SOURCES.selected,
@@ -380,13 +445,18 @@ describe('CampusMap', () => {
         siteLayerIds.includes(layer.id),
       );
       expect(siteCalls).toHaveLength(siteLayerIds.length);
-      for (const [, before] of siteCalls) expect(before).toBe(MAP_LAYERS.cameras);
+      // The ground under the camera views, the zone outline and highlight over them.
+      for (const [layer, before] of siteCalls) {
+        expect(before).toBe(
+          groundLayerIds.includes(layer.id) ? MAP_LAYERS.cameraViewFill : MAP_LAYERS.cameras,
+        );
+      }
     });
 
     it('fits the whole campus, boundary included', async () => {
       const { map } = await renderMap([incident({})], { zones: [zone()] });
 
-      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds([zone()]), {
+      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(SITE_PLAN, [zone()]), {
         padding: 48,
         duration: 0,
       });
@@ -431,10 +501,12 @@ describe('CampusMap', () => {
       expect(map.removeSource).not.toHaveBeenCalled();
     });
 
-    it('opens on the campus with the zoom limits', async () => {
+    it('opens with the zoom limits and no fixed centre', async () => {
       const { map } = await renderMap([]);
 
-      expect(map.options).toMatchObject({ center: CAMPUS_CENTER, minZoom: 15, maxZoom: 20 });
+      // Where the site is comes from data; the map is framed when it arrives.
+      expect(map.options).toMatchObject({ minZoom: 15, maxZoom: 20 });
+      expect(map.options).not.toHaveProperty('center');
       // The themed controls replace MapLibre's own.
       expect(map.addControl).not.toHaveBeenCalled();
     });
@@ -447,10 +519,109 @@ describe('CampusMap', () => {
 
       await userEvent.click(screen.getByRole('button', { name: 'Fit campus' }));
 
-      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds([zone()]), {
+      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(SITE_PLAN, [zone()]), {
         padding: 48,
         duration: 600,
       });
+    });
+
+    describe('without a site plan', () => {
+      it('draws the zones alone and frames them when the API has no site plan', async () => {
+        const fetchMock = siteNotFound();
+        const { map, client } = await renderMap([incident({})], {
+          zones: [zone()],
+          sitePlan: null,
+        });
+
+        await waitFor(() => expect(client.getQueryState(queryKeys.sitePlan)?.status).toBe('error'));
+        expect(fetchMock).toHaveBeenCalledWith('/api/site-plan', expect.anything());
+        expect(siteParts(map)).toEqual(['footprint']);
+        expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(undefined, [zone()]), {
+          padding: 48,
+          duration: 0,
+        });
+        // No error on the map: the plan is decoration.
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      });
+
+      it('adds the site plan and frames its boundary when it arrives after the zones', async () => {
+        siteNotFound();
+        const { map, client } = await renderMap([incident({})], {
+          zones: [zone()],
+          sitePlan: null,
+        });
+        await waitFor(() => expect(client.getQueryState(queryKeys.sitePlan)?.status).toBe('error'));
+
+        act(() => client.setQueryData(queryKeys.sitePlan, SITE_PLAN));
+
+        await waitFor(() => expect(siteParts(map)).toEqual(['boundary', 'footprint']));
+        expect(map.fitBounds).toHaveBeenLastCalledWith(siteBounds(SITE_PLAN, [zone()]), {
+          padding: 48,
+          duration: 0,
+        });
+      });
+
+      it('keeps a selected incident in view and its zone outlined when the plan arrives', async () => {
+        siteNotFound();
+        const { map, client } = await renderMap([incident({ id: 'a' })], {
+          zones: [zone()],
+          sitePlan: null,
+        });
+        await waitFor(() => expect(client.getQueryState(queryKeys.sitePlan)?.status).toBe('error'));
+        act(() => useConsole.getState().select('a'));
+        map.fitBounds.mockClear();
+        map.setFilter.mockClear();
+
+        act(() => client.setQueryData(queryKeys.sitePlan, SITE_PLAN));
+
+        await waitFor(() =>
+          expect(map.setFilter).toHaveBeenCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1')),
+        );
+        expect(map.easeTo).toHaveBeenLastCalledWith({ center: POSITION, duration: 0 });
+        expect(map.fitBounds).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('camera views', () => {
+    const viewLayerIds = cameraViewLayers().map((layer) => layer.id);
+
+    const camera = (overrides: Partial<Camera>): Camera => ({
+      id: 'c1',
+      code: 'CAM-1',
+      name: 'Library entrance',
+      zoneId: 'z1',
+      position: POSITION,
+      online: true,
+      fieldOfView: { heading: 0, angle: 90, range: 40 },
+      ...overrides,
+    });
+
+    it('draws a view for each camera whose field of view is known', async () => {
+      const { map } = await renderMap([], {
+        cameras: [camera({ id: 'c1' }), camera({ id: 'c2', fieldOfView: null })],
+      });
+
+      const views = map.sources.get(MAP_SOURCES.cameraViews)!.setData.mock.lastCall![0] as {
+        features: { properties: { id: string } }[];
+      };
+      expect(views.features.map((view) => view.properties.id)).toEqual(['c1']);
+    });
+
+    it('draws the views under the zone outlines when the zones are already there', async () => {
+      const { map } = await renderMap([], { zones: [zone()] });
+
+      const viewCalls = map.addLayer.mock.calls.filter(([layer]) =>
+        viewLayerIds.includes(layer.id),
+      );
+      expect(viewCalls.map(([layer]) => layer.id)).toEqual(viewLayerIds);
+      for (const [, before] of viewCalls) expect(before).toBe(MAP_LAYERS.zoneOutline);
+    });
+
+    it('explains the views in the legend', async () => {
+      await renderMap([]);
+
+      expect(screen.getByText('Camera view')).toBeInTheDocument();
     });
   });
 });
