@@ -1,0 +1,4 @@
+/* A glyph keeps its size in a flex row instead of shrinking next to long text. */
+.icon {
+  flex: none;
+}

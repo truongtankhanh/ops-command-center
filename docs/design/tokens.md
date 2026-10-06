@@ -38,7 +38,8 @@ focus ring. These may stay raw:
   severity option), and `outline-offset`. Drop shadows always use `--shadow-*`.
 - Component dimensions: `width`, `height`, `min-*`, `max-width`, `grid-template-columns`, `aspect-ratio`, `ch` and
   `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The 4 px severity band
-  at the top of the incident detail counts as one: it matches the feed's 4 px severity edge column.
+  at the top of the incident detail counts as one: it matches the feed's 4 px severity edge column. Icon sizes
+  (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well — see [icons.md](icons.md).
 - MapLibre numbers in TSX: `line-width`, `fitBounds` padding, `easeTo` duration, marker offsets.
 - The simulated camera image drawn on the `CameraTile` canvas: it is picture content, not UI, and real players replace
   it (OCC-16).
