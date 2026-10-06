@@ -1,7 +1,9 @@
+/* `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners. */
 .map {
   position: relative;
   min-height: 0;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .canvas {
@@ -10,20 +12,15 @@
   height: 100%;
 }
 
+/* Frame 01's label halo: a stroke in the ground colour painted under the text. */
 .zoneLabel {
   font-family: var(--font-ui);
   font-size: var(--type-s);
   color: var(--text-secondary);
+  -webkit-text-stroke: 3px var(--surface-0);
+  paint-order: stroke fill;
   pointer-events: none;
   white-space: nowrap;
-}
-
-.cameraMarker {
-  width: 12px;
-  height: 12px;
-  border-radius: var(--radius-s);
-  border: 2px solid var(--text-tertiary);
-  background: var(--surface-0);
 }
 
 /*
@@ -43,38 +40,4 @@
   color: var(--text-primary);
   white-space: nowrap;
   pointer-events: none;
-}
-
-.legend {
-  position: absolute;
-  left: var(--space-3);
-  bottom: var(--space-3);
-  display: flex;
-  gap: var(--space-4);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  border: 1px solid var(--border-subtle);
-  font-size: var(--type-s);
-  color: var(--text-secondary);
-}
-
-.legend span {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1-5);
-}
-
-.legendSwatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.swatchOpen {
-  background: var(--sev-high);
-}
-
-.swatchHandled {
-  border: 2px solid var(--sev-high);
 }

@@ -1,4 +1,4 @@
-import { severityRank } from '@occ/contracts';
+import { severityRank, type Zone } from '@occ/contracts';
 import type { FeatureCollection } from 'geojson';
 import type {
   ExpressionSpecification,
@@ -8,21 +8,35 @@ import type {
   Map as MapLibreMap,
 } from 'maplibre-gl';
 import { mapColors } from '../styles/tokens';
+import { metresToPixels } from './geo';
 import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX } from './mapFeatures';
+import { CAMPUS_CENTER, type SitePart, siteFeatures, zoneFeatures } from './sitePlan';
 
 /*
- * Sources and layers for cameras and incidents. Marker shapes come from the frames: 01 (markers,
- * cameras), 02 (selected marker), 04 (critical pulse). No layer uses `text-*`: the offline style has
- * no `glyphs`, so every label is an image (see `mapImages.ts`) or stays in the DOM.
+ * Sources and layers for the site plan, zones, cameras and incidents. Shapes come from the frames:
+ * 01 (site plan, markers, cameras), 02 (selected marker), 03 (highlighted zone), 04 (critical
+ * pulse). No layer uses `text-*`: the offline style has no `glyphs`, so every label is an image
+ * (see `mapImages.ts`) or stays in the DOM.
  */
 
 export const MAP_SOURCES = {
+  site: 'site',
+  zones: 'zones',
   cameras: 'cameras',
   incidents: 'incidents',
   selected: 'incident-selected',
 } as const;
 
 export const MAP_LAYERS = {
+  boundaryFill: 'boundary-fill',
+  boundaryLine: 'boundary-line',
+  roads: 'roads',
+  field: 'field',
+  parkingRows: 'parking-rows',
+  zoneFill: 'zone-fill',
+  footprints: 'footprints',
+  zoneOutline: 'zone-outline',
+  zoneHighlight: 'zone-highlight',
   cameras: 'cameras',
   pulseStatic: 'pulse-static',
   pulseWave: 'pulse-wave',
@@ -35,8 +49,11 @@ export const MAP_LAYERS = {
   selected: 'selected',
 } as const;
 
-/** Layers a click or a pointer can hit, topmost first. */
+/** Layers a click can hit, topmost first. */
 export const INTERACTIVE_LAYERS = [MAP_LAYERS.selected, MAP_LAYERS.incidents, MAP_LAYERS.clusters];
+
+/** Layers that show a tooltip under the pointer, topmost first. Cameras do nothing on click yet. */
+export const HOVER_LAYERS = [...INTERACTIVE_LAYERS, MAP_LAYERS.cameras];
 
 /** The animated pulse rings, one per incident source. */
 export const PULSE_WAVE_LAYERS = [MAP_LAYERS.pulseWave, MAP_LAYERS.selectedPulseWave];
@@ -76,6 +93,129 @@ const clusterCountImage: ExpressionSpecification = [
   `${CLUSTER_COUNT_PREFIX}${CLUSTER_COUNT_MAX}+`,
   ['concat', CLUSTER_COUNT_PREFIX, ['to-string', ['get', 'point_count']]],
 ];
+
+/** Roads are 9 m wide in frame 01, at every zoom. */
+const ROAD_WIDTH_M = 9;
+/** Zooms between which a metric width is interpolated; exponential base 2 keeps it exact. */
+const METRIC_ZOOMS = [10, 20] as const;
+
+const isPart = (part: SitePart): FilterSpecification => ['==', ['get', 'part'], part];
+
+/** A `line-width` that stays `metres` wide on the ground as the map zooms. */
+function metricWidth(metres: number): ExpressionSpecification {
+  const [low, high] = METRIC_ZOOMS;
+  const [, lat] = CAMPUS_CENTER;
+  return [
+    'interpolate',
+    ['exponential', 2],
+    ['zoom'],
+    low,
+    metresToPixels(metres, low, lat),
+    high,
+    metresToPixels(metres, high, lat),
+  ];
+}
+
+/** Outlines the zone with this id; `null` outlines none. */
+export const zoneHighlightFilter = (zoneId: string | null): FilterSpecification =>
+  zoneId === null ? false : ['==', ['get', 'id'], zoneId];
+
+export function siteSources(
+  zones: readonly Zone[],
+): [id: string, source: GeoJSONSourceSpecification][] {
+  return [
+    [MAP_SOURCES.site, { type: 'geojson', data: siteFeatures(zones) }],
+    [MAP_SOURCES.zones, { type: 'geojson', data: zoneFeatures(zones) }],
+  ];
+}
+
+/** The ground, in draw order, bottom first. Insert below the camera layer. */
+export function siteLayers(): LayerSpecification[] {
+  return [
+    {
+      id: MAP_LAYERS.boundaryFill,
+      type: 'fill',
+      source: MAP_SOURCES.site,
+      filter: isPart('boundary'),
+      paint: { 'fill-color': mapColors.site.boundaryFill },
+    },
+    {
+      id: MAP_LAYERS.boundaryLine,
+      type: 'line',
+      source: MAP_SOURCES.site,
+      filter: isPart('boundary'),
+      paint: {
+        'line-color': mapColors.site.boundaryLine,
+        'line-width': 1.2,
+        'line-dasharray': [5, 3.5],
+      },
+    },
+    {
+      id: MAP_LAYERS.roads,
+      type: 'line',
+      source: MAP_SOURCES.site,
+      filter: isPart('road'),
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': mapColors.site.road, 'line-width': metricWidth(ROAD_WIDTH_M) },
+    },
+    {
+      id: MAP_LAYERS.field,
+      type: 'line',
+      source: MAP_SOURCES.site,
+      filter: isPart('field'),
+      paint: { 'line-color': mapColors.site.fieldLine, 'line-width': 1 },
+    },
+    {
+      id: MAP_LAYERS.parkingRows,
+      type: 'line',
+      source: MAP_SOURCES.site,
+      filter: isPart('parking-row'),
+      paint: {
+        'line-color': mapColors.site.parkingLine,
+        'line-width': 1,
+        'line-dasharray': [2, 3],
+      },
+    },
+    {
+      id: MAP_LAYERS.zoneFill,
+      type: 'fill',
+      source: MAP_SOURCES.zones,
+      paint: {
+        'fill-color': [
+          'match',
+          ['get', 'kind'],
+          'building',
+          mapColors.zoneFill.building,
+          'parking',
+          mapColors.zoneFill.parking,
+          'gate',
+          mapColors.zoneFill.gate,
+          mapColors.zoneFill.outdoor,
+        ],
+      },
+    },
+    {
+      id: MAP_LAYERS.footprints,
+      type: 'fill',
+      source: MAP_SOURCES.site,
+      filter: isPart('footprint'),
+      paint: { 'fill-color': mapColors.site.footprint },
+    },
+    {
+      id: MAP_LAYERS.zoneOutline,
+      type: 'line',
+      source: MAP_SOURCES.zones,
+      paint: { 'line-color': mapColors.zoneOutline, 'line-width': 1.1 },
+    },
+    {
+      id: MAP_LAYERS.zoneHighlight,
+      type: 'line',
+      source: MAP_SOURCES.zones,
+      filter: zoneHighlightFilter(null),
+      paint: { 'line-color': mapColors.accent, 'line-width': 2 },
+    },
+  ];
+}
 
 export function cameraSource(): [id: string, source: GeoJSONSourceSpecification] {
   return [MAP_SOURCES.cameras, { type: 'geojson', data: EMPTY }];

@@ -1,0 +1,84 @@
+/*
+ * The map's hover tooltip, a popover-family surface (DN-1). Severity is the label in
+ * `--text-primary` with the hue on the icon only: critical text fails on `--surface-3`.
+ * `max-width` is twice `HALF_WIDTH` in MapTooltip.tsx, which clamps it to the map's sides.
+ */
+.tooltip {
+  position: absolute;
+  z-index: 1;
+  width: max-content;
+  max-width: 280px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - var(--space-5)));
+}
+
+.tooltip[data-placement='below'] {
+  transform: translate(-50%, var(--space-5));
+}
+
+.tooltip p {
+  margin: 0;
+}
+
+.tooltip p + p {
+  margin-top: var(--space-1);
+}
+
+.title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+/* Long titles stop at two lines; the detail panel has the rest. */
+.titleText {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Centres an icon on the first line of the title. */
+.title > svg {
+  margin-top: var(--space-0-5);
+}
+
+.glyph {
+  color: var(--text-secondary);
+}
+
+.offline {
+  color: var(--text-tertiary);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--text-primary);
+}
+
+.severity {
+  color: var(--sev);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  color: var(--text-secondary);
+}

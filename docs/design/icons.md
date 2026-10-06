@@ -30,7 +30,8 @@ Every domain map is a `Record` over its union, so adding a value to `@occ/contra
 | `cameraIcon`       | `online: true` / `false`                                                                      | `Video` / `VideoOff`                                                                     |
 
 Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
-`ChevronDown`, `LogOut`.
+`ChevronDown`, `LogOut`, and for the map controls (frame 01) `Minus` (zoom out) and `Scan` (fit campus, the frame's
+`#i-fit`).
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted; UI-16 re-checks it.

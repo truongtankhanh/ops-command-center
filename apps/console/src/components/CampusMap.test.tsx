@@ -1,10 +1,12 @@
-import type { Incident } from '@occ/contracts';
-import { act, waitFor } from '@testing-library/react';
+import type { Incident, Zone } from '@occ/contracts';
+import { act, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { FeatureCollection, Point } from 'geojson';
 import { queryKeys } from '../api/queries';
 import type { IncidentProperties } from '../lib/mapFeatures';
 import { registerMapImages } from '../lib/mapImages';
-import { MAP_LAYERS, MAP_SOURCES } from '../lib/mapLayers';
+import { MAP_LAYERS, MAP_SOURCES, siteLayers } from '../lib/mapLayers';
+import { CAMPUS_CENTER, siteBounds } from '../lib/sitePlan';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { CampusMap } from './CampusMap';
@@ -24,8 +26,11 @@ const fake = vi.hoisted(() => {
     readonly sources = new Map<string, FakeSource>();
     readonly layers = new Set<string>();
     readonly canvas = { style: { cursor: '' } };
+    /** What the component passed to `new Map(...)`. */
+    readonly options: Record<string, unknown>;
 
-    constructor() {
+    constructor(options: Record<string, unknown> = {}) {
+      this.options = options;
       maps.push(this);
     }
 
@@ -51,7 +56,7 @@ const fake = vi.hoisted(() => {
     addSource = vi.fn((id: string) => void this.sources.set(id, new FakeSource()));
     getSource = vi.fn((id: string) => (this.styled(), this.sources.get(id)));
     removeSource = vi.fn((id: string) => (this.styled(), void this.sources.delete(id)));
-    addLayer = vi.fn((layer: { id: string }) => void this.layers.add(layer.id));
+    addLayer = vi.fn((layer: { id: string }, _before?: string) => void this.layers.add(layer.id));
     getLayer = vi.fn((id: string) => (this.styled(), this.layers.has(id) ? { id } : undefined));
     removeLayer = vi.fn((id: string) => (this.styled(), void this.layers.delete(id)));
     queryRenderedFeatures = vi.fn((): unknown[] => []);
@@ -61,6 +66,12 @@ const fake = vi.hoisted(() => {
     fitBounds = vi.fn();
     resize = vi.fn();
     setPaintProperty = vi.fn();
+    setFilter = vi.fn();
+    zoomIn = vi.fn();
+    zoomOut = vi.fn();
+    getZoom = vi.fn(() => 16.4);
+    getMinZoom = vi.fn(() => 15);
+    getMaxZoom = vi.fn(() => 20);
     remove = vi.fn(() => {
       this.style = undefined;
     });
@@ -129,10 +140,30 @@ const incident = (overrides: Partial<Incident>): Incident => ({
   ...overrides,
 });
 
+/** A small building zone around `POSITION`, the zone every `incident` fixture is in. */
+const zone = (overrides: Partial<Zone> = {}): Zone => ({
+  id: 'z1',
+  code: 'BLD-LIB',
+  name: 'Library',
+  kind: 'building',
+  polygon: [
+    [108.4412, 11.9527],
+    [108.4418, 11.9527],
+    [108.4418, 11.9533],
+    [108.4412, 11.9533],
+    [108.4412, 11.9527],
+  ],
+  center: POSITION,
+  ...overrides,
+});
+
 /** Renders the map with everything cached, then (unless told not to) lets it finish loading. */
-async function renderMap(incidents: Incident[], { load = true } = {}) {
+async function renderMap(
+  incidents: Incident[],
+  { load = true, zones = [] as Zone[] }: { load?: boolean; zones?: Zone[] } = {},
+) {
   const client = createTestQueryClient();
-  client.setQueryData(queryKeys.zones, []);
+  client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.cameras, []);
   client.setQueryData(queryKeys.incidents, incidents);
   const view = renderWithQueryClient(<CampusMap />, client);
@@ -317,5 +348,109 @@ describe('CampusMap', () => {
 
     expect(map.remove).toHaveBeenCalled();
     expect(map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  describe('site plan', () => {
+    const siteLayerIds = siteLayers().map((layer) => layer.id);
+    const highlightOf = (zoneId: string) => ['==', ['get', 'id'], zoneId];
+
+    it('draws the site plan and zones under the markers once loaded', async () => {
+      const { map } = await renderMap([incident({})], { zones: [zone()] });
+
+      expect(map.addSource.mock.calls.map(([id]) => id)).toEqual([
+        MAP_SOURCES.site,
+        MAP_SOURCES.zones,
+        MAP_SOURCES.cameras,
+        MAP_SOURCES.incidents,
+        MAP_SOURCES.selected,
+      ]);
+      const firstLayers = map.addLayer.mock.calls.slice(0, siteLayerIds.length);
+      expect(firstLayers.map(([layer]) => layer.id)).toEqual(siteLayerIds);
+    });
+
+    it('keeps late zones under the cameras', async () => {
+      const { map, client } = await renderMap([incident({})]);
+
+      act(() => client.setQueryData(queryKeys.zones, [zone()]));
+
+      await waitFor(() =>
+        expect(map.addSource).toHaveBeenCalledWith(MAP_SOURCES.site, expect.anything()),
+      );
+      const siteCalls = map.addLayer.mock.calls.filter(([layer]) =>
+        siteLayerIds.includes(layer.id),
+      );
+      expect(siteCalls).toHaveLength(siteLayerIds.length);
+      for (const [, before] of siteCalls) expect(before).toBe(MAP_LAYERS.cameras);
+    });
+
+    it('fits the whole campus, boundary included', async () => {
+      const { map } = await renderMap([incident({})], { zones: [zone()] });
+
+      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds([zone()]), {
+        padding: 48,
+        duration: 0,
+      });
+    });
+
+    it('labels each zone', async () => {
+      await renderMap([incident({})], { zones: [zone()] });
+
+      // Zone labels are DOM markers: the offline style has no glyphs for map text.
+      expect(document.body).toHaveTextContent('Library');
+    });
+
+    it("outlines the selected incident's zone", async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+
+      act(() => useConsole.getState().select('a'));
+      expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1'));
+
+      act(() => useConsole.getState().select(null));
+      expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.zoneHighlight, false);
+    });
+
+    it('outlines the zone once it arrives after the selection', async () => {
+      const { map, client } = await renderMap([incident({ id: 'a' })]);
+      act(() => useConsole.getState().select('a'));
+      expect(map.setFilter).not.toHaveBeenCalled();
+
+      act(() => client.setQueryData(queryKeys.zones, [zone()]));
+
+      await waitFor(() =>
+        expect(map.setFilter).toHaveBeenCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1')),
+      );
+    });
+
+    it('unmounts with zones drawn without touching the removed map', async () => {
+      const { map, unmount } = await renderMap([incident({})], { zones: [zone()] });
+
+      expect(() => unmount()).not.toThrow();
+
+      expect(map.remove).toHaveBeenCalled();
+      expect(map.removeLayer).not.toHaveBeenCalled();
+      expect(map.removeSource).not.toHaveBeenCalled();
+    });
+
+    it('opens on the campus with the zoom limits', async () => {
+      const { map } = await renderMap([]);
+
+      expect(map.options).toMatchObject({ center: CAMPUS_CENTER, minZoom: 15, maxZoom: 20 });
+      // The themed controls replace MapLibre's own.
+      expect(map.addControl).not.toHaveBeenCalled();
+    });
+
+    it('offers the map controls and the legend', async () => {
+      const { map } = await renderMap([incident({})], { zones: [zone()] });
+      expect(screen.getByRole('group', { name: 'Map view' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+      map.fitBounds.mockClear();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Fit campus' }));
+
+      expect(map.fitBounds).toHaveBeenCalledWith(siteBounds([zone()]), {
+        padding: 48,
+        duration: 600,
+      });
+    });
   });
 });

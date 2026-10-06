@@ -7,6 +7,19 @@ const zoneFill: Record<Zone['kind'], string> = {
   outdoor: '#15302a',
 };
 
+/**
+ * The site plan under the zones (frame 01). Decorative: only the zone outline, the zone labels and
+ * the zone highlight drawn over the boundary carry meaning, and `scripts/contrast.ts` checks those.
+ */
+const site = {
+  boundaryFill: '#0f1d27',
+  boundaryLine: '#34495a',
+  road: '#182a36',
+  footprint: '#24404f',
+  fieldLine: '#2a4a43',
+  parkingLine: '#2a4152',
+};
+
 /** Copies of `--sev-*`. */
 const severity: Record<IncidentSeverity, string> = {
   critical: '#ff5a4e',
@@ -20,15 +33,16 @@ const severity: Record<IncidentSeverity, string> = {
  * literal colours and cannot read CSS custom properties, so this is their single source instead of
  * `tokens.css`.
  *
- * Every value except `zoneOutline` and `zoneFill` is a copy of the `tokens.css` token in its
- * comment: `scripts/contrast.ts --check` (run by the console's `lint`) fails when a copy drifts,
- * and checks the zone outline against the ground (≥ 3:1).
+ * Every value except `zoneOutline`, `zoneFill` and `site` is a copy of the `tokens.css` token in
+ * its comment: `scripts/contrast.ts --check` (run by the console's `lint`) fails when a copy drifts,
+ * and checks the zone outline against the ground and the site boundary (≥ 3:1).
  */
 export const mapColors = {
   /** `--surface-0` */
   ground: '#0c1821',
   zoneOutline: '#56728a',
   zoneFill,
+  site,
   severity,
   /** `--surface-1` */
   surface1: '#13222d',
