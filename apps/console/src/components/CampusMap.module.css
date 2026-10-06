@@ -26,54 +26,23 @@
   background: var(--surface-0);
 }
 
-.cameraMarker[data-online='false'] {
-  border-style: dashed;
-  border-color: var(--border-strong);
-}
-
 /*
- * No `position` here: MapLibre's `.maplibregl-marker` positions the marker (absolute), which also
- * anchors the pulse below. A `position` in this module would win or lose against maplibre-gl.css
- * depending on bundle order.
+ * The selected incident's code (frame 02), placed by a MapLibre marker. No `position` here:
+ * `.maplibregl-marker` sets it, and a module rule would win or lose against maplibre-gl.css
+ * depending on bundle order (ADR-0016 §5).
  */
-.incidentMarker {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid var(--surface-0);
-  background: var(--sev);
-  cursor: pointer;
-  padding: 0;
-}
-
-.incidentMarker[data-status='acknowledged'] {
-  background: var(--surface-0);
-  border: 3px solid var(--sev);
-}
-
-.incidentMarker[aria-pressed='true'] {
-  outline: var(--focus-ring);
-  outline-offset: 3px;
-}
-
-.incidentMarker[data-severity='critical'][data-status='open']::after {
-  content: '';
-  position: absolute;
-  inset: -9px;
-  border-radius: 50%;
-  border: 2px solid var(--sev);
-  animation: pulse var(--duration-pulse) var(--ease-out) infinite;
-}
-
-@keyframes pulse {
-  from {
-    transform: scale(0.6);
-    opacity: 1;
-  }
-  to {
-    transform: scale(1.6);
-    opacity: 0;
-  }
+.codeTag {
+  padding: 0 var(--space-1-5);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--surface-3);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-primary);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .legend {
@@ -108,10 +77,4 @@
 
 .swatchHandled {
   border: 2px solid var(--sev-high);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .incidentMarker[data-severity='critical'][data-status='open']::after {
-    animation: none;
-  }
 }

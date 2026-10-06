@@ -4,13 +4,13 @@
  *   node scripts/contrast.ts           rewrite the generated part of docs/design/tokens.md
  *   node scripts/contrast.ts --check   only report; run by `pnpm lint`
  *
- * Both modes exit 1 when a checked pair is below its minimum, or when a colour that has to be copied
- * out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no longer
- * matches it. Plain Node 24 with type stripping and no dependency, so it stays cheap to run in lint.
- * Ratios use the WCAG 2.x relative-luminance formula.
+ * Both modes exit 1 when a checked pair is below its minimum, or when a token value that has to be
+ * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
+ * longer matches it. Plain Node 24 with type stripping and no dependency, so it stays cheap to run
+ * in lint. Ratios use the WCAG 2.x relative-luminance formula.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { mapColors } from '../src/styles/tokens.ts';
+import { mapColors, mapMotion } from '../src/styles/tokens.ts';
 
 interface Rgba {
   r: number;
@@ -103,6 +103,9 @@ const PAIRS: Pair[] = [
   ),
   // The count on the selected feed tab.
   { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
+  // The type glyph on an open incident's severity disc on the map (a graphic). The other marker
+  // colours on the map ground are the `--surface-0` pairs above.
+  ...SEVERITIES.map((sev) => ({ fg: '--on-accent', bg: sev, min: UI })),
 ];
 
 const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));
@@ -110,7 +113,7 @@ const check = process.argv.includes('--check');
 
 const results = PAIRS.map((pair) => ({ ...pair, ratio: ratioOf(pair) }));
 const failures = results.filter((r) => !r.reportOnly && r.ratio < r.min);
-const drift = copiedColours();
+const drift = copiedTokens();
 const drifted = drift.filter((d) => d.actual !== d.expected);
 
 if (!check) {
@@ -132,7 +135,7 @@ if (failures.length || drifted.length) {
   process.exitCode = 1;
 } else {
   const checked = results.filter((r) => !r.reportOnly).length;
-  console.log(`contrast: ${checked} pairs pass, ${drift.length} copied colours match`);
+  console.log(`contrast: ${checked} pairs pass, ${drift.length} copied tokens match`);
 }
 
 function cross(fgs: string[], bgs: string[], min: number): Pair[] {
@@ -228,16 +231,36 @@ function normalise(hex: string): string {
   return hexOf(parseColour(hex.toLowerCase(), hex));
 }
 
-function copiedColours(): { copy: string; actual: string; expected: string }[] {
+function copiedTokens(): { copy: string; actual: string; expected: string }[] {
   const html = readFileSync(INDEX_HTML, 'utf8');
   const themeColor = /<meta\s+name="theme-color"\s+content="(#[0-9a-f]+)"/i.exec(html)?.[1];
   const svg = readFileSync(FAVICON_SVG, 'utf8');
   const sorted = (hexes: string[]) => [...new Set(hexes)].sort().join(', ');
+  const mapCopies: [copy: string, value: string, token: string][] = [
+    ['ground', mapColors.ground, '--surface-0'],
+    ...Object.entries(mapColors.severity).map(([severity, value]): [string, string, string] => [
+      `severity.${severity}`,
+      value,
+      `--sev-${severity}`,
+    ]),
+    ['surface1', mapColors.surface1, '--surface-1'],
+    ['surface3', mapColors.surface3, '--surface-3'],
+    ['accent', mapColors.accent, '--accent'],
+    ['onAccent', mapColors.onAccent, '--on-accent'],
+    ['textPrimary', mapColors.textPrimary, '--text-primary'],
+    ['textSecondary', mapColors.textSecondary, '--text-secondary'],
+    ['textTertiary', mapColors.textTertiary, '--text-tertiary'],
+  ];
   return [
+    ...mapCopies.map(([copy, value, token]) => ({
+      copy: `\`mapColors.${copy}\` (src/styles/tokens.ts)`,
+      actual: normalise(value),
+      expected: hexOf(resolve(token)),
+    })),
     {
-      copy: '`mapColors.ground` (src/styles/tokens.ts)',
-      actual: normalise(mapColors.ground),
-      expected: hexOf(resolve('--surface-0')),
+      copy: '`mapMotion.pulseMs` (src/styles/tokens.ts)',
+      actual: `${mapMotion.pulseMs}ms`,
+      expected: css.get('--duration-pulse') ?? 'missing',
     },
     {
       copy: '`theme-color` (index.html)',
@@ -282,7 +305,7 @@ function report(): string {
       return `| ${name(r.fg)} | ${background} | ${r.ratio.toFixed(2)} | ${r.min} | ${result} |`;
     }),
     '',
-    '### Colours copied out of tokens.css',
+    '### Values copied out of tokens.css',
     '',
     '| Copy | Value | Must equal | Result |',
     '| --- | --- | --- | --- |',
