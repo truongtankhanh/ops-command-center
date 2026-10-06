@@ -1,0 +1,23 @@
+/* Banner (frames 05 / 07 `.banner`): look only, the caller positions it. */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 1px solid var(--warning);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+}
+
+.icon {
+  color: var(--warning);
+}
+
+.message {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-l);
+}

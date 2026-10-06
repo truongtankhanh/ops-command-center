@@ -14,25 +14,15 @@
   color: var(--text-secondary);
 }
 
-/* Above the sheet and every other layer (--z-session): operators must see it whatever is open. */
+/*
+ * Above the sheet and every other layer (--z-session): operators must see it whatever is open.
+ * Placement only; the look is the `Banner` primitive's.
+ */
 .sessionBanner {
   position: fixed;
   top: var(--space-3);
   left: 50%;
   z-index: var(--z-session);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
   max-width: calc(100% - 2 * var(--space-4));
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
   transform: translateX(-50%);
-}
-
-/* An element selector, so it outranks button.module.css whatever order the bundle puts them in. */
-.sessionBanner button {
-  flex: none;
 }

@@ -6,8 +6,8 @@ import { useSignOut } from '../auth/useSignOut';
 import { countActiveBySeverity } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
-import button from '../styles/button.module.css';
 import text from '../styles/text.module.css';
+import { Button } from '../ui/Button';
 import styles from './Header.module.css';
 
 const CONNECTION_LABEL = { live: 'Live', connecting: 'Connecting…', offline: 'Offline' } as const;
@@ -56,9 +56,9 @@ export function Header() {
         {/* Explains why the actions are missing; the API still refuses them (ADR-0011). */}
         {readOnly && <span className={styles.sessionAccess}>View only</span>}
         <span>{user?.displayName}</span>
-        <button type="button" className={button.button} onClick={signOut}>
+        <Button size="sm" onClick={signOut}>
           Sign out
-        </button>
+        </Button>
       </div>
     </header>
   );

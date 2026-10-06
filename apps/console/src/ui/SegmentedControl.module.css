@@ -1,0 +1,66 @@
+/* Segmented radio group (mockup 03 `.seg`, without the severity icons — UI-12 adds them). */
+
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/*
+ * Same look as a `Field` label. A legend is not laid out by its fieldset's gap, so it carries its
+ * own spacing.
+ */
+.legend {
+  padding: 0 0 var(--space-1-5);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.options {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-1-5);
+}
+
+.option {
+  position: relative;
+}
+
+/* Hidden but still focusable and checkable: the label below is what the user sees and clicks. */
+.input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* `--sev` comes from the option's `data-severity` (base.css); options without one use the accent. */
+.input:checked + .face {
+  border-color: var(--sev, var(--accent));
+  background: color-mix(in srgb, var(--sev, var(--accent)) 15%, transparent);
+  box-shadow: inset 0 -3px 0 var(--sev, var(--accent));
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.input:focus-visible + .face {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

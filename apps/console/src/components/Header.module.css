@@ -95,13 +95,6 @@
   color: var(--text-secondary);
 }
 
-/* An element selector, so it outranks button.module.css whatever order the bundle puts them in. */
-.sessionUser button {
-  flex: none;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--type-body);
-}
-
 .sessionAccess {
   padding: var(--space-0-5) var(--space-2);
   border: 1px solid var(--border-subtle);

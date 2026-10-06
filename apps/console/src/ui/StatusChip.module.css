@@ -1,0 +1,42 @@
+/* Status chip (frame 00 `.status` / `.status-pill`). The icon takes the text colour. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-medium);
+  font-size: var(--type-s);
+}
+
+/* Open is the one status that still needs someone, so it is the brightest and boldest. */
+.chip[data-status='open'] {
+  color: var(--status-open);
+  font-weight: var(--weight-semibold);
+}
+
+.chip[data-status='acknowledged'] {
+  color: var(--status-acknowledged);
+}
+
+.chip[data-status='resolved'] {
+  color: var(--status-resolved);
+}
+
+.chip[data-form='pill'] {
+  height: 22px;
+  padding: 0 var(--space-1-5) 0 var(--space-1);
+  border-radius: var(--radius-s);
+}
+
+.chip[data-form='pill'][data-status='open'] {
+  background: var(--surface-3);
+}
+
+.chip[data-form='pill'][data-status='acknowledged'] {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.chip[data-form='pill'][data-status='resolved'] {
+  background: var(--status-resolved-bg);
+}

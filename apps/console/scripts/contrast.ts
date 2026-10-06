@@ -74,13 +74,17 @@ const PAIRS: Pair[] = [
   { fg: '--text-secondary', bg: '--camera-ground', min: TEXT },
   { fg: 'map zone outline', bg: 'map ground', min: UI },
   { fg: '--text-secondary', bg: 'map ground', min: TEXT },
+  // `SeverityBadge` and the checked severity option in `SegmentedControl`, both on `--surface-1`:
+  // the label stays `--text-primary` on the tint, and the hue is only on the icon (a graphic, 3:1).
   ...SEVERITIES.map((sev) => ({
-    fg: sev,
+    fg: '--text-primary',
     bg: `${sev}-bg`,
     over: '--surface-1',
     min: TEXT,
-    reportOnly: 'severity badge; checked once UI-05 uses it',
   })),
+  ...SEVERITIES.map((sev) => ({ fg: sev, bg: `${sev}-bg`, over: '--surface-1', min: UI })),
+  // `StatusChip` pill for a resolved incident, in the incident detail.
+  { fg: '--status-resolved', bg: '--status-resolved-bg', over: '--surface-1', min: TEXT },
 ];
 
 const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));

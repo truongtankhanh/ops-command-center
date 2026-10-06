@@ -8,16 +8,23 @@ import { type FormEvent, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
 import { newIdempotencyKey } from '../lib/idempotency';
-import { typeLabel } from '../lib/incidents';
+import { severityLabel, typeLabel } from '../lib/incidents';
 import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
-import button from '../styles/button.module.css';
 import panel from '../styles/panel.module.css';
+import { Button } from '../ui/Button';
+import { Field, Select, Textarea, TextInput } from '../ui/Field';
+import { SegmentedControl } from '../ui/SegmentedControl';
 import styles from './ReportIncidentForm.module.css';
 
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
 const DEFAULT_SEVERITY: IncidentSeverity = 'medium';
+const SEVERITY_OPTIONS = INCIDENT_SEVERITIES.map((value) => ({
+  value,
+  label: severityLabel(value),
+  severity: value,
+}));
 /** The API's 422 for this form: the key was used for a report with other details. */
 const REPORT_ALREADY_SENT =
   'This report was already sent with different details. Check the incident feed before reporting it again.';
@@ -81,9 +88,8 @@ export function ReportIncidentForm() {
           <h2 className={`${panel.title} ${styles.title}`}>Report an incident</h2>
         </div>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Type</span>
-          <select value={type} onChange={(e) => setType(e.target.value as IncidentType)} required>
+        <Field label="Type">
+          <Select value={type} onChange={(e) => setType(e.target.value as IncidentType)} required>
             <option value="" disabled>
               Choose a type
             </option>
@@ -92,30 +98,19 @@ export function ReportIncidentForm() {
                 {typeLabel(value)}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
 
-        <fieldset className={styles.field}>
-          <legend className={styles.fieldLabel}>Severity</legend>
-          <div className={styles.segmented}>
-            {INCIDENT_SEVERITIES.map((value) => (
-              <label key={value} data-severity={value}>
-                <input
-                  type="radio"
-                  name="severity"
-                  value={value}
-                  checked={severity === value}
-                  onChange={() => setSeverity(value)}
-                />
-                <span>{value[0]!.toUpperCase() + value.slice(1)}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <SegmentedControl
+          legend="Severity"
+          name="severity"
+          options={SEVERITY_OPTIONS}
+          value={severity}
+          onChange={setSeverity}
+        />
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Location</span>
-          <select value={zoneId} onChange={(e) => setZoneId(e.target.value)} required>
+        <Field label="Location">
+          <Select value={zoneId} onChange={(e) => setZoneId(e.target.value)} required>
             <option value="" disabled>
               Choose a zone
             </option>
@@ -124,29 +119,28 @@ export function ReportIncidentForm() {
                 {zone.name}
               </option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </Field>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Title</span>
-          <input
+        <Field label="Title">
+          <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={TITLE_MAX}
             placeholder="What is happening, in a few words"
             required
           />
-        </label>
+        </Field>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Details (optional)</span>
-          <textarea
+        <Field label="Details (optional)">
+          <Textarea
+            className={styles.details}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={DESCRIPTION_MAX}
             placeholder="Who reported it, what they saw, anything the responder should know"
           />
-        </label>
+        </Field>
 
         {report.error && (
           <p className={panel.error} role="alert">
@@ -155,17 +149,18 @@ export function ReportIncidentForm() {
         )}
 
         <div className={panel.actions}>
-          <button
+          <Button
             type="submit"
-            className={button.button}
-            data-variant="primary"
-            disabled={!ready || report.isPending}
+            variant="primary"
+            className={styles.grow}
+            loading={report.isPending}
+            disabled={!ready}
           >
             {report.isPending ? 'Reporting…' : 'Report incident'}
-          </button>
-          <button type="button" className={button.button} onClick={closeReport}>
+          </Button>
+          <Button variant="ghost" className={styles.grow} onClick={closeReport}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </aside>

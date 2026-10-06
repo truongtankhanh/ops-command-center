@@ -1,11 +1,14 @@
 import type { Incident, Zone } from '@occ/contracts';
 import { useIncidents, useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
-import { FEED_FILTERS, formatAge, matchesFilter, statusLabel, typeLabel } from '../lib/incidents';
+import { FEED_FILTERS, formatAge, matchesFilter, typeLabel } from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
-import button from '../styles/button.module.css';
-import text from '../styles/text.module.css';
+import { Button } from '../ui/Button';
+import { EmptyState } from '../ui/EmptyState';
+import { Plus } from '../ui/icons';
+import { StatusChip } from '../ui/StatusChip';
+import { Tabs } from '../ui/Tabs';
 import styles from './IncidentFeed.module.css';
 
 const EMPTY_MESSAGE = {
@@ -28,47 +31,42 @@ export function IncidentFeed() {
     <aside className={styles.feed} aria-label="Incidents">
       {canReport && (
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={button.button}
-            data-variant="primary"
+          <Button
+            variant="primary"
+            icon={Plus}
+            className={styles.grow}
             aria-expanded={reporting}
             aria-controls="report-incident-panel"
             onClick={startReport}
           >
             Report incident
-          </button>
+          </Button>
         </div>
       )}
-      <div className={styles.tabs} role="tablist" aria-label="Filter incidents">
-        {FEED_FILTERS.map(({ value, label }) => (
-          <button
-            key={value}
-            role="tab"
-            className={styles.tab}
-            aria-selected={filter === value}
-            onClick={() => setFilter(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {isPending ? (
-        <p className={text.empty}>Loading incidents…</p>
-      ) : isError ? (
-        <p className={text.empty}>Incidents could not be loaded. Check that the API is running.</p>
-      ) : visible.length === 0 ? (
-        <p className={text.empty}>{EMPTY_MESSAGE[filter]}</p>
-      ) : (
-        <ul className={styles.list}>
-          {visible.map((incident) => (
-            <li key={incident.id}>
-              <IncidentRow incident={incident} zone={zoneName.get(incident.zoneId)} now={now} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <Tabs
+        label="Filter incidents"
+        tabs={FEED_FILTERS}
+        value={filter}
+        onChange={setFilter}
+        className={styles.tabs}
+        panelClassName={styles.panel}
+      >
+        {isPending ? (
+          <EmptyState>Loading incidents…</EmptyState>
+        ) : isError ? (
+          <EmptyState>Incidents could not be loaded. Check that the API is running.</EmptyState>
+        ) : visible.length === 0 ? (
+          <EmptyState>{EMPTY_MESSAGE[filter]}</EmptyState>
+        ) : (
+          <ul className={styles.list}>
+            {visible.map((incident) => (
+              <li key={incident.id}>
+                <IncidentRow incident={incident} zone={zoneName.get(incident.zoneId)} now={now} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Tabs>
     </aside>
   );
 }
@@ -93,9 +91,7 @@ function IncidentRow({ incident, zone, now }: { incident: Incident; zone?: strin
         {formatAge(incident.reportedAt, now)}
       </time>
       <span className={styles.meta}>
-        <span className={styles.statusTag} data-status={incident.status}>
-          {statusLabel(incident.status)}
-        </span>
+        <StatusChip status={incident.status} />
         <span>{typeLabel(incident.type)}</span>
         {zone && <span>{zone}</span>}
       </span>

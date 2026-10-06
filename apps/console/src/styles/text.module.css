@@ -9,12 +9,6 @@
   margin: 0;
 }
 
-/* A message in place of content: loading, empty or failed. */
-.empty {
-  padding: var(--space-8) var(--space-5);
-  color: var(--text-secondary);
-}
-
 .muted {
   color: var(--text-secondary);
 }

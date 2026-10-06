@@ -1,0 +1,5 @@
+/* Moved unchanged from `styles/text.module.css` `.empty`. */
+.empty {
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-secondary);
+}
