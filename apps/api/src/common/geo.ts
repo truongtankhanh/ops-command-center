@@ -24,6 +24,49 @@ export function rectangle(center: LngLat, widthMeters: number, heightMeters: num
   return [...ring, ring[0]!];
 }
 
+/**
+ * Closed rectangular ring centred on a point, each corner rounded by `radiusMeters` with
+ * `cornerSegments` segments. Counter-clockwise, starting where the south-east corner meets the
+ * south edge.
+ */
+export function roundedRectangle(
+  center: LngLat,
+  widthMeters: number,
+  heightMeters: number,
+  radiusMeters: number,
+  cornerSegments: number,
+): LngLat[] {
+  const w = widthMeters / 2 - radiusMeters;
+  const h = heightMeters / 2 - radiusMeters;
+  // Each corner's arc centre and the angle its 90° arc starts at.
+  const corners: [east: number, north: number, startDegrees: number][] = [
+    [w, -h, 270],
+    [w, h, 0],
+    [-w, h, 90],
+    [-w, -h, 180],
+  ];
+  const ring = corners.flatMap(([east, north, startDegrees]) =>
+    Array.from({ length: cornerSegments + 1 }, (_, i) => {
+      const angle = toRadians(startDegrees + (90 * i) / cornerSegments);
+      return offset(
+        center,
+        east + radiusMeters * Math.cos(angle),
+        north + radiusMeters * Math.sin(angle),
+      );
+    }),
+  );
+  return [...ring, ring[0]!];
+}
+
+/** Closed ring of `segments` segments approximating a circle, counter-clockwise from due east. */
+export function circle(center: LngLat, radiusMeters: number, segments: number): LngLat[] {
+  const ring = Array.from({ length: segments }, (_, i) => {
+    const angle = (2 * Math.PI * i) / segments;
+    return offset(center, radiusMeters * Math.cos(angle), radiusMeters * Math.sin(angle));
+  });
+  return [...ring, ring[0]!];
+}
+
 /** Random point inside the inner part of a polygon's bounding box — used by the simulator. */
 export function randomPointIn(
   polygon: LngLat[],
@@ -70,3 +113,5 @@ function isOnSegment([x, y]: LngLat, [x1, y1]: LngLat, [x2, y2]: LngLat): boolea
 }
 
 const round = (n: number) => Math.round(n * 1e7) / 1e7;
+
+const toRadians = (degrees: number) => (degrees * Math.PI) / 180;

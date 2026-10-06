@@ -74,6 +74,7 @@ const camera = (overrides: Partial<Camera> = {}): Camera => ({
   zoneId: 'z1',
   position: POSITION,
   online: true,
+  fieldOfView: null,
   ...overrides,
 });
 

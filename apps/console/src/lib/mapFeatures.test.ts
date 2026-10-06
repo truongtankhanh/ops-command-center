@@ -227,8 +227,24 @@ describe('incidentFeatures', () => {
 describe('cameraFeatures', () => {
   it('places each camera with its state image', () => {
     const cameras: Camera[] = [
-      { id: 'c1', code: 'CAM-1', name: 'Gate', zoneId: 'z1', position: ANCHOR, online: true },
-      { id: 'c2', code: 'CAM-2', name: 'Lab', zoneId: 'z1', position: eastOf(5), online: false },
+      {
+        id: 'c1',
+        code: 'CAM-1',
+        name: 'Gate',
+        zoneId: 'z1',
+        position: ANCHOR,
+        online: true,
+        fieldOfView: null,
+      },
+      {
+        id: 'c2',
+        code: 'CAM-2',
+        name: 'Lab',
+        zoneId: 'z1',
+        position: eastOf(5),
+        online: false,
+        fieldOfView: null,
+      },
     ];
 
     expect(cameraFeatures(cameras).features).toEqual([

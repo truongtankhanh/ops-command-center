@@ -1,16 +1,17 @@
 # API reference
 
 Generated from the code by `/steel:api-docs-*` and reconciled on every run — see each
-endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) (OpenAPI 3.1).
+endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) (OpenAPI 3.0).
 The running API also serves interactive docs at `/api/docs` in development; in production they are off
 unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
-Last reconciled: 2026-10-05
+Last reconciled: 2026-10-06
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
 | Health           | 2         | [health.md](health.md)       |
 | Zones            | 1         | [zones.md](zones.md)         |
+| Site plan        | 1         | [site-plan.md](site-plan.md) |
 | Cameras          | 2         | [cameras.md](cameras.md)     |
 | Incidents        | 5         | [incidents.md](incidents.md) |
 | Real-time events | 2         | [events.md](events.md)       |
@@ -34,11 +35,11 @@ Last reconciled: 2026-10-05
   ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)). The map is
   `ROLE_PERMISSIONS` in `@occ/contracts`:
 
-  | Action                                      | `viewer` | `operator` | `supervisor` |
-  | ------------------------------------------- | :------: | :--------: | :----------: |
-  | Read zones, cameras, stream URLs, incidents |   yes    |    yes     |     yes      |
-  | Subscribe to `/events`                      |   yes    |    yes     |     yes      |
-  | Report, acknowledge, resolve (`incident:*`) |    no    |    yes     |     yes      |
+  | Action                                                 | `viewer` | `operator` | `supervisor` |
+  | ------------------------------------------------------ | :------: | :--------: | :----------: |
+  | Read zones, site plan, cameras, stream URLs, incidents |   yes    |    yes     |     yes      |
+  | Subscribe to `/events`                                 |   yes    |    yes     |     yes      |
+  | Report, acknowledge, resolve (`incident:*`)            |    no    |    yes     |     yes      |
   - **403** — the token has none of these roles (`No role grants access to this API`), or its roles
     lack the permission the endpoint needs (`Missing permission: incident:acknowledge`). Signing in
     again as the same user will not help.

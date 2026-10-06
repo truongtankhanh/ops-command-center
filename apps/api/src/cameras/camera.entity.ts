@@ -1,4 +1,4 @@
-import type { Camera } from '@occ/contracts';
+import type { Camera, CameraFieldOfView } from '@occ/contracts';
 import type { CameraRef } from '@occ/camera-adapter';
 import {
   Column,
@@ -43,8 +43,25 @@ export class CameraEntity {
   @Column({ type: 'boolean', default: true })
   online: boolean;
 
+  // Field of view: all three set, or all null when the orientation is unknown (a DB CHECK).
+  @Column({ name: 'fov_heading_deg', type: 'double precision', nullable: true })
+  fovHeadingDeg: number | null;
+
+  @Column({ name: 'fov_angle_deg', type: 'double precision', nullable: true })
+  fovAngleDeg: number | null;
+
+  @Column({ name: 'fov_range_m', type: 'double precision', nullable: true })
+  fovRangeM: number | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
+
+  get fieldOfView(): CameraFieldOfView | null {
+    if (this.fovHeadingDeg === null || this.fovAngleDeg === null || this.fovRangeM === null) {
+      return null;
+    }
+    return { heading: this.fovHeadingDeg, angle: this.fovAngleDeg, range: this.fovRangeM };
+  }
 
   toContract(): Camera {
     return {
@@ -54,6 +71,7 @@ export class CameraEntity {
       zoneId: this.zoneId,
       position: [this.lng, this.lat],
       online: this.online,
+      fieldOfView: this.fieldOfView,
     };
   }
 

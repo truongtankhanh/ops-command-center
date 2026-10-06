@@ -37,6 +37,16 @@ describe('ApiExceptionFilter', () => {
     );
   });
 
+  it('names a missing singleton without an id', () => {
+    const { host, json } = hostFor('/api/site-plan');
+
+    filter.catch(new EntityNotFoundError('Site plan'), host);
+
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 404, message: 'Site plan was not found' }),
+    );
+  });
+
   it('hides internal error details behind a generic 500', () => {
     const { host, json } = hostFor();
     jest.spyOn(filter['logger'], 'error').mockImplementation(() => undefined);

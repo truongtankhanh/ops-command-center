@@ -6,6 +6,8 @@ import { IncidentEntity } from '../incidents/incident.entity';
 import { LogLevelOverrideEntity } from '../logging/log-level-override.entity';
 import { TypeOrmLogger } from '../logging/typeorm-logger';
 import { OutboxEntity } from '../outbox/outbox.entity';
+import { SiteFeatureEntity } from '../sites/site-feature.entity';
+import { SiteEntity } from '../sites/site.entity';
 import { ZoneEntity } from '../zones/zone.entity';
 import { InitialSchema1790800000000 } from './migrations/1790800000000-initial-schema';
 import { IncidentVersion1790924435743 } from './migrations/1790924435743-incident-version';
@@ -16,6 +18,8 @@ import { IncidentEventActor1791151300130 } from './migrations/1791151300130-inci
 import { ThrottlerHit1791166667490 } from './migrations/1791166667490-throttler-hit';
 import { LogLevelOverride1791185000000 } from './migrations/1791185000000-log-level-override';
 import { OutboxRequestId1791185060000 } from './migrations/1791185060000-outbox-request-id';
+import { SitePlan1791280100000 } from './migrations/1791280100000-site-plan';
+import { CameraFieldOfView1791280160000 } from './migrations/1791280160000-camera-field-of-view';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -46,6 +50,8 @@ export const entities = [
   OutboxEntity,
   IdempotencyKeyEntity,
   LogLevelOverrideEntity,
+  SiteEntity,
+  SiteFeatureEntity,
 ];
 
 /** Shared by the Nest app and the TypeORM CLI, so both see the same schema. */
@@ -66,6 +72,8 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
     ThrottlerHit1791166667490,
     LogLevelOverride1791185000000,
     OutboxRequestId1791185060000,
+    SitePlan1791280100000,
+    CameraFieldOfView1791280160000,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,
