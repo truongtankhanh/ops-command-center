@@ -8,20 +8,6 @@
   border-top-color: var(--status-resolved);
 }
 
-.close {
-  border: 0;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: var(--space-1) var(--space-1-5);
-  border-radius: var(--radius-s);
-}
-
-.close:hover {
-  color: var(--text-primary);
-  background: var(--surface-2);
-}
-
 .facts {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -36,10 +22,6 @@
 
 .facts dd {
   margin: 0;
-}
-
-.severity {
-  text-transform: capitalize;
 }
 
 .description {
@@ -66,16 +48,13 @@
   gap: var(--space-2);
 }
 
-.actionForm textarea {
-  width: 100%;
+.note {
   min-height: 64px;
-  resize: vertical;
-  padding: var(--space-2);
-  border-radius: var(--radius-s);
-  border: 1px solid var(--border-strong);
-  background: var(--surface-0);
-  color: var(--text-primary);
-  font: inherit;
+}
+
+/* The equal-width response buttons, as before the `Button` primitive. */
+.grow {
+  flex: 1;
 }
 
 .timeline {

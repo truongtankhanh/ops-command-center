@@ -1,4 +1,4 @@
-import type { Incident } from '@occ/contracts';
+import { type Incident, INCIDENT_SEVERITIES } from '@occ/contracts';
 import {
   compareIncidents,
   countActiveBySeverity,
@@ -6,6 +6,7 @@ import {
   matchesFilter,
   mergeIncidentLists,
   newerIncident,
+  severityLabel,
   upsertIncident,
 } from './incidents';
 
@@ -195,5 +196,11 @@ describe('formatAge', () => {
     [72 * 3_600_000, '3d'],
   ])('formats %i ms as %s', (elapsed, expected) => {
     expect(formatAge('2026-10-01T08:00:00.000Z', t0 + elapsed)).toBe(expected);
+  });
+});
+
+describe('severityLabel', () => {
+  it('names every severity in title case, in contract order', () => {
+    expect(INCIDENT_SEVERITIES.map(severityLabel)).toEqual(['Low', 'Medium', 'High', 'Critical']);
   });
 });

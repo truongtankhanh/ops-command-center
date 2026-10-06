@@ -1,4 +1,9 @@
-import { type Incident, type IncidentStatus, severityRank } from '@occ/contracts';
+import {
+  type Incident,
+  type IncidentSeverity,
+  type IncidentStatus,
+  severityRank,
+} from '@occ/contracts';
 
 export type FeedFilter = 'active' | 'resolved' | 'all';
 
@@ -105,3 +110,12 @@ const STATUS_LABELS: Record<IncidentStatus, string> = {
 };
 
 export const statusLabel = (status: IncidentStatus) => STATUS_LABELS[status];
+
+const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+};
+
+export const severityLabel = (severity: IncidentSeverity) => SEVERITY_LABELS[severity];

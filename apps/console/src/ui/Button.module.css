@@ -1,0 +1,72 @@
+/* Frame 00 buttons. Variants and sizes are attributes (ADR-0016 §4); the default is `secondary`. */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 40px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--text-tertiary);
+}
+
+.button[data-size='sm'] {
+  height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--type-body);
+}
+
+.button[data-variant='primary'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Restates the border so the generic hover above does not draw a grey ring on the accent. */
+.button[data-variant='primary']:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.button[data-variant='ghost'] {
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.button[data-variant='ghost']:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.button[data-variant='danger'] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button[data-variant='danger']:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* A button that opens a panel shows it while the panel is open (Report incident). */
+.button[aria-expanded='true'] {
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

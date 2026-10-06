@@ -1,0 +1,43 @@
+/*
+ * Severity badge (frame 00 `.sev-badge`). Tint and border use the named `--sev-*-bg` / `-border`
+ * tokens, the pairs `scripts/contrast.ts` checks, rather than mixing new shades here.
+ */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: 26px;
+  padding: 0 var(--space-2) 0 var(--space-1-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  color: var(--text-primary);
+}
+
+/* `--sev` comes from `data-severity` (base.css). */
+.icon {
+  color: var(--sev);
+}
+
+.badge[data-severity='critical'] {
+  background: var(--sev-critical-bg);
+  border-color: var(--sev-critical-border);
+}
+
+.badge[data-severity='high'] {
+  background: var(--sev-high-bg);
+  border-color: var(--sev-high-border);
+}
+
+.badge[data-severity='medium'] {
+  background: var(--sev-medium-bg);
+  border-color: var(--sev-medium-border);
+}
+
+.badge[data-severity='low'] {
+  background: var(--sev-low-bg);
+  border-color: var(--sev-low-border);
+}

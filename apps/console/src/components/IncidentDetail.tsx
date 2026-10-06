@@ -3,12 +3,16 @@ import { useCallback, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
-import { statusLabel, typeLabel } from '../lib/incidents';
+import { typeLabel } from '../lib/incidents';
 import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
-import button from '../styles/button.module.css';
 import panel from '../styles/panel.module.css';
 import text from '../styles/text.module.css';
+import { Button } from '../ui/Button';
+import { EmptyState } from '../ui/EmptyState';
+import { Field, Textarea } from '../ui/Field';
+import { SeverityBadge } from '../ui/SeverityBadge';
+import { StatusChip } from '../ui/StatusChip';
 import { CameraTile } from './CameraTile';
 import styles from './IncidentDetail.module.css';
 
@@ -34,7 +38,7 @@ export function IncidentDetail({ id }: { id: string }) {
   if (isError || !incident) {
     return (
       <aside className={panel.panel}>
-        <p className={text.empty}>This incident could not be loaded.</p>
+        <EmptyState>This incident could not be loaded.</EmptyState>
       </aside>
     );
   }
@@ -66,16 +70,20 @@ function DetailBody({
       <div className={styles.head} data-severity={incident.severity} data-status={incident.status}>
         <div className={panel.toprow}>
           <span>{incident.code}</span>
-          <button className={styles.close} onClick={onClose} aria-label="Close incident">
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close incident">
             Close
-          </button>
+          </Button>
         </div>
         <h2 className={panel.title}>{incident.title}</h2>
         <dl className={styles.facts}>
           <dt>Status</dt>
-          <dd>{statusLabel(incident.status)}</dd>
+          <dd>
+            <StatusChip status={incident.status} form="pill" />
+          </dd>
           <dt>Severity</dt>
-          <dd className={styles.severity}>{incident.severity}</dd>
+          <dd>
+            <SeverityBadge severity={incident.severity} />
+          </dd>
           <dt>Type</dt>
           <dd>{typeLabel(incident.type)}</dd>
           <dt>Location</dt>
@@ -157,39 +165,36 @@ function Actions({
     <section className={styles.section}>
       <h3>Response</h3>
       <form className={styles.actionForm} onSubmit={(event) => event.preventDefault()}>
-        <label className={text.muted} htmlFor="incident-note">
-          Note for the timeline (optional)
-        </label>
-        <textarea
-          id="incident-note"
-          value={note}
-          onChange={(event) => onNoteChange(event.target.value)}
-          placeholder="e.g. Guard dispatched from the main gate"
-          maxLength={1000}
-        />
+        <Field label="Note for the timeline (optional)">
+          <Textarea
+            className={styles.note}
+            value={note}
+            onChange={(event) => onNoteChange(event.target.value)}
+            placeholder="e.g. Guard dispatched from the main gate"
+            maxLength={1000}
+          />
+        </Field>
         <div className={panel.actions}>
           {showAcknowledge && (
-            <button
-              type="button"
-              className={button.button}
-              data-variant="primary"
+            <Button
+              variant="primary"
+              className={styles.grow}
               disabled={busy}
               onClick={() => run(acknowledge)}
             >
               Acknowledge
-            </button>
+            </Button>
           )}
           {showResolve && (
-            <button
-              type="button"
-              className={button.button}
+            <Button
               // Only one primary action at a time: Resolve is it once Acknowledge is gone.
-              data-variant={showAcknowledge ? undefined : 'primary'}
+              variant={showAcknowledge ? 'secondary' : 'primary'}
+              className={styles.grow}
               disabled={busy}
               onClick={() => run(resolve)}
             >
               Resolve
-            </button>
+            </Button>
           )}
         </div>
         {error && (

@@ -2,8 +2,10 @@ import type { ReactNode } from 'react';
 import { signInAgain } from '../auth/session';
 import { useSession } from '../auth/store';
 import { useSignOut } from '../auth/useSignOut';
-import button from '../styles/button.module.css';
 import text from '../styles/text.module.css';
+import { Banner } from '../ui/Banner';
+import { Button, type ButtonSize } from '../ui/Button';
+import { Lock } from '../ui/icons';
 import styles from './AuthGate.module.css';
 
 /**
@@ -56,10 +58,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
 /** Fixed over the console, so the layout and any half-filled form stay as they are. */
 function SessionExpiredBanner() {
   return (
-    <div className={styles.sessionBanner} role="alert">
+    <Banner
+      role="alert"
+      icon={Lock}
+      action={<SignInButton size="sm">Sign in again</SignInButton>}
+      className={styles.sessionBanner}
+    >
       Your session has expired.
-      <SignInButton>Sign in again</SignInButton>
-    </div>
+    </Banner>
   );
 }
 
@@ -81,24 +87,19 @@ function AuthScreen({
   );
 }
 
-function SignInButton({ children }: { children: ReactNode }) {
+function SignInButton({ size, children }: { size?: ButtonSize; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      className={button.button}
-      data-variant="primary"
-      onClick={() => void signInAgain()}
-    >
+    <Button variant="primary" size={size} onClick={() => void signInAgain()}>
       {children}
-    </button>
+    </Button>
   );
 }
 
 function SignOutButton() {
   const signOut = useSignOut();
   return (
-    <button type="button" className={button.button} data-variant="primary" onClick={signOut}>
+    <Button variant="primary" onClick={signOut}>
       Sign out
-    </button>
+    </Button>
   );
 }

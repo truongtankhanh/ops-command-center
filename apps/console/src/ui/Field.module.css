@@ -1,0 +1,36 @@
+/* Form fields (mockup 03). `SegmentedControl.module.css` repeats `.label` for its legend. */
+
+.field {
+  display: grid;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.label {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+/* Controls fill their field; the field, not the control, is placed by the caller. */
+.control {
+  width: 100%;
+  height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--type-body);
+}
+
+.control::placeholder {
+  color: var(--text-tertiary);
+}
+
+.multiline {
+  height: auto;
+  resize: vertical;
+}
