@@ -1,4 +1,5 @@
 .feed {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -6,9 +7,10 @@
   background: var(--surface-1);
 }
 
-/* Spacing only: the tab list draws itself (`Tabs`). */
-.tabs {
-  margin-top: var(--space-2);
+/* Placement only: the search box draws itself (`FeedSearch`). Frame 01 `.feed-top`. */
+.search {
+  flex: none;
+  margin: var(--space-3) var(--space-3) var(--space-1);
 }
 
 /* The tab panel holds the list, which scrolls inside the feed's column. */
@@ -26,85 +28,26 @@
   margin: var(--space-2) var(--space-3);
 }
 
+/* Rows are cards (`IncidentRow`), so the list pads them away from the column edge. */
 .list {
+  display: grid;
+  align-content: start;
+  gap: var(--space-0-5);
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: var(--space-2);
   overflow-y: auto;
   flex: 1;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 4px 1fr auto;
-  gap: 0 var(--space-3);
-  width: 100%;
-  padding: var(--space-3) var(--space-3) var(--space-3) 0;
-  border: 0;
-  border-bottom: 1px solid var(--border-subtle);
-  background: none;
-  text-align: left;
-  cursor: pointer;
-}
-
-.row:hover {
-  background: var(--surface-2);
-}
-
-.row[aria-current='true'] {
-  background: var(--surface-2);
-  box-shadow: inset 0 0 0 1px var(--text-tertiary);
-}
-
-.edge {
-  grid-row: span 2;
-  border-radius: 0 var(--radius-s) var(--radius-s) 0;
-  background: var(--sev);
-}
-
-.row[data-status='resolved'] .edge {
-  background: var(--status-resolved);
-}
-
-.title {
-  font-family: var(--font-ui);
-  font-weight: var(--weight-semibold);
-  font-size: var(--type-l);
-  line-height: var(--leading-l);
-}
-
-.row[data-status='resolved'] .title {
-  color: var(--text-secondary);
-  font-weight: var(--weight-medium);
-}
-
-.age {
-  font-family: var(--font-ui);
-  font-size: var(--type-body);
-  color: var(--text-secondary);
-  text-align: right;
-}
-
-.meta {
-  grid-column: 2 / 4;
-  display: flex;
-  gap: var(--space-2);
-  margin-top: var(--space-1);
-  font-size: var(--type-s);
-  color: var(--text-secondary);
-}
-
-.row[data-fresh='true'] {
-  animation: arrive var(--duration-arrive) var(--ease-out) 1;
-}
-
-@keyframes arrive {
-  from {
-    background: color-mix(in srgb, var(--sev) 28%, transparent);
-  }
-  to {
-    background: transparent;
-  }
+/* Read by assistive tech, not drawn: the search result count. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 @media (max-width: 720px) {
@@ -114,11 +57,5 @@
 
   .list {
     overflow: visible;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .row[data-fresh='true'] {
-    animation: none;
   }
 }

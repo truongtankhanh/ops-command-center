@@ -139,4 +139,25 @@ describe('Tabs', () => {
     expect(tab('Alpha')).toHaveAttribute('tabindex', '0');
     expect(screen.queryAllByRole('tab', { selected: true })).toHaveLength(0);
   });
+
+  it("shows a count and makes it part of the tab's name", () => {
+    render(
+      <Tabs
+        label="Letters"
+        tabs={[
+          { value: 'a', label: 'Alpha', count: 3 },
+          { value: 'b', label: 'Beta', count: 0 },
+        ]}
+        value="a"
+        onChange={() => {}}
+      >
+        content
+      </Tabs>,
+    );
+
+    // The space is part of the name: "Alpha 3", not "Alpha3".
+    expect(tab('Alpha 3')).toBeInTheDocument();
+    expect(tab('Beta 0')).toBeInTheDocument();
+    expect(screen.getByRole('tabpanel', { name: 'Alpha 3' })).toHaveTextContent('content');
+  });
 });

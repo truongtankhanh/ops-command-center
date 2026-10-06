@@ -11,6 +11,9 @@ import styles from './Tabs.module.css';
  * the consumer renders the content of the selected tab only. The panel takes no tab stop of its
  * own: the content it holds is expected to be focusable (e.g. list rows).
  *
+ * A tab with a `count` shows it after its label, and the count is part of the tab's accessible
+ * name ("Active 4"), so assistive tech hears the number the screen shows.
+ *
  * Renders the list and the panel as siblings; place them with `className` / `panelClassName`.
  */
 export function Tabs<T extends string>({
@@ -23,7 +26,7 @@ export function Tabs<T extends string>({
   children,
 }: {
   label: string;
-  tabs: readonly { value: T; label: string }[];
+  tabs: readonly { value: T; label: string; count?: number }[];
   value: T;
   onChange: (value: T) => void;
   className?: string;
@@ -74,6 +77,13 @@ export function Tabs<T extends string>({
             onClick={() => onChange(tab.value)}
           >
             {tab.label}
+            {/* The space keeps the accessible name "Active 4", not "Active4". */}
+            {tab.count !== undefined && (
+              <>
+                {' '}
+                <span className={styles.count}>{tab.count}</span>
+              </>
+            )}
           </button>
         ))}
       </div>

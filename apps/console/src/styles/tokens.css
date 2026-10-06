@@ -99,7 +99,8 @@
   --duration-fast: 120ms;
   --duration-base: 200ms;
   --duration-slow: 320ms;
-  --duration-arrive: 1600ms;
+  /* A fresh feed row's highlight: held, then faded, long enough to be noticed on a busy shift. */
+  --duration-arrive: 8000ms;
   --duration-pulse: 1800ms;
   /* The `ease-out` keyword, named so animations share one curve. */
   --ease-out: cubic-bezier(0, 0, 0.58, 1);

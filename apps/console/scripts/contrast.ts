@@ -89,6 +89,20 @@ const PAIRS: Pair[] = [
   // the icon only (a graphic, 3:1). The tint is already opaque, so it needs no surface under it.
   { fg: '--text-primary', bg: '--sev-critical-hot-bg', min: TEXT },
   { fg: '--sev-critical', bg: '--sev-critical-hot-bg', min: UI },
+  // A fresh feed row (frame 04) takes its severity's badge tint over `--surface-1`. The title and the
+  // severity tile reuse the badge pairs above; the meta line (code included), a late age and a
+  // resolved status chip sit on the same tint. The code is `--text-secondary`, not the mockup's
+  // `--text-tertiary`, which falls to 4.48:1 on the medium tint.
+  ...SEVERITIES.flatMap((sev) =>
+    ['--text-secondary', '--warning', '--status-resolved'].map((fg) => ({
+      fg,
+      bg: `${sev}-bg`,
+      over: '--surface-1',
+      min: TEXT,
+    })),
+  ),
+  // The count on the selected feed tab.
+  { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
 ];
 
 const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));

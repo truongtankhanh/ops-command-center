@@ -1,13 +1,18 @@
 import { type Incident, INCIDENT_SEVERITIES } from '@occ/contracts';
 import {
+  ATTENTION_THRESHOLD_MS,
   compareIncidents,
   countActiveBySeverity,
+  countByFilter,
   feedEmptyMessage,
   formatAge,
+  isPastAttention,
   matchesFilter,
+  matchesQuery,
   matchesSeverity,
   mergeIncidentLists,
   newerIncident,
+  searchTerms,
   severityLabel,
   upsertIncident,
 } from './incidents';
@@ -206,6 +211,103 @@ describe('feedEmptyMessage', () => {
     ['all', 'low', 'No low incidents recorded yet.'],
   ] as const)('names the severity on the %s tab', (filter, severity, expected) => {
     expect(feedEmptyMessage(filter, severity)).toBe(expected);
+  });
+
+  it.each([
+    ['active', null, 'xyz', 'No active incidents match "xyz".'],
+    ['resolved', 'high', ' xyz ', 'No resolved high incidents match "xyz".'],
+    ['all', null, 'xyz', 'No incidents match "xyz".'],
+  ] as const)('names the search on the %s tab', (filter, severity, query, expected) => {
+    expect(feedEmptyMessage(filter, severity, query)).toBe(expected);
+  });
+
+  it('ignores a blank search', () => {
+    expect(feedEmptyMessage('active', null, '   ')).toBe(feedEmptyMessage('active', null));
+  });
+});
+
+describe('searchTerms', () => {
+  it.each([
+    ['   ', []],
+    ['Door  forced\tOPEN', ['door', 'forced', 'open']],
+    ['Cháy', ['chay']],
+    ['Đường đi', ['duong', 'di']],
+  ] as const)('folds %j into %j', (query, expected) => {
+    expect(searchTerms(query)).toEqual(expected);
+  });
+});
+
+describe('matchesQuery', () => {
+  it('matches every incident without terms', () => {
+    expect(matchesQuery(incident({}), [])).toBe(true);
+  });
+
+  it.each([
+    ['code', 'inc-0000', {}, undefined],
+    ['title', 'forced', { title: 'Door forced open' }, undefined],
+    ['zone name', 'library', {}, 'Library'],
+  ] as const)('finds a term in the %s', (_field, term, overrides, zone) => {
+    expect(matchesQuery(incident(overrides), [term], zone)).toBe(true);
+  });
+
+  it('needs every term', () => {
+    const door = incident({ title: 'Door forced open' });
+    expect(matchesQuery(door, ['door', 'open'])).toBe(true);
+    expect(matchesQuery(door, ['door', 'gate'])).toBe(false);
+  });
+
+  it('never matches a term across two fields', () => {
+    expect(matchesQuery(incident({ title: 'Main' }), ['maingate'], 'Gate')).toBe(false);
+  });
+
+  it('ignores accents and case end to end', () => {
+    expect(matchesQuery(incident({ title: 'Chay nho' }), searchTerms('CHÁY'))).toBe(true);
+  });
+});
+
+describe('countByFilter', () => {
+  const list = [
+    incident({ id: 'o', status: 'open' }),
+    incident({ id: 'a', status: 'acknowledged' }),
+    incident({ id: 'r', status: 'resolved' }),
+  ];
+
+  it('counts what each tab would list', () => {
+    expect(countByFilter(list, () => true)).toEqual({ active: 2, resolved: 1, all: 3 });
+  });
+
+  it('counts only the incidents that match', () => {
+    expect(countByFilter(list, (i) => i.status !== 'acknowledged')).toEqual({
+      active: 1,
+      resolved: 1,
+      all: 2,
+    });
+  });
+});
+
+describe('isPastAttention', () => {
+  const t0 = Date.parse('2026-10-01T08:00:00.000Z');
+
+  it('uses the provisional thresholds', () => {
+    expect(ATTENTION_THRESHOLD_MS).toEqual({
+      critical: 120_000,
+      high: 300_000,
+      medium: 900_000,
+      low: 1_800_000,
+    });
+  });
+
+  it.each(INCIDENT_SEVERITIES)('flags an open %s incident from its threshold on', (severity) => {
+    const threshold = ATTENTION_THRESHOLD_MS[severity];
+    expect(isPastAttention(incident({ severity }), t0 + threshold - 1)).toBe(false);
+    expect(isPastAttention(incident({ severity }), t0 + threshold)).toBe(true);
+  });
+
+  it('never flags an acknowledged or resolved incident', () => {
+    const dayLater = t0 + 24 * 3_600_000;
+    for (const status of ['acknowledged', 'resolved'] as const) {
+      expect(isPastAttention(incident({ severity: 'critical', status }), dayLater)).toBe(false);
+    }
   });
 });
 

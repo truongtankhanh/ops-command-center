@@ -26,14 +26,58 @@ export function matchesFilter(incident: Incident, filter: FeedFilter): boolean {
 export const matchesSeverity = (incident: Incident, severity: IncidentSeverity | null): boolean =>
   severity === null || incident.severity === severity;
 
+/**
+ * Folds text for search: case- and accent-insensitive, so "chay" finds "Cháy". `đ` has no NFD
+ * decomposition, so it is mapped by hand.
+ */
+const fold = (text: string): string =>
+  text.replace(/[đĐ]/g, 'd').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** The folded words of a search query; a blank query has none. */
+export const searchTerms = (query: string): string[] => fold(query).split(/\s+/).filter(Boolean);
+
+/**
+ * Whether every search term appears in the incident's code, title or zone name. No terms match
+ * every incident. Terms hold no whitespace, so the line breaks keep a term from spanning two
+ * fields.
+ */
+export function matchesQuery(incident: Incident, terms: readonly string[], zoneName = ''): boolean {
+  if (terms.length === 0) return true;
+  const text = fold(`${incident.code}\n${incident.title}\n${zoneName}`);
+  return terms.every((term) => text.includes(term));
+}
+
+/** How many incidents each tab would list, given the filters that apply to every tab. */
+export function countByFilter(
+  incidents: readonly Incident[],
+  matches: (incident: Incident) => boolean,
+): Record<FeedFilter, number> {
+  const counts: Record<FeedFilter, number> = { active: 0, resolved: 0, all: 0 };
+  for (const incident of incidents) {
+    if (!matches(incident)) continue;
+    for (const { value } of FEED_FILTERS) if (matchesFilter(incident, value)) counts[value]++;
+  }
+  return counts;
+}
+
 const EMPTY_MESSAGES: Record<FeedFilter, string> = {
   active: 'No active incidents. New reports appear here as they come in.',
   resolved: 'Nothing resolved yet this shift.',
   all: 'No incidents recorded yet.',
 };
 
-/** What the feed says when nothing matches its tab and severity filter. */
-export function feedEmptyMessage(filter: FeedFilter, severity: IncidentSeverity | null): string {
+/** What the feed says when nothing matches its tab, severity filter and search. */
+export function feedEmptyMessage(
+  filter: FeedFilter,
+  severity: IncidentSeverity | null,
+  query = '',
+): string {
+  const search = query.trim();
+  if (search !== '') {
+    const tab = filter === 'all' ? '' : `${filter} `;
+    const level = severity ? `${severityLabel(severity).toLowerCase()} ` : '';
+    return `No ${tab}${level}incidents match "${search}".`;
+  }
   if (severity === null) return EMPTY_MESSAGES[filter];
   const label = severityLabel(severity).toLowerCase();
   switch (filter) {
@@ -103,6 +147,26 @@ export function countActiveBySeverity(incidents: Incident[]): SeverityCounts {
   for (const incident of incidents) if (isActive(incident)) counts[incident.severity]++;
   return counts;
 }
+
+const MINUTE_MS = 60_000;
+
+/**
+ * How long an incident may stay open (not acknowledged) before the feed flags its age. Provisional
+ * values from the design brief (Approved decision 3), still to be confirmed with operations.
+ * Display only, not an SLA: nothing enforces it server-side, and OCC-26 replaces it with the
+ * server's SLA.
+ */
+export const ATTENTION_THRESHOLD_MS: Readonly<Record<IncidentSeverity, number>> = {
+  critical: 2 * MINUTE_MS,
+  high: 5 * MINUTE_MS,
+  medium: 15 * MINUTE_MS,
+  low: 30 * MINUTE_MS,
+};
+
+/** An open incident waiting past its attention threshold. Acknowledging it clears the flag. */
+export const isPastAttention = (incident: Incident, now: number): boolean =>
+  incident.status === 'open' &&
+  now - Date.parse(incident.reportedAt) >= ATTENTION_THRESHOLD_MS[incident.severity];
 
 /** Compact age for scanning a list: `now`, `45s`, `12m`, `3h`, `2d`. */
 export function formatAge(fromIso: string, now: number): string {
