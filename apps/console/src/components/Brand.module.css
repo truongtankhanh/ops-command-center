@@ -1,0 +1,59 @@
+/* Frame 01 header identity; `lg` is the stacked version of the sign-in screens (frame 08). */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand[data-size='lg'] {
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: center;
+}
+
+.mark {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+.brand[data-size='lg'] .mark {
+  width: 44px;
+  height: 44px;
+}
+
+.ground {
+  fill: var(--surface-3);
+}
+
+.ring {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2;
+}
+
+.dot {
+  fill: var(--accent);
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-s);
+}
+
+.brand[data-size='lg'] .name {
+  font-size: var(--type-xl);
+  line-height: var(--leading-xl);
+}
+
+.site {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-s);
+}

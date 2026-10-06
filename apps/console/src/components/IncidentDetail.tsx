@@ -1,5 +1,5 @@
 import type { IncidentDetail as Detail, IncidentEventKind } from '@occ/contracts';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
@@ -28,11 +28,18 @@ const time = (iso: string) =>
 export function IncidentDetail({ id }: { id: string }) {
   const { data: incident, isPending, isError } = useIncident(id);
   const select = useConsole((s) => s.select);
+  const setNoteDraft = useConsole((s) => s.setNoteDraft);
   const close = useCallback(() => select(null), [select]);
   // Kept here rather than in the response form, so Escape knows whether closing would lose it.
   const [note, setNote] = useState('');
+  const hasDraft = note.trim() !== '';
 
-  useCloseOnEscape(close, note.trim() !== '');
+  useCloseOnEscape(close, hasDraft);
+  // Shared with the header, so its `N` shortcut does not throw the note away either (D6).
+  useEffect(() => {
+    setNoteDraft(hasDraft);
+    return () => setNoteDraft(false);
+  }, [hasDraft, setNoteDraft]);
 
   if (isPending) return <aside className={panel.panel} aria-busy="true" />;
   if (isError || !incident) {

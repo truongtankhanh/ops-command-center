@@ -103,10 +103,11 @@ const ACTOR_KIND_ICONS: Record<ActorKind, Glyph> = {
 
 export const actorKindIcon = (kind: ActorKind) => ACTOR_KIND_ICONS[kind];
 
-// `connecting` covers the first connect and every reconnect attempt, hence the refresh glyph.
+// The first connect and a reconnect attempt share the refresh glyph: both are a link being made.
 const CONNECTION_ICONS: Record<ConnectionState, Glyph> = {
   live: Radio,
   connecting: RefreshCw,
+  reconnecting: RefreshCw,
   offline: WifiOff,
 };
 
@@ -115,4 +116,4 @@ export const connectionIcon = (state: ConnectionState) => CONNECTION_ICONS[state
 export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff);
 
 // Generic UI glyphs, re-exported so that nothing outside this module imports the icon set.
-export { Clock, Eye, Lock, Plus, Search, Volume2, X } from 'lucide-react';
+export { ChevronDown, Clock, Eye, Lock, LogOut, Plus, Search, Volume2, X } from 'lucide-react';

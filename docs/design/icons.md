@@ -18,18 +18,19 @@ local `Glyph` type, so replacing the set means rewriting that one file.
 Every domain map is a `Record` over its union, so adding a value to `@occ/contracts` (or to the store's
 `ConnectionState`) fails `typecheck` until it has a glyph.
 
-| Accessor           | Value                                                                                         | Glyph                                                                                |
-| ------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `severityIcon`     | `critical` / `high` / `medium` / `low`                                                        | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                            |
-| `incidentTypeIcon` | `intrusion` / `fire_alarm` / `equipment_fault` / `medical` / `crowding` / `suspicious_object` | `DoorOpen` / `Flame` / `Wrench` / `HeartPulse` / `Users` / `Package`                 |
-| `statusIcon`       | `open` / `acknowledged` / `resolved`                                                          | `CircleDot` / `UserCheck` / `CircleCheck`                                            |
-| `eventKindIcon`    | `reported` / `acknowledged` / `resolved`                                                      | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)        |
-| `zoneKindIcon`     | `building` / `parking` / `gate` / `outdoor`                                                   | `Building2` / `SquareParking` / `Fence` / `Trees`                                    |
-| `actorKindIcon`    | `user` / `system`                                                                             | `User` / `Cpu`                                                                       |
-| `connectionIcon`   | `live` / `connecting` / `offline`                                                             | `Radio` / `RefreshCw` / `WifiOff` (`connecting` also covers every reconnect attempt) |
-| `cameraIcon`       | `online: true` / `false`                                                                      | `Video` / `VideoOff`                                                                 |
+| Accessor           | Value                                                                                         | Glyph                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `severityIcon`     | `critical` / `high` / `medium` / `low`                                                        | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                |
+| `incidentTypeIcon` | `intrusion` / `fire_alarm` / `equipment_fault` / `medical` / `crowding` / `suspicious_object` | `DoorOpen` / `Flame` / `Wrench` / `HeartPulse` / `Users` / `Package`                     |
+| `statusIcon`       | `open` / `acknowledged` / `resolved`                                                          | `CircleDot` / `UserCheck` / `CircleCheck`                                                |
+| `eventKindIcon`    | `reported` / `acknowledged` / `resolved`                                                      | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)            |
+| `zoneKindIcon`     | `building` / `parking` / `gate` / `outdoor`                                                   | `Building2` / `SquareParking` / `Fence` / `Trees`                                        |
+| `actorKindIcon`    | `user` / `system`                                                                             | `User` / `Cpu`                                                                           |
+| `connectionIcon`   | `live` / `connecting` / `reconnecting` / `offline`                                            | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only) |
+| `cameraIcon`       | `online: true` / `false`                                                                      | `Video` / `VideoOff`                                                                     |
 
-Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`.
+Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
+`ChevronDown`, `LogOut`.
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted; UI-16 re-checks it.

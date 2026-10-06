@@ -105,4 +105,22 @@ describe('Button', () => {
     await userEvent.click(button);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('shows a key hint and announces the shortcut, keeping the visible label as the name', () => {
+    render(<Button shortcut="N">Report incident</Button>);
+
+    expect(screen.getByRole('button', { name: 'Report incident' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'N',
+    );
+    expect(screen.getByText('N')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('has no hint and announces no shortcut by default', () => {
+    const { container } = render(<Button>Save</Button>);
+
+    expect(screen.getByRole('button', { name: 'Save' })).not.toHaveAttribute('aria-keyshortcuts');
+    // `kbd` has no ARIA role, so a selector is the only way to look for it.
+    expect(container.querySelector('kbd')).toBeNull();
+  });
 });

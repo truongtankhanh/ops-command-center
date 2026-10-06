@@ -33,3 +33,15 @@ describe('icon maps', () => {
     expect(new Set(glyphs).size).toBe(glyphs.length);
   });
 });
+
+// The one pair that shares a glyph by design: both are a link being made, told apart by the label.
+describe('connection glyphs', () => {
+  it('shares the refresh glyph between the first connect and a reconnect, on purpose', () => {
+    expect(connectionIcon('connecting')).toBe(connectionIcon('reconnecting'));
+  });
+
+  it('gives live, reconnecting and offline their own glyphs', () => {
+    const glyphs = (['live', 'reconnecting', 'offline'] as const).map(connectionIcon);
+    expect(new Set(glyphs).size).toBe(3);
+  });
+});

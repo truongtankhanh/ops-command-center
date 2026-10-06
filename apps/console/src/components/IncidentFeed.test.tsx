@@ -49,8 +49,13 @@ function renderFeed() {
 
 describe('IncidentFeed', () => {
   beforeEach(() => {
-    useConsole.setState({ filter: 'active', selectedIncidentId: null, reporting: false });
-    // The Report button is shown only to a role that may report (ADR-0011).
+    useConsole.setState({
+      filter: 'active',
+      severity: null,
+      selectedIncidentId: null,
+      reporting: false,
+    });
+    // A signed-in role, as in the console. The feed holds no actions (Report is in the header).
     resetStore(useSession);
     useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
   });
@@ -64,12 +69,11 @@ describe('IncidentFeed', () => {
     expect(screen.getAllByText('Library')).toHaveLength(2);
   });
 
-  it('offers no report button to a viewer', () => {
+  it('shows a viewer the same incidents and filters', () => {
     useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] });
 
     renderFeed();
 
-    expect(screen.queryByRole('button', { name: 'Report incident' })).toBeNull();
     expect(screen.getByText('Door forced open')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Resolved' })).toBeInTheDocument();
   });
@@ -94,13 +98,54 @@ describe('IncidentFeed', () => {
     expect(useConsole.getState().selectedIncidentId).toBeNull();
   });
 
-  it('opens the report form from the feed and clears the selection', async () => {
-    useConsole.setState({ selectedIncidentId: 'a' });
-    renderFeed();
+  // The severity filter is set from the header's KPI tiles; the feed shows and clears it.
+  describe('severity filter', () => {
+    it('lists only the selected severity and shows it as a chip', () => {
+      useConsole.setState({ severity: 'high' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Report incident' }));
+      renderFeed();
 
-    expect(useConsole.getState().reporting).toBe(true);
-    expect(useConsole.getState().selectedIncidentId).toBeNull();
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(screen.queryByText('Queue at gate')).not.toBeInTheDocument();
+      expect(screen.getByText('High only')).toBeInTheDocument();
+    });
+
+    it('clears the severity filter from the chip and keeps focus in the feed', async () => {
+      useConsole.setState({ severity: 'high' });
+      renderFeed();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear severity filter' }));
+
+      expect(useConsole.getState().severity).toBeNull();
+      expect(screen.queryByText('High only')).not.toBeInTheDocument();
+      expect(screen.getByText('Queue at gate')).toBeInTheDocument();
+      // The chip and its button are gone; focus lands on the selected tab, not on the page.
+      expect(screen.getByRole('tab', { name: 'Active' })).toHaveFocus();
+    });
+
+    it('keeps the severity filter when switching tab', async () => {
+      useConsole.setState({ severity: 'critical' });
+      renderFeed();
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Resolved' }));
+
+      expect(screen.getByText('Smoke detector')).toBeInTheDocument();
+      expect(screen.getByText('Critical only')).toBeInTheDocument();
+    });
+
+    it('says which severity has nothing to show', () => {
+      useConsole.setState({ severity: 'medium' });
+
+      renderFeed();
+
+      expect(screen.getByText('No active medium incidents.')).toBeInTheDocument();
+      expect(screen.getByText('Medium only')).toBeInTheDocument();
+    });
+
+    it('shows no chip without a severity filter', () => {
+      renderFeed();
+
+      expect(screen.queryByRole('button', { name: 'Clear severity filter' })).toBeNull();
+    });
   });
 });

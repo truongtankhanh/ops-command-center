@@ -22,6 +22,30 @@ export function matchesFilter(incident: Incident, filter: FeedFilter): boolean {
   return filter === 'active' ? isActive(incident) : incident.status === 'resolved';
 }
 
+/** `null` is no severity filter: every incident matches. */
+export const matchesSeverity = (incident: Incident, severity: IncidentSeverity | null): boolean =>
+  severity === null || incident.severity === severity;
+
+const EMPTY_MESSAGES: Record<FeedFilter, string> = {
+  active: 'No active incidents. New reports appear here as they come in.',
+  resolved: 'Nothing resolved yet this shift.',
+  all: 'No incidents recorded yet.',
+};
+
+/** What the feed says when nothing matches its tab and severity filter. */
+export function feedEmptyMessage(filter: FeedFilter, severity: IncidentSeverity | null): string {
+  if (severity === null) return EMPTY_MESSAGES[filter];
+  const label = severityLabel(severity).toLowerCase();
+  switch (filter) {
+    case 'active':
+      return `No active ${label} incidents.`;
+    case 'resolved':
+      return `No resolved ${label} incidents.`;
+    case 'all':
+      return `No ${label} incidents recorded yet.`;
+  }
+}
+
 /** Same order as the API: unresolved first, then most severe, then newest. */
 export function compareIncidents(a: Incident, b: Incident): number {
   const resolved = Number(a.status === 'resolved') - Number(b.status === 'resolved');

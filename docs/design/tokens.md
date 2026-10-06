@@ -28,6 +28,9 @@ From the brief's surface rules:
 - A severity badge (`SeverityBadge`, and the checked option of a severity `SegmentedControl`) keeps its label in
   `--text-primary` on the `--sev-*-bg` tint. The hue is only on the icon, the tint and the border. The icon is held
   to 3:1 as a graphic, which is why critical (4.43:1 on its tint) passes.
+- The escalated critical KPI tile (frame 04) uses the same rule on `--sev-critical-hot-bg`, an opaque 18 % mix into
+  `--surface-1` (the header): count and label in `--text-primary`, the hue on the icon, the border and the
+  `--sev-critical-hot-ring` glow.
 - Status (`--status-*`) is neutral-based and never uses a severity hue. Severity (`--sev-*`) is the only loud colour.
 - System feedback (`--success`, `--warning`, `--danger`) appears only in the connection pill, banners, toasts and
   form errors, never on an incident.
@@ -150,6 +153,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-medium`      | `--sev-medium-bg` over `--surface-1`      | 7.55  | 3       | pass                                  |
 | `--sev-low`         | `--sev-low-bg` over `--surface-1`         | 5.91  | 3       | pass                                  |
 | `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 5.68  | 4.5     | pass                                  |
+| `--text-primary`    | `--sev-critical-hot-bg`                   | 10.99 | 4.5     | pass                                  |
+| `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.24  | 3       | pass                                  |
 
 ### Colours copied out of tokens.css
 

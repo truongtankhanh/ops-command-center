@@ -1,14 +1,5 @@
 /* Text styles used by more than one component. */
 
-/* The product title: the header and the sign-in screens. */
-.appTitle {
-  font-family: var(--font-ui);
-  font-weight: var(--weight-semibold);
-  font-size: var(--type-xl);
-  letter-spacing: 0.01em;
-  margin: 0;
-}
-
 .muted {
   color: var(--text-secondary);
 }

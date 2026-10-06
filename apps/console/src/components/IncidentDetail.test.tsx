@@ -222,6 +222,23 @@ describe('IncidentDetail', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Close incident' }));
       expect(useConsole.getState().selectedIncidentId).toBeNull();
     });
+
+    // The header's `N` shortcut reads this flag, so it never throws a note away (UI-06).
+    it('tells the console while it holds a note, until the note is gone or the detail closes', async () => {
+      const { unmount } = renderDetail();
+      const noteDraft = () => useConsole.getState().noteDraft;
+      expect(noteDraft()).toBe(false);
+
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
+      expect(noteDraft()).toBe(true);
+
+      await userEvent.clear(screen.getByLabelText(NOTE_LABEL));
+      expect(noteDraft()).toBe(false);
+
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
+      unmount();
+      expect(noteDraft()).toBe(false);
+    });
   });
 
   describe('transitions', () => {

@@ -1,48 +1,48 @@
 import type { Incident, Zone } from '@occ/contracts';
+import { useRef } from 'react';
 import { useIncidents, useZones } from '../api/queries';
-import { usePermission } from '../auth/usePermission';
-import { FEED_FILTERS, formatAge, matchesFilter, typeLabel } from '../lib/incidents';
+import {
+  FEED_FILTERS,
+  feedEmptyMessage,
+  formatAge,
+  matchesFilter,
+  matchesSeverity,
+  severityLabel,
+  typeLabel,
+} from '../lib/incidents';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
-import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
-import { Plus } from '../ui/icons';
+import { FilterChip } from '../ui/FilterChip';
+import { severityIcon } from '../ui/icons';
 import { StatusChip } from '../ui/StatusChip';
 import { Tabs } from '../ui/Tabs';
 import styles from './IncidentFeed.module.css';
 
-const EMPTY_MESSAGE = {
-  active: 'No active incidents. New reports appear here as they come in.',
-  resolved: 'Nothing resolved yet this shift.',
-  all: 'No incidents recorded yet.',
-} as const;
-
 export function IncidentFeed() {
   const { data: incidents, isPending, isError } = useIncidents();
   const { data: zones = [] } = useZones();
-  const { filter, setFilter, reporting, startReport } = useConsole();
-  const canReport = usePermission('incident:report');
+  const filter = useConsole((s) => s.filter);
+  const setFilter = useConsole((s) => s.setFilter);
+  const severity = useConsole((s) => s.severity);
+  const clearSeverity = useConsole((s) => s.clearSeverity);
   const now = useNow();
+  const feedRef = useRef<HTMLElement>(null);
 
   const zoneName = new Map(zones.map((z: Zone) => [z.id, z.name]));
-  const visible = (incidents ?? []).filter((incident) => matchesFilter(incident, filter));
+  const visible = (incidents ?? []).filter(
+    (incident) => matchesFilter(incident, filter) && matchesSeverity(incident, severity),
+  );
+
+  // Clearing removes the chip and its focused button: focus goes to the selected tab, the nearest
+  // stable control before it.
+  const onClearSeverity = () => {
+    clearSeverity();
+    feedRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  };
 
   return (
-    <aside className={styles.feed} aria-label="Incidents">
-      {canReport && (
-        <div className={styles.actions}>
-          <Button
-            variant="primary"
-            icon={Plus}
-            className={styles.grow}
-            aria-expanded={reporting}
-            aria-controls="report-incident-panel"
-            onClick={startReport}
-          >
-            Report incident
-          </Button>
-        </div>
-      )}
+    <aside ref={feedRef} className={styles.feed} aria-label="Incidents">
       <Tabs
         label="Filter incidents"
         tabs={FEED_FILTERS}
@@ -51,12 +51,22 @@ export function IncidentFeed() {
         className={styles.tabs}
         panelClassName={styles.panel}
       >
+        {severity && (
+          <FilterChip
+            glyph={severityIcon(severity)}
+            label={`${severityLabel(severity)} only`}
+            clearLabel="Clear severity filter"
+            onClear={onClearSeverity}
+            data-severity={severity}
+            className={styles.chip}
+          />
+        )}
         {isPending ? (
           <EmptyState>Loading incidents…</EmptyState>
         ) : isError ? (
           <EmptyState>Incidents could not be loaded. Check that the API is running.</EmptyState>
         ) : visible.length === 0 ? (
-          <EmptyState>{EMPTY_MESSAGE[filter]}</EmptyState>
+          <EmptyState>{feedEmptyMessage(filter, severity)}</EmptyState>
         ) : (
           <ul className={styles.list}>
             {visible.map((incident) => (

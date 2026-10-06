@@ -41,6 +41,16 @@ describe('AuthGate', () => {
     expect(screen.queryByText('Console')).toBeNull();
   });
 
+  // Every state but the console renders the same screen, so one state proves the identity.
+  it('names the product on the sign-in screens', () => {
+    renderGate();
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Ops Command Center' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Langbiang Tech Campus')).toBeInTheDocument();
+  });
+
   it('shows a busy screen instead of the console while signing out', () => {
     useSession.getState().setStatus('signing-out');
 

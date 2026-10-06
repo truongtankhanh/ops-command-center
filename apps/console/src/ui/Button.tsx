@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react';
 import styles from './Button.module.css';
 import { Icon } from './Icon';
 import type { Glyph } from './icons';
+import { Kbd } from './Kbd';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'md' | 'sm';
@@ -16,6 +17,9 @@ export type ButtonSize = 'md' | 'sm';
  *   happening ("Reporting…"). There is no spinner: only arrival, selection and escalation animate.
  * - `icon` is drawn before the label and hidden from assistive tech, so the accessible name stays
  *   the visible text.
+ * - `shortcut` draws a `Kbd` hint after the label and sets `aria-keyshortcuts`; the hint is hidden
+ *   from assistive tech, so the accessible name stays the visible text. The caller wires the key
+ *   itself (`useShortcut`) and passes `shortcut` only while that key works.
  * - The button sets no outer layout (`flex`, `width`, `margin`); pass a `className` for that.
  * - `secondary` draws its boundary in `--border-strong`, which reaches 3:1 only on `--surface-0` and
  *   `--surface-1`. On a lighter surface use `primary` or `ghost`.
@@ -24,6 +28,7 @@ export function Button({
   variant = 'secondary',
   size = 'md',
   icon,
+  shortcut,
   loading = false,
   type = 'button',
   disabled,
@@ -34,6 +39,7 @@ export function Button({
   variant?: ButtonVariant;
   size?: ButtonSize;
   icon?: Glyph;
+  shortcut?: string;
   loading?: boolean;
 }) {
   return (
@@ -45,9 +51,11 @@ export function Button({
       data-size={size === 'sm' ? 'sm' : undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
+      aria-keyshortcuts={shortcut}
     >
       {icon && <Icon glyph={icon} size={size === 'sm' ? 16 : 18} />}
       {children}
+      {shortcut && <Kbd className={styles.kbd}>{shortcut}</Kbd>}
     </button>
   );
 }
