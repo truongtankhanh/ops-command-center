@@ -1,117 +1,109 @@
+/*
+ * Frame 01 header. Positioned so its shadow paints over the workspace, but without a z-index: a
+ * stacking context here would keep the user menu (--z-popover) under the incident sheet.
+ */
 .header {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-7);
-  padding: var(--space-2) var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-1);
-}
-
-.site {
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--type-body);
-}
-
-.severityStrip {
-  display: flex;
   gap: var(--space-4);
-  margin-left: auto;
-  list-style: none;
-  padding: 0;
-  margin-top: 0;
-  margin-bottom: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-1);
+  box-shadow:
+    0 1px 0 var(--border-subtle),
+    var(--shadow-1);
 }
 
-.severityCount {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-1-5);
-  font-family: var(--font-ui);
-  color: var(--text-secondary);
+/* Higher specificity than the tiles' own rule, so the layout does not depend on CSS order. */
+.header .kpis {
+  flex: none;
 }
 
-.severityCount strong {
-  font-size: var(--type-2xl);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.severityCount[data-zero='true'] strong {
-  color: var(--text-tertiary);
-}
-
-.severityCount::before {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-s);
-  background: var(--sev);
-  align-self: center;
-}
-
-.connection {
-  display: flex;
+.pill {
+  display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: var(--space-2);
-  font-family: var(--font-ui);
+  gap: var(--space-1-5);
+  height: 30px;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
   color: var(--text-secondary);
-  min-width: 112px;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-s);
+  white-space: nowrap;
 }
 
-.connection::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-tertiary);
+.pillState {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
 }
 
-.connection[data-state='live']::before {
-  background: var(--success);
+/* Connecting and reconnecting stay neutral: a link being made is not yet good or bad news. */
+.pill[data-state='live'] {
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
 }
 
-.connection[data-state='offline'] {
+.pill[data-state='offline'] {
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
   color: var(--warning);
 }
 
-.connection[data-state='offline']::before {
-  background: var(--warning);
+.age {
+  color: var(--text-secondary);
+  font-weight: var(--weight-regular);
+  font-size: var(--type-s);
 }
 
 .clock {
+  display: grid;
+  flex: none;
+  justify-items: end;
   font-family: var(--font-ui);
-  font-size: var(--type-2xl);
-  font-weight: var(--weight-medium);
-  min-width: 64px;
-  text-align: right;
 }
 
-.sessionUser {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  font-family: var(--font-ui);
+.clockTime {
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-xl);
+  line-height: var(--leading-m);
+}
+
+.clockDate {
   color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
 }
 
-.sessionAccess {
-  padding: var(--space-0-5) var(--space-2);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-s);
-  font-size: var(--type-m);
+/* D8: below the full width, the clock drops its date (the user menu hides its text itself). */
+@media (max-width: 1439px) {
+  .clockDate {
+    display: none;
+  }
+}
+
+/* D8: the tiles take their own row (their four-column grid is in KpiTiles.module.css). */
+@media (max-width: 1100px) {
+  .header {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .header .kpis {
+    order: 1;
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
   .header {
-    flex-wrap: wrap;
     gap: var(--space-2) var(--space-4);
     padding: var(--space-2) var(--space-4);
-  }
-
-  .severityStrip {
-    order: 3;
-    width: 100%;
-    margin-left: 0;
   }
 }

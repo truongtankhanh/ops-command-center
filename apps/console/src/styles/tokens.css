@@ -41,6 +41,9 @@
   --sev-high-border: color-mix(in srgb, var(--sev-high) 45%, transparent);
   --sev-medium-border: color-mix(in srgb, var(--sev-medium) 45%, transparent);
   --sev-low-border: color-mix(in srgb, var(--sev-low) 45%, transparent);
+  /* The escalated critical KPI tile (frame 04): opaque on the header's surface, plus a soft ring. */
+  --sev-critical-hot-bg: color-mix(in srgb, var(--sev-critical) 18%, var(--surface-1));
+  --sev-critical-hot-ring: color-mix(in srgb, var(--sev-critical) 22%, transparent);
 
   /* Status is neutral-based so it never competes with severity. */
   --status-open: var(--text-primary);

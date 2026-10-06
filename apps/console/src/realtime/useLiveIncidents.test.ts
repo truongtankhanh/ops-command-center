@@ -142,6 +142,13 @@ describe('useLiveIncidents', () => {
   });
 
   describe('connection state', () => {
+    it('starts as connecting, before the first connect', () => {
+      renderLive();
+
+      expect(connection()).toBe('connecting');
+      expect(useConsole.getState().lastEventAt).toBeNull();
+    });
+
     it('goes live on the first connect without refetching', () => {
       renderLive();
 
@@ -168,7 +175,7 @@ describe('useLiveIncidents', () => {
 
       socket.fireManager('reconnect_attempt');
 
-      expect(connection()).toBe('connecting');
+      expect(connection()).toBe('reconnecting');
     });
   });
 
@@ -193,6 +200,41 @@ describe('useLiveIncidents', () => {
 
       expect(client.getQueryData(queryKeys.incidents)).toEqual([incident]);
       expect(useConsole.getState().fresh.has(incident.id)).toBe(false);
+    });
+  });
+
+  // The header shows how long ago the link last answered; a growing age is the warning.
+  describe('signs of life', () => {
+    const t = new Date('2026-10-06T08:00:00Z');
+    const lastEventAt = () => useConsole.getState().lastEventAt;
+
+    it('records one on connect', () => {
+      renderLive();
+      vi.setSystemTime(t);
+
+      socket.fire('connect');
+
+      expect(lastEventAt()).toBe(t.getTime());
+    });
+
+    it("records one on the server's heartbeat", () => {
+      renderLive();
+      vi.setSystemTime(t);
+      socket.fire('connect');
+
+      vi.setSystemTime(t.getTime() + 25_000);
+      socket.fireManager('ping');
+
+      expect(lastEventAt()).toBe(t.getTime() + 25_000);
+    });
+
+    it.each([IncidentEvents.Created, IncidentEvents.Updated])('records one on %s', (event) => {
+      renderLive();
+      vi.setSystemTime(t);
+
+      socket.fire(event, incident);
+
+      expect(lastEventAt()).toBe(t.getTime());
     });
   });
 

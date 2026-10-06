@@ -6,15 +6,6 @@
   background: var(--surface-1);
 }
 
-.actions {
-  display: flex;
-  padding: var(--space-3) var(--space-3) 0;
-}
-
-.grow {
-  flex: 1;
-}
-
 /* Spacing only: the tab list draws itself (`Tabs`). */
 .tabs {
   margin-top: var(--space-2);
@@ -26,6 +17,13 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+}
+
+/* Placement only: the active severity filter, above the list it filters (`FilterChip`). */
+.chip {
+  flex: none;
+  align-self: flex-start;
+  margin: var(--space-2) var(--space-3);
 }
 
 .list {

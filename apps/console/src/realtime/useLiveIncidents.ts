@@ -31,7 +31,7 @@ export function useLiveIncidents(): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const { setConnection, markFresh } = useConsole.getState();
+    const { setConnection, markAlive, markFresh } = useConsole.getState();
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(EVENTS_NAMESPACE, {
       transports: ['websocket'],
       // A function, so every reconnect sends the token that is current at that moment.
@@ -46,6 +46,7 @@ export function useLiveIncidents(): void {
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
     const apply = (incident: Incident) => {
+      markAlive();
       queryClient.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
         upsertIncident(list, incident),
       );
@@ -72,12 +73,15 @@ export function useLiveIncidents(): void {
     let refetchOnConnect = false;
     socket.on('connect', () => {
       setConnection('live');
+      markAlive();
       retryDelay = RETRY_FIRST_MS;
       if (refetchOnConnect) void queryClient.invalidateQueries({ queryKey: queryKeys.incidents });
       refetchOnConnect = true;
     });
     socket.on('disconnect', () => setConnection('offline'));
-    socket.io.on('reconnect_attempt', () => setConnection('connecting'));
+    socket.io.on('reconnect_attempt', () => setConnection('reconnecting'));
+    // The server's heartbeat proves the link is alive on a quiet shift with no incident events.
+    socket.io.on('ping', () => markAlive());
     socket.on('connect_error', (error) => {
       // Still active: the transport failed, and Socket.IO is already retrying.
       if (socket.active) return;

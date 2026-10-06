@@ -2,8 +2,10 @@ import { type Incident, INCIDENT_SEVERITIES } from '@occ/contracts';
 import {
   compareIncidents,
   countActiveBySeverity,
+  feedEmptyMessage,
   formatAge,
   matchesFilter,
+  matchesSeverity,
   mergeIncidentLists,
   newerIncident,
   severityLabel,
@@ -172,6 +174,38 @@ describe('matchesFilter', () => {
     expect(matchesFilter(incident({ status: 'acknowledged' }), 'active')).toBe(true);
     expect(matchesFilter(incident({ status: 'resolved' }), 'active')).toBe(false);
     expect(matchesFilter(incident({ status: 'resolved' }), 'resolved')).toBe(true);
+  });
+});
+
+describe('matchesSeverity', () => {
+  it('matches every incident without a severity filter', () => {
+    for (const severity of INCIDENT_SEVERITIES) {
+      expect(matchesSeverity(incident({ severity }), null)).toBe(true);
+    }
+  });
+
+  it.each(INCIDENT_SEVERITIES)('matches only %s incidents', (selected) => {
+    for (const severity of INCIDENT_SEVERITIES) {
+      expect(matchesSeverity(incident({ severity }), selected)).toBe(severity === selected);
+    }
+  });
+});
+
+describe('feedEmptyMessage', () => {
+  it("keeps the feed's texts without a severity", () => {
+    expect(feedEmptyMessage('active', null)).toBe(
+      'No active incidents. New reports appear here as they come in.',
+    );
+    expect(feedEmptyMessage('resolved', null)).toBe('Nothing resolved yet this shift.');
+    expect(feedEmptyMessage('all', null)).toBe('No incidents recorded yet.');
+  });
+
+  it.each([
+    ['active', 'high', 'No active high incidents.'],
+    ['resolved', 'critical', 'No resolved critical incidents.'],
+    ['all', 'low', 'No low incidents recorded yet.'],
+  ] as const)('names the severity on the %s tab', (filter, severity, expected) => {
+    expect(feedEmptyMessage(filter, severity)).toBe(expected);
   });
 });
 

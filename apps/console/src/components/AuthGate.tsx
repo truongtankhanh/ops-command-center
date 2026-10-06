@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { signInAgain } from '../auth/session';
 import { useSession } from '../auth/store';
 import { useSignOut } from '../auth/useSignOut';
-import text from '../styles/text.module.css';
 import { Banner } from '../ui/Banner';
 import { Button, type ButtonSize } from '../ui/Button';
 import { Lock } from '../ui/icons';
 import styles from './AuthGate.module.css';
+import { Brand } from './Brand';
 
 /**
  * Renders the console only once the operator is signed in with a role, so no query or socket
@@ -80,7 +80,7 @@ function AuthScreen({
 }) {
   return (
     <main className={styles.screen} aria-busy={busy}>
-      <h1 className={text.appTitle}>Operations</h1>
+      <Brand size="lg" />
       <p role={busy ? 'status' : 'alert'}>{children}</p>
       {action}
     </main>

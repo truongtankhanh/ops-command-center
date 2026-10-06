@@ -1,0 +1,123 @@
+/* Frame 06 user trigger and menu. The panel's surface and position are the `Popover`'s. */
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 44px;
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+}
+
+.who {
+  display: grid;
+}
+
+.name {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-body);
+  line-height: var(--leading-s);
+}
+
+.role {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
+}
+
+.chevron {
+  color: var(--text-secondary);
+}
+
+/* Avatar-only trigger below the full header width (D8): the text stays the accessible name. */
+@media (max-width: 1439px) {
+  .who {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: var(--space-0-5) var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-3);
+}
+
+.identity .avatar {
+  grid-row: span 2;
+  width: 40px;
+  height: 40px;
+  background: var(--surface-2);
+}
+
+.identityName {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-s);
+}
+
+.identityRole {
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
+}
+
+.note {
+  margin: 0 var(--space-1) var(--space-1-5);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
+}
+
+.noteTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-bottom: var(--space-0-5);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-s);
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1-5) 0;
+  border: 0;
+  background: var(--border-subtle);
+}
+
+/* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
+.actions .signOut {
+  width: 100%;
+  justify-content: flex-start;
+}

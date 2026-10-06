@@ -61,6 +61,16 @@
   background: color-mix(in srgb, var(--danger) 12%, transparent);
 }
 
+/*
+ * The key hint on an accent fill: a dark tint of --on-accent instead of the hint's own --surface-0
+ * plate (frame 00). --on-accent on that tint is 5.3:1.
+ */
+.button[data-variant='primary'] .kbd {
+  border-color: color-mix(in srgb, var(--on-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--on-accent) 16%, transparent);
+  color: var(--on-accent);
+}
+
 /* A button that opens a panel shows it while the panel is open (Report incident). */
 .button[aria-expanded='true'] {
   box-shadow: 0 0 0 3px var(--accent-tint);

@@ -85,6 +85,10 @@ const PAIRS: Pair[] = [
   ...SEVERITIES.map((sev) => ({ fg: sev, bg: `${sev}-bg`, over: '--surface-1', min: UI })),
   // `StatusChip` pill for a resolved incident, in the incident detail.
   { fg: '--status-resolved', bg: '--status-resolved-bg', over: '--surface-1', min: TEXT },
+  // The escalated critical KPI tile in the header: count and label in `--text-primary`, the hue on
+  // the icon only (a graphic, 3:1). The tint is already opaque, so it needs no surface under it.
+  { fg: '--text-primary', bg: '--sev-critical-hot-bg', min: TEXT },
+  { fg: '--sev-critical', bg: '--sev-critical-hot-bg', min: UI },
 ];
 
 const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));
