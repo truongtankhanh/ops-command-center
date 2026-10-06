@@ -57,7 +57,12 @@ const MATRIX_ROWS = [
 const MAP: Record<string, string> = {
   'map ground': mapColors.ground,
   'map zone outline': mapColors.zoneOutline,
+  'map boundary': mapColors.site.boundaryFill,
+  ...Object.fromEntries(
+    Object.entries(mapColors.zoneFill).map(([kind, fill]) => [`map zone ${kind}`, fill]),
+  ),
 };
+const ZONE_FILLS = Object.keys(mapColors.zoneFill).map((kind) => `map zone ${kind}`);
 
 // Which token sits on which surface: the surface rules in docs/design/brief.md.
 const PAIRS: Pair[] = [
@@ -74,6 +79,14 @@ const PAIRS: Pair[] = [
   { fg: '--text-secondary', bg: '--camera-ground', min: TEXT },
   { fg: 'map zone outline', bg: 'map ground', min: UI },
   { fg: '--text-secondary', bg: 'map ground', min: TEXT },
+  // Inside the campus the zones, their labels and the selected incident's zone outline sit on the
+  // site boundary's fill, not on the ground; the highlight also crosses every zone fill.
+  { fg: 'map zone outline', bg: 'map boundary', min: UI },
+  { fg: '--text-secondary', bg: 'map boundary', min: TEXT },
+  ...cross(['--accent'], ['map boundary', ...ZONE_FILLS], UI),
+  // The map tooltip on `--surface-3`: the severity label is `--text-primary`, the hue is only on the
+  // icon (a graphic) — critical text would fail there (see above).
+  ...cross(SEVERITIES, ['--surface-3'], UI),
   // `SeverityBadge` and the checked severity option in `SegmentedControl`, both on `--surface-1`:
   // the label stays `--text-primary` on the tint, and the hue is only on the icon (a graphic, 3:1).
   ...SEVERITIES.map((sev) => ({

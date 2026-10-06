@@ -116,4 +116,16 @@ export const connectionIcon = (state: ConnectionState) => CONNECTION_ICONS[state
 export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff);
 
 // Generic UI glyphs, re-exported so that nothing outside this module imports the icon set.
-export { ChevronDown, Clock, Eye, Lock, LogOut, Plus, Search, Volume2, X } from 'lucide-react';
+export {
+  ChevronDown,
+  Clock,
+  Eye,
+  Lock,
+  LogOut,
+  Minus,
+  Plus,
+  Scan,
+  Search,
+  Volume2,
+  X,
+} from 'lucide-react';

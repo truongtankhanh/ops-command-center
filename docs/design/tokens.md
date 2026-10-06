@@ -50,9 +50,13 @@ focus ring. These may stay raw:
   `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The 4 px severity band
   at the top of the incident detail counts as one: it matches the feed's 4 px severity edge column. Icon sizes
   (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well — see [icons.md](icons.md).
-- MapLibre numbers in `CampusMap.tsx` and `lib/map*.ts`: `line-width`, circle radii and stroke widths, `fitBounds`
-  padding, `easeTo` duration, zoom levels, cluster radius, marker offsets, the pulse frame rate and scale, and the
-  marker image geometry in `lib/mapImages.ts` (image boxes, disc radii, glyph sizes and strokes).
+- MapLibre numbers in `CampusMap.tsx`, `lib/map*.ts`, `lib/geo.ts` and `lib/sitePlan.ts`: `line-width` and
+  `line-dasharray`, circle radii and stroke widths, `fitBounds` padding, `easeTo` duration, zoom levels, cluster
+  radius, marker offsets, the pulse frame rate and scale, the marker image geometry in `lib/mapImages.ts` (image boxes,
+  disc radii, glyph sizes and strokes), and the site plan geometry in metres (boundary, roads, field markings, inset
+  and row spacing). The site plan colours are map-only values in `tokens.ts` (`mapColors.site`), not tokens.
+- The map tooltip's placement distances (flip below the anchor near the top, horizontal clamp) and the zone label
+  halo (a 3 px `--surface-0` text stroke, frame 01).
 - The simulated camera image drawn on the `CameraTile` canvas: it is picture content, not UI, and real players replace
   it (OCC-16).
 - `body` `line-height: 1.45`, unitless on purpose: it scales for every element that sets only a `font-size`. A px
@@ -149,6 +153,17 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                  |
 | `map zone outline`  | `map ground`                              | 3.57  | 3       | pass                                  |
 | `--text-secondary`  | `map ground`                              | 8.80  | 4.5     | pass                                  |
+| `map zone outline`  | `map boundary`                            | 3.40  | 3       | pass                                  |
+| `--text-secondary`  | `map boundary`                            | 8.39  | 4.5     | pass                                  |
+| `--accent`          | `map boundary`                            | 6.73  | 3       | pass                                  |
+| `--accent`          | `map zone building`                       | 5.01  | 3       | pass                                  |
+| `--accent`          | `map zone parking`                        | 5.58  | 3       | pass                                  |
+| `--accent`          | `map zone gate`                           | 4.79  | 3       | pass                                  |
+| `--accent`          | `map zone outdoor`                        | 5.54  | 3       | pass                                  |
+| `--sev-critical`    | `--surface-3`                             | 3.95  | 3       | pass                                  |
+| `--sev-high`        | `--surface-3`                             | 5.96  | 3       | pass                                  |
+| `--sev-medium`      | `--surface-3`                             | 8.05  | 3       | pass                                  |
+| `--sev-low`         | `--surface-3`                             | 6.02  | 3       | pass                                  |
 | `--text-primary`    | `--sev-critical-bg` over `--surface-1`    | 11.48 | 4.5     | pass                                  |
 | `--text-primary`    | `--sev-high-bg` over `--surface-1`        | 10.37 | 4.5     | pass                                  |
 | `--text-primary`    | `--sev-medium-bg` over `--surface-1`      | 9.61  | 4.5     | pass                                  |

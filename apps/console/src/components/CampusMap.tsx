@@ -1,8 +1,7 @@
-import type { Camera, Incident, Zone } from '@occ/contracts';
-import type { FeatureCollection, Point } from 'geojson';
+import type { Camera, Incident, LngLat, Zone } from '@occ/contracts';
+import type { Point } from 'geojson';
 import maplibregl, {
   type GeoJSONSource,
-  type LngLatBoundsLike,
   type MapGeoJSONFeature,
   type MapMouseEvent,
   type StyleSpecification,
@@ -21,16 +20,23 @@ import {
   MAP_LAYERS,
   MAP_SOURCES,
   removeLayers,
+  siteLayers,
+  siteSources,
+  zoneHighlightFilter,
 } from '../lib/mapLayers';
 import { startPulse } from '../lib/mapPulse';
+import { CAMPUS_CENTER, siteBounds } from '../lib/sitePlan';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapColors, mapMotion } from '../styles/tokens';
 import styles from './CampusMap.module.css';
+import { MapControls } from './MapControls';
+import { MapLegend } from './MapLegend';
+import { MapTooltip } from './MapTooltip';
 
 /**
- * The campus as a site plan. Works fully offline (on-prem): zones are drawn from API data.
- * Set VITE_MAP_STYLE_URL to put a basemap underneath when one is available.
+ * The campus as a site plan. Works fully offline (on-prem): the plan comes from `lib/sitePlan`,
+ * zones from API data. Set VITE_MAP_STYLE_URL to put a basemap underneath when one is available.
  */
 const OFFLINE_STYLE: StyleSpecification = {
   version: 8,
@@ -40,6 +46,10 @@ const OFFLINE_STYLE: StyleSpecification = {
 
 /** Past this the offline plan shows nothing more; the fan-out in `lib/mapFeatures` is sized for it. */
 const MAX_ZOOM = 20;
+/** About 1.4 zoom levels out from the fitted campus (≈ 16.4): the plan stays recognisable. */
+const MIN_ZOOM = 15;
+/** `easeTo` / `fitBounds` duration when the view follows a selection or the Fit campus button. */
+const FOCUS_MS = 600;
 
 /**
  * Incidents and cameras are map layers, not DOM markers, so they are not in the Tab order: the
@@ -61,14 +71,14 @@ export function CampusMap() {
     const instance = new maplibregl.Map({
       container: container.current,
       style: import.meta.env.VITE_MAP_STYLE_URL ?? OFFLINE_STYLE,
-      center: [108.4415, 11.953],
+      center: CAMPUS_CENTER,
       zoom: 16.4,
+      minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
       attributionControl: false,
       dragRotate: false,
     });
     const loading = new AbortController();
-    instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     instance.on('styleimagemissing', (event) => addClusterCountImage(instance, event.id));
     // Layers are added once the marker images exist: an image registered after its layer would be
     // missing from the tiles already laid out.
@@ -94,7 +104,7 @@ export function CampusMap() {
     };
   }, []);
 
-  useZoneLayer(map, zones);
+  useSiteLayers(map, zones);
   useCameraLayer(map, cameras);
   useIncidentLayers(map, incidents, selectedId);
 
@@ -105,32 +115,33 @@ export function CampusMap() {
     focusRef.current = selectedPosition
       ? (selectedPosition.split(',').map(Number) as [number, number])
       : null;
-    if (map) focus(map, focusRef.current, 600);
+    if (map) focus(map, focusRef.current, FOCUS_MS);
   }, [map, selectedPosition]);
+
+  // Frame 03's outline on the selected incident's zone. The layer is added with the zones, so this
+  // also runs when they (re)arrive.
+  const selectedZoneId = selected?.zoneId ?? null;
+  useEffect(() => {
+    if (map?.getLayer(MAP_LAYERS.zoneHighlight)) {
+      map.setFilter(MAP_LAYERS.zoneHighlight, zoneHighlightFilter(selectedZoneId));
+    }
+  }, [map, zones, selectedZoneId]);
 
   return (
     <section className={styles.map} aria-label="Campus map">
       <div ref={container} className={styles.canvas} />
-      <div className={styles.legend} aria-hidden>
-        <span>
-          <i className={`${styles.legendSwatch} ${styles.swatchOpen}`} /> Open
-        </span>
-        <span>
-          <i className={`${styles.legendSwatch} ${styles.swatchHandled}`} /> Being handled
-        </span>
-        <span>
-          <i className={styles.cameraMarker} /> Camera
-        </span>
-      </div>
+      <MapTooltip map={map} />
+      <MapLegend />
+      <MapControls map={map} onFit={() => map && fitCampus(map, FOCUS_MS)} />
     </section>
   );
 }
 
-const campusBounds = new WeakMap<maplibregl.Map, maplibregl.LngLatBounds>();
+const campusBounds = new WeakMap<maplibregl.Map, [LngLat, LngLat]>();
 
 function fitCampus(map: maplibregl.Map, duration = 0) {
   const bounds = campusBounds.get(map);
-  if (bounds) map.fitBounds(bounds as LngLatBoundsLike, { padding: 48, duration });
+  if (bounds) map.fitBounds(bounds, { padding: 48, duration });
 }
 
 /** Centre on a point, or show the whole campus when there is none. */
@@ -139,51 +150,21 @@ function focus(map: maplibregl.Map, point: [number, number] | null, duration: nu
   else fitCampus(map, duration);
 }
 
-function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
+/**
+ * The ground: site plan and zones, added together so their order is set in one place
+ * (`siteLayers`). Without zones there is no campus to draw. Zone labels stay DOM markers: the
+ * offline style has no glyphs for map text.
+ */
+function useSiteLayers(map: maplibregl.Map | null, zones: Zone[] | undefined) {
   useEffect(() => {
     if (!map || !zones?.length) return;
 
-    const data: FeatureCollection = {
-      type: 'FeatureCollection',
-      features: zones.map((zone) => ({
-        type: 'Feature',
-        properties: { kind: zone.kind },
-        geometry: { type: 'Polygon', coordinates: [zone.polygon] },
-      })),
-    };
-    // Zones can arrive after the camera and incident layers exist; keep them underneath.
+    const sources = siteSources(zones);
+    const layers = siteLayers();
+    // Zones can arrive after the camera and incident layers exist; keep the ground underneath.
     const below = map.getLayer(MAP_LAYERS.cameras) ? MAP_LAYERS.cameras : undefined;
-    map.addSource('zones', { type: 'geojson', data });
-    map.addLayer(
-      {
-        id: 'zone-fill',
-        type: 'fill',
-        source: 'zones',
-        paint: {
-          'fill-color': [
-            'match',
-            ['get', 'kind'],
-            'building',
-            mapColors.zoneFill.building,
-            'parking',
-            mapColors.zoneFill.parking,
-            'gate',
-            mapColors.zoneFill.gate,
-            mapColors.zoneFill.outdoor,
-          ],
-        },
-      },
-      below,
-    );
-    map.addLayer(
-      {
-        id: 'zone-outline',
-        type: 'line',
-        source: 'zones',
-        paint: { 'line-color': mapColors.zoneOutline, 'line-width': 1.2 },
-      },
-      below,
-    );
+    sources.forEach(([id, source]) => map.addSource(id, source));
+    layers.forEach((layer) => map.addLayer(layer, below));
 
     const labels = zones.map((zone) => {
       const el = document.createElement('div');
@@ -197,16 +178,16 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
         .addTo(map);
     });
 
-    const bounds = new maplibregl.LngLatBounds();
-    zones.flatMap((z) => z.polygon).forEach((point) => bounds.extend(point));
-    campusBounds.set(map, bounds);
+    campusBounds.set(map, siteBounds(zones));
     fitCampus(map);
 
     return () => {
       labels.forEach((label) => label.remove());
-      if (map.getLayer('zone-outline')) map.removeLayer('zone-outline');
-      if (map.getLayer('zone-fill')) map.removeLayer('zone-fill');
-      if (map.getSource('zones')) map.removeSource('zones');
+      removeLayers(
+        map,
+        layers.map((layer) => layer.id),
+        sources.map(([id]) => id),
+      );
     };
   }, [map, zones]);
 }
@@ -278,16 +259,11 @@ function useIncidentLayers(
       const { select, selectedIncidentId } = useConsole.getState();
       select(id === selectedIncidentId ? null : id);
     };
-    const onMove = (event: MapMouseEvent) => {
-      const over = map.queryRenderedFeatures(event.point, { layers: INTERACTIVE_LAYERS });
-      map.getCanvas().style.cursor = over.length ? 'pointer' : '';
-    };
+    // The pointer cursor is `MapTooltip`'s, which owns the one `mousemove` handler.
     map.on('click', onClick);
-    map.on('mousemove', onMove);
 
     return () => {
       map.off('click', onClick);
-      map.off('mousemove', onMove);
       tag.remove();
       codeTag.current = null;
       removeLayers(

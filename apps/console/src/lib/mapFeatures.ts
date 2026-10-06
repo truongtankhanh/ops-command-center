@@ -6,6 +6,7 @@ import {
   severityRank,
 } from '@occ/contracts';
 import type { Feature, FeatureCollection, Point } from 'geojson';
+import { distanceM, offsetM } from './geo';
 import { isActive } from './incidents';
 
 /**
@@ -16,7 +17,6 @@ import { isActive } from './incidents';
 const GROUP_DISTANCE_M = 3.5;
 /** Distance between neighbours on a fan-out ring: ≈ 30 px at zoom 20. */
 const SPACING_M = 4.4;
-const METRES_PER_DEGREE = 111_320;
 
 export interface IncidentProperties {
   id: string;
@@ -151,19 +151,3 @@ export function cameraFeatures(
     })),
   };
 }
-
-/** Equirectangular distance — exact enough over a few metres. */
-function distanceM([lng1, lat1]: LngLat, [lng2, lat2]: LngLat): number {
-  const east = (lng2 - lng1) * METRES_PER_DEGREE * Math.cos(toRadians((lat1 + lat2) / 2));
-  const north = (lat2 - lat1) * METRES_PER_DEGREE;
-  return Math.hypot(east, north);
-}
-
-function offsetM([lng, lat]: LngLat, eastM: number, northM: number): LngLat {
-  return [
-    lng + eastM / (METRES_PER_DEGREE * Math.cos(toRadians(lat))),
-    lat + northM / METRES_PER_DEGREE,
-  ];
-}
-
-const toRadians = (degrees: number) => (degrees * Math.PI) / 180;

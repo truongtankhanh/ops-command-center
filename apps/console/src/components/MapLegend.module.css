@@ -1,0 +1,96 @@
+/*
+ * Frame 01's legend. It wraps instead of running under the map controls at the bottom-right
+ * (40 px wide with their border, `--space-3` from the edge).
+ */
+.legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - 3 * var(--space-3) - 40px);
+  padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  box-shadow: var(--shadow-2);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+.toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  height: 28px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* Only arrival, selection and escalation animate: the chevron turns without a transition. */
+.toggle[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* `display` only while shown, so the `hidden` attribute keeps hiding the closed list. */
+.entries:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entries li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.open {
+  background: var(--text-secondary);
+}
+
+.handled {
+  border: 2px solid var(--text-secondary);
+}
+
+/* A cluster on the map: a `--surface-1` disc with a count, ringed in its highest severity. */
+.cluster {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--text-secondary);
+  border-radius: 50%;
+  background: var(--surface-1);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
+  color: var(--text-primary);
+}
+
+.offline {
+  color: var(--text-tertiary);
+}
