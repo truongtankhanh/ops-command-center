@@ -134,7 +134,7 @@ The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If po
 
 The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
-An optional basemap under the campus plan comes from `VITE_MAP_STYLE_URL` (a MapLibre style URL), which the dev server reads from `apps/console/.env`. It is a build-time value and does not reach the Compose image: `.dockerignore` keeps every `.env` file out of the build, and the Dockerfile takes no build arguments.
+An optional basemap under the campus plan comes from `VITE_MAP_STYLE_URL` (a MapLibre style URL), which the dev server reads from `apps/console/.env` (copy `apps/console/.env.example`; unset, the console shows the offline plan only). It is a build-time value and does not reach the Compose image: `.dockerignore` keeps every `.env` file out of the build, and the Dockerfile takes no build arguments.
 
 API configuration (`apps/api/.env`):
 

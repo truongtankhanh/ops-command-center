@@ -79,25 +79,34 @@ Standing alone, labelled:
 2. Either add it to the right domain map, or add it to the generic re-export line at the bottom.
 3. Update the table above. If it maps a new domain value, the compiler already forced step 2.
 
-## Map glyphs (for UI-08)
+## Map glyphs
 
-MapLibre cannot render React components, and the offline map style has no sprite or `glyphs` URL, so map icons have
-to be registered as images with `map.addImage()`. They use the **same `Glyph` components** — no second icon pipeline.
-This is the route UI-08 implements and tests; UI-04 ships no map code.
+MapLibre cannot render React components, and the offline map style has no sprite or `glyphs` URL, so map icons are
+registered as images with `map.addImage()`. They use the **same `Glyph` components** — no second icon pipeline. Built
+in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, layers in `lib/mapLayers.ts`.
 
-1. **SVG markup from the component.** Render the glyph with the already-bundled `react-dom/client`: `createRoot` on a
-   detached element, `flushSync(() => root.render(<Glyph … />))`, read `innerHTML`, `root.unmount()`. Do it in the
-   map's `load` handler, once per glyph — not during render or in a layout effect (`flushSync` warns there).
-2. **Raster.** SVG markup → data URL → `HTMLImageElement`, sized at `devicePixelRatio` so markers stay sharp.
-3. **Register.** `map.addImage('glyph-<domain>-<value>', image, { pixelRatio, sdf: true })`, e.g.
-   `glyph-type-fire_alarm`.
-4. **Colour.** As SDF images, glyphs are recoloured with `icon-color`. Colours come from
-   `apps/console/src/styles/tokens.ts`, because MapLibre cannot read CSS custom properties; UI-08 adds the severity
-   hues and `--on-accent` there (the contrast check catches drift from `tokens.css`). The severity disc under the glyph
-   is its own `circle` layer. The mockups stroke map glyphs at 2.6 px — pass that `strokeWidth` when rendering for the
-   map.
-5. **Fallback.** If SDF glyphs look soft at 13–14 px, register one pre-coloured image per glyph × colour actually used
-   instead (4 severities × 6 types at most).
+1. **One pre-composed image per marker form.** Disc (or camera square) and glyph are drawn together, so a single
+   `symbol` layer orders overlapping markers with `symbol-sort-key`, and the glyph keeps its exact colour at 12–14 px.
+   The SDF route planned here before UI-08 (a `circle` layer for the disc plus recoloured glyphs) was dropped: across
+   two layers, a lower marker's glyph is drawn over a higher marker's disc where they overlap.
+2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (48), `incident-resolved-{type}` (6),
+   `camera-online` / `camera-offline` — 56 images. Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam`): open =
+   severity disc with an `--on-accent` glyph, acknowledged = ground disc in a severity ring with a severity glyph,
+   resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4).
+3. **SVG markup from the component.** One `createRoot` on a detached element renders each glyph with `flushSync`
+   and `createElement(glyph, { size, color, strokeWidth })`; its `innerHTML` is the markup, and the root is unmounted
+   at the end. Done in the map's `load` handler, never during render or in a layout effect (`flushSync` warns there).
+4. **Raster and register.** The composed SVG → data URL → `HTMLImageElement` at `Math.ceil(devicePixelRatio)`,
+   awaited with `decode()`, then `addImage(id, image, { pixelRatio })`. All images are registered **before** the
+   layers are added (an image that arrives after its layer is missing from tiles already laid out). The registration
+   takes an `AbortSignal`, so nothing is added to a map removed while images decode.
+5. **Colour.** Literal copies in `apps/console/src/styles/tokens.ts` (`mapColors`), because neither MapLibre nor an
+   SVG data URL can read CSS custom properties; `scripts/contrast.ts --check` fails when a copy drifts from
+   `tokens.css`, and checks `--on-accent` on each severity disc (3:1).
+6. **Cluster counts** (`cluster-count-1` … `cluster-count-9+`) are drawn on a canvas on demand, from the map's
+   `styleimagemissing` event, which needs the image added synchronously. Their font is loaded before the map is
+   ready. It is a literal copy of `--weight-semibold`, `--type-s` and `--font-ui`, which the contrast script does not
+   check.
 
 Rejected routes:
 

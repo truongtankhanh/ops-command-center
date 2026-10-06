@@ -8,10 +8,12 @@ The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, 
 | File                                     | Holds                                                                                          |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2). |
-| `apps/console/src/styles/tokens.ts`      | The map palette only. MapLibre paint properties take literal colours, not custom properties.   |
+| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`): MapLibre and the marker images take literals.     |
 | `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.           |
 
-A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently.
+A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently. One exception:
+the cluster count font on the map (`lib/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
+see [icons.md](icons.md#map-glyphs)).
 
 ## Which surface, which token
 
@@ -48,7 +50,9 @@ focus ring. These may stay raw:
   `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The 4 px severity band
   at the top of the incident detail counts as one: it matches the feed's 4 px severity edge column. Icon sizes
   (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well — see [icons.md](icons.md).
-- MapLibre numbers in TSX: `line-width`, `fitBounds` padding, `easeTo` duration, marker offsets.
+- MapLibre numbers in `CampusMap.tsx` and `lib/map*.ts`: `line-width`, circle radii and stroke widths, `fitBounds`
+  padding, `easeTo` duration, zoom levels, cluster radius, marker offsets, the pulse frame rate and scale, and the
+  marker image geometry in `lib/mapImages.ts` (image boxes, disc radii, glyph sizes and strokes).
 - The simulated camera image drawn on the `CameraTile` canvas: it is picture content, not UI, and real players replace
   it (OCC-16).
 - `body` `line-height: 1.45`, unitless on purpose: it scales for every element that sets only a `font-size`. A px
@@ -57,7 +61,8 @@ focus ring. These may stay raw:
 ## How the contrast is checked
 
 `apps/console/scripts/contrast.ts` reads `tokens.css` and `tokens.ts`, computes WCAG 2.x contrast ratios, and checks
-the pairs that occur in the UI (minimum 4.5:1 for text, 3:1 for meaningful boundaries) and the copied colours.
+the pairs that occur in the UI (minimum 4.5:1 for text, 3:1 for meaningful boundaries) and the copied values (map
+colours and the pulse duration in `tokens.ts`, `theme-color`, the favicon).
 
 - `pnpm --filter @occ/console lint` runs it with `--check` and fails on a pair below its minimum or a drifted copy.
 - `pnpm --filter @occ/console tokens:contrast` regenerates the tables below. Run it after changing a token and commit
@@ -168,13 +173,29 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                  |
 | `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                  |
 | `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                  |
+| `--on-accent`       | `--sev-critical`                          | 5.84  | 3       | pass                                  |
+| `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                  |
+| `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                  |
+| `--on-accent`       | `--sev-low`                               | 8.91  | 3       | pass                                  |
 
-### Colours copied out of tokens.css
+### Values copied out of tokens.css
 
-| Copy                                      | Value                     | Must equal                | Result |
-| ----------------------------------------- | ------------------------- | ------------------------- | ------ |
-| `mapColors.ground` (src/styles/tokens.ts) | #0c1821                   | #0c1821                   | match  |
-| `theme-color` (index.html)                | #13222d                   | #13222d                   | match  |
-| colours in public/favicon.svg             | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |
+| Copy                                                 | Value                     | Must equal                | Result |
+| ---------------------------------------------------- | ------------------------- | ------------------------- | ------ |
+| `mapColors.ground` (src/styles/tokens.ts)            | #0c1821                   | #0c1821                   | match  |
+| `mapColors.severity.critical` (src/styles/tokens.ts) | #ff5a4e                   | #ff5a4e                   | match  |
+| `mapColors.severity.high` (src/styles/tokens.ts)     | #ff9f43                   | #ff9f43                   | match  |
+| `mapColors.severity.medium` (src/styles/tokens.ts)   | #f2d04b                   | #f2d04b                   | match  |
+| `mapColors.severity.low` (src/styles/tokens.ts)      | #6cc3d5                   | #6cc3d5                   | match  |
+| `mapColors.surface1` (src/styles/tokens.ts)          | #13222d                   | #13222d                   | match  |
+| `mapColors.surface3` (src/styles/tokens.ts)          | #223848                   | #223848                   | match  |
+| `mapColors.accent` (src/styles/tokens.ts)            | #8c9bff                   | #8c9bff                   | match  |
+| `mapColors.onAccent` (src/styles/tokens.ts)          | #0c1821                   | #0c1821                   | match  |
+| `mapColors.textPrimary` (src/styles/tokens.ts)       | #e4edf3                   | #e4edf3                   | match  |
+| `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
+| `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
+| `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
+| `theme-color` (index.html)                           | #13222d                   | #13222d                   | match  |
+| colours in public/favicon.svg                        | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |
 
 <!-- contrast:end -->

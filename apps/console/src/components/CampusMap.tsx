@@ -1,12 +1,31 @@
 import type { Camera, Incident, Zone } from '@occ/contracts';
-import type { FeatureCollection } from 'geojson';
-import maplibregl, { type LngLatBoundsLike, type StyleSpecification } from 'maplibre-gl';
+import type { FeatureCollection, Point } from 'geojson';
+import maplibregl, {
+  type GeoJSONSource,
+  type LngLatBoundsLike,
+  type MapGeoJSONFeature,
+  type MapMouseEvent,
+  type StyleSpecification,
+} from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCameras, useIncidents, useZones } from '../api/queries';
-import { isActive } from '../lib/incidents';
+import { cameraFeatures, incidentFeatures } from '../lib/mapFeatures';
+import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
+import {
+  cameraLayers,
+  cameraSource,
+  incidentLayers,
+  incidentSources,
+  INTERACTIVE_LAYERS,
+  MAP_LAYERS,
+  MAP_SOURCES,
+  removeLayers,
+} from '../lib/mapLayers';
+import { startPulse } from '../lib/mapPulse';
+import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
-import { mapColors } from '../styles/tokens';
+import { mapColors, mapMotion } from '../styles/tokens';
 import styles from './CampusMap.module.css';
 
 /**
@@ -19,6 +38,13 @@ const OFFLINE_STYLE: StyleSpecification = {
   layers: [{ id: 'ground', type: 'background', paint: { 'background-color': mapColors.ground } }],
 };
 
+/** Past this the offline plan shows nothing more; the fan-out in `lib/mapFeatures` is sized for it. */
+const MAX_ZOOM = 20;
+
+/**
+ * Incidents and cameras are map layers, not DOM markers, so they are not in the Tab order: the
+ * incident feed is the keyboard and screen-reader route to every incident the map draws.
+ */
 export function CampusMap() {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
@@ -37,11 +63,23 @@ export function CampusMap() {
       style: import.meta.env.VITE_MAP_STYLE_URL ?? OFFLINE_STYLE,
       center: [108.4415, 11.953],
       zoom: 16.4,
+      maxZoom: MAX_ZOOM,
       attributionControl: false,
       dragRotate: false,
     });
+    const loading = new AbortController();
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    instance.on('load', () => setMap(instance));
+    instance.on('styleimagemissing', (event) => addClusterCountImage(instance, event.id));
+    // Layers are added once the marker images exist: an image registered after its layer would be
+    // missing from the tiles already laid out.
+    instance.on('load', () => {
+      registerMapImages(instance, loading.signal).then(
+        () => {
+          if (!loading.signal.aborted) setMap(instance);
+        },
+        (error: unknown) => console.error('Map images failed to load', error),
+      );
+    });
 
     // The map shares its column with the camera strip; keep the canvas in step with the layout.
     const observer = new ResizeObserver(() => {
@@ -50,14 +88,15 @@ export function CampusMap() {
     });
     observer.observe(container.current);
     return () => {
+      loading.abort();
       observer.disconnect();
       instance.remove();
     };
   }, []);
 
   useZoneLayer(map, zones);
-  useCameraMarkers(map, cameras);
-  useIncidentMarkers(map, incidents, selectedId);
+  useCameraLayer(map, cameras);
+  useIncidentLayers(map, incidents, selectedId);
 
   // Bring the selected incident into view; show the whole campus when nothing is selected.
   const selected = incidents?.find((i) => i.id === selectedId);
@@ -112,31 +151,39 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
         geometry: { type: 'Polygon', coordinates: [zone.polygon] },
       })),
     };
+    // Zones can arrive after the camera and incident layers exist; keep them underneath.
+    const below = map.getLayer(MAP_LAYERS.cameras) ? MAP_LAYERS.cameras : undefined;
     map.addSource('zones', { type: 'geojson', data });
-    map.addLayer({
-      id: 'zone-fill',
-      type: 'fill',
-      source: 'zones',
-      paint: {
-        'fill-color': [
-          'match',
-          ['get', 'kind'],
-          'building',
-          mapColors.zoneFill.building,
-          'parking',
-          mapColors.zoneFill.parking,
-          'gate',
-          mapColors.zoneFill.gate,
-          mapColors.zoneFill.outdoor,
-        ],
+    map.addLayer(
+      {
+        id: 'zone-fill',
+        type: 'fill',
+        source: 'zones',
+        paint: {
+          'fill-color': [
+            'match',
+            ['get', 'kind'],
+            'building',
+            mapColors.zoneFill.building,
+            'parking',
+            mapColors.zoneFill.parking,
+            'gate',
+            mapColors.zoneFill.gate,
+            mapColors.zoneFill.outdoor,
+          ],
+        },
       },
-    });
-    map.addLayer({
-      id: 'zone-outline',
-      type: 'line',
-      source: 'zones',
-      paint: { 'line-color': mapColors.zoneOutline, 'line-width': 1.2 },
-    });
+      below,
+    );
+    map.addLayer(
+      {
+        id: 'zone-outline',
+        type: 'line',
+        source: 'zones',
+        paint: { 'line-color': mapColors.zoneOutline, 'line-width': 1.2 },
+      },
+      below,
+    );
 
     const labels = zones.map((zone) => {
       const el = document.createElement('div');
@@ -164,48 +211,126 @@ function useZoneLayer(map: maplibregl.Map | null, zones: Zone[] | undefined) {
   }, [map, zones]);
 }
 
-function useCameraMarkers(map: maplibregl.Map | null, cameras: Camera[] | undefined) {
+/** Added once per map; a camera list change only replaces the source data. */
+function useCameraLayer(map: maplibregl.Map | null, cameras: Camera[] | undefined) {
+  useEffect(() => {
+    if (!map) return;
+    const [sourceId, source] = cameraSource();
+    const layers = cameraLayers();
+    map.addSource(sourceId, source);
+    layers.forEach((layer) => map.addLayer(layer));
+    return () =>
+      removeLayers(
+        map,
+        layers.map((layer) => layer.id),
+        [sourceId],
+      );
+  }, [map]);
+
   useEffect(() => {
     if (!map || !cameras) return;
-    const markers = cameras.map((camera) => {
-      const el = document.createElement('div');
-      el.className = styles.cameraMarker!;
-      el.dataset.online = String(camera.online);
-      el.title = `${camera.code} ${camera.name}${camera.online ? '' : ' (offline)'}`;
-      return new maplibregl.Marker({ element: el }).setLngLat(camera.position).addTo(map);
-    });
-    return () => markers.forEach((marker) => marker.remove());
+    map.getSource<GeoJSONSource>(MAP_SOURCES.cameras)?.setData(cameraFeatures(cameras));
   }, [map, cameras]);
 }
 
-/** Active incidents, plus the selected one even if it is resolved. */
-function useIncidentMarkers(
+/**
+ * Active incidents, plus the selected one even if it is resolved. Sources, layers, handlers and the
+ * selected code tag are created once per map; an incident event or a selection change only
+ * replaces the source data and moves the tag.
+ */
+function useIncidentLayers(
   map: maplibregl.Map | null,
   incidents: Incident[] | undefined,
   selectedId: string | null,
 ) {
+  const codeTag = useRef<maplibregl.Marker | null>(null);
+  const features = useMemo(
+    () => (incidents ? incidentFeatures(incidents, selectedId) : null),
+    [incidents, selectedId],
+  );
+  const pulsing = features?.pulsing ?? false;
+  const reducedMotion = usePrefersReducedMotion();
+
   useEffect(() => {
-    if (!map || !incidents) return;
-    const { select } = useConsole.getState();
+    if (!map) return;
+    const sources = incidentSources();
+    const layers = incidentLayers();
+    sources.forEach(([id, source]) => map.addSource(id, source));
+    layers.forEach((layer) => map.addLayer(layer));
 
-    const markers = incidents
-      .filter((incident) => isActive(incident) || incident.id === selectedId)
-      .reverse() // most important drawn last, on top
-      .map((incident) => {
-        const el = document.createElement('button');
-        el.className = styles.incidentMarker!;
-        el.dataset.severity = incident.severity;
-        el.dataset.status = incident.status;
-        el.setAttribute('aria-pressed', String(incident.id === selectedId));
-        el.setAttribute('aria-label', `${incident.title}, ${incident.severity}`);
-        el.title = incident.title;
-        el.addEventListener('click', (event) => {
-          event.stopPropagation();
-          select(incident.id === useConsole.getState().selectedIncidentId ? null : incident.id);
-        });
-        return new maplibregl.Marker({ element: el }).setLngLat(incident.position).addTo(map);
-      });
+    // Frame 02's code tag. Map text needs glyphs the offline style does not have, so it is DOM.
+    const tagElement = document.createElement('div');
+    tagElement.className = styles.codeTag!;
+    tagElement.setAttribute('aria-hidden', 'true');
+    const tag = new maplibregl.Marker({ element: tagElement, anchor: 'left', offset: [20, 0] });
+    codeTag.current = tag;
 
-    return () => markers.forEach((marker) => marker.remove());
-  }, [map, incidents, selectedId]);
+    // One handler for every layer: the topmost feature wins, so a marker drawn over another never
+    // toggles the selection twice.
+    const onClick = (event: MapMouseEvent) => {
+      const [hit] = map.queryRenderedFeatures(event.point, { layers: INTERACTIVE_LAYERS });
+      if (!hit) return;
+      if (hit.layer.id === MAP_LAYERS.clusters) {
+        expandCluster(map, hit);
+        return;
+      }
+      const id = String(hit.properties.id);
+      const { select, selectedIncidentId } = useConsole.getState();
+      select(id === selectedIncidentId ? null : id);
+    };
+    const onMove = (event: MapMouseEvent) => {
+      const over = map.queryRenderedFeatures(event.point, { layers: INTERACTIVE_LAYERS });
+      map.getCanvas().style.cursor = over.length ? 'pointer' : '';
+    };
+    map.on('click', onClick);
+    map.on('mousemove', onMove);
+
+    return () => {
+      map.off('click', onClick);
+      map.off('mousemove', onMove);
+      tag.remove();
+      codeTag.current = null;
+      removeLayers(
+        map,
+        layers.map((layer) => layer.id),
+        sources.map(([id]) => id),
+      );
+    };
+  }, [map]);
+
+  useEffect(() => {
+    if (!map || !features) return;
+    map.getSource<GeoJSONSource>(MAP_SOURCES.incidents)?.setData(features.rest);
+    map.getSource<GeoJSONSource>(MAP_SOURCES.selected)?.setData(features.selected);
+
+    const tag = codeTag.current;
+    if (!tag) return;
+    const [selected] = features.selected.features;
+    if (!selected) {
+      tag.remove();
+      return;
+    }
+    tag.getElement().textContent = selected.properties.code;
+    tag.setLngLat(selected.geometry.coordinates as [number, number]);
+    if (!tag.getElement().isConnected) tag.addTo(map);
+  }, [map, features]);
+
+  // The wave repaints the map every frame, so it runs only while something pulses.
+  useEffect(() => {
+    if (!map || !pulsing || reducedMotion) return;
+    return startPulse(map, mapMotion.pulseMs);
+  }, [map, pulsing, reducedMotion]);
+}
+
+/** Zooms to where a cluster breaks up. */
+function expandCluster(map: maplibregl.Map, cluster: MapGeoJSONFeature) {
+  const center = (cluster.geometry as Point).coordinates as [number, number];
+  map
+    .getSource<GeoJSONSource>(MAP_SOURCES.incidents)
+    ?.getClusterExpansionZoom(Number(cluster.properties.cluster_id))
+    .then(
+      (zoom) => map.easeTo({ center, zoom }),
+      // A live update can replace the cluster before the answer arrives; the click then does nothing.
+      () => undefined,
+    );
 }
