@@ -81,7 +81,7 @@ ops/
   prometheus/       Scrape config: every API replica on its metrics port
   grafana/          Provisioned datasource and the "OCC API" dashboard
 docs/
-  api/              API reference + OpenAPI 3.1, generated from code and drift-checked
+  api/              API reference + OpenAPI 3.0, generated from code and drift-checked
   architecture.md   System design, domain model, real-time flow
   adr/              Architecture Decision Records
   roadmap.md        Milestones and ticket breakdown

@@ -5,6 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import {
+  type Camera,
+  type CameraFieldOfView,
   type ClientToServerEvents,
   EVENTS_NAMESPACE,
   EventsConnectErrors,
@@ -12,7 +14,9 @@ import {
   IDEMPOTENCY_KEY_HEADER,
   type Incident,
   IncidentEvents,
+  type LngLat,
   type ServerToClientEvents,
+  type SitePlan,
   type Zone,
 } from '@occ/contracts';
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
@@ -22,6 +26,8 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { CAMERAS } from '../src/database/seed/campus';
+import { SeedService } from '../src/database/seed/seed.service';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
 import { persistIncident } from '../src/incidents/persist-incident';
@@ -89,6 +95,27 @@ describe('Incidents (e2e)', () => {
     expect(zones.body).toHaveLength(9);
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
+
+    // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
+    const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
+    expect(plan).toMatchObject({ code: 'LANGBIANG', center: [108.4415, 11.953] });
+    expect(plan.features.map((feature) => feature.part)).toEqual([
+      'boundary',
+      'road',
+      'road',
+      'road',
+      'field',
+      'field',
+      'field',
+    ]);
+    const boundary = plan.features[0]!.geometry;
+    expect(boundary.type).toBe('Polygon');
+    const ring = boundary.coordinates[0] as LngLat[];
+    expect(ring.at(-1)).toEqual(ring[0]);
+
+    for (const camera of cameras.body as Camera[]) expect(camera.fieldOfView).not.toBeNull();
+    const loadingBay = (cameras.body as Camera[]).find((camera) => camera.code === 'CAM-D02');
+    expect(loadingBay?.fieldOfView).toEqual({ heading: 290, angle: 90, range: 40 });
     // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
     expect(await app.get(DataSource).getRepository(OutboxEntity).count()).toBe(0);
 
@@ -302,6 +329,58 @@ describe('Incidents (e2e)', () => {
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
   });
 
+  it('tops up a campus seeded before the site plan and camera fields of view', async () => {
+    const db = app.get(DataSource);
+    const seed = app.get(SeedService);
+    const custom: CameraFieldOfView = { heading: 45, angle: 30, range: 10 };
+    const libraryFov = CAMERAS.find((camera) => camera.code === 'CAM-L01')!.fov;
+    const setFov = (code: string, { heading, angle, range }: CameraFieldOfView) =>
+      db.query(
+        `UPDATE "camera" SET "fov_heading_deg" = $2, "fov_angle_deg" = $3, "fov_range_m" = $4
+         WHERE "code" = $1`,
+        [code, heading, angle, range],
+      );
+    const fieldsOfView = async () => {
+      const res = await api(app).get('/api/cameras').expect(200);
+      return new Map((res.body as Camera[]).map((camera) => [camera.code, camera.fieldOfView]));
+    };
+
+    try {
+      // As seeded before ADR-0017: no site plan, no fields of view, except one an operator set since.
+      await db.query(`DELETE FROM "site"`);
+      await db.query(
+        `UPDATE "camera" SET "fov_heading_deg" = NULL, "fov_angle_deg" = NULL, "fov_range_m" = NULL`,
+      );
+      await setFov('CAM-L01', custom);
+      const missing = await api(app).get('/api/site-plan').expect(404);
+      expect(missing.body.message).toBe('Site plan was not found');
+
+      // Not the reference campus: the seed's data does not belong here, so nothing is added.
+      await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB-RENAMED' WHERE "code" = 'BLD-LIB'`);
+      await seed.onApplicationBootstrap();
+      await api(app).get('/api/site-plan').expect(404);
+      for (const [code, fov] of await fieldsOfView()) {
+        expect([code, fov]).toEqual([code, code === 'CAM-L01' ? custom : null]);
+      }
+
+      // The reference campus: the plan comes back, and only unknown fields of view are filled in.
+      await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+      await seed.onApplicationBootstrap();
+      const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
+      expect(plan.features).toHaveLength(7);
+      const filled = await fieldsOfView();
+      for (const camera of CAMERAS) {
+        const expected = camera.code === 'CAM-L01' ? custom : camera.fov;
+        expect([camera.code, filled.get(camera.code)]).toEqual([camera.code, expected]);
+      }
+    } finally {
+      // Leave a complete campus for later cases, even if an assertion above failed.
+      await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+      await setFov('CAM-L01', libraryFov);
+      await seed.onApplicationBootstrap();
+    }
+  });
+
   /** Every route but health needs an access token; `/events` checks it at the handshake (ADR-0010). */
   describe('authentication', () => {
     it('rejects requests without a token (401) before validating them', async () => {
@@ -478,6 +557,7 @@ describe('Incidents (e2e)', () => {
 
     it('lets a viewer read everything and listen to /events', async () => {
       await api(app, viewer).get('/api/zones').expect(200);
+      await api(app, viewer).get('/api/site-plan').expect(200);
       const cameras = await api(app, viewer).get('/api/cameras').expect(200);
       await api(app, viewer).get(`/api/cameras/${cameras.body[0].id}/stream`).expect(200);
       const incidents = await api(app, viewer).get('/api/incidents').expect(200);
@@ -503,6 +583,7 @@ describe('Incidents (e2e)', () => {
         const roleless = await signToken({ sub: 'e2e-roleless', roles });
         const requests = [
           api(app, roleless).get('/api/zones'),
+          api(app, roleless).get('/api/site-plan'),
           reportIncident(app, newBody('Role-less'), undefined, roleless),
         ];
         for (const req of requests) {

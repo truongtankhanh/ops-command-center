@@ -12,10 +12,21 @@ Cameras ordered by code, optionally limited to one zone.
 | -------- | ------ | ------------------------------ |
 | `zoneId` | `uuid` | optional; must be a valid UUID |
 
-**200** — `Camera[]` (`id`, `code`, `name`, `zoneId`, `position: [lng, lat]`, `online`)
+**200** — `Camera[]` (`id`, `code`, `name`, `zoneId`, `position: [lng, lat]`, `online`, `fieldOfView`)
 **400** — `zoneId` is not a UUID
 **401** — missing or invalid bearer token
 **403** — the token has no role
+
+`fieldOfView` is what the camera sees, a circular sector from `position`, or `null` when its orientation is not known
+(draw no view then) ([ADR-0017](../adr/0017-site-plan-as-data.md)):
+
+| Field     | Type     | Notes                                                         |
+| --------- | -------- | ------------------------------------------------------------- |
+| `heading` | `number` | centre line, degrees clockwise from true north; `0 ≤ h < 360` |
+| `angle`   | `number` | width of the view in degrees; `0 < a ≤ 360`                   |
+| `range`   | `number` | how far the camera sees, in metres; `> 0`                     |
+
+A client must also read a missing `fieldOfView` as `null`: an API from before this field omits it.
 
 Source: `apps/api/src/cameras/cameras.controller.ts:35`
 

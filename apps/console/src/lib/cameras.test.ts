@@ -8,6 +8,7 @@ const cam = (code: string, zoneId: string, online = true): Camera => ({
   zoneId,
   position: [0, 0],
   online,
+  fieldOfView: null,
 });
 
 describe('prioritise', () => {

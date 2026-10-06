@@ -17,6 +17,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SimulatorModule } from './simulator/simulator.module';
+import { SitesModule } from './sites/sites.module';
 import { ZonesModule } from './zones/zones.module';
 
 @Module({
@@ -49,6 +50,7 @@ import { ZonesModule } from './zones/zones.module';
     AuthModule,
     RateLimitModule,
     ZonesModule,
+    SitesModule,
     CamerasModule,
     IncidentsModule,
     RealtimeModule,

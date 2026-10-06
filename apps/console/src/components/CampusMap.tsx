@@ -1,4 +1,4 @@
-import type { Camera, Incident, LngLat, Zone } from '@occ/contracts';
+import type { Camera, Incident, LngLat, SitePlan, Zone } from '@occ/contracts';
 import type { Point } from 'geojson';
 import maplibregl, {
   type GeoJSONSource,
@@ -7,25 +7,28 @@ import maplibregl, {
   type StyleSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useCameras, useIncidents, useZones } from '../api/queries';
-import { cameraFeatures, incidentFeatures } from '../lib/mapFeatures';
+import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
+import { cameraFeatures, cameraViewFeatures, incidentFeatures } from '../lib/mapFeatures';
 import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
 import {
   cameraLayers,
   cameraSource,
+  cameraViewLayers,
+  cameraViewSource,
+  groundLayers,
   incidentLayers,
   incidentSources,
   INTERACTIVE_LAYERS,
   MAP_LAYERS,
   MAP_SOURCES,
   removeLayers,
-  siteLayers,
   siteSources,
   zoneHighlightFilter,
+  zoneOverlayLayers,
 } from '../lib/mapLayers';
 import { startPulse } from '../lib/mapPulse';
-import { CAMPUS_CENTER, siteBounds } from '../lib/sitePlan';
+import { siteBounds } from '../lib/sitePlan';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapColors, mapMotion } from '../styles/tokens';
@@ -35,8 +38,9 @@ import { MapLegend } from './MapLegend';
 import { MapTooltip } from './MapTooltip';
 
 /**
- * The campus as a site plan. Works fully offline (on-prem): the plan comes from `lib/sitePlan`,
- * zones from API data. Set VITE_MAP_STYLE_URL to put a basemap underneath when one is available.
+ * The campus as a site plan. Works fully offline (on-prem): the site plan and zones come from the
+ * API (same origin), with no tile server. Set VITE_MAP_STYLE_URL to put a basemap underneath when
+ * one is available.
  */
 const OFFLINE_STYLE: StyleSpecification = {
   version: 8,
@@ -59,6 +63,7 @@ export function CampusMap() {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const { data: zones } = useZones();
+  const { data: sitePlan } = useSitePlan();
   const { data: cameras } = useCameras();
   const { data: incidents } = useIncidents();
   const selectedId = useConsole((s) => s.selectedIncidentId);
@@ -68,10 +73,10 @@ export function CampusMap() {
   // Create the map once.
   useEffect(() => {
     if (!container.current) return;
+    // No `center`: where the site is comes from data, and `useSiteLayers` frames it on arrival.
     const instance = new maplibregl.Map({
       container: container.current,
       style: import.meta.env.VITE_MAP_STYLE_URL ?? OFFLINE_STYLE,
-      center: CAMPUS_CENTER,
       zoom: 16.4,
       minZoom: MIN_ZOOM,
       maxZoom: MAX_ZOOM,
@@ -104,7 +109,7 @@ export function CampusMap() {
     };
   }, []);
 
-  useSiteLayers(map, zones);
+  useSiteLayers(map, zones, sitePlan, focusRef);
   useCameraLayer(map, cameras);
   useIncidentLayers(map, incidents, selectedId);
 
@@ -118,14 +123,14 @@ export function CampusMap() {
     if (map) focus(map, focusRef.current, FOCUS_MS);
   }, [map, selectedPosition]);
 
-  // Frame 03's outline on the selected incident's zone. The layer is added with the zones, so this
-  // also runs when they (re)arrive.
+  // Frame 03's outline on the selected incident's zone. The layer is re-added with the zones and
+  // the site plan, so this also runs when either (re)arrives.
   const selectedZoneId = selected?.zoneId ?? null;
   useEffect(() => {
     if (map?.getLayer(MAP_LAYERS.zoneHighlight)) {
       map.setFilter(MAP_LAYERS.zoneHighlight, zoneHighlightFilter(selectedZoneId));
     }
-  }, [map, zones, selectedZoneId]);
+  }, [map, zones, sitePlan, selectedZoneId]);
 
   return (
     <section className={styles.map} aria-label="Campus map">
@@ -152,19 +157,31 @@ function focus(map: maplibregl.Map, point: [number, number] | null, duration: nu
 
 /**
  * The ground: site plan and zones, added together so their order is set in one place
- * (`siteLayers`). Without zones there is no campus to draw. Zone labels stay DOM markers: the
- * offline style has no glyphs for map text.
+ * (`groundLayers`, `zoneOverlayLayers`). Without zones there is no campus to draw; without a site
+ * plan (none set up, an older API, or a failed request) the zones are drawn alone. Re-added when
+ * either arrives: the plan comes once per session. Zone labels stay DOM markers: the offline style
+ * has no glyphs for map text.
  */
-function useSiteLayers(map: maplibregl.Map | null, zones: Zone[] | undefined) {
+function useSiteLayers(
+  map: maplibregl.Map | null,
+  zones: Zone[] | undefined,
+  plan: SitePlan | undefined,
+  focusRef: RefObject<[number, number] | null>,
+) {
   useEffect(() => {
     if (!map || !zones?.length) return;
 
-    const sources = siteSources(zones);
-    const layers = siteLayers();
-    // Zones can arrive after the camera and incident layers exist; keep the ground underneath.
-    const below = map.getLayer(MAP_LAYERS.cameras) ? MAP_LAYERS.cameras : undefined;
+    const sources = siteSources(plan, zones);
+    const ground = groundLayers((plan?.center ?? zones[0]!.center)[1]);
+    const overlays = zoneOverlayLayers();
+    // Zones can arrive after the camera views, cameras and incidents exist: the ground goes under
+    // the views, the zone outline and highlight over them, and all of it under the camera markers.
+    const groundBelow = firstLayer(map, [MAP_LAYERS.cameraViewFill, MAP_LAYERS.cameras]);
+    const overlaysBelow = firstLayer(map, [MAP_LAYERS.cameras]);
     sources.forEach(([id, source]) => map.addSource(id, source));
-    layers.forEach((layer) => map.addLayer(layer, below));
+    ground.forEach((layer) => map.addLayer(layer, groundBelow));
+    overlays.forEach((layer) => map.addLayer(layer, overlaysBelow));
+    const layers = [...ground, ...overlays];
 
     const labels = zones.map((zone) => {
       const el = document.createElement('div');
@@ -178,8 +195,10 @@ function useSiteLayers(map: maplibregl.Map | null, zones: Zone[] | undefined) {
         .addTo(map);
     });
 
-    campusBounds.set(map, siteBounds(zones));
-    fitCampus(map);
+    const bounds = siteBounds(plan, zones);
+    if (bounds) campusBounds.set(map, bounds);
+    // A selected incident keeps the view; otherwise the campus is framed.
+    focus(map, focusRef.current, 0);
 
     return () => {
       labels.forEach((label) => label.remove());
@@ -189,28 +208,40 @@ function useSiteLayers(map: maplibregl.Map | null, zones: Zone[] | undefined) {
         sources.map(([id]) => id),
       );
     };
-  }, [map, zones]);
+  }, [map, zones, plan, focusRef]);
 }
 
-/** Added once per map; a camera list change only replaces the source data. */
+/** The first of these layers the map has, to insert another below it; `undefined` adds on top. */
+const firstLayer = (map: maplibregl.Map, ids: readonly string[]): string | undefined =>
+  ids.find((id) => map.getLayer(id));
+
+/**
+ * Camera markers and what each camera sees, added once per map; a camera list change only replaces
+ * the source data.
+ */
 function useCameraLayer(map: maplibregl.Map | null, cameras: Camera[] | undefined) {
   useEffect(() => {
     if (!map) return;
-    const [sourceId, source] = cameraSource();
-    const layers = cameraLayers();
-    map.addSource(sourceId, source);
-    layers.forEach((layer) => map.addLayer(layer));
+    const sources = [cameraViewSource(), cameraSource()];
+    const views = cameraViewLayers();
+    const markers = cameraLayers();
+    sources.forEach(([id, source]) => map.addSource(id, source));
+    // With the zones already drawn, the views go under their outlines (see `useSiteLayers`).
+    const viewsBelow = firstLayer(map, [MAP_LAYERS.zoneOutline]);
+    views.forEach((layer) => map.addLayer(layer, viewsBelow));
+    markers.forEach((layer) => map.addLayer(layer));
     return () =>
       removeLayers(
         map,
-        layers.map((layer) => layer.id),
-        [sourceId],
+        [...views, ...markers].map((layer) => layer.id),
+        sources.map(([id]) => id),
       );
   }, [map]);
 
   useEffect(() => {
     if (!map || !cameras) return;
     map.getSource<GeoJSONSource>(MAP_SOURCES.cameras)?.setData(cameraFeatures(cameras));
+    map.getSource<GeoJSONSource>(MAP_SOURCES.cameraViews)?.setData(cameraViewFeatures(cameras));
   }, [map, cameras]);
 }
 

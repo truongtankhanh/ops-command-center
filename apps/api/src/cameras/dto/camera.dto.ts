@@ -1,5 +1,32 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { Camera, LngLat, StreamDescriptor } from '@occ/contracts';
+import type { Camera, CameraFieldOfView, LngLat, StreamDescriptor } from '@occ/contracts';
+
+/**
+ * What the camera sees: a circular sector from its mounting point. Strict bounds are in the
+ * descriptions: @nestjs/swagger types `exclusiveMinimum` / `exclusiveMaximum` as OpenAPI 3.0
+ * booleans, which OpenAPI 3.1 replaced with numbers, so they would break a move to 3.1.
+ */
+export class CameraFieldOfViewDto implements CameraFieldOfView {
+  @ApiProperty({
+    description:
+      'Centre line of the view, in degrees clockwise from true north (0 ≤ heading < 360)',
+    minimum: 0,
+    maximum: 360,
+    example: 90,
+  })
+  heading: number;
+
+  @ApiProperty({
+    description: 'Width of the view, in degrees (0 < angle ≤ 360)',
+    minimum: 0,
+    maximum: 360,
+    example: 90,
+  })
+  angle: number;
+
+  @ApiProperty({ description: 'How far the camera sees, in metres (> 0)', minimum: 0, example: 40 })
+  range: number;
+}
 
 export class CameraDto implements Camera {
   /** Camera id. */
@@ -27,6 +54,13 @@ export class CameraDto implements Camera {
   /** Whether the camera is currently online. */
   @ApiProperty()
   online: boolean;
+
+  @ApiProperty({
+    type: () => CameraFieldOfViewDto,
+    nullable: true,
+    description: '`null` when the orientation is not known; clients then draw no view',
+  })
+  fieldOfView: CameraFieldOfView | null;
 }
 
 /** Fields every stream descriptor has. Not a schema of its own — only the variants below are. */

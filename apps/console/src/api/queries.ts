@@ -4,6 +4,7 @@ import {
   type Incident,
   type IncidentDetail,
   type ReportIncidentRequest,
+  type SitePlan,
   type StreamDescriptor,
   type TransitionIncidentRequest,
   type Zone,
@@ -14,6 +15,7 @@ import { api } from './client';
 
 export const queryKeys = {
   zones: ['zones'] as const,
+  sitePlan: ['site-plan'] as const,
   cameras: ['cameras'] as const,
   incidents: ['incidents'] as const,
   incident: (id: string) => ['incidents', id] as const,
@@ -25,6 +27,18 @@ const STATIC = { staleTime: Infinity };
 
 export const useZones = () =>
   useQuery({ queryKey: queryKeys.zones, queryFn: () => api.get<Zone[]>('/zones'), ...STATIC });
+
+/**
+ * The site's boundary, roads and field markings. A 404 (no site set up, or an API replica from
+ * before the route existed) and any other failure leave `data` empty: the map then draws the zones
+ * only, since the plan is decoration and the zones carry the meaning.
+ */
+export const useSitePlan = () =>
+  useQuery({
+    queryKey: queryKeys.sitePlan,
+    queryFn: () => api.get<SitePlan>('/site-plan'),
+    ...STATIC,
+  });
 
 export const useCameras = () =>
   useQuery({

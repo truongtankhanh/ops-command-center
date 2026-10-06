@@ -9,9 +9,10 @@ export abstract class DomainError extends Error {
   }
 }
 
+/** `id` is left out for a singleton such as the site plan, which is not looked up by id. */
 export class EntityNotFoundError extends DomainError {
-  constructor(entity: string, id: string) {
-    super(`${entity} ${id} was not found`);
+  constructor(entity: string, id?: string) {
+    super(id === undefined ? `${entity} was not found` : `${entity} ${id} was not found`);
   }
 }
 

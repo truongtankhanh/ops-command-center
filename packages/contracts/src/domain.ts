@@ -50,6 +50,16 @@ export interface Zone {
   center: LngLat;
 }
 
+/** What a camera sees: a circular sector from its `position`. */
+export interface CameraFieldOfView {
+  /** Direction of the view's centre line, in degrees clockwise from true north: 0 ≤ heading < 360. */
+  heading: number;
+  /** Width of the view in degrees: 0 < angle ≤ 360. */
+  angle: number;
+  /** How far the camera sees, in metres: > 0. */
+  range: number;
+}
+
 export interface Camera {
   id: string;
   code: string;
@@ -57,6 +67,33 @@ export interface Camera {
   zoneId: string;
   position: LngLat;
   online: boolean;
+  /** `null` when the camera's orientation is not known; clients then draw no view. */
+  fieldOfView: CameraFieldOfView | null;
+}
+
+/**
+ * Parts of a site plan drawn under the zones: the site `boundary`, `road`s, and `field` markings.
+ * Building footprints and parking rows are not here — clients derive them from the zones.
+ */
+export const SITE_FEATURE_PARTS = ['boundary', 'road', 'field'] as const;
+export type SiteFeaturePart = (typeof SITE_FEATURE_PARTS)[number];
+
+/** A GeoJSON `Polygon` (closed rings, outer first) or `LineString`, in [lng, lat]. */
+export type SiteGeometry =
+  { type: 'Polygon'; coordinates: LngLat[][] } | { type: 'LineString'; coordinates: LngLat[] };
+
+export interface SiteFeature {
+  part: SiteFeaturePart;
+  geometry: SiteGeometry;
+}
+
+/** Everything drawn under and between the zones of one site, in drawing order. */
+export interface SitePlan {
+  id: string;
+  code: string;
+  name: string;
+  center: LngLat;
+  features: SiteFeature[];
 }
 
 /** Who caused a timeline entry. */

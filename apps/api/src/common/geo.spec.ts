@@ -1,5 +1,5 @@
 import type { LngLat } from '@occ/contracts';
-import { isInPolygon, offset, randomPointIn, rectangle } from './geo';
+import { circle, isInPolygon, offset, randomPointIn, rectangle, roundedRectangle } from './geo';
 
 describe('geo helpers', () => {
   const center: [number, number] = [108.4415, 11.953];
@@ -13,6 +13,28 @@ describe('geo helpers', () => {
     const ring = rectangle(center, 100, 50);
     expect(ring).toHaveLength(5);
     expect(ring[0]).toEqual(ring[4]);
+  });
+
+  it('builds a closed rounded rectangle inside the plain one', () => {
+    const ring = roundedRectangle(center, 100, 50, 10, 6);
+    // Four corners of 6 segments (7 points each), closed by repeating the first point.
+    expect(ring).toHaveLength(29);
+    expect(ring.at(-1)).toEqual(ring[0]);
+    // Starts where the south-east corner meets the south edge.
+    const [lng, lat] = offset(center, 40, -25);
+    expect(ring[0]![0]).toBeCloseTo(lng, 6);
+    expect(ring[0]![1]).toBeCloseTo(lat, 6);
+    const box = rectangle(center, 100, 50);
+    for (const point of ring) expect(isInPolygon(point, box)).toBe(true);
+  });
+
+  it('builds a closed circle at the requested radius, starting due east', () => {
+    const ring = circle(center, 9, 24);
+    expect(ring).toHaveLength(25);
+    expect(ring.at(-1)).toEqual(ring[0]);
+    expect(ring[0]).toEqual(offset(center, 9, 0));
+    // A quarter turn later it is due north.
+    expect(ring[6]![1] - center[1]).toBeCloseTo(9 / 111_320, 6);
   });
 
   it('keeps random points inside the inset bounding box', () => {

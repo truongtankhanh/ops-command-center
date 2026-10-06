@@ -55,6 +55,10 @@ export function MapLegend() {
           <Icon glyph={cameraIcon(false)} size={16} className={styles.offline} />
           Camera offline
         </li>
+        <li>
+          <span className={styles.view} aria-hidden />
+          Camera view
+        </li>
         <li>Colour = severity</li>
       </ul>
     </div>

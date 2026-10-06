@@ -2,6 +2,7 @@ import type { Camera, Incident, LngLat } from '@occ/contracts';
 import {
   cameraFeatures,
   cameraImageId,
+  cameraViewFeatures,
   clusterCountImageId,
   fanOut,
   incidentFeatures,
@@ -227,8 +228,24 @@ describe('incidentFeatures', () => {
 describe('cameraFeatures', () => {
   it('places each camera with its state image', () => {
     const cameras: Camera[] = [
-      { id: 'c1', code: 'CAM-1', name: 'Gate', zoneId: 'z1', position: ANCHOR, online: true },
-      { id: 'c2', code: 'CAM-2', name: 'Lab', zoneId: 'z1', position: eastOf(5), online: false },
+      {
+        id: 'c1',
+        code: 'CAM-1',
+        name: 'Gate',
+        zoneId: 'z1',
+        position: ANCHOR,
+        online: true,
+        fieldOfView: null,
+      },
+      {
+        id: 'c2',
+        code: 'CAM-2',
+        name: 'Lab',
+        zoneId: 'z1',
+        position: eastOf(5),
+        online: false,
+        fieldOfView: null,
+      },
     ];
 
     expect(cameraFeatures(cameras).features).toEqual([
@@ -243,5 +260,74 @@ describe('cameraFeatures', () => {
         properties: { id: 'c2', image: 'camera-offline' },
       },
     ]);
+  });
+});
+
+describe('cameraViewFeatures', () => {
+  const camera = (overrides: Partial<Camera> = {}): Camera => ({
+    id: 'c1',
+    code: 'CAM-1',
+    name: 'Gate',
+    zoneId: 'z1',
+    position: ANCHOR,
+    online: true,
+    fieldOfView: { heading: 90, angle: 90, range: 40 },
+    ...overrides,
+  });
+
+  const ringOf = (cameras: Camera[]): LngLat[] =>
+    cameraViewFeatures(cameras).features[0]!.geometry.coordinates[0] as LngLat[];
+
+  it('draws a view only for a camera whose field of view is known', () => {
+    // An API from before IMP-24 sends no `fieldOfView` key at all.
+    const legacy: Partial<Camera> = camera({ id: 'c3' });
+    delete legacy.fieldOfView;
+
+    const views = cameraViewFeatures([
+      camera({ id: 'c1' }),
+      camera({ id: 'c2', fieldOfView: null }),
+      legacy as Camera,
+    ]);
+
+    expect(views.features.map((view) => view.properties.id)).toEqual(['c1']);
+  });
+
+  it('tells online and offline cameras apart', () => {
+    const views = cameraViewFeatures([camera({ id: 'c1' }), camera({ id: 'c2', online: false })]);
+
+    expect(views.features.map((view) => view.properties)).toEqual([
+      { id: 'c1', online: true },
+      { id: 'c2', online: false },
+    ]);
+  });
+
+  it('draws a sector from the camera, range metres long, closed at the apex', () => {
+    const ring = ringOf([camera()]);
+
+    // Apex, 18 five-degree segments (19 arc points), back to the apex.
+    expect(ring).toHaveLength(21);
+    expect(ring[0]).toEqual(ANCHOR);
+    expect(ring.at(-1)).toEqual(ANCHOR);
+    for (const point of ring.slice(1, -1)) expect(metresBetween(ANCHOR, point)).toBeCloseTo(40, 1);
+  });
+
+  it('centres the arc on the heading, clockwise from north', () => {
+    const ring = ringOf([camera({ fieldOfView: { heading: 90, angle: 90, range: 40 } })]);
+    const [first, middle, last] = [ring[1]!, ring[10]!, ring.at(-2)!];
+
+    // Heading 90° is due east; the arc runs from 45° (north-east) to 135° (south-east).
+    expect(middle[1]).toBeCloseTo(ANCHOR[1], 9);
+    expect(middle[0]).toBeGreaterThan(ANCHOR[0]);
+    expect(first[1]).toBeGreaterThan(ANCHOR[1]);
+    expect(last[1]).toBeLessThan(ANCHOR[1]);
+  });
+
+  it('draws a 360° view as a closed circle without the apex', () => {
+    const ring = ringOf([camera({ fieldOfView: { heading: 0, angle: 360, range: 10 } })]);
+
+    // 72 five-degree segments; the ring closes exactly on its first point.
+    expect(ring).toHaveLength(73);
+    expect(ring.at(-1)).toEqual(ring[0]);
+    for (const point of ring) expect(metresBetween(ANCHOR, point)).toBeCloseTo(10, 1);
   });
 });
