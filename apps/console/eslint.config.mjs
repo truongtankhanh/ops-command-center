@@ -13,6 +13,22 @@ export default [
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'lucide-react',
+              message: 'Import glyphs from src/ui/icons.ts so the icon set stays swappable.',
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    // The one module that wraps the icon set.
+    files: ['src/ui/icons.ts'],
+    rules: { 'no-restricted-imports': 'off' },
   },
 ];
