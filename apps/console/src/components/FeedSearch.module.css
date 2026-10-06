@@ -1,0 +1,64 @@
+/*
+ * Feed search (frame 01 `.search`): a text field with a leading glyph and a trailing slot for the
+ * `/` hint or the clear button. Placed by the feed through `className`.
+ */
+
+.search {
+  position: relative;
+}
+
+.icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+/* Higher specificity than `Field`'s `.control` (ADR-0016 §5): room for the glyph and the slot. */
+.search .input {
+  height: 38px;
+  padding-right: calc(var(--space-8) + var(--space-1));
+  padding-left: calc(var(--space-8) + var(--space-0-5));
+}
+
+/* One clear control: the button below, not the browser's own. */
+.search .input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.slot {
+  position: absolute;
+  top: 50%;
+  right: var(--space-1-5);
+  transform: translateY(-50%);
+}
+
+.clear {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.clear:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

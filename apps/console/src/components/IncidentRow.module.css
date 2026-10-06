@@ -1,0 +1,190 @@
+/*
+ * Feed row (frame 01 `.row`): a card with the severity tile, the title and the age, then a meta
+ * line. The mockup's 10 / 11 px paddings and 3 px row gap are snapped to the 4 px spacing grid.
+ */
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The severity's badge tint and border, the pairs `scripts/contrast.ts` checks over `--surface-1`. */
+.row[data-severity='critical'] {
+  --row-tint: var(--sev-critical-bg);
+  --row-edge: var(--sev-critical-border);
+}
+
+.row[data-severity='high'] {
+  --row-tint: var(--sev-high-bg);
+  --row-edge: var(--sev-high-border);
+}
+
+.row[data-severity='medium'] {
+  --row-tint: var(--sev-medium-bg);
+  --row-edge: var(--sev-medium-border);
+}
+
+.row[data-severity='low'] {
+  --row-tint: var(--sev-low-bg);
+  --row-edge: var(--sev-low-border);
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+/* Selection is the raised surface and `aria-current`; the accent border only reinforces it. */
+.row[aria-current='true'] {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.tile {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--row-edge);
+  border-radius: var(--radius-m);
+  background: var(--row-tint);
+  color: var(--sev);
+}
+
+/* A resolved incident needs nothing more: its tile steps back to neutral, the label stays. */
+.row[data-status='resolved'] .tile {
+  border-color: var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-tertiary);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-l);
+}
+
+.row[data-status='resolved'] .title {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.typeIcon {
+  margin-right: var(--space-1-5);
+  vertical-align: middle;
+  color: var(--text-secondary);
+}
+
+.age {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: end;
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-secondary);
+}
+
+/* Past the attention threshold: colour, weight and a clock glyph, plus hidden text in the TSX. */
+.age[data-late='true'] {
+  color: var(--warning);
+  font-weight: var(--weight-semibold);
+}
+
+.meta {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.status {
+  flex: none;
+}
+
+.separator {
+  color: var(--text-tertiary);
+}
+
+/* The zone gives way first on a narrow feed (300 px at ≤ 1100 px); status and code stay whole. */
+.zone {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * `--text-secondary`, not the mockup's `--text-tertiary`: on a fresh medium row's tint that falls to
+ * 4.48:1 (UI-07 batch 2). The UI font keeps the code apart from the zone.
+ */
+.code {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * A fresh row (frame 04) slides in, then holds its severity tint and border before fading back to
+ * its normal look, so a new incident is noticed without staying loud. A persistent highlight and
+ * bounding the `fresh` set are UI-14's.
+ */
+.row[data-fresh='true'] {
+  animation:
+    slide-in var(--duration-base) var(--ease-out),
+    arrive var(--duration-arrive) var(--ease-out);
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-2)));
+  }
+}
+
+/* No `to` frame: the fade ends on whatever the row looks like now (hover included). */
+@keyframes arrive {
+  0%,
+  70% {
+    border-color: var(--row-edge);
+    background: var(--row-tint);
+  }
+}
+
+/* A colour change is not motion: under reduced motion only the slide goes. */
+@media (prefers-reduced-motion: reduce) {
+  .row[data-fresh='true'] {
+    animation: arrive var(--duration-arrive) var(--ease-out);
+  }
+}

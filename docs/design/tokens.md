@@ -155,6 +155,19 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 5.68  | 4.5     | pass                                  |
 | `--text-primary`    | `--sev-critical-hot-bg`                   | 10.99 | 4.5     | pass                                  |
 | `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.24  | 3       | pass                                  |
+| `--text-secondary`  | `--sev-critical-bg` over `--surface-1`    | 6.67  | 4.5     | pass                                  |
+| `--warning`         | `--sev-critical-bg` over `--surface-1`    | 7.60  | 4.5     | pass                                  |
+| `--status-resolved` | `--sev-critical-bg` over `--surface-1`    | 6.25  | 4.5     | pass                                  |
+| `--text-secondary`  | `--sev-high-bg` over `--surface-1`        | 6.02  | 4.5     | pass                                  |
+| `--warning`         | `--sev-high-bg` over `--surface-1`        | 6.87  | 4.5     | pass                                  |
+| `--status-resolved` | `--sev-high-bg` over `--surface-1`        | 5.64  | 4.5     | pass                                  |
+| `--text-secondary`  | `--sev-medium-bg` over `--surface-1`      | 5.58  | 4.5     | pass                                  |
+| `--warning`         | `--sev-medium-bg` over `--surface-1`      | 6.36  | 4.5     | pass                                  |
+| `--status-resolved` | `--sev-medium-bg` over `--surface-1`      | 5.23  | 4.5     | pass                                  |
+| `--text-secondary`  | `--sev-low-bg` over `--surface-1`         | 5.84  | 4.5     | pass                                  |
+| `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                  |
+| `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                  |
+| `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                  |
 
 ### Colours copied out of tokens.css
 
