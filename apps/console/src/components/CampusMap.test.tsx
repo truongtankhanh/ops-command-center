@@ -88,12 +88,31 @@ const fake = vi.hoisted(() => {
 
   class FakeMarker {
     static created = 0;
+    /** Every marker made in the current case, removed ones included. */
+    static readonly instances: FakeMarker[] = [];
     private readonly element: HTMLElement;
+    private readonly handlers = new Map<string, () => void>();
+    private lngLat: [number, number] | undefined;
     constructor({ element }: { element: HTMLElement }) {
       FakeMarker.created += 1;
+      FakeMarker.instances.push(this);
       this.element = element;
     }
-    setLngLat = vi.fn(() => this);
+    setLngLat = vi.fn((lngLat: [number, number]) => {
+      this.lngLat = lngLat;
+      return this;
+    });
+    getLngLat = () => ({ lng: this.lngLat![0], lat: this.lngLat![1] });
+    setDraggable = vi.fn((_draggable: boolean) => this);
+    on = (event: string, handler: () => void) => {
+      this.handlers.set(event, handler);
+      return this;
+    };
+    /** Test-only: drops the marker at `to`, as MapLibre does at the end of a drag. */
+    drag(to: [number, number]) {
+      this.lngLat = to;
+      this.handlers.get('dragend')?.();
+    }
     setOffset = () => this;
     addTo = () => {
       document.body.append(this.element);
@@ -260,11 +279,17 @@ function click(map: InstanceType<typeof fake.FakeMap>, hit: unknown) {
   map.fire('click', { point: { x: 0, y: 0 } });
 }
 
+/** A click at a map position, as the report's pin is placed. */
+function clickAt(map: InstanceType<typeof fake.FakeMap>, [lng, lat]: [number, number]) {
+  map.fire('click', { point: { x: 0, y: 0 }, lngLat: { lng, lat } });
+}
+
 describe('CampusMap', () => {
   beforeEach(() => {
     resetStore(useConsole);
     fake.maps.length = 0;
     fake.FakeMarker.created = 0;
+    fake.FakeMarker.instances.length = 0;
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -494,6 +519,19 @@ describe('CampusMap', () => {
       await waitFor(() =>
         expect(map.setFilter).toHaveBeenCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1')),
       );
+    });
+
+    it('outlines the zone being reported', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+
+      act(() => {
+        useConsole.getState().startReport();
+        useConsole.getState().setReportZone('z1');
+      });
+      expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1'));
+
+      act(() => useConsole.getState().closeReport());
+      expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.zoneHighlight, false);
     });
 
     it('unmounts with zones drawn without touching the removed map', async () => {
@@ -748,6 +786,125 @@ describe('CampusMap', () => {
 
       await waitFor(() => expect(ids(lastData(map, MAP_SOURCES.incidents))).toEqual(['b']));
       expect(map.easeTo).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('picking the report location', () => {
+    /** Inside `zone()`, beside it in `otherZone()`, and outside both. */
+    const INSIDE: [number, number] = [108.4415, 11.953];
+    const IN_OTHER: [number, number] = [108.4422, 11.953];
+    const OUTSIDE: [number, number] = [108.4428, 11.953];
+    const otherZone = () =>
+      zone({
+        id: 'z2',
+        code: 'BLD-DC',
+        name: 'Data Center',
+        polygon: [
+          [108.442, 11.9527],
+          [108.4424, 11.9527],
+          [108.4424, 11.9533],
+          [108.442, 11.9533],
+          [108.442, 11.9527],
+        ],
+        center: [108.4422, 11.953],
+      });
+    const HINT = 'Click the map to place the incident · drag the pin to adjust';
+
+    /** The report's pin: the only marker drawn as an SVG (zone labels and the code tag are text). */
+    const pinMarker = () =>
+      fake.FakeMarker.instances.find((marker) => marker.getElement().querySelector('svg'));
+
+    async function startPicking() {
+      const view = await renderMap([incident({ id: 'a' })], { zones: [zone(), otherZone()] });
+      act(() => {
+        useConsole.getState().startReport();
+        useConsole.getState().setPicking(true);
+      });
+      return view;
+    }
+
+    it('places the pin where the map is clicked inside a zone', async () => {
+      const { map } = await startPicking();
+
+      act(() => clickAt(map, INSIDE));
+
+      expect(useConsole.getState()).toMatchObject({ reportPosition: INSIDE, reportZoneId: 'z1' });
+      expect(pinMarker()!.setLngLat).toHaveBeenCalledWith(INSIDE);
+      expect(pinMarker()!.getElement()).toBeInTheDocument();
+    });
+
+    it('places nothing outside every zone', async () => {
+      const { map } = await startPicking();
+
+      act(() => clickAt(map, OUTSIDE));
+
+      expect(useConsole.getState()).toMatchObject({ reportPosition: null, pinMissed: true });
+      expect(pinMarker()).toBeUndefined();
+    });
+
+    it('selects nothing and zooms into no cluster while picking', async () => {
+      const { map } = await startPicking();
+      const marker = { layer: { id: MAP_LAYERS.incidents }, properties: { id: 'a' } };
+
+      map.queryRenderedFeatures.mockReturnValue([
+        { layer: { id: MAP_LAYERS.clusters }, properties: { cluster_id: 7 } },
+      ]);
+      act(() => clickAt(map, INSIDE));
+      expect(
+        map.sources.get(MAP_SOURCES.incidents)!.getClusterExpansionZoom,
+      ).not.toHaveBeenCalled();
+
+      map.queryRenderedFeatures.mockReturnValue([marker]);
+      act(() => clickAt(map, INSIDE));
+      expect(useConsole.getState()).toMatchObject({ selectedIncidentId: null, reporting: true });
+
+      act(() => useConsole.getState().setPicking(false));
+      act(() => clickAt(map, INSIDE));
+      expect(useConsole.getState().selectedIncidentId).toBe('a');
+    });
+
+    it('shows a crosshair and the hint only while picking', async () => {
+      const { map } = await startPicking();
+      expect(map.canvas.style.cursor).toBe('crosshair');
+      expect(screen.getByText(HINT)).toBeInTheDocument();
+
+      act(() => useConsole.getState().setPicking(false));
+
+      expect(map.canvas.style.cursor).toBe('');
+      expect(screen.queryByText(HINT)).toBeNull();
+    });
+
+    it('drags the pin only while picking, selecting the zone it lands in', async () => {
+      const { map } = await startPicking();
+      act(() => clickAt(map, INSIDE));
+      const pin = pinMarker()!;
+      expect(pin.setDraggable).toHaveBeenLastCalledWith(true);
+
+      act(() => pin.drag(IN_OTHER));
+      expect(useConsole.getState()).toMatchObject({ reportPosition: IN_OTHER, reportZoneId: 'z2' });
+
+      // Dropped outside every zone: back where it was, and the form warns.
+      act(() => pin.drag(OUTSIDE));
+      expect(useConsole.getState()).toMatchObject({ reportPosition: IN_OTHER, pinMissed: true });
+      expect(pin.setLngLat).toHaveBeenLastCalledWith(IN_OTHER);
+
+      act(() => useConsole.getState().setPicking(false));
+      expect(pin.setDraggable).toHaveBeenLastCalledWith(false);
+    });
+
+    it('removes the pin with the report location', async () => {
+      const { map } = await startPicking();
+      act(() => clickAt(map, INSIDE));
+      const first = pinMarker()!;
+
+      act(() => useConsole.getState().clearPin());
+      expect(first.getElement()).not.toBeInTheDocument();
+
+      act(() => clickAt(map, INSIDE));
+      const second = fake.FakeMarker.instances.at(-1)!;
+      expect(second.getElement()).toBeInTheDocument();
+      act(() => useConsole.getState().closeReport());
+      expect(second.getElement()).not.toBeInTheDocument();
     });
   });
 });

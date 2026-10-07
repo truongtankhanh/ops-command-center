@@ -1,4 +1,4 @@
-/* Form fields (mockup 03). `SegmentedControl.module.css` repeats `.label` for its legend. */
+/* Form fields (mockup 03). `SegmentedControl.module.css` repeats `.label` and `.error`. */
 
 .field {
   display: grid;
@@ -6,11 +6,39 @@
   min-width: 0;
 }
 
+/* The `<label>`: label row above the control. */
+.labelWrap {
+  display: grid;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
 .label {
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
   font-size: var(--type-m);
   color: var(--text-secondary);
+}
+
+/* Frame 03's `.count-hint` ("33 / 160"). */
+.count {
+  font-size: var(--type-s);
+  color: var(--text-tertiary);
+}
+
+/* Form errors are one of the places `--danger` may appear (docs/design/tokens.md). */
+.error {
+  margin: 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--danger);
 }
 
 /* Controls fill their field; the field, not the control, is placed by the caller. */
@@ -28,6 +56,10 @@
 
 .control::placeholder {
   color: var(--text-tertiary);
+}
+
+.control[aria-invalid='true'] {
+  border-color: var(--danger);
 }
 
 .multiline {

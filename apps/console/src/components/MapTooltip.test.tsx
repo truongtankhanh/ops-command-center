@@ -227,6 +227,18 @@ describe('MapTooltip', () => {
     await waitFor(() => expect(tooltip()).toHaveTextContent('Resolved'));
   });
 
+  it('points out nothing while the report location is picked', () => {
+    const map = fakeMap();
+    renderTooltip(map, { incidents: [incident()] });
+    // While picking a click places the pin, and `CampusMap` owns the crosshair cursor.
+    act(() => useConsole.getState().setPicking(true));
+
+    hover(map, hit(MAP_LAYERS.incidents, { id: 'a' }));
+
+    expect(tooltip()).toBeNull();
+    expect(map.canvas.style.cursor).toBe('');
+  });
+
   it('closes when the pointer leaves the map', () => {
     const map = fakeMap();
     renderTooltip(map, { incidents: [incident()] });

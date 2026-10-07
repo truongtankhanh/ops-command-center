@@ -71,6 +71,21 @@
   color: var(--on-accent);
 }
 
+/*
+ * A toggle that is on (frame 03's "Pick on map", `.btn-toggle`): accent tint and border, glyph in
+ * the accent. Callers pass `aria-pressed`; there is no prop for it.
+ */
+.button[aria-pressed='true'],
+.button[aria-pressed='true']:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--text-primary);
+}
+
+.button[aria-pressed='true'] > svg {
+  color: var(--accent);
+}
+
 /* A button that opens a panel shows it while the panel is open (Report incident). */
 .button[aria-expanded='true'] {
   box-shadow: 0 0 0 3px var(--accent-tint);

@@ -1,10 +1,17 @@
-import { IDEMPOTENCY_KEY_HEADER, type IncidentDetail, type Zone } from '@occ/contracts';
+import {
+  IDEMPOTENCY_KEY_HEADER,
+  type IncidentDetail,
+  type LngLat,
+  type Zone,
+} from '@occ/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useConsole } from '../store';
+import { resetStore } from '../test-utils';
+import { useToasts } from '../ui/toasts';
 import { ReportIncidentForm } from './ReportIncidentForm';
 
 // The session module is tested on its own; here it only decides which token the client sends.
@@ -18,6 +25,21 @@ const zone: Zone = {
   polygon: [],
   center: [108.44, 11.95],
 };
+
+const otherZone: Zone = {
+  ...zone,
+  id: '6f1c2b1e-0000-4000-8000-000000000002',
+  code: 'BLD-DC',
+  name: 'Data Center',
+};
+
+/** Pins are placed through the store, as the map does; the form only shows and sends them. */
+const PIN: LngLat = [108.4412, 11.9531];
+const MOVED: LngLat = [108.4415, 11.9529];
+
+function pin(at: LngLat = PIN) {
+  act(() => useConsole.getState().placePin(at, zone.id));
+}
 
 const created: IncidentDetail = {
   id: 'new-incident',
@@ -58,9 +80,9 @@ function apiError(status: number, message: string): Response {
 
 const DRAFT_KEPT = 'Esc keeps your draft. Cancel discards it.';
 
-function renderForm() {
+function renderForm(zones: Zone[] = [zone]) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-  client.setQueryData(queryKeys.zones, [zone]);
+  client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.incidents, []);
   render(
     <QueryClientProvider client={client}>
@@ -71,11 +93,19 @@ function renderForm() {
   return { client, form };
 }
 
-async function fillRequired(form: ReturnType<typeof renderForm>['form']) {
-  await userEvent.selectOptions(form.getByLabelText('Type'), 'medical');
+type Form = ReturnType<typeof renderForm>['form'];
+
+/**
+ * The title field, by role and name. Not `getByLabelText`: that matches the label's raw text, which
+ * also holds the `aria-hidden` counter ("Title0 / 160"); the accessible name is "Title".
+ */
+const titleBox = (form: Form) => form.getByRole('textbox', { name: 'Title' });
+
+async function fillRequired(form: Form) {
+  await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
   await userEvent.click(form.getByLabelText('High'));
   await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
-  await userEvent.type(form.getByLabelText('Title'), '  Person down at entrance ');
+  await userEvent.type(titleBox(form), '  Person down at entrance ');
 }
 
 describe('ReportIncidentForm', () => {
@@ -85,21 +115,32 @@ describe('ReportIncidentForm', () => {
     // Signed out by default: no bearer header, and nothing to renew.
     vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
     vi.mocked(renewSession).mockReset().mockResolvedValue(false);
-    useConsole.setState({ reporting: true, selectedIncidentId: null });
+    // The location lives in the store: start each case from an empty report, as the header does.
+    resetStore(useConsole);
+    useConsole.getState().startReport();
+    resetStore(useToasts);
   });
 
   afterEach(() => vi.unstubAllGlobals());
 
-  it('keeps the submit button disabled until type, zone and title are set', async () => {
+  it("names each empty required field on submit and sends nothing, within the API's limits", async () => {
+    fetchMock.mockReturnValue(new Promise<Response>(() => {}));
     const { form } = renderForm();
     const submit = form.getByRole('button', { name: 'Report incident' });
+    const messages = ['Choose a type.', 'Choose a location.', 'Enter a title.'];
 
-    expect(submit).toBeDisabled();
-    expect(form.getByLabelText('Title')).toHaveAttribute('maxLength', '160');
+    expect(titleBox(form)).toHaveAttribute('maxLength', '160');
     expect(form.getByLabelText('Details (optional)')).toHaveAttribute('maxLength', '2000');
+    expect(submit).toBeEnabled();
+
+    await userEvent.click(submit);
+    expect(fetchMock).not.toHaveBeenCalled();
+    for (const message of messages) expect(form.getByText(message)).toBeInTheDocument();
 
     await fillRequired(form);
-    expect(submit).toBeEnabled();
+    for (const message of messages) expect(form.queryByText(message)).toBeNull();
+    await userEvent.click(submit);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('posts the report and selects the new incident', async () => {
@@ -134,7 +175,7 @@ describe('ReportIncidentForm', () => {
     await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
 
     expect(await form.findByRole('alert')).toHaveTextContent('Zone was not found');
-    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(titleBox(form)).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
   });
 
@@ -161,7 +202,7 @@ describe('ReportIncidentForm', () => {
 
     // The first attempt may have reached the API, so an edited retry must not look like a new report.
     // `fillRequired` leaves a trailing space, so this reads "… entrance (east door)".
-    await userEvent.type(form.getByLabelText('Title'), '(east door)');
+    await userEvent.type(titleBox(form), '(east door)');
     await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
 
     await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
@@ -208,7 +249,7 @@ describe('ReportIncidentForm', () => {
       'This report was already sent with different details. Check the incident feed before reporting it again.',
     );
     expect(alert).not.toHaveTextContent('Idempotency-Key');
-    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(titleBox(form)).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
   });
 
@@ -223,7 +264,7 @@ describe('ReportIncidentForm', () => {
     const alert = await form.findByRole('alert');
     expect(alert).toHaveTextContent('Your account is no longer allowed to do this.');
     expect(alert).not.toHaveTextContent('Missing permission');
-    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(titleBox(form)).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
     expect(renewSession).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -276,7 +317,7 @@ describe('ReportIncidentForm', () => {
     expect(await form.findByRole('alert')).toHaveTextContent('Invalid access token');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(renewSession).toHaveBeenCalledTimes(1);
-    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(titleBox(form)).toHaveValue('  Person down at entrance ');
     expect(useConsole.getState().reporting).toBe(true);
   });
 
@@ -291,7 +332,7 @@ describe('ReportIncidentForm', () => {
     expect(await form.findByRole('alert')).toHaveTextContent('Identity provider unavailable');
     expect(renewSession).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(form.getByLabelText('Title')).toHaveValue('  Person down at entrance ');
+    expect(titleBox(form)).toHaveValue('  Person down at entrance ');
   });
 
   it('closes on Cancel and on Escape', async () => {
@@ -306,11 +347,11 @@ describe('ReportIncidentForm', () => {
 
   it('stays open with the input on Escape once anything is entered, but still closes on Cancel', async () => {
     const { form } = renderForm();
-    await userEvent.type(form.getByLabelText('Title'), 'Smoke near the stairwell');
+    await userEvent.type(titleBox(form), 'Smoke near the stairwell');
 
     await userEvent.keyboard('{Escape}');
     expect(useConsole.getState().reporting).toBe(true);
-    expect(form.getByLabelText('Title')).toHaveValue('Smoke near the stairwell');
+    expect(titleBox(form)).toHaveValue('Smoke near the stairwell');
 
     await userEvent.click(form.getByRole('button', { name: 'Cancel' }));
     expect(useConsole.getState().reporting).toBe(false);
@@ -323,7 +364,7 @@ describe('ReportIncidentForm', () => {
     expect(cancel).toHaveAttribute('aria-keyshortcuts', 'Escape');
     expect(hint()).toBeNull();
 
-    await userEvent.type(form.getByLabelText('Title'), 'Smoke');
+    await userEvent.type(titleBox(form), 'Smoke');
     expect(hint()).toHaveAttribute('data-tone', 'info');
     // Escape no longer cancels, so the key is not offered on Cancel.
     expect(cancel).not.toHaveAttribute('aria-keyshortcuts');
@@ -349,5 +390,219 @@ describe('ReportIncidentForm', () => {
 
     await userEvent.keyboard('{Escape}');
     expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  describe('validation', () => {
+    it('describes each empty field and focuses the type', async () => {
+      const { form } = renderForm();
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      expect(form.getByRole('group', { name: 'Type' })).toHaveAccessibleDescription(
+        'Choose a type.',
+      );
+      const location = form.getByRole('combobox', { name: 'Location' });
+      expect(location).toHaveAttribute('aria-invalid', 'true');
+      expect(location).toHaveAccessibleDescription('Choose a location.');
+      expect(titleBox(form)).toHaveAttribute('aria-invalid', 'true');
+      expect(titleBox(form)).toHaveAccessibleDescription('Enter a title.');
+      expect(form.getByRole('radio', { name: 'Intrusion' })).toHaveFocus();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('focuses the first empty field in form order, and clears each message once filled', async () => {
+      const { form } = renderForm();
+      const submit = form.getByRole('button', { name: 'Report incident' });
+      // Nothing is reported missing before the operator tries to submit.
+      expect(form.queryByText('Choose a type.')).toBeNull();
+      expect(form.queryByText('Choose a location.')).toBeNull();
+      expect(form.queryByText('Enter a title.')).toBeNull();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
+      await userEvent.click(submit);
+      expect(form.queryByText('Choose a type.')).toBeNull();
+      expect(form.getByRole('combobox', { name: 'Location' })).toHaveFocus();
+
+      await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
+      await userEvent.click(submit);
+      expect(form.queryByText('Choose a location.')).toBeNull();
+      expect(titleBox(form)).toHaveFocus();
+
+      await userEvent.type(titleBox(form), 'Smoke');
+      expect(form.queryByText('Enter a title.')).toBeNull();
+      expect(titleBox(form)).not.toHaveAttribute('aria-invalid');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('server errors', () => {
+    it.each([
+      {
+        name: 'a 429 in operator terms',
+        answer: () => apiError(429, 'ThrottlerException: Too Many Requests'),
+        pinned: false,
+        text: 'Too many requests right now. Wait a few seconds and try again.',
+      },
+      {
+        name: 'a pin outside its zone, by the zone name',
+        answer: () => apiError(400, 'position is outside zone BLD-LIB'),
+        pinned: true,
+        text: 'The pin is outside Library. Move it inside the zone or remove it.',
+      },
+      {
+        name: "any other 400 with the server's message",
+        answer: () => apiError(400, 'title must be shorter than or equal to 160 characters'),
+        pinned: false,
+        text: 'title must be shorter than or equal to 160 characters',
+      },
+    ])('explains $name and keeps the input', async ({ answer, pinned, text }) => {
+      fetchMock.mockImplementation(() => Promise.resolve(answer()));
+      const { form } = renderForm();
+      await fillRequired(form);
+      if (pinned) pin();
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      expect(await form.findByRole('alert')).toHaveTextContent(text);
+      expect(titleBox(form)).toHaveValue('  Person down at entrance ');
+      expect(useConsole.getState().reporting).toBe(true);
+    });
+  });
+
+  describe('location', () => {
+    it('sends the pin and says where it is', async () => {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+      const { form } = renderForm();
+      await fillRequired(form);
+
+      pin();
+
+      const where = 'Pin inside Library · 11.9531, 108.4412';
+      expect(form.getByText(where)).toBeInTheDocument();
+      expect(form.getByRole('combobox', { name: 'Location' })).toHaveAccessibleDescription(where);
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+      await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+      expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).toEqual({
+        type: 'medical',
+        severity: 'high',
+        zoneId: zone.id,
+        title: 'Person down at entrance',
+        position: PIN,
+      });
+    });
+
+    it('removes the pin, by its button or by choosing another zone', async () => {
+      fetchMock.mockReturnValue(new Promise<Response>(() => {}));
+      const { form } = renderForm([zone, otherZone]);
+      await fillRequired(form);
+
+      pin();
+      await userEvent.click(form.getByRole('button', { name: 'Remove pin' }));
+      expect(useConsole.getState().reportPosition).toBeNull();
+      expect(form.getByText('No pin: placed at the centre of Library.')).toBeInTheDocument();
+
+      pin();
+      await userEvent.selectOptions(form.getByLabelText('Location'), otherZone.id);
+      expect(useConsole.getState()).toMatchObject({
+        reportPosition: null,
+        reportZoneId: otherZone.id,
+      });
+      expect(form.getByText('No pin: placed at the centre of Data Center.')).toBeInTheDocument();
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+      expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).not.toHaveProperty(
+        'position',
+      );
+    });
+
+    it('reuses the key after the pin moves', async () => {
+      fetchMock
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValueOnce(new Response(JSON.stringify(created), { status: 201 }));
+      const { form } = renderForm();
+      await fillRequired(form);
+      pin();
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+      await form.findByRole('alert');
+
+      // The first attempt may have reached the API: a moved pin must not look like a new report.
+      pin(MOVED);
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(sentKey(1)).toBe(sentKey(0));
+      expect(JSON.parse(fetchMock.mock.calls[1]![1]!.body as string).position).toEqual(MOVED);
+    });
+
+    it.each(['a zone', 'a pin'])('keeps a draft that is only %s on Escape', async (only) => {
+      const { form } = renderForm();
+      act(() => {
+        if (only === 'a zone') useConsole.getState().setReportZone(zone.id);
+        else useConsole.getState().placePin(PIN, zone.id);
+      });
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().reporting).toBe(true);
+      // The sheet heard the Escape and said why it stayed open.
+      expect(form.getByRole('status')).toHaveTextContent(DRAFT_KEPT);
+    });
+
+    it('turns picking on and off, and warns about a missed pin', async () => {
+      const { form } = renderForm();
+      const pick = form.getByRole('button', { name: 'Pick on map' });
+      expect(pick).toHaveAttribute('aria-pressed', 'false');
+
+      await userEvent.click(pick);
+      expect(pick).toHaveAttribute('aria-pressed', 'true');
+      expect(useConsole.getState().picking).toBe(true);
+
+      act(() => useConsole.getState().missPin());
+      expect(form.getByText('Place the pin inside a zone.', { selector: 'p' })).toHaveAttribute(
+        'data-tone',
+        'warning',
+      );
+
+      await userEvent.click(pick);
+      expect(pick).toHaveAttribute('aria-pressed', 'false');
+      expect(useConsole.getState().picking).toBe(false);
+    });
+  });
+
+  describe('header and success', () => {
+    it('confirms the report with a toast', async () => {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+      const { form } = renderForm();
+      await fillRequired(form);
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+      expect(useToasts.getState().toasts).toEqual([
+        expect.objectContaining({
+          title: 'Reported INC-000042',
+          detail: 'Person down at entrance',
+        }),
+      ]);
+    });
+
+    it('counts the title outside its name', async () => {
+      const { form } = renderForm();
+
+      await userEvent.type(titleBox(form), 'Smoke');
+
+      expect(form.getByText('5 / 160')).toHaveAttribute('aria-hidden', 'true');
+      expect(titleBox(form)).toHaveValue('Smoke');
+    });
+
+    it('cancels from the top of the sheet', async () => {
+      const { form } = renderForm();
+      await userEvent.type(titleBox(form), 'Smoke');
+
+      await userEvent.click(form.getByRole('button', { name: 'Cancel report' }));
+
+      expect(useConsole.getState().reporting).toBe(false);
+    });
   });
 });

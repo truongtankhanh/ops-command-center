@@ -41,3 +41,67 @@
   white-space: nowrap;
   pointer-events: none;
 }
+
+/*
+ * Frame 03's `.map-hint` while "Pick on map" is on: a pill at the top of the part of the map the
+ * sheet leaves visible (`--sheet-inset`, set on the stage). Clicks go through it to the map.
+ */
+.pickHint {
+  position: absolute;
+  top: var(--space-3);
+  left: calc((100% - var(--sheet-inset, 0px)) / 2);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
+  height: 36px;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.pickHint > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+/*
+ * The report's pin (frame 03 `.mk-pin`), placed by a MapLibre marker. No `position` here, as for
+ * `.codeTag`: `.maplibregl-marker` sets it (ADR-0016 §5).
+ */
+.reportPin {
+  line-height: 0;
+}
+
+.reportPin[data-draggable] {
+  cursor: grab;
+}
+
+.reportPin[data-draggable]:active {
+  cursor: grabbing;
+}
+
+.pinBody {
+  fill: var(--accent);
+  stroke: var(--surface-0);
+  stroke-width: 2;
+}
+
+.pinDot {
+  fill: var(--surface-0);
+}
+
+/* The pin's ground shadow: the dimming colour of the dialog scrim. */
+.pinShadow {
+  fill: var(--scrim);
+}

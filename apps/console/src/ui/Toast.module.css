@@ -1,0 +1,68 @@
+/*
+ * Frame 04's `.toasts` / `.toast`. The region lies over the stage (App.module.css `.stage`) and
+ * keeps to its right edge beside the open sheet (`--sheet-inset`). It lets clicks through where it
+ * has no toast.
+ */
+.region {
+  position: absolute;
+  top: var(--space-3);
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
+  z-index: var(--z-toast);
+  width: min(392px, calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3)));
+  pointer-events: none;
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+  pointer-events: auto;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-m);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.text {
+  min-width: 0;
+  align-self: center;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-l);
+  color: var(--text-primary);
+}
+
+.detail {
+  margin: var(--space-0-5) 0 0;
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* Higher specificity than `Button`'s own rule: a square icon button. */
+.toast .dismiss {
+  width: 32px;
+  padding: 0;
+}
