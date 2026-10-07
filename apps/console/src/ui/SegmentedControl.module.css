@@ -1,4 +1,4 @@
-/* Segmented radio group (mockup 03 `.seg`, without the severity icons — UI-12 adds them). */
+/* Segmented radio group: mockup 03 `.seg` (row, severity icons) and `.type-grid` / `.opt` (grid). */
 
 .group {
   margin: 0;
@@ -41,6 +41,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: var(--space-1-5);
   height: 40px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
@@ -60,7 +61,44 @@
   font-weight: var(--weight-semibold);
 }
 
+/* The grid: three columns of tiles with the glyph above the label (frame 03's type grid). */
+.options[data-layout='grid'] {
+  grid-auto-flow: row;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.options[data-layout='grid'] .face {
+  flex-direction: column;
+  gap: var(--space-1);
+  height: 62px;
+  padding: 0 var(--space-1);
+  font-size: var(--type-m);
+  text-align: center;
+}
+
+/* Frame 03's `.opt.is-checked`: accent border and tint, no bottom bar. */
+.options[data-layout='grid'] .input:checked + .face {
+  box-shadow: none;
+}
+
+/* A severity option's glyph keeps its hue; any other glyph turns accent with its option. */
+.icon {
+  color: var(--sev, var(--text-secondary));
+}
+
+.input:checked + .face .icon {
+  color: var(--sev, var(--accent));
+}
+
 .input:focus-visible + .face {
   outline: var(--focus-ring);
   outline-offset: var(--focus-offset);
+}
+
+/* Same as `Field`'s error; form errors may use `--danger` (docs/design/tokens.md). */
+.error {
+  margin: var(--space-1-5) 0 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--danger);
 }

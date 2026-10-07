@@ -1,16 +1,24 @@
+/*
+ * Frame 03's report sheet. The form fills the sheet (a flex column, ui/Sheet.module.css): the body
+ * scrolls with the sheet and the footer sticks to its bottom.
+ */
 .form {
-  display: grid;
-  gap: var(--space-4);
-  padding: var(--space-5);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
-/* `.toprow`, `.title`, `.actions` and `.error` came from the shared `panel.module.css` (UI-10). */
+.body {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+}
+
 .toprow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
+  gap: var(--space-2);
 }
 
 .title {
@@ -19,6 +27,56 @@
   font-size: var(--type-2xl);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-2xl);
+}
+
+/* Zone select and "Pick on map" side by side (frame 03 `.loc`). */
+.location {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-2);
+}
+
+/*
+ * Lined up with the select, below the field's label row (`--leading-m` of the `--type-m` label plus
+ * the field's gap), so an error under the select never moves it.
+ */
+.pick {
+  margin-top: calc(var(--leading-m) + var(--space-1-5));
+}
+
+/* The pin hint and its "Remove pin" button. The hint brings its own top margin. */
+.pinRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: var(--space-2);
+}
+
+.pinRow > button {
+  margin-top: var(--space-1-5);
+}
+
+.details {
+  min-height: 96px;
+}
+
+/*
+ * Frame 03's `.sheet-foot`, as the detail's footer (IncidentResponse.module.css): sticky at the
+ * bottom of the scrolling sheet, `margin-top: auto` keeps it there when the form is short.
+ */
+.footer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 var(--border-subtle),
+    var(--shadow-1);
 }
 
 .actions {
@@ -37,6 +95,13 @@
   flex: 1;
 }
 
-.details {
-  min-height: 96px;
+/* The sheet covers the whole screen here, so the map cannot be picked on (D16). */
+@media (max-width: 720px) {
+  .pick {
+    display: none;
+  }
+
+  .location {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

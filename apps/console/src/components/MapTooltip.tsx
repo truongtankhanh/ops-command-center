@@ -25,7 +25,8 @@ interface Hover {
 
 /**
  * What is under the pointer on the map: an incident, a cluster or a camera. Owns the map's one
- * `mousemove` handler, so it also sets the pointer cursor over what a click acts on.
+ * `mousemove` handler, so it also sets the pointer cursor over what a click acts on (except while
+ * the report's location is being picked).
  *
  * Pointer-only and hidden from assistive tech: the incident feed is the keyboard and screen-reader
  * route to every incident the map draws, and on touch a tap selects. The tooltip anchors at the
@@ -46,6 +47,12 @@ export function MapTooltip({ map }: { map: MapLibreMap | null }) {
     let moving = false;
 
     const onMove = (event: MapMouseEvent) => {
+      // While picking the report's location a click places the pin, so nothing is pointed out and
+      // the cursor stays the crosshair `CampusMap` sets.
+      if (useConsole.getState().picking) {
+        setHover(null);
+        return;
+      }
       const [hit] = map.queryRenderedFeatures(event.point, { layers: HOVER_LAYERS });
       canvas.style.cursor = hit && isClickable(hit.layer.id) ? 'pointer' : '';
       const target =

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import styles from './Hint.module.css';
 import { Icon } from './Icon';
-import { Info } from './icons';
+import { type Glyph, Info } from './icons';
 
 export type HintTone = 'info' | 'warning';
 
@@ -14,10 +14,22 @@ export type HintTone = 'info' | 'warning';
  * Not a live region: a hint shown while typing would be read out on every first keystroke. The
  * caller announces what needs announcing (e.g. `Sheet`'s `keptMessage`).
  */
-export function Hint({ tone = 'info', children }: { tone?: HintTone; children: ReactNode }) {
+export function Hint({
+  tone = 'info',
+  icon = Info,
+  id,
+  children,
+}: {
+  tone?: HintTone;
+  /** Decorative; `Info` unless the hint is about something with its own glyph (the report pin). */
+  icon?: Glyph;
+  /** For a control that names this hint in its `aria-describedby`. */
+  id?: string;
+  children: ReactNode;
+}) {
   return (
-    <p className={styles.hint} data-tone={tone}>
-      <Icon glyph={Info} size={14} />
+    <p id={id} className={styles.hint} data-tone={tone}>
+      <Icon glyph={icon} size={14} />
       {children}
     </p>
   );

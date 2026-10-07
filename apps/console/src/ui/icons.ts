@@ -117,12 +117,15 @@ export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff
 
 // Generic UI glyphs, re-exported so that nothing outside this module imports the icon set.
 export {
+  Check,
   ChevronDown,
   Clock,
+  Crosshair,
   Eye,
   Info,
   Lock,
   LogOut,
+  MapPin,
   Minus,
   Plus,
   Scan,

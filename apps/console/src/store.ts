@@ -1,11 +1,33 @@
-import type { IncidentSeverity } from '@occ/contracts';
+import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
 import type { FeedFilter } from './lib/incidents';
 
 /** `connecting` is the first connect only; every later attempt is `reconnecting`. */
 export type ConnectionState = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
-interface ConsoleState {
+/**
+ * Where the incident being reported is, chosen in the report form or on the map. Kept here, not in
+ * the form, because the map (a sibling) draws the pin and outlines the zone, and places the pin.
+ */
+interface ReportLocation {
+  reportZoneId: string | null;
+  /** The pin, always inside `reportZoneId`; `null` lets the API use the zone's centre. */
+  reportPosition: LngLat | null;
+  /** "Pick on map" is on: a map click places the pin, and the pin can be dragged. */
+  picking: boolean;
+  /** The last click or drop was outside every zone, so the pin was not placed or moved. */
+  pinMissed: boolean;
+}
+
+/** A report starts, ends and is left with no location, so a cancelled pin never reappears. */
+const NO_REPORT_LOCATION: ReportLocation = {
+  reportZoneId: null,
+  reportPosition: null,
+  picking: false,
+  pinMissed: false,
+};
+
+interface ConsoleState extends ReportLocation {
   selectedIncidentId: string | null;
   filter: FeedFilter;
   /** Feed filter by severity, set from the header's KPI tiles; `null` shows every severity. */
@@ -42,6 +64,14 @@ interface ConsoleState {
   /** Stores the note as typed; an empty note removes the entry. */
   setNote(incidentId: string, note: string): void;
   clearNote(incidentId: string): void;
+  /** Chooses the report's zone; choosing another zone removes the pin, which lay in the old one. */
+  setReportZone(zoneId: string): void;
+  /** Places or moves the pin, with the zone it lies in. */
+  placePin(position: LngLat, zoneId: string): void;
+  /** A click or drop outside every zone: the pin stays where it was. */
+  missPin(): void;
+  clearPin(): void;
+  setPicking(picking: boolean): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -54,16 +84,18 @@ export const useConsole = create<ConsoleState>((set) => ({
   fresh: new Set(),
   reporting: false,
   noteDrafts: {},
+  ...NO_REPORT_LOCATION,
 
   select: (id) =>
     set((state) => {
-      if (id === null || !state.fresh.has(id)) return { selectedIncidentId: id, reporting: false };
+      const closed = { selectedIncidentId: id, reporting: false, ...NO_REPORT_LOCATION };
+      if (id === null || !state.fresh.has(id)) return closed;
       const fresh = new Set(state.fresh);
       fresh.delete(id);
-      return { selectedIncidentId: id, fresh, reporting: false };
+      return { ...closed, fresh };
     }),
-  startReport: () => set({ reporting: true, selectedIncidentId: null }),
-  closeReport: () => set({ reporting: false }),
+  startReport: () => set({ reporting: true, selectedIncidentId: null, ...NO_REPORT_LOCATION }),
+  closeReport: () => set({ reporting: false, ...NO_REPORT_LOCATION }),
   setFilter: (filter) => set({ filter }),
   toggleSeverity: (severity) =>
     set((state) =>
@@ -81,6 +113,17 @@ export const useConsole = create<ConsoleState>((set) => ({
     ),
   clearNote: (incidentId) =>
     set((state) => ({ noteDrafts: withoutKey(state.noteDrafts, incidentId) })),
+  setReportZone: (zoneId) =>
+    set((state) =>
+      state.reportZoneId === zoneId
+        ? state
+        : { reportZoneId: zoneId, reportPosition: null, pinMissed: false },
+    ),
+  placePin: (position, zoneId) =>
+    set({ reportPosition: position, reportZoneId: zoneId, pinMissed: false }),
+  missPin: () => set({ pinMissed: true }),
+  clearPin: () => set({ reportPosition: null, pinMissed: false }),
+  setPicking: (picking) => set(picking ? { picking } : { picking, pinMissed: false }),
 }));
 
 function withoutKey<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {

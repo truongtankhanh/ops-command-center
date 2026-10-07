@@ -9,6 +9,7 @@ import maplibregl, {
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
+import { zoneAt } from '../lib/geo';
 import { cameraFeatures, cameraViewFeatures, incidentFeatures } from '../lib/mapFeatures';
 import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
 import {
@@ -32,6 +33,8 @@ import { siteBounds } from '../lib/sitePlan';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { layout, mapColors, mapMotion } from '../styles/tokens';
+import { Icon } from '../ui/Icon';
+import { Crosshair } from '../ui/icons';
 import styles from './CampusMap.module.css';
 import { MapControls } from './MapControls';
 import { MapLegend } from './MapLegend';
@@ -78,6 +81,8 @@ export function CampusMap() {
   const { data: incidents } = useIncidents();
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const reporting = useConsole((s) => s.reporting);
+  const reportZoneId = useConsole((s) => s.reportZoneId);
+  const picking = useConsole((s) => s.picking);
   const sheetOpen = selectedId !== null || reporting;
   /** What the view frames; read by `useSiteLayers` when the ground is (re)drawn. */
   const focusRef = useRef<ViewTarget>({ point: null, sheetOpen: false });
@@ -126,6 +131,7 @@ export function CampusMap() {
   useSiteLayers(map, zones, sitePlan, focusRef);
   useCameraLayer(map, cameras);
   useIncidentLayers(map, features);
+  useReportPick(map, zones);
 
   // Bring the selected incident into view beside the sheet, at the marker as drawn (it may be fanned
   // out from its true position); show the whole campus when nothing is selected. The view moves when
@@ -148,18 +154,26 @@ export function CampusMap() {
 
   const selected = incidents?.find((i) => i.id === selectedId);
 
-  // Frame 03's outline on the selected incident's zone. The layer is re-added with the zones and
-  // the site plan, so this also runs when either (re)arrives.
-  const selectedZoneId = selected?.zoneId ?? null;
+  // Frame 03's outline: on the zone being reported while the report form is open, else on the
+  // selected incident's zone. The layer is re-added with the zones and the site plan, so this also
+  // runs when either (re)arrives.
+  const highlightZoneId = reporting ? reportZoneId : (selected?.zoneId ?? null);
   useEffect(() => {
     if (map?.getLayer(MAP_LAYERS.zoneHighlight)) {
-      map.setFilter(MAP_LAYERS.zoneHighlight, zoneHighlightFilter(selectedZoneId));
+      map.setFilter(MAP_LAYERS.zoneHighlight, zoneHighlightFilter(highlightZoneId));
     }
-  }, [map, zones, sitePlan, selectedZoneId]);
+  }, [map, zones, sitePlan, highlightZoneId]);
 
   return (
     <section className={styles.map} aria-label="Campus map">
       <div ref={container} className={styles.canvas} />
+      {/* Pointer-only, like the map itself: the zone select is the keyboard route to a location. */}
+      {picking && (
+        <div className={styles.pickHint} aria-hidden="true">
+          <Icon glyph={Crosshair} size={16} />
+          Click the map to place the incident · drag the pin to adjust
+        </div>
+      )}
       <MapTooltip map={map} />
       <MapLegend />
       <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, FOCUS_MS)} />
@@ -323,6 +337,8 @@ function useIncidentLayers(
     // One handler for every layer: the topmost feature wins, so a marker drawn over another never
     // toggles the selection twice.
     const onClick = (event: MapMouseEvent) => {
+      // While picking, a click places the report's pin (`useReportPick`) and selects nothing.
+      if (useConsole.getState().picking) return;
       const [hit] = map.queryRenderedFeatures(event.point, { layers: INTERACTIVE_LAYERS });
       if (!hit) return;
       if (hit.layer.id === MAP_LAYERS.clusters) {
@@ -370,6 +386,101 @@ function useIncidentLayers(
     if (!map || !pulsing || reducedMotion) return;
     return startPulse(map, mapMotion.pulseMs);
   }, [map, pulsing, reducedMotion]);
+}
+
+/**
+ * Frame 03's pin, drawn by `.reportPin`: a teardrop in the accent with its tip on the point, a dark
+ * centre and a ground shadow. A constant: nothing user-supplied is ever put into this markup.
+ */
+const PIN_SVG = `<svg viewBox="-12 -31 24 34" width="24" height="34" aria-hidden="true">
+  <ellipse class="${styles.pinShadow}" cx="0" cy="0" rx="7" ry="2.5"/>
+  <path class="${styles.pinBody}" d="M0 0 C-3 -7 -10 -11 -10 -19 A10 10 0 1 1 10 -19 C10 -11 3 -7 0 0 Z"/>
+  <circle class="${styles.pinDot}" cx="0" cy="-19" r="4"/>
+</svg>`;
+/** The drawing reaches 3 px below the tip (the shadow); the marker is anchored at its bottom. */
+const PIN_TIP_OFFSET: [number, number] = [0, 3];
+
+/**
+ * Picking the report's location on the map (frame 03). While "Pick on map" is on, a click inside a
+ * zone places the pin there and selects that zone; a click outside every zone places nothing. The
+ * pin is a DOM marker, so MapLibre drags it (mouse and touch); a drop in another zone selects that
+ * zone, a drop outside every zone puts the pin back. Zones are found by the API's own rule
+ * (`zoneAt`), so a placed pin is never refused for lying outside its zone.
+ *
+ * The marker exists only while there is a pin. Pointer-only: the zone select is the keyboard route,
+ * and a report without a pin goes to the zone's centre.
+ */
+function useReportPick(map: maplibregl.Map | null, zones: Zone[] | undefined) {
+  const picking = useConsole((s) => s.picking);
+  const position = useConsole((s) => s.reportPosition);
+  const hasPin = position !== null;
+  const pin = useRef<maplibregl.Marker | null>(null);
+  // Read by the handlers added once per map or per pin, so they see the zones as they are now.
+  const zonesRef = useRef(zones);
+  useEffect(() => {
+    zonesRef.current = zones;
+  });
+
+  useEffect(() => {
+    if (!map) return;
+    const onClick = (event: MapMouseEvent) => {
+      if (!useConsole.getState().picking) return;
+      placePinAt([event.lngLat.lng, event.lngLat.lat], zonesRef.current);
+    };
+    map.on('click', onClick);
+    return () => {
+      map.off('click', onClick);
+    };
+  }, [map]);
+
+  // `MapTooltip` leaves the cursor alone while picking.
+  useEffect(() => {
+    if (map) map.getCanvas().style.cursor = picking ? 'crosshair' : '';
+  }, [map, picking]);
+
+  // The marker comes and goes with the pin; moving the pin only moves the marker (below).
+  useEffect(() => {
+    const start = useConsole.getState().reportPosition;
+    if (!map || !start) return;
+    const element = document.createElement('div');
+    element.className = styles.reportPin!;
+    element.innerHTML = PIN_SVG;
+    const marker = new maplibregl.Marker({ element, anchor: 'bottom', offset: PIN_TIP_OFFSET })
+      .setLngLat(start)
+      .addTo(map);
+    marker.on('dragend', () => {
+      const { lng, lat } = marker.getLngLat();
+      if (placePinAt([lng, lat], zonesRef.current)) return;
+      // Dropped outside every zone: back to where it was, which is still in the store.
+      const kept = useConsole.getState().reportPosition;
+      if (kept) marker.setLngLat(kept);
+    });
+    pin.current = marker;
+    return () => {
+      marker.remove();
+      pin.current = null;
+    };
+  }, [map, hasPin]);
+
+  useEffect(() => {
+    if (position) pin.current?.setLngLat(position);
+  }, [position]);
+
+  useEffect(() => {
+    const marker = pin.current;
+    if (!marker) return;
+    marker.setDraggable(picking);
+    marker.getElement().toggleAttribute('data-draggable', picking);
+  }, [picking, hasPin]);
+}
+
+/** Places the report's pin at `point` if it lies in a zone, else reports a miss. True if placed. */
+function placePinAt(point: LngLat, zones: readonly Zone[] | undefined): boolean {
+  const zone = zoneAt(point, zones ?? []);
+  const { placePin, missPin } = useConsole.getState();
+  if (zone) placePin(point, zone.id);
+  else missPin();
+  return zone !== undefined;
 }
 
 /** Zooms to where a cluster breaks up. */

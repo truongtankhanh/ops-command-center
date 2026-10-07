@@ -8,6 +8,7 @@ import { ReportIncidentForm } from './components/ReportIncidentForm';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
 import { useConsole } from './store';
 import { SheetHost } from './ui/Sheet';
+import { ToastRegion } from './ui/Toast';
 
 export function App() {
   useLiveIncidents();
@@ -31,6 +32,8 @@ export function App() {
             ) : (
               selectedId && <IncidentDetail key={selectedId} id={selectedId} />
             )}
+            {/* Over the stage beside the sheet, so a toast never covers the incident it is about. */}
+            <ToastRegion />
           </div>
         </main>
       </SheetHost>

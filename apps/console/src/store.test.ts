@@ -173,4 +173,66 @@ describe('useConsole', () => {
       }
     });
   });
+
+  // The form and the map share the report's location; a cancelled pin must never come back.
+  describe('report location', () => {
+    const PIN: [number, number] = [108.4415, 11.953];
+
+    it('chooses a zone, and drops the pin when the zone changes', () => {
+      state().startReport();
+      state().placePin(PIN, 'z1');
+      const before = state();
+
+      state().setReportZone('z1');
+      expect(state()).toBe(before);
+
+      state().setReportZone('z2');
+      expect(state()).toMatchObject({ reportZoneId: 'z2', reportPosition: null, pinMissed: false });
+    });
+
+    it('places, misses and clears the pin', () => {
+      state().placePin(PIN, 'z1');
+      expect(state()).toMatchObject({ reportPosition: PIN, reportZoneId: 'z1', pinMissed: false });
+
+      state().missPin();
+      expect(state()).toMatchObject({ reportPosition: PIN, pinMissed: true });
+
+      state().placePin(PIN, 'z1');
+      expect(state().pinMissed).toBe(false);
+
+      state().clearPin();
+      expect(state()).toMatchObject({ reportPosition: null, reportZoneId: 'z1', pinMissed: false });
+    });
+
+    it('forgets a miss when picking stops, not when it starts', () => {
+      state().missPin();
+
+      state().setPicking(true);
+      expect(state()).toMatchObject({ picking: true, pinMissed: true });
+
+      state().setPicking(false);
+      expect(state()).toMatchObject({ picking: false, pinMissed: false });
+    });
+
+    it.each([
+      ['startReport', () => state().startReport()],
+      ['closeReport', () => state().closeReport()],
+      ['select an incident', () => state().select('a')],
+      ['select nothing', () => state().select(null)],
+    ])('resets the location on %s', (_name, act) => {
+      state().setReportZone('z1');
+      state().placePin(PIN, 'z1');
+      state().setPicking(true);
+      state().missPin();
+
+      act();
+
+      expect(state()).toMatchObject({
+        reportZoneId: null,
+        reportPosition: null,
+        picking: false,
+        pinMissed: false,
+      });
+    });
+  });
 });
