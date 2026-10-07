@@ -33,8 +33,8 @@ export function isShortcut(event: KeyboardEvent, key: string): boolean {
 
 /**
  * Runs `handler` when the single-key shortcut `key` is pressed anywhere in the console, while
- * `enabled`. Pass a stable `handler` (a store action or a `useCallback`), as with
- * `useCloseOnEscape`. Pair it with a visible hint and `aria-keyshortcuts` on the control it
+ * `enabled`. Pass a stable `handler` (a store action or a `useCallback`), so the listener is not
+ * re-added on every render. Pair it with a visible hint and `aria-keyshortcuts` on the control it
  * triggers (`Button`'s `shortcut` prop), and only enable it while that control is available.
  */
 export function useShortcut(key: string, handler: () => void, enabled: boolean): void {

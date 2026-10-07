@@ -1,5 +1,5 @@
 import type { IncidentDetail as Detail, IncidentEvent, Role, Zone } from '@occ/contracts';
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
@@ -13,6 +13,7 @@ vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn
 
 const OPERATOR_SUBJECT = 'f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d';
 const NOTE_LABEL = 'Note for the timeline (optional)';
+const NOTE_KEPT = 'Esc keeps your note. Close discards it.';
 
 const zone: Zone = {
   id: '6f1c2b1e-0000-4000-8000-000000000001',
@@ -223,21 +224,75 @@ describe('IncidentDetail', () => {
       expect(useConsole.getState().selectedIncidentId).toBeNull();
     });
 
-    // The header's `N` shortcut reads this flag, so it never throws a note away (UI-06).
-    it('tells the console while it holds a note, until the note is gone or the detail closes', async () => {
+    // Switching to another incident or to the report form unmounts the detail: the note survives it.
+    it('keeps the note in the store until it is cleared', async () => {
       const { unmount } = renderDetail();
-      const noteDraft = () => useConsole.getState().noteDraft;
-      expect(noteDraft()).toBe(false);
+      const note = () => useConsole.getState().noteDrafts[detail().id];
+      expect(note()).toBeUndefined();
 
       await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
-      expect(noteDraft()).toBe(true);
+      expect(note()).toBe('Guard');
 
       await userEvent.clear(screen.getByLabelText(NOTE_LABEL));
-      expect(noteDraft()).toBe(false);
+      expect(note()).toBeUndefined();
 
       await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
       unmount();
-      expect(noteDraft()).toBe(false);
+      expect(note()).toBe('Guard');
+
+      renderDetail();
+      expect(screen.getByLabelText(NOTE_LABEL)).toHaveValue('Guard');
+    });
+
+    it('discards the note only on Close', async () => {
+      renderDetail();
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Close incident' }));
+
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+      expect(useConsole.getState().noteDrafts).not.toHaveProperty(detail().id);
+    });
+
+    it('explains what Escape does while a note is written', async () => {
+      renderDetail();
+      const close = screen.getByRole('button', { name: 'Close incident' });
+      const hint = () => screen.queryByText(NOTE_KEPT, { selector: 'p' });
+      expect(hint()).toBeNull();
+      expect(close).toHaveAttribute('aria-keyshortcuts', 'Escape');
+
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
+      expect(hint()).toHaveAttribute('data-tone', 'info');
+      // Escape no longer closes, so the key is not offered on Close.
+      expect(close).not.toHaveAttribute('aria-keyshortcuts');
+
+      await userEvent.keyboard('{Escape}');
+      expect(hint()).toHaveAttribute('data-tone', 'warning');
+      const sheet = screen.getByRole('complementary', { name: 'Incident INC-000042' });
+      expect(within(sheet).getByRole('status')).toHaveTextContent(NOTE_KEPT);
+      expect(useConsole.getState().selectedIncidentId).toBe(detail().id);
+
+      // A cleared note forgets the warning: the next one starts with the plain hint.
+      await userEvent.clear(screen.getByLabelText(NOTE_LABEL));
+      expect(hint()).toBeNull();
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'G');
+      expect(hint()).toHaveAttribute('data-tone', 'info');
+    });
+
+    it('names the sheet after the incident, and moves focus to it', () => {
+      renderDetail();
+
+      expect(screen.getByRole('complementary', { name: 'Incident INC-000042' })).toHaveFocus();
+    });
+
+    it('names the sheet while the incident is still loading', () => {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.zones, [zone]);
+      client.setQueryData(queryKeys.cameras, []);
+      // Not cached: the GET stays pending in this file's fetch mock.
+      renderWithQueryClient(<IncidentDetail id="incident-9" />, client);
+
+      expect(screen.getByRole('complementary', { name: 'Incident' })).toHaveFocus();
     });
   });
 
@@ -263,6 +318,24 @@ describe('IncidentDetail', () => {
       expect(await screen.findByText('Demo Operator')).toBeInTheDocument();
       expect(postCalls()).toHaveLength(1);
       expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/acknowledge');
+    });
+
+    it('clears the note once it is sent', async () => {
+      postResponse = () =>
+        json(
+          detail({
+            status: 'acknowledged',
+            acknowledgedAt: '2026-10-01T08:05:00.000Z',
+            version: 2,
+          }),
+        );
+      renderDetail();
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Guard');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
+
+      await waitFor(() => expect(useConsole.getState().noteDrafts).not.toHaveProperty(detail().id));
+      expect(postCalls()).toHaveLength(1);
     });
 
     it('explains a 403 in operator terms and keeps the note', async () => {

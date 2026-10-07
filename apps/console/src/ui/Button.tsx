@@ -7,6 +7,9 @@ import { Kbd } from './Kbd';
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'md' | 'sm';
 
+/** `aria-keyshortcuts` takes key names; the hint shows the short label people know from keyboards. */
+const ARIA_KEY_NAME: Readonly<Record<string, string>> = { Esc: 'Escape' };
+
 /**
  * The console's button (frame 00). `type` defaults to `"button"`; pass `type="submit"` in a form.
  *
@@ -17,9 +20,10 @@ export type ButtonSize = 'md' | 'sm';
  *   happening ("Reporting…"). There is no spinner: only arrival, selection and escalation animate.
  * - `icon` is drawn before the label and hidden from assistive tech, so the accessible name stays
  *   the visible text.
- * - `shortcut` draws a `Kbd` hint after the label and sets `aria-keyshortcuts`; the hint is hidden
- *   from assistive tech, so the accessible name stays the visible text. The caller wires the key
- *   itself (`useShortcut`) and passes `shortcut` only while that key works.
+ * - `shortcut` draws a `Kbd` hint after the label and sets `aria-keyshortcuts` (`Esc` becomes the
+ *   key name `Escape`); the hint is hidden from assistive tech, so the accessible name stays the
+ *   visible text. The caller wires the key itself (`useShortcut`, or `Sheet` for Escape) and passes
+ *   `shortcut` only while that key works.
  * - The button sets no outer layout (`flex`, `width`, `margin`); pass a `className` for that.
  * - `secondary` draws its boundary in `--border-strong`, which reaches 3:1 only on `--surface-0` and
  *   `--surface-1`. On a lighter surface use `primary` or `ghost`.
@@ -51,7 +55,7 @@ export function Button({
       data-size={size === 'sm' ? 'sm' : undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      aria-keyshortcuts={shortcut}
+      aria-keyshortcuts={shortcut && (ARIA_KEY_NAME[shortcut] ?? shortcut)}
     >
       {icon && <Icon glyph={icon} size={size === 'sm' ? 16 : 18} />}
       {children}

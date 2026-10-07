@@ -10,7 +10,7 @@
  * in lint. Ratios use the WCAG 2.x relative-luminance formula.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { mapColors, mapMotion } from '../src/styles/tokens.ts';
+import { layout, mapColors, mapMotion } from '../src/styles/tokens.ts';
 
 interface Rgba {
   r: number;
@@ -274,6 +274,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       copy: '`mapMotion.pulseMs` (src/styles/tokens.ts)',
       actual: `${mapMotion.pulseMs}ms`,
       expected: css.get('--duration-pulse') ?? 'missing',
+    },
+    {
+      copy: '`layout.sheetWidth` (src/styles/tokens.ts)',
+      actual: `${layout.sheetWidth}px`,
+      expected: css.get('--sheet-width') ?? 'missing',
     },
     {
       copy: '`theme-color` (index.html)',

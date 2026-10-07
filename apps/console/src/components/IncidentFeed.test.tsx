@@ -259,8 +259,8 @@ describe('IncidentFeed', () => {
       expect(searchbox()).toHaveValue('');
     });
 
-    it("clears the search with Escape without reaching the sheet's listener", async () => {
-      // Stands in for `useCloseOnEscape`, which listens on `window`.
+    it('clears the search with Escape and stops it there', async () => {
+      // Stands in for any page-level Escape handler.
       const onKey = vi.fn<(event: KeyboardEvent) => void>();
       const escapes = () => onKey.mock.calls.filter(([event]) => event.key === 'Escape').length;
       window.addEventListener('keydown', onKey);

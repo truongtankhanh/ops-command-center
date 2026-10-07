@@ -56,6 +56,8 @@ function apiError(status: number, message: string): Response {
   return new Response(JSON.stringify({ statusCode: status, message }), { status });
 }
 
+const DRAFT_KEPT = 'Esc keeps your draft. Cancel discards it.';
+
 function renderForm() {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   client.setQueryData(queryKeys.zones, [zone]);
@@ -312,6 +314,33 @@ describe('ReportIncidentForm', () => {
 
     await userEvent.click(form.getByRole('button', { name: 'Cancel' }));
     expect(useConsole.getState().reporting).toBe(false);
+  });
+
+  it('explains what Escape does with a draft', async () => {
+    const { form } = renderForm();
+    const cancel = form.getByRole('button', { name: 'Cancel' });
+    const hint = () => form.queryByText(DRAFT_KEPT, { selector: 'p' });
+    expect(cancel).toHaveAttribute('aria-keyshortcuts', 'Escape');
+    expect(hint()).toBeNull();
+
+    await userEvent.type(form.getByLabelText('Title'), 'Smoke');
+    expect(hint()).toHaveAttribute('data-tone', 'info');
+    // Escape no longer cancels, so the key is not offered on Cancel.
+    expect(cancel).not.toHaveAttribute('aria-keyshortcuts');
+
+    await userEvent.keyboard('{Escape}');
+    expect(hint()).toHaveAttribute('data-tone', 'warning');
+    expect(form.getByRole('status')).toHaveTextContent(DRAFT_KEPT);
+    expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  it("keeps the id the header's Report button controls", () => {
+    renderForm();
+
+    expect(screen.getByRole('complementary', { name: 'Report an incident' })).toHaveAttribute(
+      'id',
+      'report-incident-panel',
+    );
   });
 
   it('counts a changed severity as input to keep', async () => {

@@ -8,8 +8,8 @@ import styles from './Popover.module.css';
  * panel next). Not an ARIA `menu`: a menu may hold menu items only.
  *
  * It closes on Escape (focus back to the trigger), on a pointer down outside it, and when focus
- * moves to something outside it. While open it owns Escape: the key never also reaches the
- * window-level listeners below it, such as the incident sheet's `useCloseOnEscape`.
+ * moves to something outside it. While open it owns Escape: the key is stopped in the capture
+ * phase, so no other Escape handler on the page also acts on it.
  *
  * The trigger's look (border, fill when open) is the popover's; its layout and size come from
  * `triggerClassName`. Give the trigger visible text; `triggerLabel` is for a trigger without any.

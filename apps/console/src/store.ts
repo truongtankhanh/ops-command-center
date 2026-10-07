@@ -20,8 +20,11 @@ interface ConsoleState {
   fresh: ReadonlySet<string>;
   /** The report form is open. Mutually exclusive with a selected incident. */
   reporting: boolean;
-  /** The open incident detail holds a note that leaving it would discard. */
-  noteDraft: boolean;
+  /**
+   * Unsent timeline notes by incident id. Kept here, not in the detail, so switching to another
+   * incident or to the report form and back never loses one: only Close and a sent note clear it.
+   */
+  noteDrafts: Readonly<Record<string, string>>;
 
   select(id: string | null): void;
   startReport(): void;
@@ -36,7 +39,9 @@ interface ConsoleState {
   setConnection(state: ConnectionState): void;
   markAlive(at?: number): void;
   markFresh(id: string): void;
-  setNoteDraft(noteDraft: boolean): void;
+  /** Stores the note as typed; an empty note removes the entry. */
+  setNote(incidentId: string, note: string): void;
+  clearNote(incidentId: string): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -48,7 +53,7 @@ export const useConsole = create<ConsoleState>((set) => ({
   lastEventAt: null,
   fresh: new Set(),
   reporting: false,
-  noteDraft: false,
+  noteDrafts: {},
 
   select: (id) =>
     set((state) => {
@@ -68,5 +73,18 @@ export const useConsole = create<ConsoleState>((set) => ({
   setConnection: (connection) => set({ connection }),
   markAlive: (at = Date.now()) => set({ lastEventAt: at }),
   markFresh: (id) => set((state) => ({ fresh: new Set(state.fresh).add(id) })),
-  setNoteDraft: (noteDraft) => set({ noteDraft }),
+  setNote: (incidentId, note) =>
+    set((state) =>
+      note === ''
+        ? { noteDrafts: withoutKey(state.noteDrafts, incidentId) }
+        : { noteDrafts: { ...state.noteDrafts, [incidentId]: note } },
+    ),
+  clearNote: (incidentId) =>
+    set((state) => ({ noteDrafts: withoutKey(state.noteDrafts, incidentId) })),
 }));
+
+function withoutKey<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {
+  const rest = { ...record };
+  delete rest[key];
+  return rest;
+}

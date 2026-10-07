@@ -114,8 +114,8 @@ describe('Popover', () => {
     expect(panel()).not.toBeNull();
   });
 
-  // The incident sheet listens for Escape on the window (`useCloseOnEscape`): with the menu open,
-  // one Escape must close the menu only.
+  // Other Escape handlers may listen on the window: with the menu open, one Escape must close the
+  // menu only.
   describe('Escape and the page beneath', () => {
     const onWindowKey = vi.fn();
 

@@ -1,0 +1,44 @@
+/*
+ * Frame 02's sheet: over the right of the stage (its containing block), the full stage height with
+ * the camera strip (brief, approved decision 4). The map keeps its size and pads by the same width.
+ */
+.sheet {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-sheet);
+  display: flex;
+  flex-direction: column;
+  width: min(var(--sheet-width), 100%);
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--surface-1);
+  box-shadow:
+    -1px 0 0 var(--border-subtle),
+    var(--shadow-3);
+}
+
+/* Focus lands on the sheet itself when it opens: draw the ring inside, where nothing clips it. */
+.sheet:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Read by assistive tech, not drawn: the "Esc keeps your …" announcement. */
+.status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Phones: the stage is only the top of the screen there, so the sheet covers the whole viewport. */
+@media (max-width: 720px) {
+  .sheet {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+}

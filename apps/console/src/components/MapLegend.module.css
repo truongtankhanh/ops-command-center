@@ -1,6 +1,7 @@
 /*
  * Frame 01's legend. It wraps instead of running under the map controls at the bottom-right
- * (40 px wide with their border, `--space-3` from the edge).
+ * (40 px wide with their border, `--space-3` from the edge), which sit beside the open sheet
+ * (`--sheet-inset`, set on the stage).
  */
 .legend {
   position: absolute;
@@ -9,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  max-width: calc(100% - 3 * var(--space-3) - 40px);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px);
   padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
