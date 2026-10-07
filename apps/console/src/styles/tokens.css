@@ -116,8 +116,12 @@
   --z-banner: 20;
   --z-popover: 30;
   --z-toast: 40;
+  /* A confirmation blocks the page, but never the session banner: signing in again must stay reachable. */
+  --z-dialog: 45;
   /* The session-expired banner blocks every write, so it stays above everything. */
   --z-session: 50;
+  /* Dims the page behind a modal dialog (ground hue). Only dims: no text is read against it. */
+  --scrim: rgb(5 12 17 / 0.6);
 
   color-scheme: dark;
 }

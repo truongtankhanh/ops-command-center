@@ -1,5 +1,6 @@
 import {
   type Incident,
+  type IncidentEventKind,
   type IncidentSeverity,
   type IncidentStatus,
   severityRank,
@@ -180,6 +181,77 @@ export function formatAge(fromIso: string, now: number): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
+/** Relative time for the detail's timeline: `formatAge` read as a sentence (`14m ago`, `just now`). */
+export function formatAgo(fromIso: string, now: number): string {
+  const age = formatAge(fromIso, now);
+  return age === 'now' ? 'just now' : `${age} ago`;
+}
+
+/**
+ * A duration with two units once minutes are not enough (`45s`, `14m`, `1h 35m`, `2d 3h`), for the
+ * detail's metrics, where the precision a feed age drops still matters.
+ */
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(Math.max(0, ms) / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return minutes % 60 === 0 ? `${hours}h` : `${hours}h ${minutes % 60}m`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 === 0 ? `${days}d` : `${days}d ${hours % 24}h`;
+}
+
+/**
+ * Wall-clock time `HH:MM` (24 h, local), prefixed with the date (`6 Oct 14:07`) when it is not on
+ * the same local day as `now`: an incident left open overnight would otherwise read as today.
+ */
+export function formatClock(iso: string, now: number): string {
+  const at = new Date(iso);
+  const clock = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (at.toDateString() === new Date(now).toDateString()) return clock;
+  return `${at.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${clock}`;
+}
+
+/**
+ * Where an incident is on Reported → Acknowledged → Resolved. `skipped`: resolved straight from open,
+ * which the API allows, so the acknowledge step has no time.
+ */
+export type StepState = 'done' | 'current' | 'future' | 'skipped';
+
+export interface LifecycleStep {
+  kind: IncidentEventKind;
+  state: StepState;
+  /** Set on `done` steps only. */
+  at: string | null;
+}
+
+export function lifecycleSteps(incident: Incident): LifecycleStep[] {
+  const { reportedAt, acknowledgedAt, resolvedAt } = incident;
+  return [
+    { kind: 'reported', state: 'done', at: reportedAt },
+    acknowledgedAt
+      ? { kind: 'acknowledged', state: 'done', at: acknowledgedAt }
+      : { kind: 'acknowledged', state: resolvedAt ? 'skipped' : 'current', at: null },
+    resolvedAt
+      ? { kind: 'resolved', state: 'done', at: resolvedAt }
+      : { kind: 'resolved', state: acknowledgedAt ? 'current' : 'future', at: null },
+  ];
+}
+
+/** How long the incident has been (or, once `final`, was) open, from report to resolution. */
+export function openDuration(incident: Incident, now: number): { ms: number; final: boolean } {
+  const end = incident.resolvedAt ? Date.parse(incident.resolvedAt) : now;
+  return { ms: end - Date.parse(incident.reportedAt), final: incident.resolvedAt !== null };
+}
+
+/** Report to acknowledgement; `pending` while nobody has, `skipped` when resolved without it. */
+export function acknowledgeDuration(incident: Incident): number | 'pending' | 'skipped' {
+  if (incident.acknowledgedAt)
+    return Date.parse(incident.acknowledgedAt) - Date.parse(incident.reportedAt);
+  return incident.resolvedAt ? 'skipped' : 'pending';
+}
+
 const TYPE_LABELS: Record<Incident['type'], string> = {
   intrusion: 'Intrusion',
   fire_alarm: 'Fire alarm',
@@ -207,3 +279,12 @@ const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
 };
 
 export const severityLabel = (severity: IncidentSeverity) => SEVERITY_LABELS[severity];
+
+const EVENT_LABELS: Record<IncidentEventKind, string> = {
+  reported: 'Reported',
+  acknowledged: 'Acknowledged',
+  resolved: 'Resolved',
+};
+
+/** A lifecycle step or timeline entry; the step names match the timeline's. */
+export const eventLabel = (kind: IncidentEventKind) => EVENT_LABELS[kind];

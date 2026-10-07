@@ -1,40 +1,31 @@
-import type { IncidentDetail as Detail, IncidentEventKind } from '@occ/contracts';
-import { useCallback, useState } from 'react';
-import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
-import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
-import { usePermission } from '../auth/usePermission';
+import type { IncidentDetail as Detail } from '@occ/contracts';
+import { type ReactNode, useCallback, useState } from 'react';
+import { ApiRequestError } from '../api/client';
+import { useCameras, useIncident, useZones } from '../api/queries';
 import { typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
-import { Field, Textarea } from '../ui/Field';
-import { Hint } from '../ui/Hint';
+import { Icon } from '../ui/Icon';
+import { actorKindIcon, incidentTypeIcon, zoneKindIcon } from '../ui/icons';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { Sheet } from '../ui/Sheet';
-import { StatusChip } from '../ui/StatusChip';
+import { Skeleton } from '../ui/Skeleton';
 import { CameraTile } from './CameraTile';
 import styles from './IncidentDetail.module.css';
-
-const EVENT_LABEL: Record<IncidentEventKind, string> = {
-  reported: 'Reported',
-  acknowledged: 'Acknowledged',
-  resolved: 'Resolved',
-};
-
-/** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
-const NOTE_KEPT = 'Esc keeps your note. Close discards it.';
-
-const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+import { IncidentLifecycle } from './IncidentLifecycle';
+import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
+import { IncidentTimeline } from './IncidentTimeline';
 
 /**
- * The incident in the sheet. One `Sheet` holds the loading, failed and loaded states, so the data
- * arriving never moves focus. The note being written lives in the store (`noteDrafts`): leaving for
- * another incident or the report form keeps it, and only Close or a sent note clears it.
+ * The incident in the sheet (frames 02 / 06). One `Sheet` holds the loading, failed and loaded
+ * states, so the data arriving never moves focus. The note being written lives in the store
+ * (`noteDrafts`): leaving for another incident or the report form keeps it, and only Close or a
+ * sent note clears it.
  */
 export function IncidentDetail({ id }: { id: string }) {
-  const { data: incident, isPending, isError } = useIncident(id);
+  const { data: incident, error, isPending, isFetching, refetch } = useIncident(id);
   const select = useConsole((s) => s.select);
   const clearNote = useConsole((s) => s.clearNote);
   const hasDraft = useConsole((s) => (s.noteDrafts[id] ?? '').trim() !== '');
@@ -53,6 +44,19 @@ export function IncidentDetail({ id }: { id: string }) {
   }
   const keepNote = useCallback(() => setKept(true), []);
 
+  // Escape closes only while no note would be lost; the hint under the note says so then.
+  const closeButton = (
+    <Button
+      variant="ghost"
+      size="sm"
+      shortcut={hasDraft ? undefined : 'Esc'}
+      onClick={close}
+      aria-label="Close incident"
+    >
+      Close
+    </Button>
+  );
+
   return (
     <Sheet
       label={incident ? `Incident ${incident.code}` : 'Incident'}
@@ -61,94 +65,125 @@ export function IncidentDetail({ id }: { id: string }) {
       keptMessage={NOTE_KEPT}
       onEscapeKept={keepNote}
     >
-      {isPending ? null : isError || !incident ? (
-        <EmptyState>This incident could not be loaded.</EmptyState>
+      {/* Data first: a failed background refetch keeps the incident on screen (TanStack keeps it). */}
+      {incident ? (
+        <DetailBody incident={incident} kept={kept} closeButton={closeButton} />
+      ) : isPending ? (
+        <DetailSkeleton closeButton={closeButton} />
       ) : (
-        <DetailBody incident={incident} hasDraft={hasDraft} kept={kept} onClose={close} />
+        <>
+          <div className={styles.head}>
+            <TopRow closeButton={closeButton} />
+          </div>
+          {error instanceof ApiRequestError && error.status === 404 ? (
+            <EmptyState>This incident no longer exists.</EmptyState>
+          ) : (
+            <EmptyState
+              action={
+                <Button loading={isFetching} onClick={() => void refetch()}>
+                  Retry
+                </Button>
+              }
+            >
+              This incident could not be loaded.
+            </EmptyState>
+          )}
+        </>
       )}
     </Sheet>
   );
 }
 
+function TopRow({ code, closeButton }: { code?: ReactNode; closeButton: ReactNode }) {
+  return (
+    <div className={styles.toprow}>
+      <span className={styles.code}>{code}</span>
+      {closeButton}
+    </div>
+  );
+}
+
+/** Laid out like the loaded head and timeline, so nothing jumps when the incident arrives. */
+function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
+  return (
+    <div className={styles.head} aria-busy="true">
+      <p role="status" className={styles.hidden}>
+        Loading incident…
+      </p>
+      <TopRow code={<Skeleton className={styles.skeletonCode} />} closeButton={closeButton} />
+      <div className={styles.badges}>
+        <Skeleton className={styles.skeletonBadge} />
+        <Skeleton className={styles.skeletonBadge} />
+        <Skeleton className={styles.skeletonBadge} />
+      </div>
+      <Skeleton className={styles.skeletonTitle} />
+      <Skeleton className={styles.skeletonStepper} />
+      <div className={styles.skeletonMetrics}>
+        <Skeleton className={styles.skeletonMetric} />
+        <Skeleton className={styles.skeletonMetric} />
+      </div>
+      <div className={styles.skeletonTimeline}>
+        {[0, 1].map((row) => (
+          <div key={row} className={styles.skeletonEntry}>
+            <Skeleton shape="circle" className={styles.skeletonBadgeIcon} />
+            <Skeleton className={styles.skeletonLine} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function DetailBody({
   incident,
-  hasDraft,
   kept,
-  onClose,
+  closeButton,
 }: {
   incident: Detail;
-  hasDraft: boolean;
   kept: boolean;
-  onClose: () => void;
+  closeButton: ReactNode;
 }) {
   const { data: zones = [] } = useZones();
   const { data: cameras = [] } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
   const zoneCameras = cameras.filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
-  const canAcknowledge = usePermission('incident:acknowledge');
-  const canResolve = usePermission('incident:resolve');
-  const showAcknowledge = incident.status === 'open' && canAcknowledge;
-  const showResolve = incident.status !== 'resolved' && canResolve;
+  const reporter = incident.source === 'simulator' ? 'system' : 'user';
 
   return (
     <>
-      <div className={styles.head} data-severity={incident.severity} data-status={incident.status}>
-        <div className={styles.toprow}>
-          <span>{incident.code}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            // Escape closes only while no note would be lost; the hint below says so then.
-            shortcut={hasDraft ? undefined : 'Esc'}
-            onClick={onClose}
-            aria-label="Close incident"
-          >
-            Close
-          </Button>
+      <div className={styles.head}>
+        <TopRow code={incident.code} closeButton={closeButton} />
+        <div className={styles.badges}>
+          <SeverityBadge severity={incident.severity} />
+          <span className={styles.chip}>
+            <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
+            {typeLabel(incident.type)}
+          </span>
+          {zone && (
+            <span className={styles.chip}>
+              <Icon glyph={zoneKindIcon(zone.kind)} size={16} className={styles.chipIcon} />
+              {zone.name}
+            </span>
+          )}
         </div>
         <h2 className={styles.title}>{incident.title}</h2>
-        <dl className={styles.facts}>
-          <dt>Status</dt>
-          <dd>
-            <StatusChip status={incident.status} form="pill" />
-          </dd>
-          <dt>Severity</dt>
-          <dd>
-            <SeverityBadge severity={incident.severity} />
-          </dd>
-          <dt>Type</dt>
-          <dd>{typeLabel(incident.type)}</dd>
-          <dt>Location</dt>
-          <dd>{zone?.name ?? '—'}</dd>
-          <dt>Reported by</dt>
-          <dd>{incident.source === 'simulator' ? 'Sensor (simulated)' : 'Operator'}</dd>
-        </dl>
-        {incident.description && <p className={styles.description}>{incident.description}</p>}
+        <IncidentLifecycle incident={incident} />
       </div>
 
-      {(showAcknowledge || showResolve) && (
-        <Actions
-          incident={incident}
-          kept={kept}
-          showAcknowledge={showAcknowledge}
-          showResolve={showResolve}
-        />
-      )}
+      <div className={styles.section}>
+        {incident.description && <p className={styles.description}>{incident.description}</p>}
+        <dl className={styles.facts}>
+          <dt>Reported by</dt>
+          <dd>
+            <Icon glyph={actorKindIcon(reporter)} size={14} />
+            {reporter === 'system' ? 'Sensor (simulated)' : 'Operator'}
+          </dd>
+        </dl>
+      </div>
 
       <section className={styles.section}>
         <h3>Timeline</h3>
-        <ol className={styles.timeline}>
-          {incident.timeline.map((event) => (
-            <li key={event.id} data-actor-kind={event.actor.kind}>
-              <span className={styles.timelineKind}>{EVENT_LABEL[event.kind]}</span>
-              <time className={styles.timelineTime} dateTime={event.at}>
-                {time(event.at)}
-              </time>
-              <span className={styles.timelineActor}>{event.actor.displayName}</span>
-              {event.note && <p className={styles.timelineNote}>{event.note}</p>}
-            </li>
-          ))}
-        </ol>
+        <IncidentTimeline timeline={incident.timeline} />
       </section>
 
       <section className={styles.section}>
@@ -163,81 +198,9 @@ function DetailBody({
           </div>
         )}
       </section>
+
+      {/* Last drawn content of the sheet: the footer sticks to its bottom. */}
+      <IncidentResponse incident={incident} kept={kept} />
     </>
-  );
-}
-
-/** Only the actions the user's roles grant are shown; the API refuses the rest anyway (ADR-0011). */
-function Actions({
-  incident,
-  kept,
-  showAcknowledge,
-  showResolve,
-}: {
-  incident: Detail;
-  kept: boolean;
-  showAcknowledge: boolean;
-  showResolve: boolean;
-}) {
-  const note = useConsole((s) => s.noteDrafts[incident.id] ?? '');
-  const setNote = useConsole((s) => s.setNote);
-  const clearNote = useConsole((s) => s.clearNote);
-  const acknowledge = useTransition('acknowledge');
-  const resolve = useTransition('resolve');
-  const busy = acknowledge.isPending || resolve.isPending;
-  const error = acknowledge.error ?? resolve.error;
-
-  const run = (mutation: typeof acknowledge) =>
-    mutation.mutate(
-      { id: incident.id, note: note.trim() || undefined },
-      { onSuccess: () => clearNote(incident.id) },
-    );
-
-  return (
-    <section className={styles.section}>
-      <h3>Response</h3>
-      <form className={styles.actionForm} onSubmit={(event) => event.preventDefault()}>
-        <Field label="Note for the timeline (optional)">
-          <Textarea
-            className={styles.note}
-            value={note}
-            onChange={(event) => setNote(incident.id, event.target.value)}
-            placeholder="e.g. Guard dispatched from the main gate"
-            maxLength={1000}
-          />
-        </Field>
-        {note.trim() !== '' && <Hint tone={kept ? 'warning' : 'info'}>{NOTE_KEPT}</Hint>}
-        <div className={styles.actions}>
-          {showAcknowledge && (
-            <Button
-              variant="primary"
-              className={styles.grow}
-              disabled={busy}
-              onClick={() => run(acknowledge)}
-            >
-              Acknowledge
-            </Button>
-          )}
-          {showResolve && (
-            <Button
-              // Only one primary action at a time: Resolve is it once Acknowledge is gone.
-              variant={showAcknowledge ? 'secondary' : 'primary'}
-              className={styles.grow}
-              disabled={busy}
-              onClick={() => run(resolve)}
-            >
-              Resolve
-            </Button>
-          )}
-        </div>
-        {error && (
-          <p className={styles.error} role="alert">
-            {error instanceof ApiRequestError && error.status === 403
-              ? NO_LONGER_ALLOWED
-              : error.message}
-          </p>
-        )}
-      </form>
-    </section>
   );
 }

@@ -1,0 +1,77 @@
+/* Frame 02's `.timeline` / `.tl-*`: an icon badge per entry, then kind, time and actor on one row. */
+
+.timeline {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  column-gap: var(--space-3);
+}
+
+.badge {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-0-5) var(--space-2);
+  min-width: 0;
+  padding-top: var(--space-0-5);
+}
+
+.kind {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+}
+
+.time {
+  color: var(--text-secondary);
+  font-size: var(--type-m);
+}
+
+/* A display name can be up to 255 characters and the sheet is narrow: let it wrap anywhere. */
+.actor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--type-m);
+  overflow-wrap: anywhere;
+}
+
+/* The names ("Simulator", "Demo seed", "System") and the icon already say it is not a person. */
+.entry[data-actor-kind='system'] .actor {
+  color: var(--text-secondary);
+}
+
+.note {
+  grid-column: 2;
+  margin: var(--space-0-5) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--type-m);
+  overflow-wrap: anywhere;
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

@@ -1,0 +1,69 @@
+/*
+ * The sheet's foot (frame 02 `.sheet-foot`, frame 06 `.view-only`). Sticky at the bottom of the
+ * scrolling sheet, so the actions stay in reach while the timeline scrolls; `margin-top: auto`
+ * keeps it at the bottom when the content is short (the sheet is a flex column). No `z-index`: as
+ * the sheet's last drawn content it already paints over what scrolls under it.
+ */
+.footer,
+.viewOnly {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 var(--border-subtle),
+    var(--shadow-1);
+}
+
+.footer {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+}
+
+.note {
+  min-height: 64px;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* The equal-width response buttons (frame 02). */
+.grow {
+  flex: 1;
+}
+
+.error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--type-m);
+}
+
+.viewOnly {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--type-m);
+}
+
+.viewOnlyIcon {
+  flex: none;
+  margin-top: var(--space-0-5);
+}
+
+.viewOnlyText {
+  margin: 0;
+}
+
+.viewOnlyText strong {
+  display: block;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+}

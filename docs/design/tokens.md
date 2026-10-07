@@ -36,6 +36,9 @@ From the brief's surface rules:
 - Status (`--status-*`) is neutral-based and never uses a severity hue. Severity (`--sev-*`) is the only loud colour.
 - System feedback (`--success`, `--warning`, `--danger`) appears only in the connection pill, banners, toasts and
   form errors, never on an incident.
+- Layers, bottom to top: `--z-sheet`, `--z-banner`, `--z-popover`, `--z-toast`, `--z-dialog` (a modal confirmation,
+  over `--scrim`), `--z-session`. The session-expired banner stays above a dialog, so signing in again is always
+  reachable.
 
 ## What may stay a raw value
 
@@ -47,10 +50,9 @@ focus ring. These may stay raw:
 - 1–3 px border, outline and stroke widths, inset `box-shadow` lines of the same widths (selected feed row, checked
   severity option), and `outline-offset`. Drop shadows always use `--shadow-*`.
 - Component dimensions: `width`, `height`, `min-*`, `max-width`, `grid-template-columns`, `aspect-ratio`, `ch` and
-  `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The sheet's width is the
-  exception: it is `--sheet-width` (440 px, frame 02), because the map pads by the same value; at ≤ 720 px the sheet
-  is full-screen (`100%`). The 4 px severity band at the top of the incident detail counts as one: it matches the
-  feed's 4 px severity edge column. Icon sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well —
+  `vh` lengths, and the geometry of drawn graphics (lifecycle stepper dot and rail, marker pulse). The sheet's width
+  is the exception: it is `--sheet-width` (440 px, frame 02), because the map pads by the same value; at ≤ 720 px the
+  sheet is full-screen (`100%`). Icon sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well —
   see [icons.md](icons.md).
 - MapLibre numbers in `CampusMap.tsx`, `lib/map*.ts`, `lib/geo.ts` and `lib/sitePlan.ts`: `line-width` and
   `line-dasharray`, circle radii and stroke widths, `fitBounds` padding, `easeTo` duration, zoom levels, cluster

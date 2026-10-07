@@ -1,35 +1,87 @@
+/* Frame 02's `.sheet-head`: code and Close, badges, title, then the lifecycle (own module). */
 .head {
-  padding: var(--space-4) var(--space-5) var(--space-4);
-  border-bottom: 1px solid var(--border-subtle);
-  border-top: 4px solid var(--sev);
+  padding: var(--space-4) var(--space-5);
 }
 
-.head[data-status='resolved'] {
-  border-top-color: var(--status-resolved);
-}
-
-/* `.toprow`, `.title`, `.actions` and `.error` came from the shared `panel.module.css` (UI-10). */
 .toprow {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-2);
+}
+
+.code {
   color: var(--text-secondary);
   font-family: var(--font-ui);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  margin-top: var(--space-3);
+}
+
+/* Type and zone, beside the severity badge and as tall as it (frame 02 `.chip`). */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: 26px;
+  padding: 0 var(--space-2) 0 var(--space-1-5);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+}
+
+.chipIcon {
+  color: var(--text-secondary);
 }
 
 .title {
-  margin: var(--space-1) 0 var(--space-2);
+  margin: var(--space-3) 0 0;
   font-family: var(--font-ui);
   font-size: var(--type-2xl);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-2xl);
 }
 
+/* Sections are separated by a 1 px inset line, not a border box (frame 02 `.sheet-section`). */
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+/* Frame 02 `.eyebrow`. */
+.section h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.description {
+  margin: 0;
+  color: var(--text-primary);
+  max-width: 60ch;
+  overflow-wrap: anywhere;
+}
+
 .facts {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: var(--space-1) var(--space-3);
-  margin: var(--space-3) 0 0;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
   font-size: var(--type-m);
 }
 
@@ -38,120 +90,10 @@
 }
 
 .facts dd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
   margin: 0;
-}
-
-.description {
-  margin: var(--space-3) 0 0;
-  color: var(--text-primary);
-  max-width: 60ch;
-}
-
-.section {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.section h3 {
-  margin: 0 0 var(--space-2);
-  font-family: var(--font-ui);
-  font-size: var(--type-l);
-  font-weight: var(--weight-semibold);
-  color: var(--text-secondary);
-}
-
-.actionForm {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.note {
-  min-height: 64px;
-}
-
-.actions {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.error {
-  margin: 0;
-  color: var(--danger);
-  font-size: var(--type-m);
-}
-
-/* The equal-width response buttons, as before the `Button` primitive. */
-.grow {
-  flex: 1;
-}
-
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.timeline li {
-  position: relative;
-  padding: 0 0 var(--space-3) var(--space-5);
-}
-
-.timeline li::before {
-  content: '';
-  position: absolute;
-  left: 4px;
-  top: 7px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-tertiary);
-}
-
-.timeline li:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 17px;
-  bottom: 0;
-  width: 2px;
-  background: var(--border-subtle);
-}
-
-.timelineKind {
-  font-family: var(--font-ui);
-  font-weight: var(--weight-semibold);
-}
-
-.timelineTime {
-  color: var(--text-secondary);
-  margin-left: var(--space-2);
-  font-size: var(--type-m);
-}
-
-/* A display name can be up to 255 characters and the panel is narrow: let it wrap anywhere. */
-.timelineActor {
-  margin-left: var(--space-2);
-  font-size: var(--type-m);
-  overflow-wrap: anywhere;
-}
-
-/* Decorative separator: the empty alternative text keeps screen readers from reading it. */
-.timelineActor::before {
-  content: '·';
-  content: '·' / '';
-  margin-right: var(--space-2);
-  color: var(--text-secondary);
-}
-
-/* The names ("Simulator", "Demo seed", "System") already say it is not a person; colour only adds to it. */
-.timeline [data-actor-kind='system'] .timelineActor {
-  color: var(--text-secondary);
-}
-
-.timelineNote {
-  margin: var(--space-0-5) 0 0;
-  color: var(--text-secondary);
-  font-size: var(--type-m);
 }
 
 .cameras {
@@ -162,4 +104,71 @@
 
 .noCameras {
   margin: 0;
+}
+
+/* Loading: the sizes of the loaded head and timeline, so nothing jumps when data arrives. */
+.skeletonCode {
+  width: 96px;
+  height: 18px;
+}
+
+.skeletonBadge {
+  width: 88px;
+  height: 26px;
+}
+
+.skeletonTitle {
+  width: 80%;
+  height: 28px;
+  margin-top: var(--space-3);
+}
+
+.skeletonStepper {
+  height: 44px;
+  margin-top: var(--space-4);
+}
+
+.skeletonMetrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.skeletonMetric {
+  height: 60px;
+  border-radius: var(--radius-m);
+}
+
+.skeletonTimeline {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.skeletonEntry {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.skeletonBadgeIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.skeletonLine {
+  width: 70%;
+  height: 16px;
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
