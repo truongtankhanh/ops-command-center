@@ -1,17 +1,24 @@
-import { type Incident, INCIDENT_SEVERITIES } from '@occ/contracts';
+import { type Incident, INCIDENT_EVENT_KINDS, INCIDENT_SEVERITIES } from '@occ/contracts';
 import {
+  acknowledgeDuration,
   ATTENTION_THRESHOLD_MS,
   compareIncidents,
   countActiveBySeverity,
   countByFilter,
+  eventLabel,
   feedEmptyMessage,
   formatAge,
+  formatAgo,
+  formatClock,
+  formatDuration,
   isPastAttention,
+  lifecycleSteps,
   matchesFilter,
   matchesQuery,
   matchesSeverity,
   mergeIncidentLists,
   newerIncident,
+  openDuration,
   searchTerms,
   severityLabel,
   upsertIncident,
@@ -338,5 +345,128 @@ describe('formatAge', () => {
 describe('severityLabel', () => {
   it('names every severity in title case, in contract order', () => {
     expect(INCIDENT_SEVERITIES.map(severityLabel)).toEqual(['Low', 'Medium', 'High', 'Critical']);
+  });
+});
+
+describe('formatAgo', () => {
+  const t0 = Date.parse('2026-10-01T08:00:00.000Z');
+  it.each([
+    [5_000, 'just now'],
+    [14 * 60_000, '14m ago'],
+  ])('formats %i ms as %s', (elapsed, expected) => {
+    expect(formatAgo('2026-10-01T08:00:00.000Z', t0 + elapsed)).toBe(expected);
+  });
+});
+
+describe('formatDuration', () => {
+  const MINUTE = 60_000;
+  const HOUR = 60 * MINUTE;
+  it.each([
+    [-1, '0s'],
+    [45_000, '45s'],
+    [14 * MINUTE, '14m'],
+    [HOUR, '1h'],
+    [95 * MINUTE, '1h 35m'],
+    [47 * HOUR + 59 * MINUTE, '47h 59m'],
+    [48 * HOUR, '2d'],
+    [51 * HOUR, '2d 3h'],
+  ])('formats %i ms as %s', (ms, expected) => {
+    expect(formatDuration(ms)).toBe(expected);
+  });
+});
+
+// Built from local dates and the same locale options, so the cases hold in any time zone and locale.
+describe('formatClock', () => {
+  const at = new Date(2026, 9, 6, 14, 7);
+  const clock = at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+  it('shows only the clock time on the same local day', () => {
+    expect(formatClock(at.toISOString(), new Date(2026, 9, 6, 18, 0).getTime())).toBe(clock);
+  });
+
+  it('adds the date on another day', () => {
+    const date = at.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    expect(formatClock(at.toISOString(), new Date(2026, 9, 7, 9, 0).getTime())).toBe(
+      `${date} ${clock}`,
+    );
+  });
+});
+
+describe('lifecycleSteps', () => {
+  const reportedAt = '2026-10-01T08:00:00.000Z';
+  const acknowledgedAt = '2026-10-01T08:05:00.000Z';
+  const resolvedAt = '2026-10-01T09:35:00.000Z';
+  const states = (subject: Incident) => lifecycleSteps(subject).map((step) => step.state);
+  const times = (subject: Incident) => lifecycleSteps(subject).map((step) => step.at);
+
+  it('always lists the three steps in order', () => {
+    expect(lifecycleSteps(incident({})).map((step) => step.kind)).toEqual([
+      'reported',
+      'acknowledged',
+      'resolved',
+    ]);
+  });
+
+  it('waits for acknowledgement while open', () => {
+    const open = incident({ reportedAt });
+    expect(states(open)).toEqual(['done', 'current', 'future']);
+    expect(times(open)).toEqual([reportedAt, null, null]);
+  });
+
+  it('waits for resolution once acknowledged', () => {
+    const acknowledged = incident({ status: 'acknowledged', reportedAt, acknowledgedAt });
+    expect(states(acknowledged)).toEqual(['done', 'done', 'current']);
+    expect(times(acknowledged)).toEqual([reportedAt, acknowledgedAt, null]);
+  });
+
+  it('has every step done once resolved after acknowledging', () => {
+    const resolved = incident({ status: 'resolved', reportedAt, acknowledgedAt, resolvedAt });
+    expect(states(resolved)).toEqual(['done', 'done', 'done']);
+    expect(times(resolved)).toEqual([reportedAt, acknowledgedAt, resolvedAt]);
+  });
+
+  it('skips acknowledging when resolved straight from open', () => {
+    const resolved = incident({ status: 'resolved', reportedAt, resolvedAt });
+    expect(states(resolved)).toEqual(['done', 'skipped', 'done']);
+    expect(times(resolved)).toEqual([reportedAt, null, resolvedAt]);
+  });
+});
+
+describe('openDuration', () => {
+  const t0 = Date.parse('2026-10-01T08:00:00.000Z');
+
+  it('runs until now while not resolved', () => {
+    expect(openDuration(incident({}), t0 + 14 * 60_000)).toEqual({ ms: 14 * 60_000, final: false });
+  });
+
+  it('stops at the resolution, whatever the time now', () => {
+    const resolved = incident({ status: 'resolved', resolvedAt: '2026-10-01T09:35:00.000Z' });
+    expect(openDuration(resolved, t0 + 48 * 3_600_000)).toEqual({ ms: 95 * 60_000, final: true });
+  });
+});
+
+describe('acknowledgeDuration', () => {
+  it('measures from report to acknowledgement', () => {
+    expect(
+      acknowledgeDuration(
+        incident({ status: 'acknowledged', acknowledgedAt: '2026-10-01T08:05:00.000Z' }),
+      ),
+    ).toBe(5 * 60_000);
+  });
+
+  it('is pending while nobody has acknowledged', () => {
+    expect(acknowledgeDuration(incident({}))).toBe('pending');
+  });
+
+  it('is skipped when resolved without acknowledging', () => {
+    expect(
+      acknowledgeDuration(incident({ status: 'resolved', resolvedAt: '2026-10-01T09:35:00.000Z' })),
+    ).toBe('skipped');
+  });
+});
+
+describe('eventLabel', () => {
+  it('names every event kind, in contract order', () => {
+    expect(INCIDENT_EVENT_KINDS.map(eventLabel)).toEqual(['Reported', 'Acknowledged', 'Resolved']);
   });
 });

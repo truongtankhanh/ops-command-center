@@ -1,0 +1,130 @@
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  useId,
+  useLayoutEffect,
+  useRef,
+} from 'react';
+import { createPortal } from 'react-dom';
+import styles from './Dialog.module.css';
+
+const FOCUSABLE = [
+  'a[href]',
+  'button:not(:disabled)',
+  'input:not(:disabled)',
+  'select:not(:disabled)',
+  'textarea:not(:disabled)',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+
+/** Focus went nowhere: the focused element was removed, or nothing had focus. */
+function focusLost(): boolean {
+  const active = document.activeElement;
+  return active === null || active === document.body;
+}
+
+/**
+ * A modal dialog (WAI-ARIA APG dialog pattern), such as a confirmation before an action that cannot
+ * be undone. Unlike `Sheet` and `Popover` it blocks the page: the caller mounts it while it is open
+ * and unmounts it to close it.
+ *
+ * - Rendered through a portal on `body`, over a `--scrim` at `--z-dialog`, so no ancestor's
+ *   `overflow` or stacking context clips it. The session-expired banner (`--z-session`) stays above.
+ * - Focus moves to the first focusable element in `actions` — put the safe choice first, so Enter
+ *   right after opening never runs the action. Tab and Shift+Tab cycle inside the dialog.
+ * - Escape and a click on the scrim call `onCancel`. Every key pressed inside the dialog is stopped
+ *   there: React stops the synthetic bubble (the `Sheet`'s Escape behind it) and the native one at
+ *   the portal's container (the page's single-key shortcuts on `window`).
+ * - On close, focus goes back to the element focused when it opened, but only if focus was lost
+ *   with the dialog: an action that moved focus on purpose (e.g. into a field) keeps it there.
+ *
+ * The page behind is not made `inert`: the session-expired banner lives in the same React root and
+ * must stay reachable. `aria-modal` tells assistive tech the rest of the page is out of reach.
+ */
+export function Dialog({
+  title,
+  onCancel,
+  actions,
+  children,
+}: {
+  title: string;
+  onCancel: () => void;
+  actions: ReactNode;
+  children?: ReactNode;
+}) {
+  const titleId = useId();
+  const bodyId = useId();
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Layout effect: focus is inside before the browser paints the dialog.
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    const active = document.activeElement;
+    const returnTo = active instanceof HTMLElement && active !== document.body ? active : null;
+    (focusables(dialog)[0] ?? dialog).focus({ preventScroll: true });
+    return () => {
+      // Waits for the dialog to leave the DOM, so `focusLost` sees where focus really ended up.
+      queueMicrotask(() => {
+        if (returnTo?.isConnected && focusLost()) returnTo.focus({ preventScroll: true });
+      });
+    };
+  }, []);
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (event.key === 'Escape') {
+      if (event.nativeEvent.isComposing) return;
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const items = focusables(event.currentTarget);
+    const first = items[0];
+    const last = items.at(-1);
+    const active = document.activeElement;
+    if (!first || !last) {
+      event.preventDefault();
+    } else if (event.shiftKey && (active === first || active === event.currentTarget)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  const onScrimClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) onCancel();
+  };
+
+  return createPortal(
+    <div className={styles.scrim} onClick={onScrimClick}>
+      <div
+        ref={ref}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={children ? bodyId : undefined}
+        tabIndex={-1}
+        className={styles.dialog}
+        onKeyDown={onKeyDown}
+      >
+        <h2 id={titleId} className={styles.title}>
+          {title}
+        </h2>
+        {children && (
+          <div id={bodyId} className={styles.body}>
+            {children}
+          </div>
+        )}
+        <div className={styles.actions}>{actions}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}

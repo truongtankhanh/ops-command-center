@@ -1,0 +1,10 @@
+/* A loading placeholder: one surface step up from the panel it sits on, no animation. */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+}
+
+.skeleton[data-shape='circle'] {
+  border-radius: 50%;
+}

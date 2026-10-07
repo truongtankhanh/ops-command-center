@@ -1,0 +1,54 @@
+/* A modal confirmation (UI-11): no frame draws one, so it follows the menu / toast surfaces of frame 00. */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--scrim);
+}
+
+.dialog {
+  width: min(400px, 100%);
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+}
+
+/* Focus falls back to the dialog itself when it holds nothing focusable: draw the ring inside. */
+.dialog:focus-visible {
+  outline-offset: -2px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-xl);
+}
+
+.body {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.body > :first-child {
+  margin-top: 0;
+}
+
+.body > :last-child {
+  margin-bottom: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}

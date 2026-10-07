@@ -3,3 +3,19 @@
   padding: var(--space-8) var(--space-5);
   color: var(--text-secondary);
 }
+
+/* With an icon or an action: centred, one above the other. */
+.empty[data-layout='stack'] {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.icon {
+  color: var(--text-secondary);
+}
+
+.message {
+  margin: 0;
+}

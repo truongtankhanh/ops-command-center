@@ -17,6 +17,12 @@ export class ApiRequestError extends Error {
  */
 export const NO_LONGER_ALLOWED = 'Your account is no longer allowed to do this.';
 
+/**
+ * Shown for a 429 on an action, from the API or from nginx (both send an `ApiError` body, ADR-0012).
+ * The console never retries a 4xx and does not read `Retry-After`, so the operator retries by hand.
+ */
+export const TOO_MANY_REQUESTS = 'Too many requests right now. Wait a few seconds and try again.';
+
 /** Query retry policy: a 4xx will not change on retry; network errors and 5xx get two more tries. */
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
   if (error instanceof ApiRequestError && error.status < 500) return false;
