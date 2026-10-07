@@ -10,11 +10,13 @@
   min-height: 0;
 }
 
-.workspace.hasDetail {
-  grid-template-columns: 360px 1fr 400px;
-}
-
+/*
+ * The containing block of the incident / report sheet, which lies over its right side (map and
+ * camera strip). `--sheet-inset` tells the map's controls and legend how much of the stage it covers.
+ */
 .stage {
+  position: relative;
+  --sheet-inset: 0px;
   display: grid;
   grid-template-rows: 1fr auto;
   grid-template-columns: minmax(0, 1fr);
@@ -22,18 +24,20 @@
   min-height: 0;
 }
 
-/* Small screens: the detail becomes a sheet (panel.module.css), then the map stacks above the feed. */
+.stage[data-sheet='open'] {
+  --sheet-inset: var(--sheet-width);
+}
+
+/* Small screens: a narrower feed, then the map stacks above the feed. */
 
 @media (max-width: 1100px) {
-  .workspace,
-  .workspace.hasDetail {
+  .workspace {
     grid-template-columns: 300px 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .workspace,
-  .workspace.hasDetail {
+  .workspace {
     grid-template-columns: 1fr;
     grid-template-rows: 46vh auto;
     overflow-y: auto;
@@ -41,5 +45,10 @@
 
   .stage {
     order: -1;
+  }
+
+  /* The sheet covers the whole screen here (ui/Sheet.module.css), not part of the stage. */
+  .stage[data-sheet='open'] {
+    --sheet-inset: 0px;
   }
 }

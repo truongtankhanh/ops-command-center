@@ -4,17 +4,17 @@ import {
   type IncidentSeverity,
   type IncidentType,
 } from '@occ/contracts';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useCallback, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { severityLabel, typeLabel } from '../lib/incidents';
-import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
-import panel from '../styles/panel.module.css';
 import { Button } from '../ui/Button';
 import { Field, Select, Textarea, TextInput } from '../ui/Field';
+import { Hint } from '../ui/Hint';
 import { SegmentedControl } from '../ui/SegmentedControl';
+import { Sheet } from '../ui/Sheet';
 import styles from './ReportIncidentForm.module.css';
 
 const TITLE_MAX = 160;
@@ -25,6 +25,8 @@ const SEVERITY_OPTIONS = INCIDENT_SEVERITIES.map((value) => ({
   label: severityLabel(value),
   severity: value,
 }));
+/** Shown under the actions while a draft exists, and announced by the sheet when Escape is ignored. */
+const DRAFT_KEPT = 'Esc keeps your draft. Cancel discards it.';
 /** The API's 422 for this form: the key was used for a report with other details. */
 const REPORT_ALREADY_SENT =
   'This report was already sent with different details. Check the incident feed before reporting it again.';
@@ -59,7 +61,15 @@ export function ReportIncidentForm() {
     zoneId !== '' ||
     title.trim() !== '' ||
     description.trim() !== '';
-  useCloseOnEscape(closeReport, hasDraft);
+
+  // Set when Escape was ignored to keep the draft; forgotten once the draft is gone.
+  const [kept, setKept] = useState(false);
+  const [hadDraft, setHadDraft] = useState(hasDraft);
+  if (hasDraft !== hadDraft) {
+    setHadDraft(hasDraft);
+    if (!hasDraft) setKept(false);
+  }
+  const keepDraft = useCallback(() => setKept(true), []);
 
   const ready = type !== '' && zoneId !== '' && title.trim() !== '';
 
@@ -82,10 +92,17 @@ export function ReportIncidentForm() {
   };
 
   return (
-    <aside id="report-incident-panel" className={panel.panel} aria-label="Report an incident">
+    <Sheet
+      id="report-incident-panel"
+      label="Report an incident"
+      onClose={closeReport}
+      keepOpen={hasDraft}
+      keptMessage={DRAFT_KEPT}
+      onEscapeKept={keepDraft}
+    >
       <form className={styles.form} onSubmit={submit} noValidate>
-        <div className={panel.toprow}>
-          <h2 className={`${panel.title} ${styles.title}`}>Report an incident</h2>
+        <div className={styles.toprow}>
+          <h2 className={styles.title}>Report an incident</h2>
         </div>
 
         <Field label="Type">
@@ -143,12 +160,12 @@ export function ReportIncidentForm() {
         </Field>
 
         {report.error && (
-          <p className={panel.error} role="alert">
+          <p className={styles.error} role="alert">
             {reportErrorMessage(report.error)}
           </p>
         )}
 
-        <div className={panel.actions}>
+        <div className={styles.actions}>
           <Button
             type="submit"
             variant="primary"
@@ -158,11 +175,18 @@ export function ReportIncidentForm() {
           >
             {report.isPending ? 'Reporting…' : 'Report incident'}
           </Button>
-          <Button variant="ghost" className={styles.grow} onClick={closeReport}>
+          <Button
+            variant="ghost"
+            className={styles.grow}
+            // Escape cancels only while there is nothing to lose; the hint below says so then.
+            shortcut={hasDraft ? undefined : 'Esc'}
+            onClick={closeReport}
+          >
             Cancel
           </Button>
         </div>
+        {hasDraft && <Hint tone={kept ? 'warning' : 'info'}>{DRAFT_KEPT}</Hint>}
       </form>
-    </aside>
+    </Sheet>
   );
 }

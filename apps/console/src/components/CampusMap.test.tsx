@@ -3,7 +3,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { FeatureCollection, Geometry, Point } from 'geojson';
 import { queryKeys } from '../api/queries';
-import type { IncidentProperties } from '../lib/mapFeatures';
+import { incidentFeatures, type IncidentProperties } from '../lib/mapFeatures';
 import { registerMapImages } from '../lib/mapImages';
 import {
   cameraViewLayers,
@@ -32,6 +32,8 @@ const fake = vi.hoisted(() => {
     readonly sources = new Map<string, FakeSource>();
     readonly layers = new Set<string>();
     readonly canvas = { style: { cursor: '' } };
+    /** Like a 1200 px wide map: an open sheet covers its full 440 px of it. */
+    width = 1200;
     /** What the component passed to `new Map(...)`. */
     readonly options: Record<string, unknown>;
 
@@ -67,6 +69,7 @@ const fake = vi.hoisted(() => {
     removeLayer = vi.fn((id: string) => (this.styled(), void this.layers.delete(id)));
     queryRenderedFeatures = vi.fn((): unknown[] => []);
     getCanvas = () => this.canvas;
+    getContainer = () => ({ clientWidth: this.width });
     addControl = vi.fn();
     easeTo = vi.fn();
     fitBounds = vi.fn();
@@ -130,6 +133,8 @@ vi.mock('../lib/mapImages', () => ({
 }));
 
 const POSITION: [number, number] = [108.4415, 11.953];
+/** `fitBounds` padding with no sheet open: 48 px on every side. */
+const FIT = { top: 48, bottom: 48, left: 48, right: 48 };
 
 const incident = (overrides: Partial<Incident>): Incident => ({
   id: 'a',
@@ -457,7 +462,7 @@ describe('CampusMap', () => {
       const { map } = await renderMap([incident({})], { zones: [zone()] });
 
       expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(SITE_PLAN, [zone()]), {
-        padding: 48,
+        padding: FIT,
         duration: 0,
       });
     });
@@ -520,7 +525,7 @@ describe('CampusMap', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Fit campus' }));
 
       expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(SITE_PLAN, [zone()]), {
-        padding: 48,
+        padding: FIT,
         duration: 600,
       });
     });
@@ -537,7 +542,7 @@ describe('CampusMap', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/site-plan', expect.anything());
         expect(siteParts(map)).toEqual(['footprint']);
         expect(map.fitBounds).toHaveBeenCalledWith(siteBounds(undefined, [zone()]), {
-          padding: 48,
+          padding: FIT,
           duration: 0,
         });
         // No error on the map: the plan is decoration.
@@ -556,7 +561,7 @@ describe('CampusMap', () => {
 
         await waitFor(() => expect(siteParts(map)).toEqual(['boundary', 'footprint']));
         expect(map.fitBounds).toHaveBeenLastCalledWith(siteBounds(SITE_PLAN, [zone()]), {
-          padding: 48,
+          padding: FIT,
           duration: 0,
         });
       });
@@ -577,7 +582,12 @@ describe('CampusMap', () => {
         await waitFor(() =>
           expect(map.setFilter).toHaveBeenCalledWith(MAP_LAYERS.zoneHighlight, highlightOf('z1')),
         );
-        expect(map.easeTo).toHaveBeenLastCalledWith({ center: POSITION, duration: 0 });
+        // The sheet is open for the selection: the incident sits mid-way in the 760 px left of it.
+        expect(map.easeTo).toHaveBeenLastCalledWith({
+          center: POSITION,
+          offset: [-220, 0],
+          duration: 0,
+        });
         expect(map.fitBounds).not.toHaveBeenCalled();
       });
     });
@@ -622,6 +632,122 @@ describe('CampusMap', () => {
       await renderMap([]);
 
       expect(screen.getByText('Camera view')).toBeInTheDocument();
+    });
+  });
+  // A 1200 px map (`FakeMap.width`): an open sheet covers its right 440 px.
+  describe('beside the sheet', () => {
+    const SHEET_FIT = { ...FIT, right: 48 + 440 };
+    const campus = () => siteBounds(SITE_PLAN, [zone()]);
+
+    it('only resizes the canvas when its box changes', async () => {
+      let onResize: (() => void) | undefined;
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: () => void) {
+            onResize = callback;
+          }
+          observe() {}
+          disconnect() {}
+        },
+      );
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      act(() => useConsole.getState().select('a'));
+      map.easeTo.mockClear();
+      map.fitBounds.mockClear();
+
+      act(() => onResize!());
+
+      expect(map.resize).toHaveBeenCalled();
+      expect(map.easeTo).not.toHaveBeenCalled();
+      expect(map.fitBounds).not.toHaveBeenCalled();
+    });
+
+    it('keeps the selected incident beside the open sheet', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+
+      act(() => useConsole.getState().select('a'));
+      expect(map.easeTo).toHaveBeenLastCalledWith({
+        center: POSITION,
+        offset: [-220, 0],
+        duration: 600,
+      });
+
+      act(() => useConsole.getState().select(null));
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
+    });
+
+    it('frames the campus beside the report form', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+
+      act(() => useConsole.getState().startReport());
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), {
+        padding: SHEET_FIT,
+        duration: 600,
+      });
+
+      act(() => useConsole.getState().closeReport());
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
+    });
+
+    it('fits the campus beside the sheet from the Fit campus button', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      act(() => useConsole.getState().select('a'));
+      map.fitBounds.mockClear();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Fit campus' }));
+
+      expect(map.fitBounds).toHaveBeenCalledWith(campus(), { padding: SHEET_FIT, duration: 600 });
+    });
+
+    it('keeps part of a narrow map in view', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      map.width = 400;
+
+      act(() => useConsole.getState().select('a'));
+
+      // 160 px stay visible: the sheet's inset shrinks to 240 px.
+      expect(map.easeTo).toHaveBeenLastCalledWith({
+        center: POSITION,
+        offset: [-120, 0],
+        duration: 600,
+      });
+    });
+
+    it('centres on the incident as drawn when others share its spot', async () => {
+      const incidents = [
+        incident({ id: 'a', reportedAt: '2026-10-01T08:00:00.000Z' }),
+        incident({ id: 'b', reportedAt: '2026-10-01T08:01:00.000Z' }),
+      ];
+      const { map } = await renderMap(incidents, { zones: [zone()] });
+
+      act(() => useConsole.getState().select('b'));
+
+      const drawn = incidentFeatures(incidents, 'b').selected.features[0]!.geometry.coordinates;
+      expect(drawn).not.toEqual(POSITION);
+      expect(map.easeTo).toHaveBeenLastCalledWith({
+        center: drawn,
+        offset: [-220, 0],
+        duration: 600,
+      });
+    });
+
+    it('does not pan when another incident arrives at the selected spot', async () => {
+      const a = incident({ id: 'a', reportedAt: '2026-10-01T08:00:00.000Z' });
+      const { map, client } = await renderMap([a], { zones: [zone()] });
+      act(() => useConsole.getState().select('a'));
+      map.easeTo.mockClear();
+
+      // The newcomer fans both markers out, so the selected one moves a few metres.
+      act(() =>
+        client.setQueryData(queryKeys.incidents, [
+          a,
+          incident({ id: 'b', reportedAt: '2026-10-01T08:01:00.000Z' }),
+        ]),
+      );
+
+      await waitFor(() => expect(ids(lastData(map, MAP_SOURCES.incidents))).toEqual(['b']));
+      expect(map.easeTo).not.toHaveBeenCalled();
     });
   });
 });

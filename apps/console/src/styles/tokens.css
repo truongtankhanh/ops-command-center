@@ -106,6 +106,9 @@
   --ease-out: cubic-bezier(0, 0, 0.58, 1);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
+  /* The incident / report sheet over the stage (frame 02). The map pads by its copy in tokens.ts. */
+  --sheet-width: 440px;
+
   --focus-ring: 2px solid var(--accent);
   --focus-offset: 2px;
 

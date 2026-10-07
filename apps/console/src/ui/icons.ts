@@ -120,6 +120,7 @@ export {
   ChevronDown,
   Clock,
   Eye,
+  Info,
   Lock,
   LogOut,
   Minus,

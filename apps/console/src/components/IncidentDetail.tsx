@@ -1,17 +1,17 @@
 import type { IncidentDetail as Detail, IncidentEventKind } from '@occ/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED } from '../api/client';
 import { useCameras, useIncident, useTransition, useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
 import { typeLabel } from '../lib/incidents';
-import { useCloseOnEscape } from '../lib/useCloseOnEscape';
 import { useConsole } from '../store';
-import panel from '../styles/panel.module.css';
 import text from '../styles/text.module.css';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { Field, Textarea } from '../ui/Field';
+import { Hint } from '../ui/Hint';
 import { SeverityBadge } from '../ui/SeverityBadge';
+import { Sheet } from '../ui/Sheet';
 import { StatusChip } from '../ui/StatusChip';
 import { CameraTile } from './CameraTile';
 import styles from './IncidentDetail.module.css';
@@ -22,45 +22,63 @@ const EVENT_LABEL: Record<IncidentEventKind, string> = {
   resolved: 'Resolved',
 };
 
+/** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
+const NOTE_KEPT = 'Esc keeps your note. Close discards it.';
+
 const time = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
+/**
+ * The incident in the sheet. One `Sheet` holds the loading, failed and loaded states, so the data
+ * arriving never moves focus. The note being written lives in the store (`noteDrafts`): leaving for
+ * another incident or the report form keeps it, and only Close or a sent note clears it.
+ */
 export function IncidentDetail({ id }: { id: string }) {
   const { data: incident, isPending, isError } = useIncident(id);
   const select = useConsole((s) => s.select);
-  const setNoteDraft = useConsole((s) => s.setNoteDraft);
-  const close = useCallback(() => select(null), [select]);
-  // Kept here rather than in the response form, so Escape knows whether closing would lose it.
-  const [note, setNote] = useState('');
-  const hasDraft = note.trim() !== '';
+  const clearNote = useConsole((s) => s.clearNote);
+  const hasDraft = useConsole((s) => (s.noteDrafts[id] ?? '').trim() !== '');
+  const close = useCallback(() => {
+    clearNote(id);
+    select(null);
+  }, [clearNote, id, select]);
 
-  useCloseOnEscape(close, hasDraft);
-  // Shared with the header, so its `N` shortcut does not throw the note away either (D6).
-  useEffect(() => {
-    setNoteDraft(hasDraft);
-    return () => setNoteDraft(false);
-  }, [hasDraft, setNoteDraft]);
-
-  if (isPending) return <aside className={panel.panel} aria-busy="true" />;
-  if (isError || !incident) {
-    return (
-      <aside className={panel.panel}>
-        <EmptyState>This incident could not be loaded.</EmptyState>
-      </aside>
-    );
+  // Set when Escape was ignored to keep the note; forgotten once the note is gone, so a new note
+  // starts with the plain hint again.
+  const [kept, setKept] = useState(false);
+  const [hadDraft, setHadDraft] = useState(hasDraft);
+  if (hasDraft !== hadDraft) {
+    setHadDraft(hasDraft);
+    if (!hasDraft) setKept(false);
   }
-  return <DetailBody incident={incident} note={note} onNoteChange={setNote} onClose={close} />;
+  const keepNote = useCallback(() => setKept(true), []);
+
+  return (
+    <Sheet
+      label={incident ? `Incident ${incident.code}` : 'Incident'}
+      onClose={close}
+      keepOpen={hasDraft}
+      keptMessage={NOTE_KEPT}
+      onEscapeKept={keepNote}
+    >
+      {isPending ? null : isError || !incident ? (
+        <EmptyState>This incident could not be loaded.</EmptyState>
+      ) : (
+        <DetailBody incident={incident} hasDraft={hasDraft} kept={kept} onClose={close} />
+      )}
+    </Sheet>
+  );
 }
 
 function DetailBody({
   incident,
-  note,
-  onNoteChange,
+  hasDraft,
+  kept,
   onClose,
 }: {
   incident: Detail;
-  note: string;
-  onNoteChange: (note: string) => void;
+  hasDraft: boolean;
+  kept: boolean;
   onClose: () => void;
 }) {
   const { data: zones = [] } = useZones();
@@ -73,15 +91,22 @@ function DetailBody({
   const showResolve = incident.status !== 'resolved' && canResolve;
 
   return (
-    <aside className={panel.panel} aria-label={`Incident ${incident.code}`}>
+    <>
       <div className={styles.head} data-severity={incident.severity} data-status={incident.status}>
-        <div className={panel.toprow}>
+        <div className={styles.toprow}>
           <span>{incident.code}</span>
-          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close incident">
+          <Button
+            variant="ghost"
+            size="sm"
+            // Escape closes only while no note would be lost; the hint below says so then.
+            shortcut={hasDraft ? undefined : 'Esc'}
+            onClick={onClose}
+            aria-label="Close incident"
+          >
             Close
           </Button>
         </div>
-        <h2 className={panel.title}>{incident.title}</h2>
+        <h2 className={styles.title}>{incident.title}</h2>
         <dl className={styles.facts}>
           <dt>Status</dt>
           <dd>
@@ -104,8 +129,7 @@ function DetailBody({
       {(showAcknowledge || showResolve) && (
         <Actions
           incident={incident}
-          note={note}
-          onNoteChange={onNoteChange}
+          kept={kept}
           showAcknowledge={showAcknowledge}
           showResolve={showResolve}
         />
@@ -139,24 +163,25 @@ function DetailBody({
           </div>
         )}
       </section>
-    </aside>
+    </>
   );
 }
 
 /** Only the actions the user's roles grant are shown; the API refuses the rest anyway (ADR-0011). */
 function Actions({
   incident,
-  note,
-  onNoteChange,
+  kept,
   showAcknowledge,
   showResolve,
 }: {
   incident: Detail;
-  note: string;
-  onNoteChange: (note: string) => void;
+  kept: boolean;
   showAcknowledge: boolean;
   showResolve: boolean;
 }) {
+  const note = useConsole((s) => s.noteDrafts[incident.id] ?? '');
+  const setNote = useConsole((s) => s.setNote);
+  const clearNote = useConsole((s) => s.clearNote);
   const acknowledge = useTransition('acknowledge');
   const resolve = useTransition('resolve');
   const busy = acknowledge.isPending || resolve.isPending;
@@ -165,7 +190,7 @@ function Actions({
   const run = (mutation: typeof acknowledge) =>
     mutation.mutate(
       { id: incident.id, note: note.trim() || undefined },
-      { onSuccess: () => onNoteChange('') },
+      { onSuccess: () => clearNote(incident.id) },
     );
 
   return (
@@ -176,12 +201,13 @@ function Actions({
           <Textarea
             className={styles.note}
             value={note}
-            onChange={(event) => onNoteChange(event.target.value)}
+            onChange={(event) => setNote(incident.id, event.target.value)}
             placeholder="e.g. Guard dispatched from the main gate"
             maxLength={1000}
           />
         </Field>
-        <div className={panel.actions}>
+        {note.trim() !== '' && <Hint tone={kept ? 'warning' : 'info'}>{NOTE_KEPT}</Hint>}
+        <div className={styles.actions}>
           {showAcknowledge && (
             <Button
               variant="primary"
@@ -205,7 +231,7 @@ function Actions({
           )}
         </div>
         {error && (
-          <p className={panel.error} role="alert">
+          <p className={styles.error} role="alert">
             {error instanceof ApiRequestError && error.status === 403
               ? NO_LONGER_ALLOWED
               : error.message}

@@ -1,0 +1,15 @@
+/* Frame 02 / 03's `.hint`: a short line under a field or the actions. */
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin: var(--space-1-5) 0 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+/* `--warning` text is a checked pair on `--surface-1` … `--surface-3` (docs/design/tokens.md). */
+.hint[data-tone='warning'] {
+  color: var(--warning);
+}

@@ -1,10 +1,11 @@
 /*
  * Frame 01's map controls. No `overflow: hidden` on the group (the frame clips its corners that
  * way): it would also clip the buttons' focus ring. The end buttons round their own corners.
+ * `--sheet-inset` (set on the stage, App.module.css) moves them beside the open sheet (frame 02).
  */
 .controls {
   position: absolute;
-  right: var(--space-3);
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
   bottom: var(--space-3);
   display: grid;
   border: 1px solid var(--border-subtle);

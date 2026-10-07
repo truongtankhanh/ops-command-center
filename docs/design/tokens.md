@@ -5,11 +5,11 @@ The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, 
 
 ## Where they live
 
-| File                                     | Holds                                                                                          |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2). |
-| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`): MapLibre and the marker images take literals.     |
-| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.           |
+| File                                     | Holds                                                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).       |
+| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`, `layout`): MapLibre and the marker images take literals. |
+| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                 |
 
 A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently. One exception:
 the cluster count font on the map (`lib/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
@@ -47,9 +47,11 @@ focus ring. These may stay raw:
 - 1–3 px border, outline and stroke widths, inset `box-shadow` lines of the same widths (selected feed row, checked
   severity option), and `outline-offset`. Drop shadows always use `--shadow-*`.
 - Component dimensions: `width`, `height`, `min-*`, `max-width`, `grid-template-columns`, `aspect-ratio`, `ch` and
-  `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The 4 px severity band
-  at the top of the incident detail counts as one: it matches the feed's 4 px severity edge column. Icon sizes
-  (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well — see [icons.md](icons.md).
+  `vh` lengths, and the geometry of drawn graphics (timeline dot and connector, marker pulse). The sheet's width is the
+  exception: it is `--sheet-width` (440 px, frame 02), because the map pads by the same value; at ≤ 720 px the sheet
+  is full-screen (`100%`). The 4 px severity band at the top of the incident detail counts as one: it matches the
+  feed's 4 px severity edge column. Icon sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well —
+  see [icons.md](icons.md).
 - MapLibre numbers in `CampusMap.tsx`, `lib/map*.ts`, `lib/geo.ts` and `lib/sitePlan.ts`: `line-width` and
   `line-dasharray`, circle radii and stroke widths, `fitBounds` padding, `easeTo` duration, zoom levels, cluster
   radius, marker offsets, the pulse frame rate and scale, the marker image geometry in `lib/mapImages.ts` (image boxes,
@@ -66,7 +68,7 @@ focus ring. These may stay raw:
 
 `apps/console/scripts/contrast.ts` reads `tokens.css` and `tokens.ts`, computes WCAG 2.x contrast ratios, and checks
 the pairs that occur in the UI (minimum 4.5:1 for text, 3:1 for meaningful boundaries) and the copied values (map
-colours and the pulse duration in `tokens.ts`, `theme-color`, the favicon).
+colours, the pulse duration and the sheet width in `tokens.ts`, `theme-color`, the favicon).
 
 - `pnpm --filter @occ/console lint` runs it with `--check` and fails on a pair below its minimum or a drifted copy.
 - `pnpm --filter @occ/console tokens:contrast` regenerates the tables below. Run it after changing a token and commit
@@ -210,6 +212,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
 | `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
+| `layout.sheetWidth` (src/styles/tokens.ts)           | 440px                     | 440px                     | match  |
 | `theme-color` (index.html)                           | #13222d                   | #13222d                   | match  |
 | colours in public/favicon.svg                        | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |
 

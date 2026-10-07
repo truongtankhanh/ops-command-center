@@ -10,8 +10,9 @@ import styles from './FeedSearch.module.css';
  * through `ref` (the input announces the key with `aria-keyshortcuts`). The key hint and the clear
  * button share one slot: the `/` hint while empty, Clear while there is text.
  *
- * Escape with text clears it and is stopped here, so it never also closes the open detail or report
- * (`useCloseOnEscape` listens on `window`). With no text, Escape is left to them, as anywhere else.
+ * Escape with text clears it and is stopped here, so it stays the search's own. With no text it is
+ * left alone, as anywhere else. (The open detail or report handles Escape on its own `Sheet`, which
+ * the feed is not inside.)
  */
 export function FeedSearch({
   value,

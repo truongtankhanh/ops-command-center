@@ -65,3 +65,12 @@ export const mapMotion = {
   /** `--duration-pulse`, in ms. */
   pulseMs: 1800,
 };
+
+/**
+ * Layout sizes the map needs as numbers (its `padding` takes pixels), copied from `tokens.css` and
+ * drift-checked the same way.
+ */
+export const layout = {
+  /** `--sheet-width`, in px: the map pads by it so the selection stays beside the open sheet. */
+  sheetWidth: 440,
+};

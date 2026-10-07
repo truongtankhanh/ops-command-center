@@ -1,4 +1,4 @@
-import type { Camera, Incident, LngLat, SitePlan, Zone } from '@occ/contracts';
+import type { Camera, LngLat, SitePlan, Zone } from '@occ/contracts';
 import type { Point } from 'geojson';
 import maplibregl, {
   type GeoJSONSource,
@@ -31,7 +31,7 @@ import { startPulse } from '../lib/mapPulse';
 import { siteBounds } from '../lib/sitePlan';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
-import { mapColors, mapMotion } from '../styles/tokens';
+import { layout, mapColors, mapMotion } from '../styles/tokens';
 import styles from './CampusMap.module.css';
 import { MapControls } from './MapControls';
 import { MapLegend } from './MapLegend';
@@ -54,6 +54,16 @@ const MAX_ZOOM = 20;
 const MIN_ZOOM = 15;
 /** `easeTo` / `fitBounds` duration when the view follows a selection or the Fit campus button. */
 const FOCUS_MS = 600;
+/** Space kept around the campus when it is framed. */
+const FIT_PADDING = 48;
+/** Map width the open sheet always leaves for the view on a narrow screen. */
+const MIN_VISIBLE_PX = 160;
+
+/** What the view frames: the selected incident's drawn position, and whether the sheet is open. */
+interface ViewTarget {
+  point: [number, number] | null;
+  sheetOpen: boolean;
+}
 
 /**
  * Incidents and cameras are map layers, not DOM markers, so they are not in the Tab order: the
@@ -67,8 +77,10 @@ export function CampusMap() {
   const { data: cameras } = useCameras();
   const { data: incidents } = useIncidents();
   const selectedId = useConsole((s) => s.selectedIncidentId);
-  /** What the view should centre on; read by the resize observer as well. */
-  const focusRef = useRef<[number, number] | null>(null);
+  const reporting = useConsole((s) => s.reporting);
+  const sheetOpen = selectedId !== null || reporting;
+  /** What the view frames; read by `useSiteLayers` when the ground is (re)drawn. */
+  const focusRef = useRef<ViewTarget>({ point: null, sheetOpen: false });
 
   // Create the map once.
   useEffect(() => {
@@ -97,10 +109,8 @@ export function CampusMap() {
     });
 
     // The map shares its column with the camera strip; keep the canvas in step with the layout.
-    const observer = new ResizeObserver(() => {
-      instance.resize();
-      focus(instance, focusRef.current, 0);
-    });
+    // Only the canvas follows: MapLibre keeps the centre, and the view never jumps on a resize.
+    const observer = new ResizeObserver(() => instance.resize());
     observer.observe(container.current);
     return () => {
       loading.abort();
@@ -109,19 +119,34 @@ export function CampusMap() {
     };
   }, []);
 
+  const features = useMemo(
+    () => (incidents ? incidentFeatures(incidents, selectedId) : null),
+    [incidents, selectedId],
+  );
   useSiteLayers(map, zones, sitePlan, focusRef);
   useCameraLayer(map, cameras);
-  useIncidentLayers(map, incidents, selectedId);
+  useIncidentLayers(map, features);
 
-  // Bring the selected incident into view; show the whole campus when nothing is selected.
-  const selected = incidents?.find((i) => i.id === selectedId);
-  const selectedPosition = selected?.position.join(',');
+  // Bring the selected incident into view beside the sheet, at the marker as drawn (it may be fanned
+  // out from its true position); show the whole campus when nothing is selected. The view moves when
+  // the selection or the sheet changes, and once the selected marker is first known — not when the
+  // fan-out shifts it a few metres because another incident arrived at the same spot.
+  const selectedPoint = features?.selected.features[0]?.geometry.coordinates;
+  const pointRef = useRef<number[] | undefined>(undefined);
   useEffect(() => {
-    focusRef.current = selectedPosition
-      ? (selectedPosition.split(',').map(Number) as [number, number])
-      : null;
+    pointRef.current = selectedPoint;
+  });
+  const hasSelectedPoint = selectedPoint !== undefined;
+  useEffect(() => {
+    const point = pointRef.current;
+    focusRef.current = {
+      point: point ? [point[0]!, point[1]!] : null,
+      sheetOpen,
+    };
     if (map) focus(map, focusRef.current, FOCUS_MS);
-  }, [map, selectedPosition]);
+  }, [map, selectedId, hasSelectedPoint, sheetOpen]);
+
+  const selected = incidents?.find((i) => i.id === selectedId);
 
   // Frame 03's outline on the selected incident's zone. The layer is re-added with the zones and
   // the site plan, so this also runs when either (re)arrives.
@@ -137,22 +162,45 @@ export function CampusMap() {
       <div ref={container} className={styles.canvas} />
       <MapTooltip map={map} />
       <MapLegend />
-      <MapControls map={map} onFit={() => map && fitCampus(map, FOCUS_MS)} />
+      <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, FOCUS_MS)} />
     </section>
   );
 }
 
 const campusBounds = new WeakMap<maplibregl.Map, [LngLat, LngLat]>();
 
-function fitCampus(map: maplibregl.Map, duration = 0) {
-  const bounds = campusBounds.get(map);
-  if (bounds) map.fitBounds(bounds, { padding: 48, duration });
+/**
+ * How much of the map's right side the open sheet covers, in px: its width, less on a map too
+ * narrow to keep `MIN_VISIBLE_PX` beside it.
+ */
+function sheetInset(map: maplibregl.Map, sheetOpen: boolean): number {
+  if (!sheetOpen) return 0;
+  const width = map.getContainer().clientWidth;
+  return Math.min(layout.sheetWidth, Math.max(0, width - MIN_VISIBLE_PX));
 }
 
-/** Centre on a point, or show the whole campus when there is none. */
-function focus(map: maplibregl.Map, point: [number, number] | null, duration: number) {
-  if (point) map.easeTo({ center: point, duration });
-  else fitCampus(map, duration);
+function fitCampus(map: maplibregl.Map, sheetOpen: boolean, duration = 0) {
+  const bounds = campusBounds.get(map);
+  if (!bounds) return;
+  const right = FIT_PADDING + sheetInset(map, sheetOpen);
+  map.fitBounds(bounds, {
+    padding: { top: FIT_PADDING, bottom: FIT_PADDING, left: FIT_PADDING, right },
+    duration,
+  });
+}
+
+/**
+ * Centres on a point in the part of the map the sheet leaves visible, or shows the whole campus
+ * there when there is no point. An `offset`, not MapLibre's `padding`: padding stays on the map
+ * and `fitBounds` would add it to its own, so the map keeps none.
+ */
+function focus(map: maplibregl.Map, { point, sheetOpen }: ViewTarget, duration: number) {
+  if (!point) {
+    fitCampus(map, sheetOpen, duration);
+    return;
+  }
+  const inset = sheetInset(map, sheetOpen);
+  map.easeTo({ center: point, offset: [-inset / 2, 0], duration });
 }
 
 /**
@@ -166,7 +214,7 @@ function useSiteLayers(
   map: maplibregl.Map | null,
   zones: Zone[] | undefined,
   plan: SitePlan | undefined,
-  focusRef: RefObject<[number, number] | null>,
+  focusRef: RefObject<ViewTarget>,
 ) {
   useEffect(() => {
     if (!map || !zones?.length) return;
@@ -252,14 +300,9 @@ function useCameraLayer(map: maplibregl.Map | null, cameras: Camera[] | undefine
  */
 function useIncidentLayers(
   map: maplibregl.Map | null,
-  incidents: Incident[] | undefined,
-  selectedId: string | null,
+  features: ReturnType<typeof incidentFeatures> | null,
 ) {
   const codeTag = useRef<maplibregl.Marker | null>(null);
-  const features = useMemo(
-    () => (incidents ? incidentFeatures(incidents, selectedId) : null),
-    [incidents, selectedId],
-  );
   const pulsing = features?.pulsing ?? false;
   const reducedMotion = usePrefersReducedMotion();
 

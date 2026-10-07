@@ -33,11 +33,11 @@ const ZONE = new Intl.DateTimeFormat('en-GB', { timeZoneName: 'shortOffset' });
 export function Header() {
   const canReport = usePermission('incident:report');
   const reporting = useConsole((s) => s.reporting);
-  const noteDraft = useConsole((s) => s.noteDraft);
   const startReport = useConsole((s) => s.startReport);
 
-  // `N` never throws away a note being written in the open incident (D6); the button still can.
-  useShortcut('n', startReport, canReport && !reporting && !noteDraft);
+  // A note being written in the open incident survives the report form (`noteDrafts`), so `N` and
+  // the button can always open it.
+  useShortcut('n', startReport, canReport && !reporting);
 
   return (
     <header className={styles.header}>

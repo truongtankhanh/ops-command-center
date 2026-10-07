@@ -254,14 +254,15 @@ describe('Header', () => {
       );
     });
 
-    it('ignores N while the open incident holds a note', async () => {
-      act(() => useConsole.setState({ selectedIncidentId: 'a', noteDraft: true }));
+    it('opens the report form with N while a note is being written, and keeps the note', async () => {
+      act(() => useConsole.setState({ selectedIncidentId: 'a', noteDrafts: { a: 'Guard' } }));
 
       await userEvent.keyboard('n');
 
-      // Opening the form would unmount the incident and throw the note away.
-      expect(useConsole.getState().reporting).toBe(false);
-      expect(useConsole.getState().selectedIncidentId).toBe('a');
+      // The note lives in the store, so leaving the incident for the form does not lose it.
+      expect(useConsole.getState().reporting).toBe(true);
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+      expect(useConsole.getState().noteDrafts).toEqual({ a: 'Guard' });
     });
 
     it('ignores N for a viewer', async () => {

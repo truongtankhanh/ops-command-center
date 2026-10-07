@@ -116,6 +116,16 @@ describe('Button', () => {
     expect(screen.getByText('N')).toHaveAttribute('aria-hidden', 'true');
   });
 
+  it('names Escape by its key name, keeping the short hint', () => {
+    render(<Button shortcut="Esc">Close</Button>);
+
+    expect(screen.getByRole('button', { name: 'Close' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Escape',
+    );
+    expect(screen.getByText('Esc')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('has no hint and announces no shortcut by default', () => {
     const { container } = render(<Button>Save</Button>);
 
