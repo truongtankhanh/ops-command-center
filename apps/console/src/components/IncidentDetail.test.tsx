@@ -1,5 +1,5 @@
 import type { IncidentDetail as Detail, IncidentEvent, Role, Zone } from '@occ/contracts';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
@@ -413,6 +413,23 @@ describe('IncidentDetail', () => {
       expect(postCalls()).toHaveLength(0);
     });
 
+    it('offers no A or R while single-key shortcuts are off', async () => {
+      signInAs('operator');
+      useConsole.setState({ keyboardShortcuts: false });
+      renderDetail();
+
+      expect(screen.getByRole('button', { name: 'Acknowledge' })).not.toHaveAttribute(
+        'aria-keyshortcuts',
+      );
+      expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveAttribute(
+        'aria-keyshortcuts',
+      );
+      await userEvent.keyboard('a');
+      await userEvent.keyboard('r');
+
+      expect(postCalls()).toHaveLength(0);
+    });
+
     it('takes no second shortcut while a transition is pending', async () => {
       signInAs('operator');
       postResponse = () => new Promise<Response>(() => {});
@@ -428,6 +445,68 @@ describe('IncidentDetail', () => {
 
       // The first request is on its way (the token is read first); the second key sent nothing.
       await waitFor(() => expect(postCalls()).toHaveLength(1));
+    });
+  });
+
+  // UI-16 Q6: the button that had focus goes with the step it took; focus must not fall to the body.
+  describe('focus after a response', () => {
+    const acknowledgeButton = () => screen.getByRole('button', { name: 'Acknowledge' });
+    const resolveButton = () => screen.getByRole('button', { name: 'Resolve' });
+    const theSheet = () => screen.getByRole('complementary', { name: 'Incident INC-000042' });
+    const acknowledged = () =>
+      detail({ status: 'acknowledged', acknowledgedAt: minutesAgo(0), version: 2 });
+
+    beforeEach(() => signInAs('operator'));
+
+    it('moves focus to Resolve once acknowledged', async () => {
+      postResponse = () => json(acknowledged());
+      renderDetail();
+
+      await userEvent.click(acknowledgeButton());
+
+      await waitFor(() => expect(resolveButton()).toHaveFocus());
+    });
+
+    // A live update, as `useLiveIncidents` writes it. The query notifies its observers on a later
+    // tick, so the assertions wait for the Acknowledge button to go.
+    it('moves focus to Resolve when someone else acknowledges', async () => {
+      const { client } = renderDetail();
+      act(() => acknowledgeButton().focus());
+
+      act(() => client.setQueryData(queryKeys.incident(detail().id), acknowledged()));
+
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull());
+      expect(resolveButton()).toHaveFocus();
+    });
+
+    it('leaves focus in the note when someone else acknowledges', async () => {
+      const { client } = renderDetail();
+      act(() => screen.getByLabelText(NOTE_LABEL).focus());
+
+      act(() => client.setQueryData(queryKeys.incident(detail().id), acknowledged()));
+
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull());
+      expect(screen.getByLabelText(NOTE_LABEL)).toHaveFocus();
+    });
+
+    it('moves focus to the sheet once resolved, so Escape still closes it', async () => {
+      useConsole.setState({ selectedIncidentId: detail().id });
+      postResponse = () =>
+        json(detail({ status: 'resolved', resolvedAt: minutesAgo(0), version: 2 }));
+      renderDetail();
+
+      await userEvent.click(resolveButton());
+
+      await waitFor(() => expect(theSheet()).toHaveFocus());
+      await userEvent.keyboard('{Escape}');
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+
+    it('does not take focus when an acknowledged incident opens', () => {
+      renderDetail(acknowledged());
+
+      expect(theSheet()).toHaveFocus();
+      expect(resolveButton()).not.toHaveFocus();
     });
   });
 

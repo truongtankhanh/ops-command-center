@@ -1,6 +1,8 @@
+import { useLayoutEffect, useRef } from 'react';
 import { loadErrorText, RATE_LIMITED_RETRYING } from '../api/client';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { focusLost } from '../ui/focus';
 import { CircleX } from '../ui/icons';
 
 /**
@@ -51,6 +53,9 @@ export function RateLimited({ className }: { className?: string }) {
 /**
  * An `ErrorBoundary`'s fallback: the region, still named for assistive tech, says it stopped
  * working and offers to start it again. `className` keeps the region's place in the layout.
+ *
+ * If focus was in the region that broke, it went with it: Retry takes it, so the keyboard user is
+ * where the fix is. Focus anywhere else is left alone.
  */
 export function RegionFallback({
   label,
@@ -65,9 +70,22 @@ export function RegionFallback({
   retryLabel?: string;
   className?: string;
 }) {
+  const retryRef = useRef<HTMLButtonElement>(null);
+  // Layout effect: the broken subtree is already gone, so a lost focus shows as `body`.
+  useLayoutEffect(() => {
+    if (focusLost()) retryRef.current?.focus({ preventScroll: true });
+  }, []);
+
   return (
     <section aria-label={label} className={className}>
-      <EmptyState icon={CircleX} action={<Button onClick={retry}>{retryLabel}</Button>}>
+      <EmptyState
+        icon={CircleX}
+        action={
+          <Button ref={retryRef} onClick={retry}>
+            {retryLabel}
+          </Button>
+        }
+      >
         {message}
       </EmptyState>
     </section>

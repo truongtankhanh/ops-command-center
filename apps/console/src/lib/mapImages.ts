@@ -9,10 +9,11 @@ import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { mapColors } from '../styles/tokens';
-import { cameraIcon, type Glyph, incidentTypeIcon } from '../ui/icons';
+import { cameraIcon, type Glyph, incidentTypeIcon, severityIcon } from '../ui/icons';
 import {
   cameraImageId,
   CLUSTER_COUNT_PREFIX,
+  clusterSeverityImageId,
   incidentImageId,
   resolvedImageId,
 } from './mapFeatures';
@@ -32,11 +33,15 @@ export type MarkerForm =
       type: IncidentType;
     }
   | { kind: 'resolved'; type: IncidentType }
-  | { kind: 'camera'; online: boolean };
+  | { kind: 'camera'; online: boolean }
+  | { kind: 'cluster-severity'; severity: IncidentSeverity };
 
 /** Incident images are drawn in a square of this many CSS px, centred on the feature. */
 const MARKER_BOX = 28;
 const CAMERA_BOX = 14;
+/** The cluster's severity badge: a small severity disc with its glyph, on the cluster's ring. */
+const BADGE_BOX = 16;
+const BADGE = { radius: 7, glyph: 10 };
 const DISC_RADIUS: Record<IncidentSeverity, number> = {
   low: 10,
   medium: 10,
@@ -86,6 +91,13 @@ export function glyphStyle(form: MarkerForm): GlyphStyle {
         // Open: on the severity disc. Acknowledged: on the ground, inside a severity ring.
         color: form.status === 'open' ? mapColors.onAccent : mapColors.severity[form.severity],
       };
+    case 'cluster-severity':
+      return {
+        glyph: severityIcon(form.severity),
+        size: BADGE.glyph,
+        strokeWidth: 2.6,
+        color: mapColors.onAccent,
+      };
   }
 }
 
@@ -97,6 +109,8 @@ export function imageIdOf(form: MarkerForm): string {
       return resolvedImageId(form.type);
     case 'incident':
       return incidentImageId(form);
+    case 'cluster-severity':
+      return clusterSeverityImageId(form.severity);
   }
 }
 
@@ -105,7 +119,7 @@ export function imageIdOf(form: MarkerForm): string {
  * coloured by `glyphStyle`) centred on its shape. `pixelRatio` scales the bitmap, not the drawing.
  */
 export function markerSvg(form: MarkerForm, glyphMarkup: string, pixelRatio: number): string {
-  const box = form.kind === 'camera' ? CAMERA_BOX : MARKER_BOX;
+  const box = boxOf(form);
   const centre = box / 2;
   const glyphAt = centre - glyphStyle(form).size / 2;
   return [
@@ -114,6 +128,17 @@ export function markerSvg(form: MarkerForm, glyphMarkup: string, pixelRatio: num
     `<g transform="translate(${glyphAt} ${glyphAt})">${glyphMarkup}</g>`,
     '</svg>',
   ].join('');
+}
+
+function boxOf(form: MarkerForm): number {
+  switch (form.kind) {
+    case 'camera':
+      return CAMERA_BOX;
+    case 'cluster-severity':
+      return BADGE_BOX;
+    default:
+      return MARKER_BOX;
+  }
 }
 
 function shapeSvg(form: MarkerForm, centre: number): string {
@@ -131,13 +156,19 @@ function shapeSvg(form: MarkerForm, centre: number): string {
         ? disc(centre, radius, hue, mapColors.ground, 2.5)
         : disc(centre, radius, mapColors.ground, hue, 3);
     }
+    case 'cluster-severity':
+      // Ground-coloured edge, like an open marker, so the badge stands off the cluster's ring.
+      return disc(centre, BADGE.radius, mapColors.severity[form.severity], mapColors.ground, 1.5);
   }
 }
 
 const disc = (centre: number, radius: number, fill: string, stroke: string, width: number) =>
   `<circle cx="${centre}" cy="${centre}" r="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="${width}"/>`;
 
-/** Every form the map can draw: 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras. */
+/**
+ * Every form the map can draw: 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras, 4
+ * cluster badges.
+ */
 function markerForms(): MarkerForm[] {
   return [
     ...INCIDENT_TYPES.flatMap((type): MarkerForm[] => [
@@ -153,6 +184,7 @@ function markerForms(): MarkerForm[] {
     ]),
     { kind: 'camera', online: true },
     { kind: 'camera', online: false },
+    ...INCIDENT_SEVERITIES.map((severity): MarkerForm => ({ kind: 'cluster-severity', severity })),
   ];
 }
 

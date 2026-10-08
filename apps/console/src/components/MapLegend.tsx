@@ -45,7 +45,7 @@ export function MapLegend() {
           <span className={styles.cluster} aria-hidden>
             3
           </span>
-          Several incidents
+          Several incidents, badge = most severe
         </li>
         <li>
           <Icon glyph={cameraIcon(true)} size={16} />

@@ -2,12 +2,15 @@ import {
   createContext,
   type KeyboardEvent,
   type ReactNode,
+  type Ref,
   type RefObject,
   useContext,
+  useImperativeHandle,
   useLayoutEffect,
   useRef,
   useState,
 } from 'react';
+import { focusLost } from './focus';
 import styles from './Sheet.module.css';
 
 /**
@@ -38,12 +41,6 @@ export function SheetHost({ children }: { children: ReactNode }) {
   return <SheetHostContext.Provider value={session}>{children}</SheetHostContext.Provider>;
 }
 
-/** Focus went nowhere: the focused element was removed, or nothing had focus. */
-function focusLost(): boolean {
-  const active = document.activeElement;
-  return active === null || active === document.body;
-}
-
 /**
  * The panel over the right of the stage (frame 02) that holds the incident detail or the report
  * form. It is **non-modal**: no focus trap, no backdrop — the feed and the map stay usable beside it.
@@ -62,10 +59,14 @@ function focusLost(): boolean {
  *
  * Without a `SheetHost` every sheet is on its own: it records its opener on mount and returns
  * focus on unmount.
+ *
+ * `ref` gives the content the sheet element, e.g. to focus it again when the control that had focus
+ * disappears (an action that is done).
  */
 export function Sheet({
   label,
   id,
+  ref,
   onClose,
   keepOpen = false,
   keptMessage,
@@ -74,13 +75,16 @@ export function Sheet({
 }: {
   label: string;
   id?: string;
+  ref?: Ref<HTMLElement>;
   onClose: () => void;
   keepOpen?: boolean;
   keptMessage?: string;
   onEscapeKept?: () => void;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
+  // Attached in the layout phase, before the layout effects of the component that renders the sheet.
+  useImperativeHandle(ref, () => sheetRef.current!, []);
   const hostSession = useContext(SheetHostContext);
   const ownSession = useRef(newSession());
   const sessionRef = hostSession ?? ownSession;
@@ -97,7 +101,7 @@ export function Sheet({
 
   // Layout effect: focus moves before the browser paints the opened sheet.
   useLayoutEffect(() => {
-    const sheet = ref.current;
+    const sheet = sheetRef.current;
     const session = sessionRef.current;
     if (!sheet) return;
     if (session.closing) {
@@ -136,7 +140,7 @@ export function Sheet({
 
   return (
     <aside
-      ref={ref}
+      ref={sheetRef}
       id={id}
       className={styles.sheet}
       aria-label={label}

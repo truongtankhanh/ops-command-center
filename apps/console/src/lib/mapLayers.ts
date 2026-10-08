@@ -9,7 +9,7 @@ import type {
 } from 'maplibre-gl';
 import { mapColors } from '../styles/tokens';
 import { metresToPixels } from './geo';
-import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX } from './mapFeatures';
+import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX, clusterSeverityImageId } from './mapFeatures';
 import { type SitePart, siteFeatures, zoneFeatures } from './sitePlan';
 
 /*
@@ -49,6 +49,7 @@ export const MAP_LAYERS = {
   selectedPulseWave: 'selected-pulse-wave',
   clusters: 'clusters',
   clusterCount: 'cluster-count',
+  clusterSeverity: 'cluster-severity',
   incidents: 'incidents',
   selectedRing: 'selected-ring',
   selected: 'selected',
@@ -99,6 +100,22 @@ const clusterSeverityColour: ExpressionSpecification = [
   mapColors.severity.medium,
   mapColors.severity.low,
 ];
+
+/** The same severity as a glyph badge, so the ring's colour is not the only cue (WCAG 1.4.1). */
+const clusterSeverityImage: ExpressionSpecification = [
+  'match',
+  ['get', 'sevRank'],
+  severityRank('critical'),
+  clusterSeverityImageId('critical'),
+  severityRank('high'),
+  clusterSeverityImageId('high'),
+  severityRank('medium'),
+  clusterSeverityImageId('medium'),
+  clusterSeverityImageId('low'),
+];
+
+/** On the ring at its top-right (45°): the cluster's radius is 14 px. */
+const CLUSTER_BADGE_OFFSET: [number, number] = [10, -10];
 
 const clusterCountImage: ExpressionSpecification = [
   'case',
@@ -371,6 +388,17 @@ export function incidentLayers(): LayerSpecification[] {
       source: MAP_SOURCES.incidents,
       filter: isCluster,
       layout: { ...ICON_PLACEMENT, 'icon-image': clusterCountImage },
+    },
+    {
+      id: MAP_LAYERS.clusterSeverity,
+      type: 'symbol',
+      source: MAP_SOURCES.incidents,
+      filter: isCluster,
+      layout: {
+        ...ICON_PLACEMENT,
+        'icon-image': clusterSeverityImage,
+        'icon-offset': CLUSTER_BADGE_OFFSET,
+      },
     },
     {
       id: MAP_LAYERS.incidents,

@@ -21,8 +21,9 @@
 .clear {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  /* 24 px: WCAG 2.5.8's minimum target, without relying on its spacing exception. */
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 50%;

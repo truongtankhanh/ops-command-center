@@ -40,10 +40,13 @@ the loading, error and session states (frames 05, 07–11, UI-15) `CircleX` (any
 stopped working, and the failed sign-in), `Shield` (no access: the account has no role), `Lock` (insecure context, and
 the session-expired banner) and `LoaderCircle` (the signing-in / signing-out spinner). Frame 09 draws the failed
 sign-in with a circled "!", which is `CircleAlert`, the `medium` severity glyph; `CircleX` replaces it so that glyph
-keeps one meaning.
+keeps one meaning. For the keyboard shortcuts (UI-16) `Keyboard` marks the single-key shortcuts switch in the account
+menu; the menu's "Keyboard shortcuts" entry uses `Info`, so the two rows do not repeat a glyph.
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
-principle 2), so this is accepted; UI-16 re-checks it.
+principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in the DOM. The one place without a
+label is the map's cluster badge (10 px, below), where `medium` / `low` are told apart by the inner mark and the
+severity colour; the cluster's tooltip names the severity and the feed lists every incident.
 
 ## Using `Icon`
 
@@ -100,7 +103,10 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
    The SDF route planned here before UI-08 (a `circle` layer for the disc plus recoloured glyphs) was dropped: across
    two layers, a lower marker's glyph is drawn over a higher marker's disc where they overlap.
 2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (48), `incident-resolved-{type}` (6),
-   `camera-online` / `camera-offline` — 56 images. Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam`): open =
+   `camera-online` / `camera-offline`, `cluster-severity-{severity}` (4, UI-16) — 60 images. The cluster badge is a
+   16 px box: a severity disc (r 7, 1.5 px ground edge) with the severity glyph at 10 px in `--on-accent`, drawn on
+   the cluster's ring at its top-right by its own `symbol` layer, so a cluster's highest severity is not told by the
+   ring colour alone (WCAG 1.4.1). Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam`): open =
    severity disc with an `--on-accent` glyph, acknowledged = ground disc in a severity ring with a severity glyph,
    resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4).
 3. **SVG markup from the component.** One `createRoot` on a detached element renders each glyph with `flushSync`

@@ -280,6 +280,9 @@ function useSiteLayers(
       const el = document.createElement('div');
       el.className = styles.zoneLabel!;
       el.textContent = zone.name;
+      // Pointer-only like the map: without it MapLibre makes the label a "Map marker" button. The
+      // zone names reach assistive tech through the feed, the detail and the report's zone list.
+      el.setAttribute('aria-hidden', 'true');
       // Label sits just above the zone's top edge, clear of the markers inside it.
       const top = Math.max(...zone.polygon.map(([, lat]) => lat));
       return new maplibregl.Marker({ element: el, anchor: 'bottom' })
@@ -481,6 +484,8 @@ function useReportPick(map: maplibregl.Map | null, zones: Zone[] | undefined) {
     const element = document.createElement('div');
     element.className = styles.reportPin!;
     element.innerHTML = PIN_SVG;
+    // Pointer-only (see above): the zone select is the keyboard route, so it is no "Map marker".
+    element.setAttribute('aria-hidden', 'true');
     const marker = new maplibregl.Marker({ element, anchor: 'bottom', offset: PIN_TIP_OFFSET })
       .setLngLat(start)
       .addTo(map);

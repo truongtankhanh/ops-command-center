@@ -1,9 +1,10 @@
-import type { Camera, Incident, LngLat } from '@occ/contracts';
+import { type Camera, type Incident, INCIDENT_SEVERITIES, type LngLat } from '@occ/contracts';
 import {
   cameraFeatures,
   cameraImageId,
   cameraViewFeatures,
   clusterCountImageId,
+  clusterSeverityImageId,
   fanOut,
   incidentFeatures,
   incidentImageId,
@@ -71,6 +72,11 @@ describe('image ids', () => {
     expect(clusterCountImageId(3)).toBe('cluster-count-3');
     expect(clusterCountImageId(9)).toBe('cluster-count-9');
     expect(clusterCountImageId(10)).toBe('cluster-count-9+');
+  });
+
+  it('names a cluster badge image by severity', () => {
+    expect(clusterSeverityImageId('critical')).toBe('cluster-severity-critical');
+    expect(new Set(INCIDENT_SEVERITIES.map(clusterSeverityImageId)).size).toBe(4);
   });
 });
 

@@ -75,8 +75,12 @@
   border: 2px solid var(--text-secondary);
 }
 
-/* A cluster on the map: a `--surface-1` disc with a count, ringed in its highest severity. */
+/*
+ * A cluster on the map: a `--surface-1` disc with a count, ringed in its highest severity, with
+ * that severity's badge on the ring (top-right).
+ */
 .cluster {
+  position: relative;
   display: inline-grid;
   flex: none;
   place-items: center;
@@ -90,6 +94,18 @@
   font-size: var(--type-s);
   line-height: var(--leading-xs);
   color: var(--text-primary);
+}
+
+.cluster::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--surface-1);
+  border-radius: 50%;
+  background: var(--text-secondary);
 }
 
 .offline {

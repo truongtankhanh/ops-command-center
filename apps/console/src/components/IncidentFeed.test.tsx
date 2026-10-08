@@ -318,6 +318,22 @@ describe('IncidentFeed', () => {
       expect(searchbox()).toHaveValue('');
     });
 
+    // WCAG 2.1.4: the account menu's switch turns single-key shortcuts off (UI-16).
+    describe('with single-key shortcuts off', () => {
+      afterEach(() => resetStore(useConsole));
+
+      it('leaves / alone and shows no hint for it', async () => {
+        useConsole.setState({ keyboardShortcuts: false });
+        renderFeed();
+
+        expect(searchbox()).not.toHaveAttribute('aria-keyshortcuts');
+        expect(screen.queryByText('/', { selector: 'kbd' })).toBeNull();
+        await userEvent.keyboard('/');
+
+        expect(searchbox()).not.toHaveFocus();
+      });
+    });
+
     it('clears the search with Escape and stops it there', async () => {
       // Stands in for any page-level Escape handler.
       const onKey = vi.fn<(event: KeyboardEvent) => void>();

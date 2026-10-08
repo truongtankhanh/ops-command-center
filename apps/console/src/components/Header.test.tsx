@@ -360,4 +360,60 @@ describe('Header', () => {
       expect(soundSwitch()).toBeInTheDocument();
     });
   });
+  // WCAG 2.1.4: speech input can type a single-key shortcut by accident, so they can be turned off.
+  describe('single-key shortcuts', () => {
+    const shortcutsSwitch = () => screen.getByRole('switch', { name: 'Single-key shortcuts' });
+    const helpEntry = () => screen.getByRole('button', { name: 'Keyboard shortcuts' });
+    const reportButton = () => screen.getByRole('button', { name: 'Report incident' });
+
+    beforeEach(() => localStorage.clear());
+
+    it('are on by default', async () => {
+      await openAccountMenu();
+
+      expect(shortcutsSwitch()).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('turn off: Report shows no N and N does nothing', async () => {
+      await openAccountMenu();
+
+      await userEvent.click(shortcutsSwitch());
+      expect(shortcutsSwitch()).toHaveAttribute('aria-checked', 'false');
+      expect(useConsole.getState().keyboardShortcuts).toBe(false);
+      await userEvent.keyboard('{Escape}');
+
+      expect(reportButton()).not.toHaveAttribute('aria-keyshortcuts');
+      await userEvent.keyboard('n');
+      expect(useConsole.getState().reporting).toBe(false);
+    });
+
+    it('turn back on', async () => {
+      await openAccountMenu();
+
+      await userEvent.click(shortcutsSwitch());
+      await userEvent.click(shortcutsSwitch());
+
+      expect(shortcutsSwitch()).toHaveAttribute('aria-checked', 'true');
+      expect(reportButton()).toHaveAttribute('aria-keyshortcuts', 'N');
+    });
+
+    it('open their help from the menu, which closes and gives focus back to its trigger', async () => {
+      await openAccountMenu();
+
+      await userEvent.click(helpEntry());
+
+      expect(useConsole.getState().shortcutHelpOpen).toBe(true);
+      expect(screen.queryByRole('group', { name: 'Account' })).toBeNull();
+      expect(screen.getByRole('button', { name: /Demo Operator/ })).toHaveFocus();
+    });
+
+    it('show ? on the help entry only while they are on', async () => {
+      await openAccountMenu();
+      expect(helpEntry()).toHaveAttribute('aria-keyshortcuts', '?');
+
+      await userEvent.click(shortcutsSwitch());
+
+      expect(helpEntry()).not.toHaveAttribute('aria-keyshortcuts');
+    });
+  });
 });

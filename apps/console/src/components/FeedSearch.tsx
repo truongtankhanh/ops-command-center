@@ -1,4 +1,5 @@
 import type { KeyboardEvent, RefObject } from 'react';
+import { useConsole } from '../store';
 import { TextInput } from '../ui/Field';
 import { Icon } from '../ui/Icon';
 import { Search, X } from '../ui/icons';
@@ -8,7 +9,8 @@ import styles from './FeedSearch.module.css';
 /**
  * The feed's search box (frame 01), controlled: the feed owns the query and binds `/` to focus it
  * through `ref` (the input announces the key with `aria-keyshortcuts`). The key hint and the clear
- * button share one slot: the `/` hint while empty, Clear while there is text.
+ * button share one slot: the `/` hint while empty, Clear while there is text. With single-key
+ * shortcuts off, neither the hint nor `aria-keyshortcuts` is shown.
  *
  * Escape with text clears it and is stopped here, so it stays the search's own. With no text it is
  * left alone, as anywhere else. (The open detail or report handles Escape on its own `Sheet`, which
@@ -25,6 +27,7 @@ export function FeedSearch({
   ref: RefObject<HTMLInputElement | null>;
   className?: string;
 }) {
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   const clear = () => {
     onChange('');
     ref.current?.focus();
@@ -52,13 +55,13 @@ export function FeedSearch({
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Search code, title or zone"
-          aria-keyshortcuts="/"
+          aria-keyshortcuts={keysOn ? '/' : undefined}
           autoComplete="off"
           spellCheck={false}
         />
       </label>
       {value === '' ? (
-        <Kbd className={styles.slot}>/</Kbd>
+        keysOn && <Kbd className={styles.slot}>/</Kbd>
       ) : (
         <button
           type="button"

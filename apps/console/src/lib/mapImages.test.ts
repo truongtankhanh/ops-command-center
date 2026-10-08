@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { mapColors } from '../styles/tokens';
-import { cameraIcon, incidentTypeIcon } from '../ui/icons';
+import { cameraIcon, incidentTypeIcon, severityIcon } from '../ui/icons';
 import {
   addClusterCountImage,
   glyphStyle,
@@ -114,6 +114,30 @@ describe('markerSvg', () => {
   });
 });
 
+describe('cluster badge', () => {
+  const badge: MarkerForm = { kind: 'cluster-severity', severity: 'high' };
+
+  it('is named by its severity', () => {
+    expect(imageIdOf(badge)).toBe('cluster-severity-high');
+  });
+
+  it('draws the severity glyph, so the ring colour is not the only cue', () => {
+    expect(glyphStyle(badge)).toEqual({
+      glyph: severityIcon('high'),
+      size: 10,
+      strokeWidth: 2.6,
+      color: mapColors.onAccent,
+    });
+  });
+
+  it('is a small severity disc', () => {
+    const svg = markerSvg(badge, '<svg/>', 2);
+
+    expect(svg).toContain('width="32" height="32" viewBox="0 0 16 16"');
+    expect(svg).toContain(`fill="${mapColors.severity.high}"`);
+  });
+});
+
 describe('registerMapImages', () => {
   /** jsdom neither decodes images nor loads fonts. */
   class DecodedImage {
@@ -139,12 +163,13 @@ describe('registerMapImages', () => {
 
     await registerMapImages(asMap(map), new AbortController().signal);
 
-    // 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras.
-    expect(map.images.size).toBe(56);
+    // 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras, 4 cluster badges.
+    expect(map.images.size).toBe(60);
     expect(map.images.get('incident-critical-open-fire_alarm')).toEqual({ pixelRatio: 1 });
     expect(map.images.has('incident-low-acknowledged-crowding')).toBe(true);
     expect(map.images.has('incident-resolved-suspicious_object')).toBe(true);
     expect(map.images.has('camera-offline')).toBe(true);
+    expect(map.images.has('cluster-severity-critical')).toBe(true);
   });
 
   it('renders the glyph from the icon set into the image', async () => {

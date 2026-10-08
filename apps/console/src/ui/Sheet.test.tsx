@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, createRef, useState } from 'react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Sheet, SheetHost } from './Sheet';
 
 /** Opens, switches and closes a sheet the way `App` does: one sheet per content key. */
@@ -34,6 +35,20 @@ const button = (name: string) => screen.getByRole('button', { name });
 const flush = () => act(async () => {});
 
 describe('Sheet', () => {
+  it('gives the sheet element to its ref, so the content can focus it again', async () => {
+    const ref = createRef<HTMLElement>();
+    render(
+      <Sheet label="Sheet R" onClose={() => {}} ref={ref}>
+        <button>Inside</button>
+      </Sheet>,
+    );
+    await userEvent.click(button('Inside'));
+
+    expect(ref.current).toBe(sheet('Sheet R'));
+    act(() => ref.current!.focus());
+    expect(sheet('Sheet R')).toHaveFocus();
+  });
+
   describe('focus', () => {
     it('moves focus to the sheet when it opens', async () => {
       render(<Harness />);
@@ -221,5 +236,15 @@ describe('Sheet', () => {
 
       expect(onClose).not.toHaveBeenCalled();
     });
+  });
+
+  // UI-16: automated accessibility check; the status line is always present.
+  it('has no axe violations while open, including its status line', async () => {
+    render(<Harness />);
+
+    await userEvent.click(button('Open A'));
+
+    expect(sheet('Sheet A')).toBeInTheDocument();
+    await expectNoAxeViolations();
   });
 });

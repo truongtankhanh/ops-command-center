@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { resetStore } from '../test-utils';
+import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { ToastRegion } from './Toast';
 import { showToast, type Toast, TOAST_MS, useToasts } from './toasts';
 
@@ -60,6 +60,15 @@ describe('ToastRegion', () => {
         list('assertive').compareDocumentPosition(list('polite')) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
+    });
+
+    // UI-16: real timers here — fake ones could hold up axe's own scheduling.
+    it('has no axe violations with an urgent and a polite toast', async () => {
+      show({ title: 'Fire alarm', urgent: true });
+      show(withAction('Door forced open'));
+
+      expect(list('assertive')).toContainElement(toastOf('Fire alarm'));
+      await expectNoAxeViolations();
     });
   });
 

@@ -363,6 +363,42 @@ describe('useConsole', () => {
     });
   });
 
+  // WCAG 2.1.4: single-key shortcuts can be turned off, for speech input (UI-16).
+  describe('keyboard shortcuts', () => {
+    const stored = () => localStorage.getItem('occ.console.keyboardShortcuts');
+
+    beforeEach(() => localStorage.clear());
+
+    it('are on by default', () => {
+      expect(useConsole.getInitialState().keyboardShortcuts).toBe(true);
+    });
+
+    it('turn off and remember it in this browser', () => {
+      state().setKeyboardShortcuts(false);
+
+      expect(state().keyboardShortcuts).toBe(false);
+      expect(stored()).toBe('false');
+    });
+
+    it('turn back on and forget it', () => {
+      state().setKeyboardShortcuts(false);
+      state().setKeyboardShortcuts(true);
+
+      expect(state().keyboardShortcuts).toBe(true);
+      expect(stored()).toBeNull();
+    });
+
+    it('open and close their help', () => {
+      expect(state().shortcutHelpOpen).toBe(false);
+
+      state().openShortcutHelp();
+      expect(state().shortcutHelpOpen).toBe(true);
+
+      state().closeShortcutHelp();
+      expect(state().shortcutHelpOpen).toBe(false);
+    });
+  });
+
   describe('camera pins', () => {
     const KNOWN = ['c1', 'c2', 'c3', 'c4', 'c5'];
     const stored = () => JSON.parse(localStorage.getItem('occ.console.pinnedCameras') ?? 'null');

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Tabs } from './Tabs';
 
 type Letter = 'a' | 'b' | 'c';
@@ -159,5 +160,24 @@ describe('Tabs', () => {
     expect(tab('Alpha 3')).toBeInTheDocument();
     expect(tab('Beta 0')).toBeInTheDocument();
     expect(screen.getByRole('tabpanel', { name: 'Alpha 3' })).toHaveTextContent('content');
+  });
+
+  // UI-16: automated accessibility check of the tab list, its counts and the panel.
+  it('has no axe violations, with counts in the tab names', async () => {
+    render(
+      <Tabs
+        label="Letters"
+        tabs={[
+          { value: 'a', label: 'Alpha', count: 3 },
+          { value: 'b', label: 'Beta', count: 0 },
+        ]}
+        value="a"
+        onChange={() => {}}
+      >
+        <button type="button">In the panel</button>
+      </Tabs>,
+    );
+
+    await expectNoAxeViolations();
   });
 });

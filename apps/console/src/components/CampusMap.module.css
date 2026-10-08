@@ -12,6 +12,11 @@
   height: 100%;
 }
 
+/* The canvas takes focus for MapLibre's keys (arrows, + / -); `.map` would clip a ring outside. */
+.canvas :global(.maplibregl-canvas):focus-visible {
+  outline-offset: -2px;
+}
+
 /*
  * Retrying or failed zones: a message centred in the part of the map the sheet leaves visible
  * (`--sheet-inset`, as `.pickHint`). Before the controls and legend in the DOM, so they stay on top.

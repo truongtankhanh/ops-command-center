@@ -1,4 +1,6 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { useConsole } from '../store';
+import { resetStore } from '../test-utils';
 import { isShortcut, useShortcut } from './useShortcut';
 
 /** An element in the page, so `closest()` sees its ancestors. */
@@ -95,6 +97,28 @@ describe('useShortcut', () => {
   }
 
   beforeEach(() => handler.mockReset());
+  afterEach(() => resetStore(useConsole));
+
+  // WCAG 2.1.4: the switch in the account menu turns every single-key shortcut off.
+  it('does nothing while single-key shortcuts are off', () => {
+    act(() => useConsole.setState({ keyboardShortcuts: false }));
+    renderShortcut();
+
+    const event = press('n');
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('starts listening again when they are turned back on', () => {
+    act(() => useConsole.setState({ keyboardShortcuts: false }));
+    renderShortcut();
+
+    act(() => useConsole.setState({ keyboardShortcuts: true }));
+    press('n');
+
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
 
   it('runs the handler once and claims the key', () => {
     renderShortcut();

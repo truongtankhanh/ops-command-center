@@ -116,8 +116,8 @@
   background: var(--border-subtle);
 }
 
-/* Frame 06's sound switch, laid out like the ghost Sign out button below it. */
-.sound {
+/* Frame 06's sound switch, and the shortcuts switch: laid out like the ghost buttons below. */
+.switchRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -135,7 +135,7 @@
   cursor: pointer;
 }
 
-.sound:hover {
+.switchRow:hover {
   background: var(--surface-2);
   color: var(--text-primary);
 }
@@ -164,12 +164,12 @@
   transition: transform var(--duration-fast) var(--ease-out);
 }
 
-.sound[aria-checked='true'] .switch {
+.switchRow[aria-checked='true'] .switch {
   background: var(--accent);
   box-shadow: none;
 }
 
-.sound[aria-checked='true'] .switch::after {
+.switchRow[aria-checked='true'] .switch::after {
   background: var(--on-accent);
   transform: translateX(14px);
 }
@@ -181,7 +181,7 @@
 }
 
 /* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
-.actions .signOut {
+.actions .menuButton {
   width: 100%;
   justify-content: flex-start;
 }

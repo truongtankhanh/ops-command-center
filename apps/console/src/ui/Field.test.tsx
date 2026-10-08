@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { expectNoAxeViolations } from '../test-utils';
 import { Field, Select, Textarea, TextInput } from './Field';
 
 describe('Field', () => {
@@ -102,5 +103,30 @@ describe('Field', () => {
     expect(screen.getByText('5 / 160')).toHaveAttribute('aria-hidden', 'true');
     // By role, not `getByLabelText`, which reads the label's raw text, counter included.
     expect(screen.getByRole('textbox', { name: 'Title' })).toBeInTheDocument();
+  });
+
+  // UI-16: automated accessibility check of each control kind, invalid and counted.
+  it('has no axe violations for each control, with an error and a count', async () => {
+    render(
+      <>
+        <Field label="Title" error="Enter a title.">
+          <TextInput />
+        </Field>
+        <Field label="Type">
+          <Select defaultValue="">
+            <option value="" disabled>
+              Choose a type
+            </option>
+            <option value="medical">Medical</option>
+          </Select>
+        </Field>
+        <Field label="Details (optional)" count="0 / 1000">
+          <Textarea />
+        </Field>
+      </>,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute('aria-invalid', 'true');
+    await expectNoAxeViolations();
   });
 });

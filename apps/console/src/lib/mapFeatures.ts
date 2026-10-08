@@ -2,6 +2,7 @@ import {
   type Camera,
   type CameraFieldOfView,
   type Incident,
+  type IncidentSeverity,
   type IncidentType,
   type LngLat,
   severityRank,
@@ -65,6 +66,10 @@ export const CLUSTER_COUNT_MAX = 9;
 
 export const clusterCountImageId = (count: number): string =>
   `${CLUSTER_COUNT_PREFIX}${count > CLUSTER_COUNT_MAX ? `${CLUSTER_COUNT_MAX}+` : count}`;
+
+/** The badge on a cluster's ring: its highest severity as glyph, so colour is not the only cue. */
+export const clusterSeverityImageId = (severity: IncidentSeverity): string =>
+  `cluster-severity-${severity}`;
 
 const isPulsing = (incident: Incident) =>
   incident.severity === 'critical' && incident.status === 'open';
