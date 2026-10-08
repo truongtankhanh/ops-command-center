@@ -395,6 +395,15 @@ describe('CampusMap', () => {
     expect(useConsole.getState().selectedIncidentId).toBe('a');
   });
 
+  it('opens a camera in the viewer and keeps the selected incident', async () => {
+    const { map } = await renderMap([incident({ id: 'a' })]);
+    act(() => useConsole.getState().select('a'));
+
+    act(() => click(map, { layer: { id: MAP_LAYERS.cameras }, properties: { id: 'c1' } }));
+
+    expect(useConsole.getState()).toMatchObject({ viewerCameraId: 'c1', selectedIncidentId: 'a' });
+  });
+
   it('zooms into a cluster where it breaks up', async () => {
     const { map } = await renderMap([incident({ id: 'a' })]);
     map.easeTo.mockClear();
@@ -861,6 +870,17 @@ describe('CampusMap', () => {
       act(() => useConsole.getState().setPicking(false));
       act(() => clickAt(map, INSIDE));
       expect(useConsole.getState().selectedIncidentId).toBe('a');
+    });
+
+    it('opens no camera while picking', async () => {
+      const { map } = await startPicking();
+      map.queryRenderedFeatures.mockReturnValue([
+        { layer: { id: MAP_LAYERS.cameras }, properties: { id: 'c1' } },
+      ]);
+
+      act(() => clickAt(map, INSIDE));
+
+      expect(useConsole.getState()).toMatchObject({ viewerCameraId: null, reporting: true });
     });
 
     it('shows a crosshair and the hint only while picking', async () => {

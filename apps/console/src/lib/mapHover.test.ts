@@ -128,17 +128,14 @@ describe('sameTarget', () => {
 });
 
 describe('isClickable', () => {
-  it.each([MAP_LAYERS.selected, MAP_LAYERS.incidents, MAP_LAYERS.clusters])(
+  it.each([MAP_LAYERS.selected, MAP_LAYERS.incidents, MAP_LAYERS.clusters, MAP_LAYERS.cameras])(
     'acts on %s',
     (layer) => {
       expect(isClickable(layer)).toBe(true);
     },
   );
 
-  it.each([MAP_LAYERS.cameras, MAP_LAYERS.clusterCount, MAP_LAYERS.zoneFill])(
-    'does nothing on %s',
-    (layer) => {
-      expect(isClickable(layer)).toBe(false);
-    },
-  );
+  it.each([MAP_LAYERS.clusterCount, MAP_LAYERS.zoneFill])('does nothing on %s', (layer) => {
+    expect(isClickable(layer)).toBe(false);
+  });
 });

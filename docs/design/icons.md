@@ -31,9 +31,11 @@ Every domain map is a `Record` over its union, so adding a value to `@occ/contra
 
 Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
 `ChevronDown`, `LogOut`, for the map controls (frame 01) `Minus` (zoom out) and `Scan` (fit campus, the frame's
-`#i-fit`), `Info` for hints (`Hint`, frames 02 / 03; the same glyph as severity `low`, always next to text), and
+`#i-fit`), `Info` for hints (`Hint`, frames 02 / 03; the same glyph as severity `low`, always next to text),
 for the report form (frame 03, UI-12) `MapPin` (the "Pick on map" toggle and the pin hint), `Crosshair` (the map hint
-while picking) and `Check` (the success toast; not `CircleCheck`, which means "resolved").
+while picking) and `Check` (the success toast; not `CircleCheck`, which means "resolved"), and for the camera
+tiles and viewer (frame 01, UI-13) `Maximize2` (open a camera in the viewer, the frame's `#i-expand`), `Maximize` (the
+viewer's Fullscreen button), `Pin` / `PinOff` (pin a camera to the strip / unpin it, and the pinned badge).
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted; UI-16 re-checks it.

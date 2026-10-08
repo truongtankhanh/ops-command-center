@@ -7,12 +7,17 @@ import { Dialog } from './Dialog';
 function Harness({
   actions = 'three',
   body = true,
+  bodyLink = false,
+  size,
   removeOpener = false,
   onCancel,
   onAncestorKey,
 }: {
   actions?: 'three' | 'none';
   body?: boolean;
+  /** A focusable element in the body, as the camera viewer has (UI-13). */
+  bodyLink?: boolean;
+  size?: 'default' | 'wide';
   removeOpener?: boolean;
   onCancel?: () => void;
   onAncestorKey?: KeyboardEventHandler;
@@ -26,6 +31,7 @@ function Harness({
       {open && (
         <Dialog
           title="Delete the record?"
+          size={size}
           onCancel={() => {
             onCancel?.();
             setOpen(false);
@@ -49,7 +55,9 @@ function Harness({
             )
           }
         >
+          {/* Without a body or a link the children are `[false, false]`: still no body. */}
           {body && <p>It cannot be undone.</p>}
+          {bodyLink && <a href="#help">Read the policy</a>}
         </Dialog>
       )}
     </div>
@@ -101,6 +109,27 @@ describe('Dialog', () => {
       await open({ actions: 'none' });
 
       expect(dialog()).toHaveFocus();
+    });
+
+    it('moves focus to the first action even when the body holds a link', async () => {
+      await open({ bodyLink: true });
+
+      expect(button('Keep')).toHaveFocus();
+    });
+
+    it('falls back to the first focusable element in the body when no action can take focus', async () => {
+      await open({ actions: 'none', bodyLink: true });
+
+      expect(screen.getByRole('link', { name: 'Read the policy' })).toHaveFocus();
+    });
+
+    it('is wide only when asked', async () => {
+      const { unmount } = await open();
+      expect(dialog()).not.toHaveAttribute('data-size');
+      unmount();
+
+      await open({ size: 'wide' });
+      expect(dialog()).toHaveAttribute('data-size', 'wide');
     });
   });
 

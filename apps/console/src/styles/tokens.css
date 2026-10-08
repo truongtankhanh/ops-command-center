@@ -10,6 +10,9 @@
   --surface-2: #1a2d3a;
   --surface-3: #223848;
   --camera-ground: #070f15;
+  /* Stripes of a camera frame with no picture: offline, stream unavailable, player pending (frame 06). */
+  --camera-off-a: #0a141b;
+  --camera-off-b: #0c1820;
 
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
   --shadow-2: 0 6px 16px rgb(0 0 0 / 0.35);

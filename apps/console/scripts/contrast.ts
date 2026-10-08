@@ -76,7 +76,12 @@ const PAIRS: Pair[] = [
   { fg: '--sev-critical', bg: '--surface-3', min: TEXT, reportOnly: 'icon only on surface-3' },
   ...cross(['--success', '--warning', '--danger'], SURFACES.slice(1), TEXT),
   ...cross(['--border-strong'], SURFACES.slice(0, 2), UI),
-  { fg: '--text-secondary', bg: '--camera-ground', min: TEXT },
+  // Camera tiles and viewer (`CameraTile`, `CameraFeed`): the pills and caption over the picture are a
+  // 75–90 % `--camera-ground`, measured as the solid ground; the LIVE dot is a graphic next to its
+  // label. A frame with no picture is striped `--camera-off-a` / `-b`.
+  ...cross(['--text-primary', '--text-secondary'], ['--camera-ground'], TEXT),
+  { fg: '--success', bg: '--camera-ground', min: UI },
+  ...cross(['--text-primary', '--text-secondary'], ['--camera-off-a', '--camera-off-b'], TEXT),
   { fg: 'map zone outline', bg: 'map ground', min: UI },
   { fg: '--text-secondary', bg: 'map ground', min: TEXT },
   // Inside the campus the zones, their labels and the selected incident's zone outline sit on the

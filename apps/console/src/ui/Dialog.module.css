@@ -19,6 +19,13 @@
   box-shadow: var(--shadow-3);
 }
 
+/* Room for content such as the camera viewer (UI-13); scrolls inside the scrim on a short screen. */
+.dialog[data-size='wide'] {
+  width: min(1100px, 100%);
+  max-height: 100%;
+  overflow: auto;
+}
+
 /* Focus falls back to the dialog itself when it holds nothing focusable: draw the ring inside. */
 .dialog:focus-visible {
   outline-offset: -2px;

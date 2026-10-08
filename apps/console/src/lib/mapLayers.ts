@@ -54,11 +54,19 @@ export const MAP_LAYERS = {
   selected: 'selected',
 } as const;
 
-/** Layers a click can hit, topmost first. */
-export const INTERACTIVE_LAYERS = [MAP_LAYERS.selected, MAP_LAYERS.incidents, MAP_LAYERS.clusters];
+/**
+ * Layers a click can hit, topmost first: an incident selects, a cluster zooms in, a camera opens the
+ * viewer (UI-13). Cameras are drawn under the incidents, so a marker over a camera still wins.
+ */
+export const INTERACTIVE_LAYERS = [
+  MAP_LAYERS.selected,
+  MAP_LAYERS.incidents,
+  MAP_LAYERS.clusters,
+  MAP_LAYERS.cameras,
+];
 
-/** Layers that show a tooltip under the pointer, topmost first. Cameras do nothing on click yet. */
-export const HOVER_LAYERS = [...INTERACTIVE_LAYERS, MAP_LAYERS.cameras];
+/** Layers that show a tooltip under the pointer, topmost first: every layer a click acts on. */
+export const HOVER_LAYERS = INTERACTIVE_LAYERS;
 
 /** The animated pulse rings, one per incident source. */
 export const PULSE_WAVE_LAYERS = [MAP_LAYERS.pulseWave, MAP_LAYERS.selectedPulseWave];
@@ -290,8 +298,8 @@ export function cameraLayers(): LayerSpecification[] {
 
 /**
  * What each camera sees, in draw order, bottom first: above the ground, below the zone outlines.
- * Not in `HOVER_LAYERS` or `INTERACTIVE_LAYERS`: the camera marker keeps its tooltip, and a view
- * never takes a pointer event from anything.
+ * Not in `HOVER_LAYERS` or `INTERACTIVE_LAYERS`: the camera marker takes the tooltip and the click,
+ * and a view never takes a pointer event from anything.
  */
 export function cameraViewLayers(): LayerSpecification[] {
   return [

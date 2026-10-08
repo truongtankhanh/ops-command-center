@@ -346,6 +346,11 @@ function useIncidentLayers(
         return;
       }
       const id = String(hit.properties.id);
+      // A camera opens the viewer and leaves the selected incident as it is (UI-13).
+      if (hit.layer.id === MAP_LAYERS.cameras) {
+        useConsole.getState().openViewer(id);
+        return;
+      }
       const { select, selectedIncidentId } = useConsole.getState();
       select(id === selectedIncidentId ? null : id);
     };

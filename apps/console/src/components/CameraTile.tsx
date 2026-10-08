@@ -1,150 +1,115 @@
-import type { Camera, StreamDescriptor } from '@occ/contracts';
-import { useEffect, useRef } from 'react';
-import { useStream } from '../api/queries';
-import text from '../styles/text.module.css';
+import type { Camera } from '@occ/contracts';
+import { useId } from 'react';
+import { useCameras, useStream, useZones } from '../api/queries';
+import { canPin, feedState, STRIP_SIZE } from '../lib/cameras';
+import { useConsole } from '../store';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { Maximize2, Pin, PinOff } from '../ui/icons';
+import { CameraFeed } from './CameraFeed';
+import { CameraTime } from './CameraTime';
 import styles from './CameraTile.module.css';
 
+const STRIP_FULL = `The strip holds ${STRIP_SIZE} pinned cameras. Unpin one first.`;
+
 /**
- * Renders a camera by its StreamDescriptor (ADR-0002). The tile knows nothing about
- * where video comes from — only how to draw each descriptor kind.
+ * A camera with the chrome of frames 01 / 02 / 06: LIVE, the code or an "In zone" tag, a pinned
+ * badge, the name, zone and time, and two actions shown on hover or focus — open in the viewer and
+ * pin to the strip. `compact` is the detail sheet's tile: LIVE and the name only (frames 02 / 06).
  */
-export function CameraTile({ camera }: { camera: Camera }) {
-  const { data: stream, isError } = useStream(camera.id);
+export function CameraTile({
+  camera,
+  variant = 'strip',
+  linked = false,
+}: {
+  camera: Camera;
+  variant?: 'strip' | 'compact';
+  /** In the selected incident's zone: accent ring and "In zone" tag (frame 02). */
+  linked?: boolean;
+}) {
+  const stream = useStream(camera);
+  const { data: zones = [] } = useZones();
+  const { data: cameras = [] } = useCameras();
+  const pinnedIds = useConsole((s) => s.pinnedCameraIds);
+  const openViewer = useConsole((s) => s.openViewer);
+  const toggleCameraPin = useConsole((s) => s.toggleCameraPin);
+  const fullHintId = useId();
+
+  const compact = variant === 'compact';
+  const live = feedState(camera.online, stream) === 'stream';
+  const zoneName = zones.find((z) => z.id === camera.zoneId)?.name;
+  const knownIds = cameras.map((c) => c.id);
+  const pinned = pinnedIds.includes(camera.id);
+  const pinnable = canPin(pinnedIds, camera.id, knownIds);
+  // The tag takes the code's place, so the code moves to the zone line (frame 02).
+  const zoneLine = [zoneName, linked ? camera.code : null].filter(Boolean).join(' · ');
 
   return (
-    <figure className={styles.tile}>
-      {!camera.online ? (
-        <div className={styles.offline}>No signal</div>
-      ) : isError ? (
-        <div className={styles.offline}>Stream unavailable</div>
-      ) : stream ? (
-        <StreamView stream={stream} />
-      ) : null}
-      <figcaption className={styles.label}>
-        <span>{camera.name}</span>
-        <span className={text.muted}>{camera.code}</span>
+    <figure className={styles.tile} data-linked={linked || undefined}>
+      <CameraFeed camera={camera} />
+
+      <div className={styles.top}>
+        <span className={styles.badges}>
+          {live && <LivePill />}
+          {!compact && pinned && (
+            <span className={styles.pill} aria-hidden="true">
+              <Icon glyph={Pin} size={14} />
+            </span>
+          )}
+        </span>
+        {linked ? (
+          <span className={styles.tag}>In zone</span>
+        ) : (
+          !(compact && live) && <span className={styles.pill}>{camera.code}</span>
+        )}
+      </div>
+
+      <div className={styles.actions}>
+        <Button
+          variant="ghost"
+          className={styles.action}
+          aria-label={`Open ${camera.code} in the viewer`}
+          onClick={() => openViewer(camera.id)}
+        >
+          <Icon glyph={Maximize2} size={16} />
+        </Button>
+        <Button
+          variant="ghost"
+          className={styles.action}
+          aria-label={pinned ? `Unpin ${camera.code}` : `Pin ${camera.code} to the strip`}
+          aria-disabled={!pinnable || undefined}
+          aria-describedby={pinnable ? undefined : fullHintId}
+          title={pinnable ? undefined : STRIP_FULL}
+          onClick={() => {
+            if (pinnable) toggleCameraPin(camera.id, knownIds);
+          }}
+        >
+          <Icon glyph={pinned ? PinOff : Pin} size={16} />
+        </Button>
+        {!pinnable && (
+          <span id={fullHintId} className={styles.hidden}>
+            {STRIP_FULL}
+          </span>
+        )}
+      </div>
+
+      <figcaption className={styles.caption}>
+        <span className={styles.names}>
+          <span className={styles.name}>{camera.name}</span>
+          {!compact && zoneLine && <span className={styles.secondary}>{zoneLine}</span>}
+        </span>
+        {!compact && live && <CameraTime className={styles.secondary} />}
       </figcaption>
     </figure>
   );
 }
 
-function StreamView({ stream }: { stream: StreamDescriptor }) {
-  switch (stream.kind) {
-    case 'mock':
-      return <MockFeed seed={stream.seed} />;
-    case 'hls':
-    case 'webrtc':
-      // Real players arrive with MediaMTX in M2 (roadmap OCC-16).
-      return <div className={styles.offline}>Live player arrives in M2</div>;
-  }
-}
-
-/** Synthetic feed: a still "scene" generated from the seed, with sensor grain and a timestamp. */
-function MockFeed({ seed }: { seed: number }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const el = canvas.current;
-    const ctx = el?.getContext('2d', { willReadFrequently: true });
-    if (!el || !ctx) return;
-
-    const width = (el.width = 320);
-    const height = (el.height = 180);
-    const random = mulberry32(seed);
-    const scene = buildScene(random, width, height);
-    const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-
-    const draw = () => {
-      ctx.drawImage(scene, 0, 0);
-      // Sensor grain
-      const grain = ctx.getImageData(0, 0, width, height);
-      for (let i = 0; i < grain.data.length; i += 16) {
-        const n = (Math.random() - 0.5) * 22;
-        grain.data[i] = grain.data[i]! + n;
-        grain.data[i + 1] = grain.data[i + 1]! + n;
-        grain.data[i + 2] = grain.data[i + 2]! + n;
-      }
-      ctx.putImageData(grain, 0, 0);
-      ctx.fillStyle = 'rgba(220,231,238,0.85)';
-      ctx.font = '11px "Barlow Semi Condensed", sans-serif';
-      ctx.fillText(new Date().toLocaleTimeString([], { hour12: false }), 8, 16);
-    };
-    draw();
-    if (still) return;
-    const timer = window.setInterval(draw, 120);
-    return () => window.clearInterval(timer);
-  }, [seed]);
-
-  return <canvas ref={canvas} aria-label="Simulated camera feed" role="img" />;
-}
-
-/** A plausible fixed-camera view: ground plane, a few building blocks, light falloff. */
-function buildScene(random: () => number, width: number, height: number): HTMLCanvasElement {
-  const scene = document.createElement('canvas');
-  scene.width = width;
-  scene.height = height;
-  const ctx = scene.getContext('2d')!;
-  const horizon = height * (0.35 + random() * 0.2);
-  const hue = 190 + random() * 30;
-
-  const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, `hsl(${hue} 18% 16%)`);
-  sky.addColorStop(1, `hsl(${hue} 14% 26%)`);
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, width, horizon);
-
-  const ground = ctx.createLinearGradient(0, horizon, 0, height);
-  ground.addColorStop(0, `hsl(${hue} 8% 22%)`);
-  ground.addColorStop(1, `hsl(${hue} 6% 12%)`);
-  ctx.fillStyle = ground;
-  ctx.fillRect(0, horizon, width, height - horizon);
-
-  for (let i = 0; i < 5; i++) {
-    const w = 30 + random() * 70;
-    const h = 20 + random() * 60;
-    const x = random() * (width - w);
-    ctx.fillStyle = `hsl(${hue} 10% ${14 + random() * 12}%)`;
-    ctx.fillRect(x, horizon - h, w, h);
-    ctx.fillStyle = `hsl(45 60% ${50 + random() * 20}% / 0.5)`;
-    for (let y = horizon - h + 6; y < horizon - 6; y += 10) {
-      for (let wx = x + 5; wx < x + w - 6; wx += 9) if (random() > 0.55) ctx.fillRect(wx, y, 4, 4);
-    }
-  }
-
-  // Lane / path lines converging to the horizon
-  ctx.strokeStyle = `hsl(${hue} 10% 40% / 0.5)`;
-  ctx.lineWidth = 2;
-  const vanishing = width * (0.3 + random() * 0.4);
-  for (const x of [width * 0.1, width * 0.9]) {
-    ctx.beginPath();
-    ctx.moveTo(x, height);
-    ctx.lineTo(vanishing, horizon);
-    ctx.stroke();
-  }
-
-  const vignette = ctx.createRadialGradient(
-    width / 2,
-    height / 2,
-    height / 3,
-    width / 2,
-    height / 2,
-    width / 1.2,
+/** Frame 01's LIVE pill; also over the camera viewer's picture. */
+export function LivePill() {
+  return (
+    <span className={`${styles.pill} ${styles.live}`}>
+      <i className={styles.dot} aria-hidden="true" />
+      LIVE
+    </span>
   );
-  vignette.addColorStop(0, 'rgba(0,0,0,0)');
-  vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, width, height);
-  return scene;
-}
-
-/** Small seeded PRNG so each camera always shows the same scene. */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
