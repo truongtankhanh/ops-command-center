@@ -10,15 +10,15 @@
 
 .entry {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: calc(28px * var(--ui-scale)) 1fr;
   column-gap: var(--space-3);
 }
 
 .badge {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text-secondary);

@@ -22,7 +22,7 @@
 }
 
 .note {
-  min-height: 64px;
+  min-height: calc(64px * var(--ui-scale));
 }
 
 .actions {
@@ -46,7 +46,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--section-pad-y) var(--space-5);
   color: var(--text-secondary);
   font-size: var(--type-m);
 }

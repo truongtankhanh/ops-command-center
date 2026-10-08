@@ -1,7 +1,7 @@
 import type { Camera } from '@occ/contracts';
 import { useId } from 'react';
 import { useCameras, useStream, useZones } from '../api/queries';
-import { canPin, feedState, STRIP_SIZE } from '../lib/cameras';
+import { canPin, feedState, PIN_LIMIT } from '../lib/cameras';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -10,7 +10,7 @@ import { CameraFeed } from './CameraFeed';
 import { CameraTime } from './CameraTime';
 import styles from './CameraTile.module.css';
 
-const STRIP_FULL = `The strip holds ${STRIP_SIZE} pinned cameras. Unpin one first.`;
+const STRIP_FULL = `You can pin ${PIN_LIMIT} cameras to the strip. Unpin one first.`;
 
 /**
  * A camera with the chrome of frames 01 / 02 / 06: LIVE, the code or an "In zone" tag, a pinned

@@ -135,6 +135,7 @@ export {
   Pin,
   PinOff,
   Plus,
+  Rows3,
   Scan,
   Search,
   Shield,

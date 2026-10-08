@@ -10,7 +10,7 @@
   display: grid;
   justify-items: center;
   gap: var(--space-4);
-  width: min(440px, calc(100vw - 2 * var(--space-4)));
+  width: min(calc(440px * var(--ui-scale)), calc(100vw - 2 * var(--space-4)));
   padding: var(--space-8) var(--space-8) var(--space-7);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-l);
@@ -33,8 +33,8 @@
 .stateIcon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: calc(44px * var(--ui-scale));
+  height: calc(44px * var(--ui-scale));
   border-radius: 50%;
   background: var(--surface-2);
   color: var(--text-secondary);
@@ -75,7 +75,7 @@
 
 /* The action under the message (frames 09 / 10). */
 .state > button {
-  min-width: 160px;
+  min-width: calc(160px * var(--ui-scale));
   margin-top: var(--space-2);
 }
 

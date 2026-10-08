@@ -11,7 +11,7 @@
 }
 
 .dialog {
-  width: min(400px, 100%);
+  width: min(calc(400px * var(--ui-scale)), 100%);
   padding: var(--space-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-l);
@@ -21,7 +21,7 @@
 
 /* Room for content such as the camera viewer (UI-13); scrolls inside the scrim on a short screen. */
 .dialog[data-size='wide'] {
-  width: min(1100px, 100%);
+  width: min(calc(1100px * var(--ui-scale)), 100%);
   max-height: 100%;
   overflow: auto;
 }

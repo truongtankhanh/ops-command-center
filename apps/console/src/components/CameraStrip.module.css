@@ -1,9 +1,12 @@
-/* Frame 01's camera strip under the map. */
+/*
+ * Frame 01's camera strip under the map: one row, as many columns as tiles (`--strip-columns`, set
+ * by the component from the display mode). Compact density tightens its padding and gap.
+ */
 .strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  grid-template-columns: repeat(var(--strip-columns, 4), minmax(0, 1fr));
+  gap: var(--strip-gap);
+  padding: var(--strip-pad) var(--space-4);
   box-shadow: inset 0 1px 0 var(--border-subtle);
   background: var(--surface-1);
 }

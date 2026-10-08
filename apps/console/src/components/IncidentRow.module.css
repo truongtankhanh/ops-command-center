@@ -6,11 +6,11 @@
 .row {
   position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-1) var(--space-3);
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius-m);
   background: none;
@@ -53,8 +53,8 @@
   grid-row: span 2;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
   border: 1px solid var(--row-edge);
   border-radius: var(--radius-m);
   background: var(--row-tint);
@@ -205,5 +205,12 @@
 
   .row[data-fresh='true'][data-severity='critical'] {
     animation: none;
+  }
+}
+
+/* Touch screens (Q6 of UI-17): a row stays a 44 px target even in compact density. */
+@media (pointer: coarse) {
+  .row {
+    min-height: calc(44px * var(--ui-scale));
   }
 }

@@ -5,7 +5,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  height: 40px;
+  height: var(--control-m);
   padding: 0 var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-m);
@@ -23,7 +23,7 @@
 }
 
 .button[data-size='sm'] {
-  height: 32px;
+  height: var(--control-s);
   padding: 0 var(--space-3);
   font-size: var(--type-body);
 }

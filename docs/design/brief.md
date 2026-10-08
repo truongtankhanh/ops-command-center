@@ -123,12 +123,13 @@ into `tokens.css`.
 | 06 Viewer — incident open, user menu     | No Report / Acknowledge / Resolve; designed view-only footer; user menu; offline camera tile | UI-06, UI-11, UI-13               |
 | 07 Session expired — banner over a draft | Session banner above the sheet; the half-filled report stays                                 | UI-15                             |
 | 08–11 Sign-in screens                    | Signing in / out, sign-in failed, no access, insecure context                                | UI-15                             |
+| — Display modes, density (no frame)      | Wall ≥ 1920 / 3200 px, laptop, tablet, phone fallback, compact — screenshots in the UI-17 PR | UI-17                             |
 
 ## Interaction decisions taken in the mockups
 
-- **Detail and report are one overlay sheet (440 px) at every width.** It covers the right of the stage,
-  camera strip included; the strip already puts the incident's cameras first, so they stay visible on the
-  left. The map pans to keep the selection beside the sheet (UI-10).
+- **Detail and report are one overlay sheet (440 px; × `--ui-scale` on a wall, UI-17) at every width.** It
+  covers the right of the stage, camera strip included; the strip already puts the incident's cameras first, so
+  they stay visible on the left. The map pans to keep the selection beside the sheet (UI-10).
 - **Escape with a non-empty draft shows a hint, not a confirm dialog**: "Esc keeps your note. Close
   discards it." Keeps today's rule (Escape never discards; Close / Cancel do) and adds feedback (UI-10).
 - **Map controls move to the bottom-right**, so toasts and banners own the top of the stage.

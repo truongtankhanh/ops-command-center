@@ -33,7 +33,7 @@ import { startPulse } from '../lib/mapPulse';
 import { siteBounds } from '../lib/sitePlan';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
-import { layout, mapColors, mapMotion } from '../styles/tokens';
+import { mapColors, mapMotion } from '../styles/tokens';
 import { Icon } from '../ui/Icon';
 import { Crosshair } from '../ui/icons';
 import styles from './CampusMap.module.css';
@@ -215,13 +215,16 @@ export function CampusMap() {
 const campusBounds = new WeakMap<maplibregl.Map, [LngLat, LngLat]>();
 
 /**
- * How much of the map's right side the open sheet covers, in px: its width, less on a map too
- * narrow to keep `MIN_VISIBLE_PX` beside it.
+ * How much of the map's right side the open sheet covers, in px: the stage's `--sheet-inset` (the
+ * sheet's width in the current display mode, 0 where the sheet covers the whole screen), less on a
+ * map too narrow to keep `MIN_VISIBLE_PX` beside it.
  */
 function sheetInset(map: maplibregl.Map, sheetOpen: boolean): number {
   if (!sheetOpen) return 0;
-  const width = map.getContainer().clientWidth;
-  return Math.min(layout.sheetWidth, Math.max(0, width - MIN_VISIBLE_PX));
+  const container = map.getContainer();
+  // Registered as a `<length>` in tokens.css, so it computes to px ("495px"), not the `calc(…)`.
+  const covered = parseFloat(getComputedStyle(container).getPropertyValue('--sheet-inset')) || 0;
+  return Math.min(covered, Math.max(0, container.clientWidth - MIN_VISIBLE_PX));
 }
 
 function fitCampus(map: maplibregl.Map, sheetOpen: boolean, duration = 0) {

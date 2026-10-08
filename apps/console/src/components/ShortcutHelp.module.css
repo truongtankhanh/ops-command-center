@@ -9,7 +9,7 @@
 /* As many columns as fit; one column on a phone. */
 .groups {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(calc(280px * var(--ui-scale)), 1fr));
   gap: var(--space-5) var(--space-6);
 }
 
@@ -30,7 +30,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 112px 1fr;
+  grid-template-columns: calc(112px * var(--ui-scale)) 1fr;
   align-items: baseline;
   gap: var(--space-3);
 }

@@ -42,7 +42,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1-5);
-  height: 40px;
+  height: var(--control-m);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
   background: var(--surface-0);
@@ -70,7 +70,7 @@
 .options[data-layout='grid'] .face {
   flex-direction: column;
   gap: var(--space-1);
-  height: 62px;
+  height: calc(62px * var(--ui-scale));
   padding: 0 var(--space-1);
   font-size: var(--type-m);
   text-align: center;

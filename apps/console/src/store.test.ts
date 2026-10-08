@@ -399,6 +399,31 @@ describe('useConsole', () => {
     });
   });
 
+  describe('density', () => {
+    const stored = () => localStorage.getItem('occ.console.density');
+
+    beforeEach(() => localStorage.clear());
+
+    it('is comfortable by default', () => {
+      expect(useConsole.getInitialState().density).toBe('comfortable');
+    });
+
+    it('turns compact and remembers it in this browser', () => {
+      state().setDensity('compact');
+
+      expect(state().density).toBe('compact');
+      expect(stored()).toBe('compact');
+    });
+
+    it('turns back to comfortable and forgets it', () => {
+      state().setDensity('compact');
+      state().setDensity('comfortable');
+
+      expect(state().density).toBe('comfortable');
+      expect(stored()).toBeNull();
+    });
+  });
+
   describe('camera pins', () => {
     const KNOWN = ['c1', 'c2', 'c3', 'c4', 'c5'];
     const stored = () => JSON.parse(localStorage.getItem('occ.console.pinnedCameras') ?? 'null');

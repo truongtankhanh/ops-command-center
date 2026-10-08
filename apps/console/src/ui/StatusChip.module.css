@@ -24,7 +24,7 @@
 }
 
 .chip[data-form='pill'] {
-  height: 22px;
+  height: calc(22px * var(--ui-scale));
   padding: 0 var(--space-1-5) 0 var(--space-1);
   border-radius: var(--radius-s);
 }

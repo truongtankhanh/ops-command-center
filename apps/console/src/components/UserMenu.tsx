@@ -6,14 +6,14 @@ import { initials, rolesLabel } from '../lib/users';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { ChevronDown, Eye, Info, Keyboard, LogOut, Volume2 } from '../ui/icons';
+import { ChevronDown, Eye, Info, Keyboard, LogOut, Rows3, Volume2 } from '../ui/icons';
 import { Popover } from '../ui/Popover';
 import styles from './UserMenu.module.css';
 
 /**
  * Who is signed in, why actions may be missing, the sound for critical incidents, the single-key
- * shortcuts switch and their help, and Sign out (frame 06). The trigger's visible text (name, then
- * role or "View only") is its accessible name; the avatar is decorative.
+ * shortcuts switch and their help, compact density, and Sign out (frame 06). The trigger's visible
+ * text (name, then role or "View only") is its accessible name; the avatar is decorative.
  */
 export function UserMenu({ className }: { className?: string }) {
   const user = useSession((s) => s.user);
@@ -24,6 +24,8 @@ export function UserMenu({ className }: { className?: string }) {
   const keyboardShortcuts = useConsole((s) => s.keyboardShortcuts);
   const setKeyboardShortcuts = useConsole((s) => s.setKeyboardShortcuts);
   const openShortcutHelp = useConsole((s) => s.openShortcutHelp);
+  const compact = useConsole((s) => s.density === 'compact');
+  const setDensity = useConsole((s) => s.setDensity);
   // AuthGate renders the console only for a signed-in user, so this is a type guard.
   if (!user) return null;
 
@@ -110,6 +112,17 @@ export function UserMenu({ className }: { className?: string }) {
           >
             <Icon glyph={Keyboard} size={18} />
             Single-key shortcuts
+            <span className={styles.switch} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={compact}
+            className={styles.switchRow}
+            onClick={() => setDensity(compact ? 'comfortable' : 'compact')}
+          >
+            <Icon glyph={Rows3} size={18} />
+            Compact layout
             <span className={styles.switch} aria-hidden="true" />
           </button>
           <div className={styles.actions}>

@@ -416,4 +416,28 @@ describe('Header', () => {
       expect(helpEntry()).not.toHaveAttribute('aria-keyshortcuts');
     });
   });
+
+  describe('compact layout', () => {
+    const compactSwitch = () => screen.getByRole('switch', { name: 'Compact layout' });
+
+    beforeEach(() => localStorage.clear());
+
+    it('is off by default', async () => {
+      await openAccountMenu();
+
+      expect(compactSwitch()).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('turns on, then off again', async () => {
+      await openAccountMenu();
+
+      await userEvent.click(compactSwitch());
+      expect(compactSwitch()).toHaveAttribute('aria-checked', 'true');
+      expect(useConsole.getState().density).toBe('compact');
+
+      await userEvent.click(compactSwitch());
+      expect(compactSwitch()).toHaveAttribute('aria-checked', 'false');
+      expect(useConsole.getState().density).toBe('comfortable');
+    });
+  });
 });

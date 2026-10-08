@@ -6,7 +6,8 @@ export type IconSize = 14 | 16 | 18 | 20 | 22;
 
 /**
  * Draws a glyph from `./icons` in the current text colour (`currentColor`); set `color` on the
- * parent's CSS Module to tint it.
+ * parent's CSS Module to tint it. `size` is the laptop size: the drawn size grows with `--ui-scale`
+ * on a wall display (Icon.module.css), like every other size token.
  *
  * Accessibility contract: without `label` the icon is decorative and hidden from assistive tech
  * (the icon set adds `aria-hidden="true"`) — use this next to visible text. With `label` it is an
@@ -27,6 +28,7 @@ export function Icon({
   return (
     <GlyphComponent
       size={size}
+      data-size={size}
       strokeWidth={2}
       className={className ? `${styles.icon} ${className}` : styles.icon}
       {...(label ? { role: 'img', 'aria-label': label } : {})}

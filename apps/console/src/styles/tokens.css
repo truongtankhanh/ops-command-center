@@ -65,42 +65,49 @@
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;
 
-  --type-xs: 12px;
-  --type-s: 13px;
-  --type-m: 14px;
-  --type-body: 15px;
-  --type-l: 16px;
-  --type-xl: 20px;
-  --type-2xl: 24px;
-  --type-3xl: 32px;
-  --leading-xs: 16px;
-  --leading-s: 18px;
-  --leading-m: 20px;
-  --leading-body: 22px;
-  --leading-l: 22px;
-  --leading-xl: 26px;
-  --leading-2xl: 28px;
-  --leading-3xl: 36px;
+  /*
+   * Display mode (UI-17): every size token below is its laptop value (frames at 1440 px) times
+   * this number, so a wider screen grows the whole console by changing it alone (media queries at
+   * the end of this file; breakpoints in tokens.ts). 1 keeps every value exactly as designed.
+   */
+  --ui-scale: 1;
+
+  --type-xs: calc(12px * var(--ui-scale));
+  --type-s: calc(13px * var(--ui-scale));
+  --type-m: calc(14px * var(--ui-scale));
+  --type-body: calc(15px * var(--ui-scale));
+  --type-l: calc(16px * var(--ui-scale));
+  --type-xl: calc(20px * var(--ui-scale));
+  --type-2xl: calc(24px * var(--ui-scale));
+  --type-3xl: calc(32px * var(--ui-scale));
+  --leading-xs: calc(16px * var(--ui-scale));
+  --leading-s: calc(18px * var(--ui-scale));
+  --leading-m: calc(20px * var(--ui-scale));
+  --leading-body: calc(22px * var(--ui-scale));
+  --leading-l: calc(22px * var(--ui-scale));
+  --leading-xl: calc(26px * var(--ui-scale));
+  --leading-2xl: calc(28px * var(--ui-scale));
+  --leading-3xl: calc(36px * var(--ui-scale));
   /* Only the weights main.tsx bundles: Barlow 400/500, Barlow Semi Condensed 500/600. */
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
 
   /* 4 px grid; the half steps are for icon-to-text gaps and tight chip padding. */
-  --space-0-5: 2px;
-  --space-1: 4px;
-  --space-1-5: 6px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 28px;
-  --space-8: 32px;
+  --space-0-5: calc(2px * var(--ui-scale));
+  --space-1: calc(4px * var(--ui-scale));
+  --space-1-5: calc(6px * var(--ui-scale));
+  --space-2: calc(8px * var(--ui-scale));
+  --space-3: calc(12px * var(--ui-scale));
+  --space-4: calc(16px * var(--ui-scale));
+  --space-5: calc(20px * var(--ui-scale));
+  --space-6: calc(24px * var(--ui-scale));
+  --space-7: calc(28px * var(--ui-scale));
+  --space-8: calc(32px * var(--ui-scale));
 
-  --radius-s: 4px;
-  --radius-m: 6px;
-  --radius-l: 10px;
+  --radius-s: calc(4px * var(--ui-scale));
+  --radius-m: calc(6px * var(--ui-scale));
+  --radius-l: calc(10px * var(--ui-scale));
 
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -112,8 +119,29 @@
   --ease-out: cubic-bezier(0, 0, 0.58, 1);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  /* The incident / report sheet over the stage (frame 02). The map pads by its copy in tokens.ts. */
-  --sheet-width: 440px;
+  /*
+   * The incident / report sheet over the stage (frame 02). The map pads by the stage's
+   * `--sheet-inset`, which is this width while the sheet is open (registered below, so it reads
+   * in px).
+   */
+  --sheet-width: calc(440px * var(--ui-scale));
+  /* The feed's column (frame 01), the toast column (frame 04) and the two button heights. */
+  --feed-width: calc(360px * var(--ui-scale));
+  --toast-width: calc(392px * var(--ui-scale));
+  --control-m: calc(40px * var(--ui-scale));
+  --control-s: calc(32px * var(--ui-scale));
+
+  /*
+   * Density: the spacing compact density tightens (overridden below). Type sizes never change with
+   * it (13 px is the smallest text, brief), and no control drops under a 24 px target.
+   */
+  --row-pad-y: var(--space-2);
+  --list-gap: var(--space-0-5);
+  --header-pad-y: var(--space-2);
+  --kpi-height: calc(48px * var(--ui-scale));
+  --strip-pad: var(--space-3);
+  --strip-gap: var(--space-3);
+  --section-pad-y: var(--space-4);
 
   --focus-ring: 2px solid var(--accent);
   --focus-offset: 2px;
@@ -130,4 +158,48 @@
   --scrim: rgb(5 12 17 / 0.6);
 
   color-scheme: dark;
+}
+
+/*
+ * Everything below stays after the `:root` block above: `scripts/contrast.ts` reads only the first
+ * `:root { … }` of this file.
+ */
+
+/* Compact density (account menu): set on <html>, so the portalled dialogs follow it too. */
+:root[data-density='compact'] {
+  --row-pad-y: var(--space-1);
+  --list-gap: 0px;
+  --header-pad-y: var(--space-1);
+  --kpi-height: calc(40px * var(--ui-scale));
+  --strip-pad: var(--space-2);
+  --strip-gap: var(--space-2);
+  --section-pad-y: var(--space-3);
+}
+
+/*
+ * Control-room wall (UI-17): ≥ 1920 px is a 1080p wall or desktop — kept mild, since operators also
+ * fill forms there; ≥ 3200 px is a 4K wall at device pixel ratio 1. Same values as `breakpoints` in
+ * tokens.ts (`scripts/contrast.ts --check` compares them, in this order).
+ */
+@media (min-width: 1920px) {
+  :root {
+    --ui-scale: 1.125;
+  }
+}
+
+@media (min-width: 3200px) {
+  :root {
+    --ui-scale: 1.75;
+  }
+}
+
+/*
+ * Registered so that `getComputedStyle` returns it in px (e.g. "495px") instead of the `calc(…)`
+ * text: the map reads it to keep the selection beside the open sheet. Set on the stage
+ * (App.module.css).
+ */
+@property --sheet-inset {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
 }

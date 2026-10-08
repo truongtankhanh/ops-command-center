@@ -3,7 +3,7 @@
  * `--camera-ground` over the picture; their text is checked on the solid ground (scripts/contrast.ts).
  */
 .tile {
-  --pill-height: 20px;
+  --pill-height: calc(20px * var(--ui-scale));
   position: relative;
   aspect-ratio: 16 / 9;
   margin: 0;
@@ -62,8 +62,8 @@
 }
 
 .dot {
-  width: 7px;
-  height: 7px;
+  width: calc(7px * var(--ui-scale));
+  height: calc(7px * var(--ui-scale));
   border-radius: 50%;
   background: var(--success);
 }
@@ -101,8 +101,8 @@
 
 /* Higher specificity than `Button`'s own rules, so the override does not depend on CSS order. */
 .actions .action {
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--ui-scale));
+  height: calc(30px * var(--ui-scale));
   padding: 0;
   border-radius: var(--radius-s);
   background: color-mix(in srgb, var(--surface-3) 92%, transparent);
@@ -167,4 +167,12 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* Touch screens (Q6 of UI-17): the actions are 44 px targets. */
+@media (pointer: coarse) {
+  .actions .action {
+    width: calc(44px * var(--ui-scale));
+    height: calc(44px * var(--ui-scale));
+  }
 }

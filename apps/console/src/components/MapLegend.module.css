@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px * var(--ui-scale));
   padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
@@ -25,7 +25,7 @@
   flex: none;
   align-items: center;
   gap: var(--space-1);
-  height: 28px;
+  height: calc(28px * var(--ui-scale));
   padding: 0 var(--space-2);
   border: 0;
   border-radius: var(--radius-s);
@@ -62,8 +62,8 @@
 
 .swatch {
   flex: none;
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   border-radius: 50%;
 }
 
@@ -84,8 +84,8 @@
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   border: 2px solid var(--text-secondary);
   border-radius: 50%;
   background: var(--surface-1);
@@ -99,10 +99,10 @@
 .cluster::after {
   content: '';
   position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 8px;
-  height: 8px;
+  top: calc(-4px * var(--ui-scale));
+  right: calc(-4px * var(--ui-scale));
+  width: calc(8px * var(--ui-scale));
+  height: calc(8px * var(--ui-scale));
   border: 1px solid var(--surface-1);
   border-radius: 50%;
   background: var(--text-secondary);
@@ -119,12 +119,16 @@
  */
 .view {
   flex: none;
-  width: 20px;
-  height: 14px;
+  width: calc(20px * var(--ui-scale));
+  height: calc(14px * var(--ui-scale));
   background: conic-gradient(
     from -45deg at 50% 100%,
     color-mix(in srgb, var(--text-secondary) 45%, transparent) 0 90deg,
     transparent 0
   );
-  mask-image: radial-gradient(circle 14px at 50% 100%, #000 13.5px, transparent 14px);
+  mask-image: radial-gradient(
+    circle calc(14px * var(--ui-scale)) at 50% 100%,
+    #000 calc(13.5px * var(--ui-scale)),
+    transparent calc(14px * var(--ui-scale))
+  );
 }

@@ -6,12 +6,13 @@
  *
  * Both modes exit 1 when a checked pair is below its minimum, or when a token value that has to be
  * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
- * longer matches it, or when the copy of favicon.svg the title badge draws over has drifted. Plain
+ * longer matches it, when the copy of favicon.svg the title badge draws over has drifted, or when
+ * the wall breakpoints in tokens.ts no longer match the media queries of tokens.css. Plain
  * Node 24 with type stripping and no dependency, so it stays cheap to run in lint. Ratios use the
  * WCAG 2.x relative-luminance formula.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { faviconMark, layout, mapColors, mapMotion } from '../src/styles/tokens.ts';
+import { breakpoints, faviconMark, mapColors, mapMotion } from '../src/styles/tokens.ts';
 
 interface Rgba {
   r: number;
@@ -135,7 +136,8 @@ const PAIRS: Pair[] = [
   // sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).
 ];
 
-const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));
+const tokensCss = readFileSync(TOKENS_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const css = parseRoot(tokensCss);
 const check = process.argv.includes('--check');
 
 const results = PAIRS.map((pair) => ({ ...pair, ratio: ratioOf(pair) }));
@@ -169,8 +171,9 @@ function cross(fgs: string[], bgs: string[], min: number): Pair[] {
   return fgs.flatMap((fg) => bgs.map((bg) => ({ fg, bg, min })));
 }
 
+/** The first `:root { … }` block of `source` (comments already stripped). */
 function parseRoot(source: string): Map<string, string> {
-  const root = /:root\s*\{([^}]*)\}/.exec(source.replace(/\/\*[\s\S]*?\*\//g, ''));
+  const root = /:root\s*\{([^}]*)\}/.exec(source);
   if (!root) throw new Error('no :root block in tokens.css');
   const tokens = new Map<string, string>();
   for (const [, name, value] of root[1]!.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
@@ -263,6 +266,10 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
   const themeColor = /<meta\s+name="theme-color"\s+content="(#[0-9a-f]+)"/i.exec(html)?.[1];
   const svg = readFileSync(FAVICON_SVG, 'utf8');
   const sorted = (hexes: string[]) => [...new Set(hexes)].sort().join(', ');
+  // The wall media queries (`--ui-scale`), in file order: wall, then wall4k.
+  const minWidths = [...tokensCss.matchAll(/@media\s*\(\s*min-width:\s*(\d+)px\s*\)/g)].map(
+    ([, px]) => `${px}px`,
+  );
   const mapCopies: [copy: string, value: string, token: string][] = [
     ['ground', mapColors.ground, '--surface-0'],
     ...Object.entries(mapColors.severity).map(([severity, value]): [string, string, string] => [
@@ -289,11 +296,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       actual: `${mapMotion.pulseMs}ms`,
       expected: css.get('--duration-pulse') ?? 'missing',
     },
-    {
-      copy: '`layout.sheetWidth` (src/styles/tokens.ts)',
-      actual: `${layout.sheetWidth}px`,
-      expected: css.get('--sheet-width') ?? 'missing',
-    },
+    ...(['wall', 'wall4k'] as const).map((mode, i) => ({
+      copy: `\`breakpoints.${mode}\` (src/styles/tokens.ts)`,
+      actual: `${breakpoints[mode]}px`,
+      expected: minWidths[i] ?? 'missing',
+    })),
     {
       copy: '`theme-color` (index.html)',
       actual: themeColor ? normalise(themeColor) : 'missing',

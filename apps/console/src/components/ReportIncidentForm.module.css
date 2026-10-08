@@ -59,7 +59,7 @@
 }
 
 .details {
-  min-height: 96px;
+  min-height: calc(96px * var(--ui-scale));
 }
 
 /*

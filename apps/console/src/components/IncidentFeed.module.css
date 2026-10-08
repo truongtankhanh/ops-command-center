@@ -32,7 +32,7 @@
 .list {
   display: grid;
   align-content: start;
-  gap: var(--space-0-5);
+  gap: var(--list-gap);
   list-style: none;
   margin: 0;
   padding: var(--space-2);
@@ -58,27 +58,27 @@
 /* Loading: a row's tile, title and meta line (`IncidentRow`), so nothing jumps when data arrives. */
 .skeletonRow {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
   gap: var(--space-1) var(--space-3);
-  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
 }
 
 .skeletonTile {
   grid-row: span 2;
-  width: 34px;
-  height: 34px;
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
   border-radius: var(--radius-m);
 }
 
 .skeletonTitle {
   width: 75%;
-  height: 16px;
+  height: calc(16px * var(--ui-scale));
   margin-top: var(--space-0-5);
 }
 
 .skeletonMeta {
   width: 45%;
-  height: 12px;
+  height: calc(12px * var(--ui-scale));
 }
 
 /* Read by assistive tech, not drawn: the search result count and the loading state. */

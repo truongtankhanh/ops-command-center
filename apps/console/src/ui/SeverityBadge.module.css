@@ -7,7 +7,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: 26px;
+  height: calc(26px * var(--ui-scale));
   padding: 0 var(--space-2) 0 var(--space-1-5);
   border: 1px solid transparent;
   border-radius: var(--radius-s);

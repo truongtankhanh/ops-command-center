@@ -19,8 +19,8 @@
   padding: var(--space-2);
   background: repeating-linear-gradient(
     135deg,
-    var(--camera-off-a) 0 10px,
-    var(--camera-off-b) 10px 20px
+    var(--camera-off-a) 0 calc(10px * var(--ui-scale)),
+    var(--camera-off-b) calc(10px * var(--ui-scale)) calc(20px * var(--ui-scale))
   );
   color: var(--text-secondary);
   font-family: var(--font-ui);

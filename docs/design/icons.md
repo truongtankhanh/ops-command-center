@@ -41,7 +41,8 @@ stopped working, and the failed sign-in), `Shield` (no access: the account has n
 the session-expired banner) and `LoaderCircle` (the signing-in / signing-out spinner). Frame 09 draws the failed
 sign-in with a circled "!", which is `CircleAlert`, the `medium` severity glyph; `CircleX` replaces it so that glyph
 keeps one meaning. For the keyboard shortcuts (UI-16) `Keyboard` marks the single-key shortcuts switch in the account
-menu; the menu's "Keyboard shortcuts" entry uses `Info`, so the two rows do not repeat a glyph.
+menu; the menu's "Keyboard shortcuts" entry uses `Info`, so the two rows do not repeat a glyph. `Rows3` (UI-17) marks
+the account menu's "Compact layout" switch (density).
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in the DOM. The one place without a
@@ -72,8 +73,10 @@ Standing alone, labelled:
 </button>
 ```
 
-- **Size:** `14 | 16 | 18 | 20 | 22`, default 18 — the sizes the mockups use. They are component dimensions, so they
-  stay numbers (see [tokens.md](tokens.md#what-may-stay-a-raw-value)).
+- **Size:** `14 | 16 | 18 | 20 | 22`, default 18 — the sizes the mockups use, at laptop scale. They are component
+  dimensions, so they stay numbers (see [tokens.md](tokens.md#what-may-stay-a-raw-value)); `Icon` passes the size as
+  `data-size` and `Icon.module.css` draws it times `--ui-scale`, so icons grow with the text on a wall display
+  (UI-17). Map glyphs are canvas images and do not scale (below).
 - **Colour:** always `currentColor`. Set `color` in the parent's CSS Module with a token (`var(--sev)`,
   `var(--text-secondary)`, `var(--accent)` …). There is no colour prop, so no raw hex can enter through it.
 - **Stroke:** fixed at 2, as in the mockups.

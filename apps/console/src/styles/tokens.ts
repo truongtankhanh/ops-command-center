@@ -67,13 +67,25 @@ export const mapMotion = {
 };
 
 /**
- * Layout sizes the map needs as numbers (its `padding` takes pixels), copied from `tokens.css` and
- * drift-checked the same way.
+ * The console's display modes by CSS width, in px (UI-17). Media queries cannot read custom
+ * properties, so CSS repeats these numbers:
+ *
+ * - `phone`: `max-width` — the map stacks above the feed, the sheet covers the screen (a fallback,
+ *   not a designed phone layout).
+ * - `tablet`: `max-width` — a narrower feed, the KPI tiles on their own header row, a 2 × 2 strip.
+ * - laptop: everything between — the reference layout of the mockups (1440 px frames).
+ * - `wall` / `wall4k`: `min-width` — `--ui-scale` grows (tokens.css) and the strip holds more
+ *   tiles.
+ *
+ * `scripts/contrast.ts --check` compares `wall` and `wall4k` with the `min-width` media queries of
+ * `tokens.css`; `phone` and `tablet` repeat in many modules and are not checked.
  */
-export const layout = {
-  /** `--sheet-width`, in px: the map pads by it so the selection stays beside the open sheet. */
-  sheetWidth: 440,
-};
+export const breakpoints = {
+  phone: 720,
+  tablet: 1100,
+  wall: 1920,
+  wall4k: 3200,
+} as const;
 
 /**
  * The markup of `public/favicon.svg`. A copy because Vite serves `public/` as is and refuses to let

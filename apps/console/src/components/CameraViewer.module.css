@@ -2,7 +2,7 @@
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
+  grid-template-columns: minmax(0, 1fr) calc(240px * var(--ui-scale));
   gap: var(--space-4);
   align-items: start;
 }

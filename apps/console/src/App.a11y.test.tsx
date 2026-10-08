@@ -354,7 +354,8 @@ describe('the console', () => {
       await userEvent.click(screen.getByRole('button', { name: /Demo Operator/ }));
 
       const menu = screen.getByRole('group', { name: 'Account' });
-      expect(within(menu).getAllByRole('switch')).toHaveLength(2);
+      // Sound, single-key shortcuts and compact layout.
+      expect(within(menu).getAllByRole('switch')).toHaveLength(3);
       await checkPage();
     });
 

@@ -1,4 +1,30 @@
-/* A glyph keeps its size in a flex row instead of shrinking next to long text. */
+/*
+ * A glyph keeps its size in a flex row instead of shrinking next to long text. Its drawn size is the
+ * `size` prop (`data-size`) times `--ui-scale`, so icons grow with the text on a wall display; the
+ * icon set's own `width` / `height` attributes give the same value at scale 1.
+ */
 .icon {
   flex: none;
+  width: calc(var(--icon-size, 18px) * var(--ui-scale));
+  height: calc(var(--icon-size, 18px) * var(--ui-scale));
+}
+
+.icon[data-size='14'] {
+  --icon-size: 14px;
+}
+
+.icon[data-size='16'] {
+  --icon-size: 16px;
+}
+
+.icon[data-size='18'] {
+  --icon-size: 18px;
+}
+
+.icon[data-size='20'] {
+  --icon-size: 20px;
+}
+
+.icon[data-size='22'] {
+  --icon-size: 22px;
 }

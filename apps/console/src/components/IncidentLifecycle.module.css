@@ -31,8 +31,9 @@
 .step::before {
   content: '';
   position: absolute;
-  top: 5px;
-  left: 16px;
+  /* Centred on the dot: half of the dot's height less the rail's 2 px. */
+  top: calc((12px * var(--ui-scale) - 2px) / 2);
+  left: calc(16px * var(--ui-scale));
   right: 0;
   height: 2px;
   background: var(--border-subtle);
@@ -46,8 +47,8 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
   border: 2px solid var(--border-strong);
   border-radius: 50%;
   background: var(--surface-1);

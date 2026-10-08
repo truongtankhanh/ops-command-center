@@ -3,9 +3,11 @@ import {
   canPin,
   feedState,
   formatCameraTime,
+  PIN_LIMIT,
   prioritise,
   readPinnedCameras,
   stripCameras,
+  stripSize,
   togglePinned,
   writePinnedCameras,
 } from '../lib/cameras';
@@ -40,17 +42,46 @@ describe('stripCameras', () => {
   const codes = (list: Camera[]) => list.map((c) => c.code);
 
   it('fills the strip in prioritise order when nothing is pinned', () => {
-    expect(codes(stripCameras(cameras, 'z2', []))).toEqual(
+    expect(codes(stripCameras(cameras, 'z2', [], 4))).toEqual(
       codes(prioritise(cameras, 'z2').slice(0, 4)),
     );
   });
 
   it('puts pinned cameras first, in pin order, before the zone', () => {
-    expect(codes(stripCameras(cameras, 'z2', ['F', 'B']))).toEqual(['F', 'B', 'C', 'A']);
+    expect(codes(stripCameras(cameras, 'z2', ['F', 'B'], 4))).toEqual(['F', 'B', 'C', 'A']);
   });
 
   it('skips a pin whose camera is gone, so it takes no slot', () => {
-    expect(codes(stripCameras(cameras, 'z2', ['gone', 'F']))).toEqual(['F', 'C', 'A', 'E']);
+    expect(codes(stripCameras(cameras, 'z2', ['gone', 'F'], 4))).toEqual(['F', 'C', 'A', 'E']);
+  });
+
+  it('fills a larger strip with the pins first, then the prioritised rest', () => {
+    expect(codes(stripCameras(cameras, 'z2', ['F', 'B'], 6))).toEqual([
+      'F',
+      'B',
+      'C',
+      'A',
+      'E',
+      'D',
+    ]);
+  });
+});
+
+describe('stripSize', () => {
+  it.each([
+    ['wall-4k', 8],
+    ['wall', 6],
+    ['laptop', 4],
+    ['tablet', 4],
+    ['phone', 4],
+  ] as const)('a %s display holds %i tiles', (mode, tiles) => {
+    expect(stripSize(mode)).toBe(tiles);
+  });
+
+  it('never holds fewer tiles than can be pinned, so a pin keeps its slot in every mode', () => {
+    for (const mode of ['wall-4k', 'wall', 'laptop', 'tablet', 'phone'] as const) {
+      expect(stripSize(mode)).toBeGreaterThanOrEqual(PIN_LIMIT);
+    }
   });
 });
 
