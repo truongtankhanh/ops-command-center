@@ -174,7 +174,12 @@ export function ReportIncidentForm() {
       },
       {
         onSuccess: (incident) => {
-          showToast({ title: `Reported ${incident.code}`, detail: incident.title });
+          // Keyed to the incident: the live `Created` event of this report adds no second toast.
+          showToast({
+            key: incident.id,
+            title: `Reported ${incident.code}`,
+            detail: incident.title,
+          });
           select(incident.id);
         },
       },

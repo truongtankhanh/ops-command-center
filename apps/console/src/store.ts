@@ -1,7 +1,14 @@
 import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
+import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import type { FeedFilter } from './lib/incidents';
+
+/**
+ * At most this many incidents are held as fresh. A row stays highlighted until it is looked at or
+ * acknowledged, so on a long shift the oldest unseen ones stop being highlighted instead.
+ */
+export const FRESH_LIMIT = 20;
 
 /** `connecting` is the first connect only; every later attempt is `reconnecting`. */
 export type ConnectionState = 'connecting' | 'live' | 'reconnecting' | 'offline';
@@ -39,7 +46,10 @@ interface ConsoleState extends ReportLocation {
    * While the link is healthy its age stays under the heartbeat interval; a growing age is the warning.
    */
   lastEventAt: number | null;
-  /** Incidents that arrived live and have not been looked at yet. */
+  /**
+   * Incidents that arrived live and have not been looked at yet, oldest first, at most
+   * `FRESH_LIMIT`. One leaves when it is selected or no longer open.
+   */
   fresh: ReadonlySet<string>;
   /** The report form is open. Mutually exclusive with a selected incident. */
   reporting: boolean;
@@ -55,6 +65,8 @@ interface ConsoleState extends ReportLocation {
   viewerCameraId: string | null;
   /** Cameras pinned to the strip, in pin order; remembered in this browser. */
   pinnedCameraIds: readonly string[];
+  /** A sound plays when a critical incident arrives. Off by default; remembered in this browser. */
+  criticalSound: boolean;
 
   select(id: string | null): void;
   startReport(): void;
@@ -68,7 +80,9 @@ interface ConsoleState extends ReportLocation {
   clearSeverity(): void;
   setConnection(state: ConnectionState): void;
   markAlive(at?: number): void;
+  /** Adds `id` to `fresh`, dropping the oldest ids beyond `FRESH_LIMIT`. */
   markFresh(id: string): void;
+  forgetFresh(id: string): void;
   /** Stores the note as typed; an empty note removes the entry. */
   setNote(incidentId: string, note: string): void;
   clearNote(incidentId: string): void;
@@ -87,6 +101,7 @@ interface ConsoleState extends ReportLocation {
    * the cameras that exist now, so pins of removed cameras are dropped (`togglePinned`).
    */
   toggleCameraPin(cameraId: string, knownIds: readonly string[]): void;
+  setCriticalSound(on: boolean): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -101,15 +116,15 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   noteDrafts: {},
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
+  criticalSound: readCriticalSound(),
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
     set((state) => {
       const closed = { selectedIncidentId: id, reporting: false, ...NO_REPORT_LOCATION };
-      if (id === null || !state.fresh.has(id)) return closed;
-      const fresh = new Set(state.fresh);
-      fresh.delete(id);
-      return { ...closed, fresh };
+      return id === null || !state.fresh.has(id)
+        ? closed
+        : { ...closed, fresh: without(state.fresh, id) };
     }),
   startReport: () => set({ reporting: true, selectedIncidentId: null, ...NO_REPORT_LOCATION }),
   closeReport: () => set({ reporting: false, ...NO_REPORT_LOCATION }),
@@ -121,7 +136,14 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   clearSeverity: () => set({ severity: null }),
   setConnection: (connection) => set({ connection }),
   markAlive: (at = Date.now()) => set({ lastEventAt: at }),
-  markFresh: (id) => set((state) => ({ fresh: new Set(state.fresh).add(id) })),
+  markFresh: (id) =>
+    set((state) => {
+      // A `Set` iterates in insertion order, so the first ids are the oldest.
+      const fresh = [...new Set(state.fresh).add(id)];
+      return { fresh: new Set(fresh.slice(-FRESH_LIMIT)) };
+    }),
+  forgetFresh: (id) =>
+    set((state) => (state.fresh.has(id) ? { fresh: without(state.fresh, id) } : state)),
   setNote: (incidentId, note) =>
     set((state) =>
       note === ''
@@ -148,7 +170,17 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     writePinnedCameras(pinnedCameraIds);
     set({ pinnedCameraIds });
   },
+  setCriticalSound: (on) => {
+    writeCriticalSound(on);
+    set({ criticalSound: on });
+  },
 }));
+
+function without(ids: ReadonlySet<string>, id: string): Set<string> {
+  const rest = new Set(ids);
+  rest.delete(id);
+  return rest;
+}
 
 function withoutKey<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {
   const rest = { ...record };

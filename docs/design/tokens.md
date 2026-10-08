@@ -223,6 +223,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
 | `layout.sheetWidth` (src/styles/tokens.ts)           | 440px                     | 440px                     | match  |
 | `theme-color` (index.html)                           | #13222d                   | #13222d                   | match  |
+| `faviconMark` (src/styles/tokens.ts)                 | public/favicon.svg        | public/favicon.svg        | match  |
 | colours in public/favicon.svg                        | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |
 
 <!-- contrast:end -->

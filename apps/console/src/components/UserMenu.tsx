@@ -1,23 +1,38 @@
 import { useSession } from '../auth/store';
 import { useReadOnly } from '../auth/usePermission';
 import { useSignOut } from '../auth/useSignOut';
+import { playCriticalCue, unlockAudio } from '../lib/criticalCue';
 import { initials, rolesLabel } from '../lib/users';
+import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { ChevronDown, Eye, LogOut } from '../ui/icons';
+import { ChevronDown, Eye, LogOut, Volume2 } from '../ui/icons';
 import { Popover } from '../ui/Popover';
 import styles from './UserMenu.module.css';
 
 /**
- * Who is signed in, why actions may be missing, and Sign out (frame 06). The trigger's visible text
- * (name, then role or "View only") is its accessible name; the avatar is decorative.
+ * Who is signed in, why actions may be missing, the sound for critical incidents, and Sign out
+ * (frame 06). The trigger's visible text (name, then role or "View only") is its accessible name;
+ * the avatar is decorative.
  */
 export function UserMenu({ className }: { className?: string }) {
   const user = useSession((s) => s.user);
   const readOnly = useReadOnly();
   const signOut = useSignOut();
+  const criticalSound = useConsole((s) => s.criticalSound);
+  const setCriticalSound = useConsole((s) => s.setCriticalSound);
   // AuthGate renders the console only for a signed-in user, so this is a type guard.
   if (!user) return null;
+
+  const toggleSound = () => {
+    const on = !criticalSound;
+    setCriticalSound(on);
+    // This click is the gesture that lets audio start; the cue plays once so the operator hears it.
+    if (!on) return;
+    void unlockAudio().then((running) => {
+      if (running) playCriticalCue({ preview: true });
+    });
+  };
 
   const roles = rolesLabel(user.roles);
   const avatar = initials(user.displayName);
@@ -69,6 +84,18 @@ export function UserMenu({ className }: { className?: string }) {
           the operator or supervisor role.
         </p>
       )}
+      {/* A switch, not a `menuitemcheckbox`: the popover is a disclosure, not an ARIA menu. */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={criticalSound}
+        className={styles.sound}
+        onClick={toggleSound}
+      >
+        <Icon glyph={Volume2} size={18} />
+        Sound for critical incidents
+        <span className={styles.switch} aria-hidden="true" />
+      </button>
       <hr className={styles.separator} />
       <div className={styles.actions}>
         {/* Ghost: a secondary button's boundary fails 3:1 on the menu's --surface-3. */}

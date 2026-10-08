@@ -74,3 +74,11 @@ export const layout = {
   /** `--sheet-width`, in px: the map pads by it so the selection stays beside the open sheet. */
   sheetWidth: 440,
 };
+
+/**
+ * The markup of `public/favicon.svg`. A copy because Vite serves `public/` as is and refuses to let
+ * script import from it; the title badge (`useAttentionBadge`) draws a dot over this mark.
+ * `scripts/contrast.ts --check` fails when it no longer matches the file.
+ */
+export const faviconMark =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0c1821"/><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"/><circle cx="16" cy="16" r="3.5" fill="#8c9bff"/></svg>';

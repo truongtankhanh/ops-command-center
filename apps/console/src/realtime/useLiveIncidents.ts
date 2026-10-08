@@ -6,14 +6,18 @@ import {
   type Incident,
   IncidentEvents,
   type ServerToClientEvents,
+  type Zone,
 } from '@occ/contracts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import { incidentToast } from '../lib/attention';
+import { playCriticalCue } from '../lib/criticalCue';
 import { upsertIncident } from '../lib/incidents';
 import { useConsole } from '../store';
+import { hasToast, showToast } from '../ui/toasts';
 
 /** Retries after a refused handshake: from 1 s, doubling up to 30 s, with Socket.IO's ±50 % jitter. */
 const RETRY_FIRST_MS = 1000;
@@ -26,12 +30,15 @@ const RETRY_MAX_MS = 30_000;
  * The handshake carries the current access token (ADR-0010). Socket.IO reconnects by itself after
  * a dropped connection, including the server closing it when the token expires, but never after
  * the server refused the handshake: this hook retries those.
+ *
+ * A new incident is marked fresh, and a critical or high one is announced with a toast (plus the
+ * sound for a critical one, when it is on). An incident that is no longer open stops being fresh.
  */
 export function useLiveIncidents(): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const { setConnection, markAlive, markFresh } = useConsole.getState();
+    const { setConnection, markAlive, markFresh, forgetFresh } = useConsole.getState();
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(EVENTS_NAMESPACE, {
       transports: ['websocket'],
       // A function, so every reconnect sends the token that is current at that moment.
@@ -54,6 +61,21 @@ export function useLiveIncidents(): void {
         queryKey: queryKeys.incident(incident.id),
         exact: true,
       });
+    };
+
+    // A toast already keyed to it is the reporter's own "Reported …": no second toast, no sound.
+    const announce = (incident: Incident) => {
+      if (hasToast(incident.id)) return;
+      const zones = queryClient.getQueryData<Zone[]>(queryKeys.zones);
+      const zoneName = zones?.find((zone) => zone.id === incident.zoneId)?.name;
+      const toast = incidentToast(incident, zoneName, () =>
+        useConsole.getState().select(incident.id),
+      );
+      if (!toast) return;
+      showToast(toast);
+      if (incident.severity === 'critical' && useConsole.getState().criticalSound) {
+        playCriticalCue();
+      }
     };
 
     const retryRefused = async (reason: string) => {
@@ -93,8 +115,13 @@ export function useLiveIncidents(): void {
     socket.on(IncidentEvents.Created, (incident) => {
       apply(incident);
       markFresh(incident.id);
+      announce(incident);
     });
-    socket.on(IncidentEvents.Updated, apply);
+    socket.on(IncidentEvents.Updated, (incident) => {
+      apply(incident);
+      // Acknowledged or resolved, by anyone: someone is on it, so the row no longer stands out.
+      if (incident.status !== 'open') forgetFresh(incident.id);
+    });
 
     return () => {
       disposed = true;

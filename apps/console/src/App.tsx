@@ -6,10 +6,31 @@ import { Header } from './components/Header';
 import { IncidentDetail } from './components/IncidentDetail';
 import { IncidentFeed } from './components/IncidentFeed';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
+import { useAudioUnlock } from './lib/criticalCue';
+import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
 import { useConsole } from './store';
 import { SheetHost } from './ui/Sheet';
 import { ToastRegion } from './ui/Toast';
+
+/**
+ * Where focus goes when a dismissed toast held it and nothing nearer is left (see `ToastRegion`):
+ * the feed row that holds the feed's tab stop, else the feed's search box.
+ */
+const feedFocusTarget = () =>
+  document.querySelector<HTMLElement>('#incident-feed ul [tabindex="0"]') ??
+  document.querySelector<HTMLElement>('#incident-feed input[type="search"]');
+
+/**
+ * The tab title / favicon badge and the audio unlock. A component of its own, so the incident list
+ * it reads re-renders only this, not the whole console, on every live event.
+ */
+function AttentionSignals() {
+  useAttentionBadge();
+  const criticalSound = useConsole((s) => s.criticalSound);
+  useAudioUnlock(criticalSound);
+  return null;
+}
 
 export function App() {
   useLiveIncidents();
@@ -19,6 +40,7 @@ export function App() {
 
   return (
     <div className={styles.console}>
+      <AttentionSignals />
       <Header />
       {/* One host for both contents: switching between them keeps the sheet's opener (UI-10). */}
       <SheetHost>
@@ -34,7 +56,7 @@ export function App() {
               selectedId && <IncidentDetail key={selectedId} id={selectedId} />
             )}
             {/* Over the stage beside the sheet, so a toast never covers the incident it is about. */}
-            <ToastRegion />
+            <ToastRegion fallbackFocus={feedFocusTarget} />
           </div>
         </main>
       </SheetHost>
