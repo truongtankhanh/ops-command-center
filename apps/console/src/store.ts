@@ -47,6 +47,11 @@ interface ConsoleState extends ReportLocation {
    */
   lastEventAt: number | null;
   /**
+   * When the live connection was lost (epoch ms), or `null` while it is up or still being made for
+   * the first time. Kept through every reconnect attempt: since then, the data may be stale.
+   */
+  offlineSince: number | null;
+  /**
    * Incidents that arrived live and have not been looked at yet, oldest first, at most
    * `FRESH_LIMIT`. One leaves when it is selected or no longer open.
    */
@@ -78,7 +83,8 @@ interface ConsoleState extends ReportLocation {
    */
   toggleSeverity(severity: IncidentSeverity): void;
   clearSeverity(): void;
-  setConnection(state: ConnectionState): void;
+  /** Also keeps `offlineSince`: set on the first state after a loss, cleared once `live`. */
+  setConnection(state: ConnectionState, at?: number): void;
   markAlive(at?: number): void;
   /** Adds `id` to `fresh`, dropping the oldest ids beyond `FRESH_LIMIT`. */
   markFresh(id: string): void;
@@ -111,6 +117,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   severity: null,
   connection: 'connecting',
   lastEventAt: null,
+  offlineSince: null,
   fresh: new Set(),
   reporting: false,
   noteDrafts: {},
@@ -134,7 +141,11 @@ export const useConsole = create<ConsoleState>((set, get) => ({
       state.severity === severity ? { severity: null } : { severity, filter: 'active' },
     ),
   clearSeverity: () => set({ severity: null }),
-  setConnection: (connection) => set({ connection }),
+  setConnection: (connection, at = Date.now()) =>
+    set((state) => ({
+      connection,
+      offlineSince: nextOfflineSince(state.offlineSince, connection, at),
+    })),
   markAlive: (at = Date.now()) => set({ lastEventAt: at }),
   markFresh: (id) =>
     set((state) => {
@@ -175,6 +186,26 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     set({ criticalSound: on });
   },
 }));
+
+/**
+ * `connecting` is the first connect only, before any data could be stale; a refused first connect
+ * goes on to `offline`, which starts the clock like a dropped link does.
+ */
+function nextOfflineSince(
+  since: number | null,
+  connection: ConnectionState,
+  at: number,
+): number | null {
+  switch (connection) {
+    case 'live':
+      return null;
+    case 'connecting':
+      return since;
+    case 'reconnecting':
+    case 'offline':
+      return since ?? at;
+  }
+}
 
 function without(ids: ReadonlySet<string>, id: string): Set<string> {
   const rest = new Set(ids);

@@ -40,7 +40,48 @@
   flex: 1;
 }
 
-/* Read by assistive tech, not drawn: the search result count. */
+/* Frame 05 `.feed-notice`: the list is shown as it was when the live link was lost. */
+.notice {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+/* Loading: a row's tile, title and meta line (`IncidentRow`), so nothing jumps when data arrives. */
+.skeletonRow {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+}
+
+.skeletonTile {
+  grid-row: span 2;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-m);
+}
+
+.skeletonTitle {
+  width: 75%;
+  height: 16px;
+  margin-top: var(--space-0-5);
+}
+
+.skeletonMeta {
+  width: 45%;
+  height: 12px;
+}
+
+/* Read by assistive tech, not drawn: the search result count and the loading state. */
 .hidden {
   position: absolute;
   width: 1px;

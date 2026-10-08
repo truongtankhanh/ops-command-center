@@ -1,6 +1,7 @@
 import type { IncidentDetail as Detail, IncidentEvent, Role, Zone } from '@occ/contracts';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
@@ -72,6 +73,8 @@ const fetchMock = vi.fn<typeof fetch>();
 let postResponse: () => Response | Promise<Response>;
 /** What the next detail `GET`s answer, one factory per request; once empty, a `GET` stays pending. */
 let getAnswers: (() => Response)[];
+/** What `GET /cameras` answers, apart from the detail's queue; unset, it stays pending. */
+let camerasAnswer: (() => Response) | undefined;
 
 /** A body can be read only once, so build one per call. */
 function json(body: unknown, status = 200): Response {
@@ -107,6 +110,14 @@ function renderUncached(id = detail().id) {
   return renderWithQueryClient(<IncidentDetail id={id} />, client);
 }
 
+/** The incident is cached, the camera list is not: the camera section asks for it (`camerasAnswer`). */
+function renderWithoutCameras(incident = detail()) {
+  const client = createTestQueryClient();
+  client.setQueryData(queryKeys.incident(incident.id), incident);
+  client.setQueryData(queryKeys.zones, [zone]);
+  return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
+}
+
 /** The value next to a metric's label ("Open for", "Time to acknowledge"). */
 const metric = (label: string) => screen.getByText(label).nextElementSibling as HTMLElement;
 
@@ -121,11 +132,15 @@ describe('IncidentDetail', () => {
       throw new Error('No transition expected in this case');
     };
     getAnswers = [];
+    camerasAnswer = undefined;
     // The detail query is stale at once (default staleTime), so mounting refetches it. Unless the
     // case queues an answer, that GET stays pending and the cached detail stays on screen;
     // transitions get the case's answer.
-    fetchMock.mockReset().mockImplementation((_url, init) => {
+    fetchMock.mockReset().mockImplementation((url, init) => {
       if (init?.method === 'POST') return Promise.resolve(postResponse());
+      if (String(url).endsWith('/cameras')) {
+        return camerasAnswer ? Promise.resolve(camerasAnswer()) : new Promise<Response>(() => {});
+      }
       const answer = getAnswers.shift();
       return answer ? Promise.resolve(answer()) : new Promise<Response>(() => {});
     });
@@ -644,6 +659,39 @@ describe('IncidentDetail', () => {
 
       expect(await screen.findByRole('heading', { name: 'Door forced open' })).toBeInTheDocument();
       expect(getCalls()).toHaveLength(2);
+    });
+
+    it('explains too many requests', async () => {
+      getAnswers = [() => apiError(429, 'Too many requests')];
+
+      renderUncached();
+
+      expect(await screen.findByText(TOO_MANY_REQUESTS)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    });
+
+    it('explains an account that may no longer see the incident', async () => {
+      getAnswers = [() => apiError(403, 'Forbidden')];
+
+      renderUncached();
+
+      expect(await screen.findByText('Your account can no longer see this.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    });
+
+    it('shows placeholder cameras while the camera list loads', () => {
+      renderWithoutCameras();
+
+      expect(screen.getByText('Loading cameras…')).toHaveAttribute('role', 'status');
+      expect(screen.queryByText('No cameras cover this zone.')).toBeNull();
+    });
+
+    it('says the cameras could not be loaded', async () => {
+      camerasAnswer = () => apiError(500, 'Internal server error');
+
+      renderWithoutCameras();
+
+      expect(await screen.findByText('Cameras could not be loaded.')).toBeInTheDocument();
     });
 
     it('keeps the incident on screen when a refetch fails', async () => {

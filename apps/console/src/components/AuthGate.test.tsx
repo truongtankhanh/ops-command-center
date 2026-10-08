@@ -71,6 +71,14 @@ describe('AuthGate', () => {
     expect(screen.queryByText('Console')).toBeNull();
   });
 
+  it("shows the console's address as code", () => {
+    useSession.getState().setStatus('insecure-context');
+
+    renderGate();
+
+    expect(screen.getByText('http://localhost:18080').tagName).toBe('CODE');
+  });
+
   it('offers to try again when sign-in failed', async () => {
     useSession.getState().setStatus('failed');
     renderGate();
@@ -94,6 +102,17 @@ describe('AuthGate', () => {
     expect(signInAgain).toHaveBeenCalledTimes(1);
   });
 
+  it('warns that signing in again reloads the console', () => {
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
+    useSession.getState().expire();
+
+    renderGate();
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Signing in again reloads the console — unsent notes and reports will be lost.',
+    );
+  });
+
   describe('a user with no role', () => {
     beforeEach(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: [] }));
 
@@ -106,6 +125,14 @@ describe('AuthGate', () => {
       expect(screen.queryByText('Console')).toBeNull();
       expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Sign in again' })).toBeNull();
+    });
+
+    it('names the signed-in account, outside the alert', () => {
+      renderGate();
+
+      // An administrator needs to know which account to give a role; it is read, not announced.
+      expect(screen.getByText('Signed in as Demo Viewer')).toBeInTheDocument();
+      expect(screen.getByRole('alert')).not.toHaveTextContent('Signed in as');
     });
 
     it('shows no expired-session banner on the no-access screen', () => {

@@ -35,7 +35,12 @@ Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `
 for the report form (frame 03, UI-12) `MapPin` (the "Pick on map" toggle and the pin hint), `Crosshair` (the map hint
 while picking) and `Check` (the success toast; not `CircleCheck`, which means "resolved"), and for the camera
 tiles and viewer (frame 01, UI-13) `Maximize2` (open a camera in the viewer, the frame's `#i-expand`), `Maximize` (the
-viewer's Fullscreen button), `Pin` / `PinOff` (pin a camera to the strip / unpin it, and the pinned badge).
+viewer's Fullscreen button), `Pin` / `PinOff` (pin a camera to the strip / unpin it, and the pinned badge), and for
+the loading, error and session states (frames 05, 07–11, UI-15) `CircleX` (anything that could not be loaded or
+stopped working, and the failed sign-in), `Shield` (no access: the account has no role), `Lock` (insecure context, and
+the session-expired banner) and `LoaderCircle` (the signing-in / signing-out spinner). Frame 09 draws the failed
+sign-in with a circled "!", which is `CircleAlert`, the `medium` severity glyph; `CircleX` replaces it so that glyph
+keeps one meaning.
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted; UI-16 re-checks it.

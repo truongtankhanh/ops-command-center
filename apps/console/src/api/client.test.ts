@@ -1,5 +1,14 @@
 import { getAccessToken, renewSession } from '../auth/session';
-import { api, ApiRequestError, shouldRetryQuery } from './client';
+import {
+  api,
+  ApiRequestError,
+  isRateLimited,
+  loadErrorText,
+  NO_LONGER_VISIBLE,
+  queryRetryDelay,
+  shouldRetryQuery,
+  TOO_MANY_REQUESTS,
+} from './client';
 
 // The session module is tested on its own; here it only decides which token the client sends.
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
@@ -113,6 +122,7 @@ describe('api client', () => {
 describe('shouldRetryQuery', () => {
   const unavailable = new ApiRequestError(503, 'Unavailable');
   const offline = new TypeError('Failed to fetch');
+  const rateLimited = new ApiRequestError(429, 'Too many requests');
 
   it.each([
     { label: 'a 401', error: new ApiRequestError(401, 'Invalid'), failures: 0, retry: false },
@@ -124,7 +134,57 @@ describe('shouldRetryQuery', () => {
     { label: 'a network error after 1 failure', error: offline, failures: 0, retry: true },
     { label: 'a network error after 2 failures', error: offline, failures: 1, retry: true },
     { label: 'a network error after 3 failures', error: offline, failures: 2, retry: false },
+    // A 429 passes once the burst is over (UI-15): three more tries.
+    { label: 'a 429 after 1 failure', error: rateLimited, failures: 0, retry: true },
+    { label: 'a 429 after 2 failures', error: rateLimited, failures: 1, retry: true },
+    { label: 'a 429 after 3 failures', error: rateLimited, failures: 2, retry: true },
+    { label: 'a 429 after 4 failures', error: rateLimited, failures: 3, retry: false },
   ])('$label → retry: $retry', ({ error, failures, retry }) => {
     expect(shouldRetryQuery(failures, error)).toBe(retry);
+  });
+});
+
+describe('queryRetryDelay', () => {
+  const rateLimited = new ApiRequestError(429, 'Too many requests');
+  const unavailable = new ApiRequestError(503, 'Unavailable');
+  const offline = new TypeError('Failed to fetch');
+
+  it.each([
+    { label: 'a 429, first retry', error: rateLimited, failures: 0, delay: 2000 },
+    { label: 'a 429, second retry', error: rateLimited, failures: 1, delay: 4000 },
+    { label: 'a 429, third retry', error: rateLimited, failures: 2, delay: 8000 },
+    { label: 'a 503, first retry', error: unavailable, failures: 0, delay: 1000 },
+    { label: 'a 503, second retry', error: unavailable, failures: 1, delay: 2000 },
+    { label: 'a 503, third retry', error: unavailable, failures: 2, delay: 4000 },
+    { label: 'a network error, capped', error: offline, failures: 10, delay: 30_000 },
+  ])('$label → $delay ms', ({ error, failures, delay }) => {
+    expect(queryRetryDelay(failures, error)).toBe(delay);
+  });
+});
+
+describe('isRateLimited', () => {
+  it.each([
+    { label: 'a 429', error: new ApiRequestError(429, 'Too many requests'), limited: true },
+    { label: 'a 503', error: new ApiRequestError(503, 'Unavailable'), limited: false },
+    { label: 'a network error', error: new TypeError('Failed to fetch'), limited: false },
+  ])('$label → $limited', ({ error, limited }) => {
+    expect(isRateLimited(error)).toBe(limited);
+  });
+});
+
+describe('loadErrorText', () => {
+  const fallback = 'Could not load.';
+
+  it.each([
+    {
+      label: 'a 429',
+      error: new ApiRequestError(429, 'Too many requests'),
+      text: TOO_MANY_REQUESTS,
+    },
+    { label: 'a 403', error: new ApiRequestError(403, 'Forbidden'), text: NO_LONGER_VISIBLE },
+    { label: 'a 500', error: new ApiRequestError(500, 'Internal server error'), text: fallback },
+    { label: 'a network error', error: new TypeError('Failed to fetch'), text: fallback },
+  ])('$label → "$text"', ({ error, text }) => {
+    expect(loadErrorText(error, fallback)).toBe(text);
   });
 });

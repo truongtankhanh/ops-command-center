@@ -9,6 +9,9 @@ import type { Glyph } from './icons';
  * announced. Use `alert` when the operator must act now, because it interrupts the screen reader.
  * Use `status` for information that clears by itself.
  *
+ * `children` is the bold message; `detail` an optional secondary line under it (what happens next).
+ * Both sit inside the live element, so they are announced together.
+ *
  * Mount it when the condition starts and unmount it when it ends. An alert is announced when it is
  * inserted, so the banner must not be pre-rendered empty and filled in later.
  */
@@ -16,19 +19,24 @@ export function Banner({
   role,
   icon,
   action,
+  detail,
   className,
   children,
 }: {
   role: 'alert' | 'status';
   icon?: Glyph;
   action?: ReactNode;
+  detail?: ReactNode;
   className?: string;
   children: ReactNode;
 }) {
   return (
     <div role={role} className={className ? `${styles.banner} ${className}` : styles.banner}>
       {icon && <Icon glyph={icon} size={20} className={styles.icon} />}
-      <div className={styles.message}>{children}</div>
+      <div className={styles.text}>
+        <div className={styles.message}>{children}</div>
+        {detail && <small className={styles.detail}>{detail}</small>}
+      </div>
       {action}
     </div>
   );

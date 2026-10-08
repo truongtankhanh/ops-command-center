@@ -58,6 +58,9 @@
   --success: #5ccf98;
   --warning: #f0b85e;
   --danger: #ff7f8a;
+  /* The sign-in screens' state circle (frames 09–11): a tint behind the glyph only. */
+  --warning-tint: color-mix(in srgb, var(--warning) 12%, transparent);
+  --danger-tint: color-mix(in srgb, var(--danger) 12%, transparent);
 
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;

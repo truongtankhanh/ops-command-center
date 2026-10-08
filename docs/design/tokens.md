@@ -203,6 +203,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                  |
 | `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                  |
 | `--on-accent`       | `--sev-low`                               | 8.91  | 3       | pass                                  |
+| `--warning`         | `--warning-tint` over `--surface-1`       | 7.09  | 3       | pass                                  |
+| `--danger`          | `--danger-tint` over `--surface-1`        | 5.56  | 3       | pass                                  |
 
 ### Values copied out of tokens.css
 

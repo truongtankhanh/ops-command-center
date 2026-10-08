@@ -5,12 +5,14 @@ import { feedState } from '../lib/cameras';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { Icon } from '../ui/Icon';
 import { cameraIcon, Maximize } from '../ui/icons';
 import { CameraFeed } from './CameraFeed';
 import { CameraTime } from './CameraTime';
 import { LivePill } from './CameraTile';
 import styles from './CameraViewer.module.css';
+import { RegionFallback } from './LoadStates';
 
 /**
  * One camera, large, with the other cameras of its zone to switch to (no frame draws it; D1, D9).
@@ -18,7 +20,8 @@ import styles from './CameraViewer.module.css';
  * it through `useConsole.openViewer`. It leaves the sheet under it as it was.
  *
  * Switching cameras keeps the dialog mounted, so focus stays on the list and `Dialog` still returns
- * it to whatever opened the viewer.
+ * it to whatever opened the viewer. The body has its own error boundary: if the player or the list
+ * breaks, the dialog and its Close stay usable.
  */
 export function CameraViewer() {
   const cameraId = useConsole((s) => s.viewerCameraId);
@@ -59,48 +62,59 @@ function Viewer({ camera, cameras }: { camera: Camera; cameras: Camera[] }) {
         </Button>
       }
     >
-      <div className={styles.layout}>
-        <div className={styles.main}>
-          <div ref={video} className={styles.video}>
-            <CameraFeed camera={camera} resolution="viewer" />
-            {live && (
-              <div className={styles.overlay}>
-                <LivePill />
-                <CameraTime className={styles.time} />
-              </div>
+      <ErrorBoundary
+        region="Camera viewer"
+        fallback={(retry) => (
+          <RegionFallback
+            label="Camera viewer"
+            message="The camera viewer stopped working."
+            retry={retry}
+          />
+        )}
+      >
+        <div className={styles.layout}>
+          <div className={styles.main}>
+            <div ref={video} className={styles.video}>
+              <CameraFeed camera={camera} resolution="viewer" />
+              {live && (
+                <div className={styles.overlay}>
+                  <LivePill />
+                  <CameraTime className={styles.time} />
+                </div>
+              )}
+            </div>
+            {document.fullscreenEnabled && (
+              <Button size="sm" icon={Maximize} onClick={fullscreen}>
+                Fullscreen
+              </Button>
             )}
           </div>
-          {document.fullscreenEnabled && (
-            <Button size="sm" icon={Maximize} onClick={fullscreen}>
-              Fullscreen
-            </Button>
-          )}
-        </div>
 
-        <nav aria-label={listName} className={styles.list}>
-          <h3 className={styles.listTitle}>{listName}</h3>
-          <ul>
-            {zoneCameras.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  className={styles.item}
-                  aria-current={c.id === camera.id ? 'true' : undefined}
-                  onClick={() => openViewer(c.id)}
-                >
-                  <Icon glyph={cameraIcon(c.online)} size={16} />
-                  <span className={styles.itemText}>
-                    <span className={styles.itemName}>{c.name}</span>
-                    <span className={styles.itemMeta}>
-                      {c.online ? c.code : `${c.code} · Offline`}
+          <nav aria-label={listName} className={styles.list}>
+            <h3 className={styles.listTitle}>{listName}</h3>
+            <ul>
+              {zoneCameras.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    className={styles.item}
+                    aria-current={c.id === camera.id ? 'true' : undefined}
+                    onClick={() => openViewer(c.id)}
+                  >
+                    <Icon glyph={cameraIcon(c.online)} size={16} />
+                    <span className={styles.itemText}>
+                      <span className={styles.itemName}>{c.name}</span>
+                      <span className={styles.itemMeta}>
+                        {c.online ? c.code : `${c.code} · Offline`}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+      </ErrorBoundary>
     </Dialog>
   );
 }

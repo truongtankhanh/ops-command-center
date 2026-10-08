@@ -12,6 +12,28 @@
   height: 100%;
 }
 
+/*
+ * Retrying or failed zones: a message centred in the part of the map the sheet leaves visible
+ * (`--sheet-inset`, as `.pickHint`). Before the controls and legend in the DOM, so they stay on top.
+ */
+.state {
+  position: absolute;
+  inset: 0 var(--sheet-inset, 0px) 0 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+}
+
+/* Read by assistive tech, not drawn: the loading state. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* Frame 01's label halo: a stroke in the ground colour painted under the text. */
 .zoneLabel {
   font-family: var(--font-ui);

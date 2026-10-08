@@ -1,6 +1,6 @@
 import type { IncidentDetail as Detail } from '@occ/contracts';
 import { type ReactNode, useCallback, useState } from 'react';
-import { ApiRequestError } from '../api/client';
+import { ApiRequestError, isRateLimited } from '../api/client';
 import { useCameras, useIncident, useZones } from '../api/queries';
 import { typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
@@ -17,6 +17,7 @@ import styles from './IncidentDetail.module.css';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
 import { IncidentTimeline } from './IncidentTimeline';
+import { LoadFailed, RateLimited } from './LoadStates';
 
 /**
  * The incident in the sheet (frames 02 / 06). One `Sheet` holds the loading, failed and loaded
@@ -25,7 +26,7 @@ import { IncidentTimeline } from './IncidentTimeline';
  * sent note clears it.
  */
 export function IncidentDetail({ id }: { id: string }) {
-  const { data: incident, error, isPending, isFetching, refetch } = useIncident(id);
+  const { data: incident, error, failureReason, isPending, isFetching, refetch } = useIncident(id);
   const select = useConsole((s) => s.select);
   const clearNote = useConsole((s) => s.clearNote);
   const hasDraft = useConsole((s) => (s.noteDrafts[id] ?? '').trim() !== '');
@@ -68,25 +69,24 @@ export function IncidentDetail({ id }: { id: string }) {
       {/* Data first: a failed background refetch keeps the incident on screen (TanStack keeps it). */}
       {incident ? (
         <DetailBody incident={incident} kept={kept} closeButton={closeButton} />
-      ) : isPending ? (
+      ) : isPending && !isRateLimited(failureReason) ? (
         <DetailSkeleton closeButton={closeButton} />
       ) : (
         <>
           <div className={styles.head}>
             <TopRow closeButton={closeButton} />
           </div>
-          {error instanceof ApiRequestError && error.status === 404 ? (
+          {isPending ? (
+            <RateLimited />
+          ) : error instanceof ApiRequestError && error.status === 404 ? (
             <EmptyState>This incident no longer exists.</EmptyState>
           ) : (
-            <EmptyState
-              action={
-                <Button loading={isFetching} onClick={() => void refetch()}>
-                  Retry
-                </Button>
-              }
-            >
-              This incident could not be loaded.
-            </EmptyState>
+            <LoadFailed
+              error={error}
+              fallback="This incident could not be loaded."
+              isFetching={isFetching}
+              onRetry={() => void refetch()}
+            />
           )}
         </>
       )}
@@ -144,9 +144,9 @@ function DetailBody({
   closeButton: ReactNode;
 }) {
   const { data: zones = [] } = useZones();
-  const { data: cameras = [] } = useCameras();
+  const { data: cameras, isPending: camerasPending } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
-  const zoneCameras = cameras.filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
+  const zoneCameras = (cameras ?? []).filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
   const reporter = incident.source === 'simulator' ? 'system' : 'user';
 
   return (
@@ -188,7 +188,18 @@ function DetailBody({
 
       <section className={styles.section}>
         <h3>Cameras in {zone?.name ?? 'this zone'}</h3>
-        {zoneCameras.length === 0 ? (
+        {camerasPending ? (
+          <div className={styles.cameras} aria-busy="true">
+            <p role="status" className={styles.hidden}>
+              Loading cameras…
+            </p>
+            <Skeleton className={styles.skeletonCamera} />
+            <Skeleton className={styles.skeletonCamera} />
+          </div>
+        ) : !cameras ? (
+          // The camera strip offers the Retry for this same query; the sheet only says why it is empty.
+          <p className={`${text.muted} ${styles.noCameras}`}>Cameras could not be loaded.</p>
+        ) : zoneCameras.length === 0 ? (
           <p className={`${text.muted} ${styles.noCameras}`}>No cameras cover this zone.</p>
         ) : (
           <div className={styles.cameras}>

@@ -163,6 +163,12 @@
   height: 16px;
 }
 
+/* A compact camera tile while the camera list loads (`.cameras` lays out two). */
+.skeletonCamera {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+}
+
 /* Read by assistive tech, not drawn. */
 .hidden {
   position: absolute;

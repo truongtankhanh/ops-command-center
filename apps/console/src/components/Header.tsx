@@ -1,5 +1,6 @@
 import { usePermission } from '../auth/usePermission';
 import { formatAge } from '../lib/incidents';
+import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';
 import { useShortcut } from '../lib/useShortcut';
 import { type ConnectionState, useConsole } from '../store';
@@ -18,11 +19,6 @@ const CONNECTION_LABEL: Record<ConnectionState, string> = {
   offline: 'Offline',
 };
 
-const TIME = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
 const DATE = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 const ZONE = new Intl.DateTimeFormat('en-GB', { timeZoneName: 'shortOffset' });
 
@@ -63,11 +59,12 @@ export function Header() {
 }
 
 /**
- * The state word is the live region, announced when it changes; the ticking age sits outside it,
- * so screen readers are not told every few seconds.
+ * The state word is the live region, announced when it changes; the ticking age and the time the
+ * link was lost sit outside it, so screen readers are not told every few seconds.
  */
 function ConnectionPill() {
   const connection = useConsole((s) => s.connection);
+  const offlineSince = useConsole((s) => s.offlineSince);
   return (
     <div className={styles.pill} data-state={connection}>
       <span role="status" className={styles.pillState}>
@@ -75,6 +72,10 @@ function ConnectionPill() {
         {CONNECTION_LABEL[connection]}
       </span>
       {connection === 'live' && <LastSignOfLife />}
+      {/* Frame 05; never set while live. The stage's banner says what it means for the data. */}
+      {offlineSince !== null && (
+        <small className={styles.age}>since {formatClockTime(offlineSince)}</small>
+      )}
     </div>
   );
 }
@@ -94,7 +95,7 @@ function Clock() {
   const zone = ZONE.formatToParts(now).find((part) => part.type === 'timeZoneName')?.value;
   return (
     <time className={styles.clock} dateTime={now.toISOString()}>
-      <span className={styles.clockTime}>{TIME.format(now)}</span>{' '}
+      <span className={styles.clockTime}>{formatClockTime(now)}</span>{' '}
       <span className={styles.clockDate}>
         {DATE.format(now)}
         {zone && ` · ${zone}`}

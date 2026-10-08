@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { Banner } from './Banner';
 import { Lock } from './icons';
 
@@ -21,6 +21,24 @@ describe('Banner', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Live updates paused');
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('adds a second line inside the live element', () => {
+    render(
+      <Banner role="status" detail="This clears by itself.">
+        Live updates paused
+      </Banner>,
+    );
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Live updates paused');
+    expect(within(status).getByText('This clears by itself.')).toBeInTheDocument();
+  });
+
+  it('has no second line without one', () => {
+    render(<Banner role="status">Live updates paused</Banner>);
+
+    expect(screen.getByRole('status').textContent).toBe('Live updates paused');
   });
 
   it("keeps the caller's class for its placement", () => {

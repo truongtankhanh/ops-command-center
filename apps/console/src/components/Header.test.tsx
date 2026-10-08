@@ -197,6 +197,24 @@ describe('Header', () => {
       expect(screen.queryByText(/ago/)).toBeNull();
     });
 
+    it.each(['offline', 'reconnecting'] as const)(
+      'says since when the link is down while %s, outside the status region',
+      (connection) => {
+        // A local time, so the text does not depend on the runner's timezone.
+        const lostAt = new Date(2026, 9, 8, 15, 2).getTime();
+        act(() => useConsole.setState({ connection, offlineSince: lostAt }));
+
+        expect(screen.getByText('since 15:02')).toBeInTheDocument();
+        expect(screen.getByRole('status')).not.toHaveTextContent(/since/);
+      },
+    );
+
+    it('says nothing about since while live', () => {
+      act(() => useConsole.setState({ connection: 'live', offlineSince: null }));
+
+      expect(screen.queryByText(/since/)).toBeNull();
+    });
+
     it('shows the time, the date and the UTC offset', () => {
       // Shape only: the test runner's timezone is not pinned.
       const time = screen.getByText(/^\d{2}:\d{2}$/);

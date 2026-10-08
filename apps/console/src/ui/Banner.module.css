@@ -15,9 +15,20 @@
   color: var(--warning);
 }
 
+/* The message over its optional secondary line (frames 05 / 07 `.banner-text`). */
+.text {
+  display: grid;
+}
+
 .message {
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
   font-size: var(--type-l);
   line-height: var(--leading-l);
+}
+
+.detail {
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
 }

@@ -220,13 +220,14 @@ async function renderMap(
   incidents: Incident[],
   {
     load = true,
-    zones = [] as Zone[],
+    zones = [] as Zone[] | null,
     sitePlan = SITE_PLAN as SitePlan | null,
     cameras = [] as Camera[],
-  }: { load?: boolean; zones?: Zone[]; sitePlan?: SitePlan | null; cameras?: Camera[] } = {},
+  }: { load?: boolean; zones?: Zone[] | null; sitePlan?: SitePlan | null; cameras?: Camera[] } = {},
 ) {
   const client = createTestQueryClient();
-  client.setQueryData(queryKeys.zones, zones);
+  // `null`: not cached, so the map asks the API for the zones.
+  if (zones) client.setQueryData(queryKeys.zones, zones);
   // `null`: not cached, so the map asks the API for it.
   if (sitePlan) client.setQueryData(queryKeys.sitePlan, sitePlan);
   client.setQueryData(queryKeys.cameras, cameras);
@@ -266,6 +267,27 @@ function siteNotFound() {
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
+
+/**
+ * `GET /api/zones` answers in turn, one factory each (a request stays pending once they are used
+ * up); any other request is a 404.
+ */
+function zonesApi(...answers: (() => Response)[]) {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    if (String(input).endsWith('/zones')) {
+      const answer = answers.shift();
+      return answer ? Promise.resolve(answer()) : new Promise<Response>(() => {});
+    }
+    return Promise.resolve(
+      new Response(JSON.stringify({ statusCode: 404, message: 'Not found' }), { status: 404 }),
+    );
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+const zoneCalls = (fetchMock: ReturnType<typeof zonesApi>) =>
+  fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/zones'));
 
 /** What adding, as opposed to updating, has cost so far. */
 const creations = (map: InstanceType<typeof fake.FakeMap>) => ({
@@ -450,6 +472,42 @@ describe('CampusMap', () => {
 
     expect(map.remove).toHaveBeenCalled();
     expect(map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  // The zones are the campus: without them the map is an empty ground, so it says why (UI-15).
+  describe('zones loading', () => {
+    it('says the map is loading until the zones arrive', async () => {
+      zonesApi();
+
+      await renderMap([], { zones: null });
+
+      expect(screen.getByText('Loading the campus map…')).toHaveAttribute('role', 'status');
+      expect(screen.getByRole('region', { name: 'Campus map' })).toHaveAttribute(
+        'aria-busy',
+        'true',
+      );
+    });
+
+    it('says the map could not be loaded, and retries', async () => {
+      const fetchMock = zonesApi(
+        () =>
+          new Response(JSON.stringify({ statusCode: 500, message: 'Internal server error' }), {
+            status: 500,
+          }),
+        () => new Response(JSON.stringify([zone()]), { status: 200 }),
+      );
+      await renderMap([], { zones: null });
+
+      expect(await screen.findByText('The campus map could not be loaded.')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      await waitFor(() =>
+        expect(screen.queryByText('The campus map could not be loaded.')).toBeNull(),
+      );
+      expect(zoneCalls(fetchMock)).toHaveLength(2);
+      expect(screen.getByRole('region', { name: 'Campus map' })).not.toHaveAttribute('aria-busy');
+    });
   });
 
   describe('site plan', () => {
