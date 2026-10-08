@@ -1,5 +1,6 @@
 import type { Incident, Zone } from '@occ/contracts';
 import { type KeyboardEvent, useCallback, useRef, useState } from 'react';
+import { isRateLimited } from '../api/client';
 import { useIncidents, useZones } from '../api/queries';
 import {
   countByFilter,
@@ -12,24 +13,33 @@ import {
   severityLabel,
 } from '../lib/incidents';
 import { nextRowIndex } from '../lib/rowNavigation';
+import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';
 import { useShortcut } from '../lib/useShortcut';
 import { useConsole } from '../store';
+import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { FilterChip } from '../ui/FilterChip';
-import { severityIcon } from '../ui/icons';
+import { Icon } from '../ui/Icon';
+import { Clock, Search, severityIcon } from '../ui/icons';
+import { Skeleton } from '../ui/Skeleton';
 import { Tabs } from '../ui/Tabs';
 import { FeedSearch } from './FeedSearch';
 import styles from './IncidentFeed.module.css';
 import { IncidentRow } from './IncidentRow';
+import { LoadFailed, RateLimited } from './LoadStates';
+
+/** As many placeholder rows as a short shift's list, enough to fill the column's first screen. */
+const SKELETON_ROWS = 5;
 
 export function IncidentFeed() {
-  const { data: incidents, isPending, isError } = useIncidents();
+  const { data: incidents, error, failureReason, isPending, isFetching, refetch } = useIncidents();
   const { data: zones = [] } = useZones();
   const filter = useConsole((s) => s.filter);
   const setFilter = useConsole((s) => s.setFilter);
   const severity = useConsole((s) => s.severity);
   const clearSeverity = useConsole((s) => s.clearSeverity);
+  const offlineSince = useConsole((s) => s.offlineSince);
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const now = useNow();
   const [query, setQuery] = useState('');
@@ -51,7 +61,9 @@ export function IncidentFeed() {
   const matches = (incident: Incident) =>
     matchesSeverity(incident, severity) &&
     matchesQuery(incident, terms, zoneName.get(incident.zoneId));
-  const loaded = !isPending && !isError;
+  // Data first: a failed background refetch keeps the list (TanStack keeps it), so only a list that
+  // never arrived counts as not loaded.
+  const loaded = incidents !== undefined;
   const visible = (incidents ?? []).filter(
     (incident) => matchesFilter(incident, filter) && matches(incident),
   );
@@ -115,12 +127,33 @@ export function IncidentFeed() {
             className={styles.chip}
           />
         )}
+        {/* Frame 05: while the live link is down, the list may be stale; the stage's banner says so. */}
+        {loaded && offlineSince !== null && (
+          <p className={styles.notice}>
+            <Icon glyph={Clock} size={14} />
+            Showing incidents as of {formatClockTime(offlineSince)}
+          </p>
+        )}
         {isPending ? (
-          <EmptyState>Loading incidents…</EmptyState>
-        ) : isError ? (
-          <EmptyState>Incidents could not be loaded. Check that the API is running.</EmptyState>
+          isRateLimited(failureReason) ? (
+            <RateLimited />
+          ) : (
+            <FeedSkeleton />
+          )
+        ) : !loaded ? (
+          <LoadFailed
+            error={error}
+            fallback="Incidents could not be loaded."
+            isFetching={isFetching}
+            onRetry={() => void refetch()}
+          />
         ) : visible.length === 0 ? (
-          <EmptyState>{feedEmptyMessage(filter, severity, query)}</EmptyState>
+          <FeedEmpty
+            message={feedEmptyMessage(filter, severity, query)}
+            searching={query.trim() !== ''}
+            filtered={severity !== null}
+            onClearSeverity={onClearSeverity}
+          />
         ) : (
           <ul className={styles.list} onKeyDown={onListKeyDown}>
             {visible.map((incident, index) => (
@@ -142,4 +175,50 @@ export function IncidentFeed() {
       </Tabs>
     </aside>
   );
+}
+
+/** Shaped like `IncidentRow` (tile, title, meta line), so the list does not jump when it arrives. */
+function FeedSkeleton() {
+  return (
+    <div className={styles.list} aria-busy="true">
+      <p role="status" className={styles.hidden}>
+        Loading incidents…
+      </p>
+      {Array.from({ length: SKELETON_ROWS }, (_, row) => (
+        <div key={row} className={styles.skeletonRow}>
+          <Skeleton className={styles.skeletonTile} />
+          <Skeleton className={styles.skeletonTitle} />
+          <Skeleton className={styles.skeletonMeta} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Nothing to list (Q4): the message always says why. A search gets the search glyph and no action:
+ * the search box's own "Clear search" sits right above it. Otherwise a severity filter offers to
+ * show every severity. Only the search gets a glyph: the severity and status glyphs mean something
+ * else in this console.
+ */
+function FeedEmpty({
+  message,
+  searching,
+  filtered,
+  onClearSeverity,
+}: {
+  message: string;
+  searching: boolean;
+  filtered: boolean;
+  onClearSeverity: () => void;
+}) {
+  if (searching) return <EmptyState icon={Search}>{message}</EmptyState>;
+  if (filtered) {
+    return (
+      <EmptyState action={<Button onClick={onClearSeverity}>Show all severities</Button>}>
+        {message}
+      </EmptyState>
+    );
+  }
+  return <EmptyState>{message}</EmptyState>;
 }

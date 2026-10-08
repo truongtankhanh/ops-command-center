@@ -1,12 +1,21 @@
 import type { Incident, Zone } from '@occ/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  queryRetryDelay,
+  RATE_LIMITED_RETRYING,
+  shouldRetryQuery,
+  TOO_MANY_REQUESTS,
+} from '../api/client';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
 import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { IncidentFeed } from './IncidentFeed';
+
+// No token in these cases; the API client only asks for one.
+vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const zone: Zone = {
   id: 'z1',
@@ -47,6 +56,25 @@ function renderFeed(list: Incident[] = incidents) {
   );
 }
 
+const fetchMock = vi.fn<typeof fetch>();
+/** What the next `GET /incidents` answer, one factory each; once empty, a request stays pending. */
+let incidentAnswers: (() => Response)[] = [];
+
+/** A body can be read only once, so build one per call. */
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), { status });
+}
+
+function apiError(status: number, message: string): Response {
+  return json({ statusCode: status, message }, status);
+}
+
+/** The list is not cached: the feed asks the API for it (`incidentAnswers`). */
+function renderUncached(client = createTestQueryClient()) {
+  client.setQueryData(queryKeys.zones, [zone]);
+  return renderWithQueryClient(<IncidentFeed />, client);
+}
+
 describe('IncidentFeed', () => {
   beforeEach(() => {
     useConsole.setState({
@@ -55,11 +83,20 @@ describe('IncidentFeed', () => {
       selectedIncidentId: null,
       reporting: false,
       fresh: new Set(),
+      offlineSince: null,
     });
+    incidentAnswers = [];
+    fetchMock.mockReset().mockImplementation(() => {
+      const answer = incidentAnswers.shift();
+      return answer ? Promise.resolve(answer()) : new Promise<Response>(() => {});
+    });
+    vi.stubGlobal('fetch', fetchMock);
     // A signed-in role, as in the console. The feed holds no actions (Report is in the header).
     resetStore(useSession);
     useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('shows only active incidents by default, with zone and status', () => {
     renderFeed();
@@ -141,6 +178,19 @@ describe('IncidentFeed', () => {
 
       expect(screen.getByText('No active medium incidents.')).toBeInTheDocument();
       expect(screen.getByText('Medium only')).toBeInTheDocument();
+    });
+
+    it('offers to show every severity when nothing matches, and keeps focus in the feed', async () => {
+      // The only critical incident is resolved, so the active tab has none.
+      useConsole.setState({ severity: 'critical' });
+      renderFeed();
+      expect(screen.getByText('No active critical incidents.')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show all severities' }));
+
+      expect(useConsole.getState().severity).toBeNull();
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /^Active/ })).toHaveFocus();
     });
 
     it('shows no chip without a severity filter', () => {
@@ -249,6 +299,15 @@ describe('IncidentFeed', () => {
       expect(searchbox()).toHaveValue('');
     });
 
+    it('offers no second Clear search when nothing matches', async () => {
+      renderFeed();
+
+      await userEvent.type(searchbox(), 'zzz');
+
+      // The search box's own button clears it; the empty message adds none.
+      expect(screen.getAllByRole('button', { name: 'Clear search' })).toHaveLength(1);
+    });
+
     it('focuses the search with /', async () => {
       renderFeed();
 
@@ -278,6 +337,80 @@ describe('IncidentFeed', () => {
       } finally {
         window.removeEventListener('keydown', onKey);
       }
+    });
+  });
+
+  describe('loading and errors', () => {
+    it('shows placeholder rows while the incidents load', () => {
+      renderUncached();
+
+      const loading = screen.getByText('Loading incidents…');
+      expect(loading).toHaveAttribute('role', 'status');
+      expect(loading.parentElement).toHaveAttribute('aria-busy', 'true');
+      expect(screen.queryByText('Door forced open')).toBeNull();
+    });
+
+    it('says the list could not be loaded, and retries', async () => {
+      incidentAnswers = [() => apiError(500, 'Internal server error'), () => json(incidents)];
+      renderUncached();
+
+      expect(await screen.findByText('Incidents could not be loaded.')).toBeInTheDocument();
+      expect(screen.queryByText(/API is running/)).toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      expect(await screen.findByText('Door forced open')).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('waits calmly while too many requests are retried', async () => {
+      // The console's own policy: a 429 is retried after 2 s, which this case never waits for.
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay } },
+      });
+      incidentAnswers = [() => apiError(429, 'Too many requests')];
+      const { unmount } = renderUncached(client);
+
+      const retrying = await screen.findByText(RATE_LIMITED_RETRYING);
+      expect(retrying.closest('[role="status"]')).not.toBeNull();
+      expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+
+      unmount();
+      await client.cancelQueries();
+    });
+
+    it('explains too many requests once the retries are over', async () => {
+      incidentAnswers = [() => apiError(429, 'Too many requests')];
+      renderUncached();
+
+      expect(await screen.findByText(TOO_MANY_REQUESTS)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    });
+
+    it('keeps the list when a refresh fails', async () => {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.incidents, incidents);
+      incidentAnswers = [() => apiError(500, 'Internal server error')];
+      renderUncached(client);
+
+      await act(() => client.refetchQueries({ queryKey: queryKeys.incidents }));
+
+      await waitFor(() => expect(client.getQueryState(queryKeys.incidents)?.status).toBe('error'));
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(screen.queryByText('Incidents could not be loaded.')).toBeNull();
+    });
+  });
+
+  describe('while offline', () => {
+    it('says how old the list is', () => {
+      renderFeed();
+      expect(screen.queryByText(/Showing incidents as of/)).toBeNull();
+
+      // A local time, so the text does not depend on the runner's timezone.
+      const lostAt = new Date(2026, 9, 8, 15, 2).getTime();
+      act(() => useConsole.setState({ offlineSince: lostAt }));
+
+      expect(screen.getByText('Showing incidents as of 15:02')).toBeInTheDocument();
     });
   });
 

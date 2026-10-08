@@ -190,6 +190,34 @@ describe('useLiveIncidents', () => {
 
       expect(connection()).toBe('reconnecting');
     });
+
+    it('remembers when the live link was lost until it is back', () => {
+      const offlineSince = () => useConsole.getState().offlineSince;
+      renderLive();
+      socket.fire('connect');
+      expect(offlineSince()).toBeNull();
+
+      vi.setSystemTime(10_000);
+      socket.fire('disconnect');
+      expect(offlineSince()).toBe(10_000);
+
+      vi.setSystemTime(20_000);
+      socket.fireManager('reconnect_attempt');
+      expect(offlineSince()).toBe(10_000);
+
+      socket.fire('connect');
+      expect(offlineSince()).toBeNull();
+    });
+
+    it('counts a refused first connect as offline', () => {
+      renderLive();
+      vi.setSystemTime(30_000);
+
+      refuse(EventsConnectErrors.Unauthorized);
+
+      expect(connection()).toBe('offline');
+      expect(useConsole.getState().offlineSince).toBe(30_000);
+    });
   });
 
   describe('incident events', () => {

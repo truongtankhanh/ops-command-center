@@ -8,6 +8,28 @@
   background: var(--surface-1);
 }
 
+/* A tile while the camera list loads, shaped as `CameraTile`, so the strip keeps its height. */
+.skeleton {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+}
+
+/* Retrying, failed or no cameras: one message across the strip instead of the tiles. */
+.message {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* Read by assistive tech, not drawn: the loading state. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media (max-width: 1100px) {
   .strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));

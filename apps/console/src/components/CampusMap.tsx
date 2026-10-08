@@ -8,6 +8,7 @@ import maplibregl, {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { isRateLimited } from '../api/client';
 import { useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
 import { zoneAt } from '../lib/geo';
 import { cameraFeatures, cameraViewFeatures, incidentFeatures } from '../lib/mapFeatures';
@@ -36,6 +37,7 @@ import { layout, mapColors, mapMotion } from '../styles/tokens';
 import { Icon } from '../ui/Icon';
 import { Crosshair } from '../ui/icons';
 import styles from './CampusMap.module.css';
+import { LoadFailed, RateLimited } from './LoadStates';
 import { MapControls } from './MapControls';
 import { MapLegend } from './MapLegend';
 import { MapTooltip } from './MapTooltip';
@@ -75,7 +77,14 @@ interface ViewTarget {
 export function CampusMap() {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
-  const { data: zones } = useZones();
+  const {
+    data: zones,
+    error: zonesError,
+    failureReason: zonesFailure,
+    isPending: zonesPending,
+    isFetching: zonesFetching,
+    refetch: refetchZones,
+  } = useZones();
   const { data: sitePlan } = useSitePlan();
   const { data: cameras } = useCameras();
   const { data: incidents } = useIncidents();
@@ -164,9 +173,31 @@ export function CampusMap() {
     }
   }, [map, zones, sitePlan, highlightZoneId]);
 
+  // A 429 being retried is not "busy": its message is shown and announced instead.
+  const mapLoading = zonesPending && !isRateLimited(zonesFailure);
+
   return (
-    <section className={styles.map} aria-label="Campus map">
+    <section className={styles.map} aria-label="Campus map" aria-busy={mapLoading || undefined}>
       <div ref={container} className={styles.canvas} />
+      {/* The zones are the campus: without them the map is an empty ground (Q9). The site plan and
+          the marker images fail quietly instead, since the zones still carry the meaning. */}
+      {mapLoading ? (
+        <p role="status" className={styles.hidden}>
+          Loading the campus map…
+        </p>
+      ) : zonesPending ? (
+        <RateLimited className={styles.state} />
+      ) : (
+        !zones && (
+          <LoadFailed
+            error={zonesError}
+            fallback="The campus map could not be loaded."
+            isFetching={zonesFetching}
+            onRetry={() => void refetchZones()}
+            className={styles.state}
+          />
+        )
+      )}
       {/* Pointer-only, like the map itself: the zone select is the keyboard route to a location. */}
       {picking && (
         <div className={styles.pickHint} aria-hidden="true">

@@ -207,6 +207,51 @@ describe('useConsole', () => {
     });
   });
 
+  // The offline banner, the pill and the feed say since when the data may be stale (UI-15).
+  describe('offline time', () => {
+    it('starts unset', () => {
+      expect(state().offlineSince).toBeNull();
+    });
+
+    it('keeps the time the link was lost through every reconnect attempt, until it is live', () => {
+      state().setConnection('live', 500);
+      state().setConnection('offline', 1_000);
+      expect(state().offlineSince).toBe(1_000);
+
+      state().setConnection('reconnecting', 2_000);
+      expect(state().offlineSince).toBe(1_000);
+
+      state().setConnection('live', 3_000);
+      expect(state().offlineSince).toBeNull();
+    });
+
+    it('starts the clock on a reconnect attempt too', () => {
+      state().setConnection('live', 500);
+      state().setConnection('reconnecting', 5_000);
+
+      expect(state().offlineSince).toBe(5_000);
+    });
+
+    it('leaves it as it was while connecting', () => {
+      state().setConnection('connecting', 1_000);
+      expect(state().offlineSince).toBeNull();
+
+      state().setConnection('offline', 2_000);
+      state().setConnection('connecting', 3_000);
+      expect(state().offlineSince).toBe(2_000);
+    });
+
+    it('uses the current time when none is given', () => {
+      const now = vi.spyOn(Date, 'now').mockReturnValue(4_000);
+      try {
+        state().setConnection('offline');
+        expect(state().offlineSince).toBe(4_000);
+      } finally {
+        now.mockRestore();
+      }
+    });
+  });
+
   // The form and the map share the report's location; a cancelled pin must never come back.
   describe('report location', () => {
     const PIN: [number, number] = [108.4415, 11.953];

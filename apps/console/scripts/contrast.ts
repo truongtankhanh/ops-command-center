@@ -126,6 +126,10 @@ const PAIRS: Pair[] = [
   // tile of a critical / high toast. The other marker colours on the map ground are the
   // `--surface-0` pairs above.
   ...SEVERITIES.map((sev) => ({ fg: '--on-accent', bg: sev, min: UI })),
+  // The sign-in screens' state glyph on its tinted circle, on the `--surface-1` card (frames 09–11;
+  // a graphic, 3:1). The busy circle is `--text-secondary` on `--surface-2`, a pair above.
+  { fg: '--warning', bg: '--warning-tint', over: '--surface-1', min: UI },
+  { fg: '--danger', bg: '--danger-tint', over: '--surface-1', min: UI },
   // UI-14 adds no new pair: the toast's kicker, title and detail and its severity border are the
   // `--surface-3` pairs above; a fresh critical row keeps the fresh-row tint pairs; the user menu's
   // sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).

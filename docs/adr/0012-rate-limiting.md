@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-05
-- **Amended by:** [ADR-0015](0015-metrics-and-tracing.md) (`429`s per route in the HTTP metrics)
+- **Amended by:** [ADR-0015](0015-metrics-and-tracing.md) (`429`s per route in the HTTP metrics); console task UI-15, 2026-10-08
+  (§ Clients: loads retry a `429`)
 
 ## Context
 
@@ -85,7 +86,8 @@ Two layers, each keyed on what it can trust.
   - Rate limiting does not detect slow, distributed abuse; Keycloak's brute-force protection covers sign-in only.
   - IPv6 addresses are counted one by one at the edge, not by prefix. On an on-prem LAN this is unlikely to matter.
   - Under Docker Desktop, every browser on the host reaches nginx from a single gateway address (observed: `192.168.65.1` and `172.21.0.1`), so the edge limit is one bucket for all of them; Docker's userland proxy likely does the same. This stays inside the "whole room behind one NAT address" sizing, but limits are not tuned from such a setup. Whether LAN clients behind `CONSOLE_BIND=0.0.0.0` on Docker Desktop also share it has not been verified.
-- **Clients.** The console never retries a 4xx, so a `429` cannot start a retry storm. It also does not read `Retry-After`; it shows the message.
+- **Clients.** The console never retries an action (`POST`) and does not read `Retry-After`; a refused action shows the message, and the operator retries by hand.
+  - **Amended 2026-10-08 (UI-15).** A load (`GET`) refused with a `429` is retried three times, after 2, 4 and 8 seconds, while the panel says "Too many requests — retrying in a moment…"; after that it shows the message with a Retry button. Every other 4xx is still never retried. Each refused load adds at most three requests, spread over 14 seconds, so this cannot become a retry storm; a blocked key's requests are not counted (see "Fixed windows"), so the retries do not extend an API block either. A block longer than those 14 seconds ends in the message with Retry. Reading `Retry-After` would match the wait to the server's; not done yet.
 - **Proving it.** `apps/api/test/rate-limit.e2e-spec.ts` runs two app instances on one database and checks:
   - the `429` body and headers;
   - one counter across instances;

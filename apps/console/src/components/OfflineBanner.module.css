@@ -1,0 +1,13 @@
+/*
+ * Top centre of the part of the stage the sheet leaves visible (`--sheet-inset`, set on the
+ * stage), as the map's pick hint. Placement only; the look is the `Banner` primitive's. Under the
+ * session banner (`--z-session`), which is fixed over the whole console.
+ */
+.banner {
+  position: absolute;
+  top: var(--space-3);
+  left: calc((100% - var(--sheet-inset, 0px)) / 2);
+  z-index: var(--z-banner);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-4));
+  transform: translateX(-50%);
+}

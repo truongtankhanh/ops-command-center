@@ -18,15 +18,48 @@ export class ApiRequestError extends Error {
 export const NO_LONGER_ALLOWED = 'Your account is no longer allowed to do this.';
 
 /**
- * Shown for a 429 on an action, from the API or from nginx (both send an `ApiError` body, ADR-0012).
- * The console never retries a 4xx and does not read `Retry-After`, so the operator retries by hand.
+ * Shown for a 429, from the API or from nginx (both send an `ApiError` body, ADR-0012): on an
+ * action, which is never retried, and on a load once its own retries are used up. The console does
+ * not read `Retry-After`, so the operator retries by hand.
  */
 export const TOO_MANY_REQUESTS = 'Too many requests right now. Wait a few seconds and try again.';
 
-/** Query retry policy: a 4xx will not change on retry; network errors and 5xx get two more tries. */
+/** Shown in place of a load while a 429 is being retried (`shouldRetryQuery`). */
+export const RATE_LIMITED_RETRYING = 'Too many requests — retrying in a moment…';
+
+/**
+ * Shown for a 403 on a load. As with `NO_LONGER_ALLOWED`, the roles changed after the console was
+ * shown, here between two reads.
+ */
+export const NO_LONGER_VISIBLE = 'Your account can no longer see this.';
+
+/** The request was refused for coming too often (`429`, ADR-0012). */
+export const isRateLimited = (error: unknown): boolean =>
+  error instanceof ApiRequestError && error.status === 429;
+
+/** What a region says when its data could not be loaded: `fallback` unless the status says more. */
+export function loadErrorText(error: unknown, fallback: string): string {
+  if (isRateLimited(error)) return TOO_MANY_REQUESTS;
+  if (error instanceof ApiRequestError && error.status === 403) return NO_LONGER_VISIBLE;
+  return fallback;
+}
+
+/**
+ * Query retry policy. `failureCount` is the number of earlier failures (0 on the first). A 429
+ * passes once the burst is over, so it gets three more tries, spaced by `queryRetryDelay`; any
+ * other 4xx will not change on retry; network errors and 5xx get two more tries. Actions
+ * (mutations) are never retried.
+ */
 export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (isRateLimited(error)) return failureCount < 3;
   if (error instanceof ApiRequestError && error.status < 500) return false;
   return failureCount < 2;
+}
+
+/** Wait before a query retry: 2, 4, 8 s after a 429, else TanStack Query's default (1, 2, 4 … 30 s). */
+export function queryRetryDelay(failureCount: number, error: unknown): number {
+  if (isRateLimited(error)) return 2000 * 2 ** failureCount;
+  return Math.min(1000 * 2 ** failureCount, 30_000);
 }
 
 async function request<T>(path: string, init?: RequestInit, replayed = false): Promise<T> {

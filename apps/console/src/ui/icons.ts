@@ -119,10 +119,12 @@ export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff
 export {
   Check,
   ChevronDown,
+  CircleX,
   Clock,
   Crosshair,
   Eye,
   Info,
+  LoaderCircle,
   Lock,
   LogOut,
   MapPin,
@@ -134,6 +136,7 @@ export {
   Plus,
   Scan,
   Search,
+  Shield,
   Volume2,
   X,
 } from 'lucide-react';
