@@ -5,11 +5,19 @@ import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { signOut } from '../auth/session';
 import { useSession } from '../auth/store';
+import type * as CriticalCue from '../lib/criticalCue';
+import { playCriticalCue, unlockAudio } from '../lib/criticalCue';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { Header } from './Header';
 
 vi.mock('../auth/session', () => ({ signOut: vi.fn() }));
+// jsdom has no Web Audio; the sound preference itself is stored by the real module.
+vi.mock('../lib/criticalCue', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriticalCue>()),
+  unlockAudio: vi.fn(),
+  playCriticalCue: vi.fn(),
+}));
 
 /** Sign out sits in the account menu, opened from the trigger that shows the user's name. */
 const openAccountMenu = () =>
@@ -271,6 +279,67 @@ describe('Header', () => {
       await userEvent.keyboard('n');
 
       expect(useConsole.getState().reporting).toBe(false);
+    });
+  });
+
+  // Frame 06: the sound is off by default and turned on here, by every role.
+  describe('sound for critical incidents', () => {
+    const soundSwitch = () => screen.getByRole('switch', { name: 'Sound for critical incidents' });
+
+    beforeEach(() => {
+      localStorage.clear();
+      vi.mocked(unlockAudio).mockReset().mockResolvedValue(true);
+      vi.mocked(playCriticalCue).mockReset();
+    });
+
+    it('is off by default', async () => {
+      await openAccountMenu();
+
+      expect(soundSwitch()).toHaveAttribute('aria-checked', 'false');
+    });
+
+    it('turns on, unlocks audio with this click and plays the cue once', async () => {
+      await openAccountMenu();
+
+      await userEvent.click(soundSwitch());
+
+      expect(soundSwitch()).toHaveAttribute('aria-checked', 'true');
+      expect(useConsole.getState().criticalSound).toBe(true);
+      expect(unlockAudio).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(playCriticalCue).toHaveBeenCalledWith({ preview: true }));
+    });
+
+    it('stays on without a preview when the browser blocks audio', async () => {
+      vi.mocked(unlockAudio).mockResolvedValue(false);
+      await openAccountMenu();
+
+      await userEvent.click(soundSwitch());
+
+      expect(soundSwitch()).toHaveAttribute('aria-checked', 'true');
+      expect(unlockAudio).toHaveBeenCalledTimes(1);
+      // Let the unlock settle and its `.then` run before asserting nothing was played.
+      await vi.mocked(unlockAudio).mock.results[0]!.value;
+      await act(async () => {});
+      expect(playCriticalCue).not.toHaveBeenCalled();
+    });
+
+    it('turns off without touching audio', async () => {
+      act(() => useConsole.setState({ criticalSound: true }));
+      await openAccountMenu();
+
+      await userEvent.click(soundSwitch());
+
+      expect(soundSwitch()).toHaveAttribute('aria-checked', 'false');
+      expect(useConsole.getState().criticalSound).toBe(false);
+      expect(unlockAudio).not.toHaveBeenCalled();
+    });
+
+    it('is offered to a viewer too', async () => {
+      act(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] }));
+
+      await userEvent.click(screen.getByRole('button', { name: /Demo Viewer/ }));
+
+      expect(soundSwitch()).toBeInTheDocument();
     });
   });
 });

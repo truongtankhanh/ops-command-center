@@ -6,11 +6,12 @@
  *
  * Both modes exit 1 when a checked pair is below its minimum, or when a token value that has to be
  * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
- * longer matches it. Plain Node 24 with type stripping and no dependency, so it stays cheap to run
- * in lint. Ratios use the WCAG 2.x relative-luminance formula.
+ * longer matches it, or when the copy of favicon.svg the title badge draws over has drifted. Plain
+ * Node 24 with type stripping and no dependency, so it stays cheap to run in lint. Ratios use the
+ * WCAG 2.x relative-luminance formula.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { layout, mapColors, mapMotion } from '../src/styles/tokens.ts';
+import { faviconMark, layout, mapColors, mapMotion } from '../src/styles/tokens.ts';
 
 interface Rgba {
   r: number;
@@ -121,9 +122,13 @@ const PAIRS: Pair[] = [
   ),
   // The count on the selected feed tab.
   { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
-  // The type glyph on an open incident's severity disc on the map (a graphic). The other marker
-  // colours on the map ground are the `--surface-0` pairs above.
+  // The type glyph on an open incident's severity disc on the map (a graphic), and the severity icon
+  // tile of a critical / high toast. The other marker colours on the map ground are the
+  // `--surface-0` pairs above.
   ...SEVERITIES.map((sev) => ({ fg: '--on-accent', bg: sev, min: UI })),
+  // UI-14 adds no new pair: the toast's kicker, title and detail and its severity border are the
+  // `--surface-3` pairs above; a fresh critical row keeps the fresh-row tint pairs; the user menu's
+  // sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).
 ];
 
 const css = parseRoot(readFileSync(TOKENS_CSS, 'utf8'));
@@ -289,6 +294,12 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       copy: '`theme-color` (index.html)',
       actual: themeColor ? normalise(themeColor) : 'missing',
       expected: hexOf(resolve('--surface-1')),
+    },
+    {
+      // Compared as markup, not colours: the badge redraws the whole mark from this copy.
+      copy: '`faviconMark` (src/styles/tokens.ts)',
+      actual: faviconMark === svg.trim() ? 'public/favicon.svg' : 'differs',
+      expected: 'public/favicon.svg',
     },
     {
       copy: 'colours in public/favicon.svg',

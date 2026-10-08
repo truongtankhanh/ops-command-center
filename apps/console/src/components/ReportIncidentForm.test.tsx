@@ -579,8 +579,10 @@ describe('ReportIncidentForm', () => {
       await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
 
       await vi.waitFor(() => expect(useConsole.getState().selectedIncidentId).toBe('new-incident'));
+      // Keyed to the incident, so its live `Created` event adds no second toast.
       expect(useToasts.getState().toasts).toEqual([
         expect.objectContaining({
+          key: 'new-incident',
           title: 'Reported INC-000042',
           detail: 'Person down at entrance',
         }),

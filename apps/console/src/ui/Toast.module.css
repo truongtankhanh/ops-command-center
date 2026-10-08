@@ -1,7 +1,7 @@
 /*
  * Frame 04's `.toasts` / `.toast`. The region lies over the stage (App.module.css `.stage`) and
  * keeps to its right edge beside the open sheet (`--sheet-inset`). It lets clicks through where it
- * has no toast.
+ * has no toast. Urgent toasts (their own live list) sit above the others.
  */
 .region {
   position: absolute;
@@ -17,6 +17,11 @@
   gap: var(--space-2);
 }
 
+/* Both lists stay mounted (stable live regions); only two lists with toasts are spaced apart. */
+.list:not(:empty) + .list:not(:empty) {
+  margin-top: var(--space-2);
+}
+
 .toast {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) auto;
@@ -28,6 +33,28 @@
   background: var(--surface-3);
   box-shadow: var(--shadow-3);
   pointer-events: auto;
+  animation: toast-in var(--duration-base) var(--ease-out);
+}
+
+/* A severity toast (frame 04): border, ring and icon tile in `--sev`; the text stays neutral. */
+.toast[data-severity] {
+  border-color: var(--sev);
+  box-shadow:
+    var(--shadow-3),
+    0 0 0 3px color-mix(in srgb, var(--sev) 20%, transparent);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-2)));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }
 
 .icon {
@@ -40,9 +67,24 @@
   color: var(--on-accent);
 }
 
+.toast[data-severity] .icon {
+  background: var(--sev);
+}
+
 .text {
   min-width: 0;
   align-self: center;
+}
+
+.kicker {
+  margin: 0 0 var(--space-0-5);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
 }
 
 .title {
@@ -59,6 +101,17 @@
   font-size: var(--type-m);
   color: var(--text-secondary);
   overflow-wrap: anywhere;
+}
+
+/* Frame 04's `.toast-actions`: under the text, beside the icon tile; no Dismiss column then. */
+.toast[data-actions] {
+  grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.actions {
+  grid-column: 2;
+  display: flex;
+  gap: var(--space-2);
 }
 
 /* Higher specificity than `Button`'s own rule: a square icon button. */

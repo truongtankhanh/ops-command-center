@@ -1,4 +1,4 @@
-import { useConsole } from './store';
+import { FRESH_LIMIT, useConsole } from './store';
 import { resetStore } from './test-utils';
 
 const state = () => useConsole.getState();
@@ -160,6 +160,39 @@ describe('useConsole', () => {
       expect(before.has('a')).toBe(false);
     });
 
+    // A fresh row stays highlighted until it is looked at, so the set must not grow over a shift.
+    it('keeps only the newest incidents fresh', () => {
+      for (let i = 0; i <= FRESH_LIMIT; i++) state().markFresh(`id-${i}`);
+
+      expect(state().fresh.size).toBe(FRESH_LIMIT);
+      expect(state().fresh.has('id-0')).toBe(false);
+      expect(state().fresh.has(`id-${FRESH_LIMIT}`)).toBe(true);
+
+      state().markFresh('id-5');
+
+      expect(state().fresh.size).toBe(FRESH_LIMIT);
+    });
+
+    it('forgets one fresh incident in a new set', () => {
+      state().markFresh('a');
+      state().markFresh('b');
+      const before = state().fresh;
+
+      state().forgetFresh('a');
+
+      expect([...state().fresh]).toEqual(['b']);
+      expect(before.has('a')).toBe(true);
+    });
+
+    it('leaves the set as it was when the incident is not fresh', () => {
+      state().markFresh('a');
+      const before = state().fresh;
+
+      state().forgetFresh('b');
+
+      expect(state().fresh).toBe(before);
+    });
+
     it('records the last sign of life, now when no time is given', () => {
       state().markAlive(1_000);
       expect(state().lastEventAt).toBe(1_000);
@@ -257,6 +290,31 @@ describe('useConsole', () => {
       act();
 
       expect(state().viewerCameraId).toBe('c1');
+    });
+  });
+
+  describe('critical sound', () => {
+    const stored = () => localStorage.getItem('occ.console.criticalSound');
+
+    beforeEach(() => localStorage.clear());
+
+    it('is off by default', () => {
+      expect(useConsole.getInitialState().criticalSound).toBe(false);
+    });
+
+    it('turns on and remembers it in this browser', () => {
+      state().setCriticalSound(true);
+
+      expect(state().criticalSound).toBe(true);
+      expect(stored()).toBe('true');
+    });
+
+    it('turns off and forgets it', () => {
+      state().setCriticalSound(true);
+      state().setCriticalSound(false);
+
+      expect(state().criticalSound).toBe(false);
+      expect(stored()).toBeNull();
     });
   });
 

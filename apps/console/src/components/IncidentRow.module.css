@@ -157,8 +157,8 @@
 
 /*
  * A fresh row (frame 04) slides in, then holds its severity tint and border before fading back to
- * its normal look, so a new incident is noticed without staying loud. A persistent highlight and
- * bounding the `fresh` set are UI-14's.
+ * its normal look, so a new incident is noticed without staying loud. A fresh critical row keeps
+ * the tint (below).
  */
 .row[data-fresh='true'] {
   animation:
@@ -182,9 +182,28 @@
   }
 }
 
+/*
+ * A fresh critical row keeps its tint and border until it is looked at, acknowledged or pushed out
+ * of the bounded `fresh` set (frame 04's `.row.is-fresh`, UI-14). Only the slide plays. Hovered, it
+ * shows the hover surface (a checked text surface) and keeps the border.
+ */
+.row[data-fresh='true'][data-severity='critical'] {
+  border-color: var(--row-edge);
+  background: var(--row-tint);
+  animation: slide-in var(--duration-base) var(--ease-out);
+}
+
+.row[data-fresh='true'][data-severity='critical']:hover {
+  background: var(--surface-2);
+}
+
 /* A colour change is not motion: under reduced motion only the slide goes. */
 @media (prefers-reduced-motion: reduce) {
   .row[data-fresh='true'] {
     animation: arrive var(--duration-arrive) var(--ease-out);
+  }
+
+  .row[data-fresh='true'][data-severity='critical'] {
+    animation: none;
   }
 }

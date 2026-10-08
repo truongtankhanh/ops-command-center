@@ -3,18 +3,29 @@ import {
   EventsConnectErrors,
   type Incident,
   IncidentEvents,
+  type Zone,
 } from '@occ/contracts';
 import type { QueryClient } from '@tanstack/react-query';
-import { renderHook } from '@testing-library/react';
+import { act, render, renderHook } from '@testing-library/react';
+import { createElement } from 'react';
 import { io } from 'socket.io-client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import type * as CriticalCue from '../lib/criticalCue';
+import { playCriticalCue } from '../lib/criticalCue';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
+import { ToastRegion } from '../ui/Toast';
+import { showToast, useToasts } from '../ui/toasts';
 import { useLiveIncidents } from './useLiveIncidents';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+// The store reads and writes the sound preference through the real module; only the sound is faked.
+vi.mock('../lib/criticalCue', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriticalCue>()),
+  playCriticalCue: vi.fn(),
+}));
 
 type Handler = (...args: unknown[]) => void;
 
@@ -91,6 +102,8 @@ describe('useLiveIncidents', () => {
 
   beforeEach(() => {
     resetStore(useConsole);
+    resetStore(useToasts);
+    vi.mocked(playCriticalCue).mockReset();
     vi.useFakeTimers();
     // A jitter factor of exactly 1: retries fire at 1000, 2000, 4000… ms.
     vi.spyOn(Math, 'random').mockReturnValue(0.5);
@@ -201,6 +214,152 @@ describe('useLiveIncidents', () => {
       expect(client.getQueryData(queryKeys.incidents)).toEqual([incident]);
       expect(useConsole.getState().fresh.has(incident.id)).toBe(false);
     });
+  });
+
+  // A new critical or high incident is announced with a toast (frame 04); critical can also sound.
+  describe('attention', () => {
+    const zone: Zone = {
+      id: incident.zoneId,
+      code: 'Z-GATE',
+      name: 'Main Gate',
+      kind: 'gate',
+      polygon: [],
+      center: [108.44, 11.95],
+    };
+    const critical: Incident = { ...incident, severity: 'critical' };
+    const toasts = () => useToasts.getState().toasts;
+
+    beforeEach(() => client.setQueryData(queryKeys.zones, [zone]));
+
+    it('shows an urgent toast for a new critical incident', () => {
+      renderLive();
+
+      socket.fire(IncidentEvents.Created, critical);
+
+      expect(toasts()).toEqual([
+        expect.objectContaining({
+          key: 'incident-1',
+          urgent: true,
+          severity: 'critical',
+          kicker: 'New critical · Medical',
+          title: 'Person down at entrance',
+          detail: 'Main Gate · INC-000042 · just now',
+          action: expect.objectContaining({ label: 'View incident' }),
+        }),
+      ]);
+    });
+
+    it('reads a new critical incident out at once', () => {
+      renderLive();
+      const { container } = render(createElement(ToastRegion));
+
+      // In `act`, so the region re-renders before the assertions; the event comes from outside React.
+      act(() => socket.fire(IncidentEvents.Created, critical));
+
+      const assertive = container.querySelector('[aria-live="assertive"]');
+      const polite = container.querySelector('[aria-live="polite"]');
+      expect(assertive).toHaveTextContent('New critical · Medical');
+      expect(assertive).toHaveTextContent('Person down at entrance');
+      expect(polite).toBeEmptyDOMElement();
+    });
+
+    it('shows a toast that goes by itself for a new high incident, read out politely', () => {
+      renderLive();
+      const { container } = render(createElement(ToastRegion));
+
+      act(() => socket.fire(IncidentEvents.Created, incident));
+
+      expect(toasts()).toEqual([
+        expect.objectContaining({ kicker: 'New high · Medical', severity: 'high' }),
+      ]);
+      expect(toasts()[0]!.urgent).toBeFalsy();
+      expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent(
+        'Person down at entrance',
+      );
+      expect(container.querySelector('[aria-live="assertive"]')).toBeEmptyDOMElement();
+    });
+
+    it.each(['medium', 'low'] as const)(
+      'shows no toast for a new %s incident, which only stands out in the feed',
+      (severity) => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, { ...incident, severity });
+
+        expect(toasts()).toEqual([]);
+        expect(useConsole.getState().fresh.has(incident.id)).toBe(true);
+      },
+    );
+
+    it('leaves the zone out while the zones are not loaded', () => {
+      client.removeQueries({ queryKey: queryKeys.zones });
+      renderLive();
+
+      socket.fire(IncidentEvents.Created, critical);
+
+      expect(toasts()[0]!.detail).toBe('INC-000042 · just now');
+    });
+
+    // The operator's own report also arrives as `Created`; its "Reported …" toast is enough.
+    it('adds no toast and no sound when a toast about the incident is already shown', () => {
+      useConsole.setState({ criticalSound: true });
+      showToast({ key: 'incident-1', title: 'Reported INC-000042' });
+      renderLive();
+
+      socket.fire(IncidentEvents.Created, critical);
+
+      expect(toasts()).toEqual([expect.objectContaining({ title: 'Reported INC-000042' })]);
+      expect(playCriticalCue).not.toHaveBeenCalled();
+    });
+
+    describe('sound', () => {
+      it('plays for a new critical incident when it is on', () => {
+        useConsole.setState({ criticalSound: true });
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+
+        expect(playCriticalCue).toHaveBeenCalledTimes(1);
+      });
+
+      it('stays silent when it is off, the default', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+
+        expect(playCriticalCue).not.toHaveBeenCalled();
+      });
+
+      it('stays silent for a high incident', () => {
+        useConsole.setState({ criticalSound: true });
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, incident);
+
+        expect(playCriticalCue).not.toHaveBeenCalled();
+      });
+    });
+
+    it('opens the incident from the toast', () => {
+      renderLive();
+      socket.fire(IncidentEvents.Created, critical);
+
+      toasts()[0]!.action!.onAction();
+
+      expect(useConsole.getState().selectedIncidentId).toBe('incident-1');
+    });
+
+    it.each(['acknowledged', 'resolved'] as const)(
+      'stops treating an incident as fresh once it is %s',
+      (status) => {
+        renderLive();
+        socket.fire(IncidentEvents.Created, incident);
+
+        socket.fire(IncidentEvents.Updated, { ...incident, status, version: 2 });
+
+        expect(useConsole.getState().fresh.has(incident.id)).toBe(false);
+      },
+    );
   });
 
   // The header shows how long ago the link last answered; a growing age is the warning.

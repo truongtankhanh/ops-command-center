@@ -92,7 +92,7 @@ export function IncidentFeed() {
   };
 
   return (
-    <aside ref={feedRef} className={styles.feed} aria-label="Incidents">
+    <aside ref={feedRef} id="incident-feed" className={styles.feed} aria-label="Incidents">
       <FeedSearch value={query} onChange={setQuery} ref={searchRef} className={styles.search} />
       {/* Always mounted: screen readers announce a change in an existing live region. */}
       <p role="status" className={styles.hidden}>
