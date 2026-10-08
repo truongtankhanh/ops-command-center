@@ -1,6 +1,6 @@
 /* Frame 02's `.sheet-head`: code and Close, badges, title, then the lifecycle (own module). */
 .head {
-  padding: var(--space-4) var(--space-5);
+  padding: var(--section-pad-y) var(--space-5);
 }
 
 .toprow {
@@ -30,7 +30,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: 26px;
+  height: calc(26px * var(--ui-scale));
   padding: 0 var(--space-2) 0 var(--space-1-5);
   border-radius: var(--radius-s);
   background: var(--surface-2);
@@ -54,7 +54,7 @@
 .section {
   display: grid;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--section-pad-y) var(--space-5);
   box-shadow: inset 0 1px 0 var(--border-subtle);
 }
 
@@ -108,23 +108,23 @@
 
 /* Loading: the sizes of the loaded head and timeline, so nothing jumps when data arrives. */
 .skeletonCode {
-  width: 96px;
-  height: 18px;
+  width: calc(96px * var(--ui-scale));
+  height: calc(18px * var(--ui-scale));
 }
 
 .skeletonBadge {
-  width: 88px;
-  height: 26px;
+  width: calc(88px * var(--ui-scale));
+  height: calc(26px * var(--ui-scale));
 }
 
 .skeletonTitle {
   width: 80%;
-  height: 28px;
+  height: calc(28px * var(--ui-scale));
   margin-top: var(--space-3);
 }
 
 .skeletonStepper {
-  height: 44px;
+  height: calc(44px * var(--ui-scale));
   margin-top: var(--space-4);
 }
 
@@ -136,7 +136,7 @@
 }
 
 .skeletonMetric {
-  height: 60px;
+  height: calc(60px * var(--ui-scale));
   border-radius: var(--radius-m);
 }
 
@@ -148,19 +148,19 @@
 
 .skeletonEntry {
   display: grid;
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: calc(28px * var(--ui-scale)) 1fr;
   align-items: center;
   column-gap: var(--space-3);
 }
 
 .skeletonBadgeIcon {
-  width: 28px;
-  height: 28px;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
 }
 
 .skeletonLine {
   width: 70%;
-  height: 16px;
+  height: calc(16px * var(--ui-scale));
 }
 
 /* A compact camera tile while the camera list loads (`.cameras` lays out two). */

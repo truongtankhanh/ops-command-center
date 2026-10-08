@@ -1,7 +1,23 @@
 import type { Camera } from '@occ/contracts';
+import type { DisplayMode } from './useDisplayMode';
 
-/** Tiles in the camera strip, and so the most cameras that can be pinned to it. */
-export const STRIP_SIZE = 4;
+/**
+ * The most cameras that can be pinned: the strip's size in its smallest mode, so every pin keeps a
+ * slot in every display mode (a pin made on a wall still shows on a laptop).
+ */
+export const PIN_LIMIT = 4;
+
+/** Tiles in the camera strip: more on a control-room wall, where they are seen from afar. */
+export function stripSize(mode: DisplayMode): number {
+  switch (mode) {
+    case 'wall-4k':
+      return 8;
+    case 'wall':
+      return 6;
+    default:
+      return PIN_LIMIT;
+  }
+}
 
 const PINNED_KEY = 'occ.console.pinnedCameras';
 
@@ -12,13 +28,14 @@ export function prioritise(cameras: Camera[], zoneId: string | undefined): Camer
 }
 
 /**
- * The strip's tiles: pinned cameras that still exist first, in pin order, then the others in
+ * The strip's `size` tiles: pinned cameras that still exist first, in pin order, then the others in
  * `prioritise` order — so a pinned camera keeps its slot whatever incident is selected.
  */
 export function stripCameras(
   cameras: Camera[],
   zoneId: string | undefined,
   pinnedIds: readonly string[],
+  size: number,
 ): Camera[] {
   const byId = new Map(cameras.map((c) => [c.id, c]));
   const pinned = pinnedIds.flatMap((id) => byId.get(id) ?? []);
@@ -26,7 +43,7 @@ export function stripCameras(
     cameras.filter((c) => !pinnedIds.includes(c.id)),
     zoneId,
   );
-  return [...pinned, ...rest].slice(0, STRIP_SIZE);
+  return [...pinned, ...rest].slice(0, size);
 }
 
 /** Pins whose camera still exists. */
@@ -37,7 +54,7 @@ function livePins(pinned: readonly string[], knownIds: readonly string[]): strin
 /**
  * Pins `id`, or unpins it when it is pinned. Ids missing from `knownIds` are dropped first: a
  * reseeded database gives every camera a new id, and stale pins must not keep the strip full.
- * Pinning past `STRIP_SIZE` leaves the list unchanged.
+ * Pinning past `PIN_LIMIT` leaves the list unchanged.
  */
 export function togglePinned(
   pinned: readonly string[],
@@ -46,17 +63,17 @@ export function togglePinned(
 ): string[] {
   const live = livePins(pinned, knownIds);
   if (live.includes(id)) return live.filter((p) => p !== id);
-  return live.length < STRIP_SIZE ? [...live, id] : live;
+  return live.length < PIN_LIMIT ? [...live, id] : live;
 }
 
-/** Whether `id` can be toggled: it is pinned (so it can be unpinned), or the strip has room. */
+/** Whether `id` can be toggled: it is pinned (so it can be unpinned), or there is room for a pin. */
 export function canPin(
   pinned: readonly string[],
   id: string,
   knownIds: readonly string[],
 ): boolean {
   const live = livePins(pinned, knownIds);
-  return live.includes(id) || live.length < STRIP_SIZE;
+  return live.includes(id) || live.length < PIN_LIMIT;
 }
 
 /**

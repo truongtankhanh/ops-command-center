@@ -34,6 +34,54 @@ export function resetStore<T>(store: Pick<StoreApi<T>, 'setState' | 'getInitialS
   store.setState(store.getInitialState(), true);
 }
 
+/** What `stubViewportWidth` returns: move the window across breakpoints, and see who listens. */
+export interface ViewportStub {
+  /** Changes the width; every list whose answer flips calls its `change` listeners, as a browser does. */
+  resize(width: number): void;
+  /** `change` listeners registered and not removed, over every list handed out. */
+  listenerCount(): number;
+}
+
+/**
+ * A `matchMedia` for a window `width` px wide, for code that reads `useDisplayMode`: it answers
+ * `(min-width: Npx)` and `(max-width: Npx)` against the current width, and `false` to anything else.
+ * jsdom has no `matchMedia`; without this the console lays out as on a laptop. Wrap `resize` in
+ * `act(...)` when a rendered tree reads the result. Undo with `vi.unstubAllGlobals()`.
+ */
+export function stubViewportWidth(width: number): ViewportStub {
+  let current = width;
+  const handedOut: { list: { readonly matches: boolean }; listeners: Set<() => void> }[] = [];
+
+  vi.stubGlobal('matchMedia', (query: string) => {
+    const bound = /\((min|max)-width:\s*(\d+)px\)/.exec(query);
+    const listeners = new Set<() => void>();
+    const list = {
+      media: query,
+      get matches() {
+        if (!bound) return false;
+        const edge = Number(bound[2]);
+        return bound[1] === 'min' ? current >= edge : current <= edge;
+      },
+      addEventListener: (_type: 'change', listener: () => void) => void listeners.add(listener),
+      removeEventListener: (_type: 'change', listener: () => void) =>
+        void listeners.delete(listener),
+    };
+    handedOut.push({ list, listeners });
+    return list;
+  });
+
+  return {
+    resize(next) {
+      const before = handedOut.map(({ list }) => list.matches);
+      current = next;
+      handedOut.forEach(({ list, listeners }, i) => {
+        if (list.matches !== before[i]) listeners.forEach((listener) => listener());
+      });
+    },
+    listenerCount: () => handedOut.reduce((count, { listeners }) => count + listeners.size, 0),
+  };
+}
+
 /**
  * Fails with every axe violation found under `root` (WCAG 2.x A / AA and axe's best practices).
  * `root` defaults to `document.body`, so portals (`Dialog`) are included.

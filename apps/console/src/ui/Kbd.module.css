@@ -3,8 +3,8 @@
 .kbd {
   display: inline-grid;
   place-items: center;
-  min-width: 20px;
-  height: 20px;
+  min-width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
   padding: 0 var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-s);

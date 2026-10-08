@@ -27,7 +27,7 @@
   top: calc(100% + var(--space-2));
   right: 0;
   z-index: var(--z-popover);
-  width: 300px;
+  width: calc(300px * var(--ui-scale));
   max-width: calc(100vw - 2 * var(--space-4));
   padding: var(--space-1-5);
   border: 1px solid var(--border-subtle);

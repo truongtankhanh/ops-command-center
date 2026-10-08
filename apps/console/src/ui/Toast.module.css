@@ -8,7 +8,7 @@
   top: var(--space-3);
   right: calc(var(--sheet-inset, 0px) + var(--space-3));
   z-index: var(--z-toast);
-  width: min(392px, calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3)));
+  width: min(var(--toast-width), calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3)));
   pointer-events: none;
 }
 
@@ -24,7 +24,7 @@
 
 .toast {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr) auto;
   gap: var(--space-3);
   align-items: start;
   padding: var(--space-3);
@@ -60,8 +60,8 @@
 .icon {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
   border-radius: var(--radius-m);
   background: var(--accent);
   color: var(--on-accent);
@@ -105,7 +105,7 @@
 
 /* Frame 04's `.toast-actions`: under the text, beside the icon tile; no Dismiss column then. */
 .toast[data-actions] {
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr);
 }
 
 .actions {
@@ -116,6 +116,6 @@
 
 /* Higher specificity than `Button`'s own rule: a square icon button. */
 .toast .dismiss {
-  width: 32px;
+  width: var(--control-s);
   padding: 0;
 }

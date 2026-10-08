@@ -5,15 +5,39 @@ The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, 
 
 ## Where they live
 
-| File                                     | Holds                                                                                                |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).       |
-| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`, `layout`): MapLibre and the marker images take literals. |
-| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                 |
+| File                                     | Holds                                                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).      |
+| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`: MapLibre takes literals) and the `breakpoints` (UI-17). |
+| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                |
 
 A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently. One exception:
 the cluster count font on the map (`lib/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
 see [icons.md](icons.md#map-glyphs)).
+
+## Display modes and density (UI-17)
+
+- **One scale.** `--ui-scale` (`1` on `:root`) multiplies every size token: `--type-*`, `--leading-*`, `--space-*`,
+  `--radius-*`, `--sheet-width`, `--feed-width`, `--toast-width`, `--control-m` / `--control-s`, `--kpi-height`.
+  Each is written as `calc(<laptop px> * var(--ui-scale))`, so at scale 1 every value is the one in the mockups
+  (frames at 1440 px). Colours, shadows, motion, the focus ring and z-index do not scale.
+- **Modes by width**, named in `breakpoints` (`tokens.ts`): phone ≤ 720 px (a fallback: the map stacks above the
+  feed, the sheet covers the screen), tablet ≤ 1100 px (narrower feed, KPI tiles on their own row, a 2 × 2 camera
+  strip), laptop (the reference), **wall ≥ 1920 px** (`--ui-scale: 1.125`, 6 camera tiles) and **4K wall
+  ≥ 3200 px** (`--ui-scale: 1.75`, 8 tiles). Only `--ui-scale` changes in the wall media queries at the end of
+  `tokens.css`; `lint` checks that their widths match `breakpoints.wall` / `wall4k`. Script reads the mode with
+  `useDisplayMode()` (`lib/useDisplayMode.ts`) — today only the camera strip, for its tile count.
+- **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
+  (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
+  overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--kpi-height`, `--strip-pad`,
+  `--strip-gap`, `--section-pad-y`. Type sizes never change with density (13 px is the smallest text, brief); on a
+  touch screen (`pointer: coarse`) KPI tiles, feed rows and camera tile actions stay ≥ 44 px.
+- **The sheet's width in script.** `--sheet-inset` is registered with `@property` (`<length>`), so the map reads the
+  stage's computed value in px (`CampusMap` `sheetInset()`) instead of a copy: it follows the mode and is 0 where the
+  sheet covers the whole screen.
+- **Not scaled** (DN-6 of UI-17): what the map draws on its canvas — marker and cluster images, zone labels, layer
+  widths — and the tooltip's placement distances in `MapTooltip.tsx` stay laptop-sized on a wall. The map's
+  controls, legend and tooltip box do scale.
 
 ## Which surface, which token
 
@@ -47,14 +71,18 @@ Component CSS and TSX use tokens for colour, `font-size` / `line-height` / `font
 gap, offsets used as spacing), `border-radius`, `box-shadow`, `z-index`, animation durations and easing, and the
 focus ring. These may stay raw:
 
-- `@media` breakpoints: custom properties are not allowed in media queries.
+- `@media` breakpoints: custom properties are not allowed in media queries. The widths are named in `breakpoints`
+  (`tokens.ts`); the two wall queries in `tokens.css` are checked against it.
 - 1–3 px border, outline and stroke widths, inset `box-shadow` lines of the same widths (selected feed row, checked
   severity option), and `outline-offset`. Drop shadows always use `--shadow-*`.
 - Component dimensions: `width`, `height`, `min-*`, `max-width`, `grid-template-columns`, `aspect-ratio`, `ch` and
-  `vh` lengths, and the geometry of drawn graphics (lifecycle stepper dot and rail, marker pulse). The sheet's width
-  is the exception: it is `--sheet-width` (440 px, frame 02), because the map pads by the same value; at ≤ 720 px the
-  sheet is full-screen (`100%`). Icon sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) count as well —
-  see [icons.md](icons.md).
+  `vh` lengths, and the geometry of drawn graphics (lifecycle stepper dot and rail, legend samples). Since UI-17 they
+  are written as the laptop value times the scale, `calc(34px * var(--ui-scale))`, so they grow with the text on a
+  wall; percentages, `ch` / `vh` and `999px` pill radii stay as they are. Shared sizes are tokens: `--sheet-width`
+  (440 px, frame 02; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
+  `--control-m` / `--control-s` (40 / 32 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
+  sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
+  multiplies them by the scale — see [icons.md](icons.md).
 - MapLibre numbers in `CampusMap.tsx`, `lib/map*.ts`, `lib/geo.ts` and `lib/sitePlan.ts`: `line-width` and
   `line-dasharray`, circle radii and stroke widths, `fitBounds` padding, `easeTo` duration, zoom levels, cluster
   radius, marker offsets, the pulse frame rate and scale, the marker image geometry in `lib/mapImages.ts` (image boxes,
@@ -71,7 +99,7 @@ focus ring. These may stay raw:
 
 `apps/console/scripts/contrast.ts` reads `tokens.css` and `tokens.ts`, computes WCAG 2.x contrast ratios, and checks
 the pairs that occur in the UI (minimum 4.5:1 for text, 3:1 for meaningful boundaries) and the copied values (map
-colours, the pulse duration and the sheet width in `tokens.ts`, `theme-color`, the favicon).
+colours, the pulse duration and the wall breakpoints in `tokens.ts`, `theme-color`, the favicon).
 
 - `pnpm --filter @occ/console lint` runs it with `--check` and fails on a pair below its minimum or a drifted copy.
 - `pnpm --filter @occ/console tokens:contrast` regenerates the tables below. Run it after changing a token and commit
@@ -223,7 +251,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
 | `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
-| `layout.sheetWidth` (src/styles/tokens.ts)           | 440px                     | 440px                     | match  |
+| `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |
+| `breakpoints.wall4k` (src/styles/tokens.ts)          | 3200px                    | 3200px                    | match  |
 | `theme-color` (index.html)                           | #13222d                   | #13222d                   | match  |
 | `faviconMark` (src/styles/tokens.ts)                 | public/favicon.svg        | public/favicon.svg        | match  |
 | colours in public/favicon.svg                        | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |

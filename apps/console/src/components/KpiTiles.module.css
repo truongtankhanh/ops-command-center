@@ -14,8 +14,8 @@
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: var(--space-2);
-  min-width: 104px;
-  height: 48px;
+  min-width: calc(104px * var(--ui-scale));
+  height: var(--kpi-height);
   padding: 0 var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
@@ -89,5 +89,12 @@
   .tile {
     width: 100%;
     min-width: 0;
+  }
+}
+
+/* Touch screens (Q6 of UI-17): a tile stays a 44 px target even in compact density. */
+@media (pointer: coarse) {
+  .tile {
+    height: max(var(--kpi-height), calc(44px * var(--ui-scale)));
   }
 }

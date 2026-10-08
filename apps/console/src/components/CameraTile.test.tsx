@@ -12,7 +12,7 @@ import { CameraTile } from './CameraTile';
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const CLOCK = /^\d{2}:\d{2}:\d{2}$/;
-const STRIP_FULL = 'The strip holds 4 pinned cameras. Unpin one first.';
+const STRIP_FULL = 'You can pin 4 cameras to the strip. Unpin one first.';
 
 const camera = (overrides: Partial<Camera> = {}): Camera => ({
   id: 'c1',

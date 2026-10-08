@@ -11,6 +11,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
 import { ShortcutHelp } from './components/ShortcutHelp';
 import { useAudioUnlock } from './lib/criticalCue';
+import { useDensityAttribute } from './lib/density';
 import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
 import { useConsole } from './store';
@@ -38,6 +39,12 @@ function AttentionSignals() {
   return null;
 }
 
+/** Display preferences set on `<html>` (density), so they also reach the portalled dialogs. */
+function DisplayPreferences() {
+  useDensityAttribute(useConsole((s) => s.density));
+  return null;
+}
+
 export function App() {
   useLiveIncidents();
   const selectedId = useConsole((s) => s.selectedIncidentId);
@@ -47,6 +54,7 @@ export function App() {
   return (
     <div className={styles.console}>
       <AttentionSignals />
+      <DisplayPreferences />
       <Header />
       {/* One host for both contents: switching between them keeps the sheet's opener (UI-10). */}
       <SheetHost>

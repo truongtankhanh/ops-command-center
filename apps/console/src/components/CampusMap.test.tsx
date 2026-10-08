@@ -35,11 +35,18 @@ const fake = vi.hoisted(() => {
     readonly canvas = { style: { cursor: '' } };
     /** Like a 1200 px wide map: an open sheet covers its full 440 px of it. */
     width = 1200;
+    /**
+     * The map's box, a real element: the map reads the sheet's inset from its computed style. In
+     * the app the stage sets `--sheet-inset`; here the box holds a laptop's open-sheet value.
+     */
+    readonly container = document.createElement('div');
     /** What the component passed to `new Map(...)`. */
     readonly options: Record<string, unknown>;
 
     constructor(options: Record<string, unknown> = {}) {
       this.options = options;
+      this.container.style.setProperty('--sheet-inset', '440px');
+      Object.defineProperty(this.container, 'clientWidth', { get: () => this.width });
       maps.push(this);
     }
 
@@ -70,7 +77,7 @@ const fake = vi.hoisted(() => {
     removeLayer = vi.fn((id: string) => (this.styled(), void this.layers.delete(id)));
     queryRenderedFeatures = vi.fn((): unknown[] => []);
     getCanvas = () => this.canvas;
-    getContainer = () => ({ clientWidth: this.width });
+    getContainer = () => this.container;
     addControl = vi.fn();
     easeTo = vi.fn();
     fitBounds = vi.fn();
@@ -761,10 +768,13 @@ describe('CampusMap', () => {
       expect(screen.getByText('Camera view')).toBeInTheDocument();
     });
   });
-  // A 1200 px map (`FakeMap.width`): an open sheet covers its right 440 px.
+  // A 1200 px map (`FakeMap.width`): an open sheet covers its right 440 px (`--sheet-inset`).
   describe('beside the sheet', () => {
     const SHEET_FIT = { ...FIT, right: 48 + 440 };
     const campus = () => siteBounds(SITE_PLAN, [zone()]);
+    /** What the stage sets for the current display mode: the sheet's width, or 0 when full-screen. */
+    const setSheetInset = (map: { container: HTMLElement }, value: string) =>
+      map.container.style.setProperty('--sheet-inset', value);
 
     it('only resizes the canvas when its box changes', async () => {
       let onResize: (() => void) | undefined;
@@ -875,6 +885,42 @@ describe('CampusMap', () => {
 
       await waitFor(() => expect(ids(lastData(map, MAP_SOURCES.incidents))).toEqual(['b']));
       expect(map.easeTo).not.toHaveBeenCalled();
+    });
+
+    it("follows the sheet's width on a wall display", async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      setSheetInset(map, '495px');
+
+      act(() => useConsole.getState().select('a'));
+      expect(map.easeTo).toHaveBeenLastCalledWith({
+        center: POSITION,
+        offset: [-247.5, 0],
+        duration: 600,
+      });
+
+      act(() => useConsole.getState().startReport());
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), {
+        padding: { ...FIT, right: 48 + 495 },
+        duration: 600,
+      });
+    });
+
+    it('pads nothing behind a sheet that covers the whole screen', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      setSheetInset(map, '0px');
+
+      act(() => useConsole.getState().startReport());
+
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
+    });
+
+    it('treats an unreadable sheet width as none', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      setSheetInset(map, '');
+
+      act(() => useConsole.getState().startReport());
+
+      expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
     });
   });
 

@@ -14,13 +14,13 @@
 
 .mark {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: calc(32px * var(--ui-scale));
+  height: calc(32px * var(--ui-scale));
 }
 
 .brand[data-size='lg'] .mark {
-  width: 44px;
-  height: 44px;
+  width: calc(44px * var(--ui-scale));
+  height: calc(44px * var(--ui-scale));
 }
 
 .ground {

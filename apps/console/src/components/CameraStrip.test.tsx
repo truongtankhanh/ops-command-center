@@ -5,7 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import {
+  createTestQueryClient,
+  renderWithQueryClient,
+  resetStore,
+  stubViewportWidth,
+} from '../test-utils';
 import { CameraStrip } from './CameraStrip';
 
 // No token in these cases; the API client only asks for one.
@@ -22,6 +27,12 @@ const camera = (overrides: Partial<Camera> = {}): Camera => ({
   fieldOfView: null,
   ...overrides,
 });
+
+/** `n` offline cameras, `c1` … `cn`, named `Camera 1` … `Camera n`. */
+const manyCameras = (n: number): Camera[] =>
+  Array.from({ length: n }, (_, i) =>
+    camera({ id: `c${i + 1}`, code: `CAM-${i + 1}`, name: `Camera ${i + 1}` }),
+  );
 
 const zones: Zone[] = [
   {
@@ -165,5 +176,46 @@ describe('CameraStrip', () => {
     renderStrip({ cameras: [] });
 
     expect(screen.getByText('No cameras are set up on this site.')).toBeInTheDocument();
+  });
+
+  // The tile count follows the display mode (`stripSize`); without `matchMedia` it is a laptop's 4.
+  describe('on a control-room wall', () => {
+    const tileNames = () => screen.getAllByText(/^Camera \d+$/).map((name) => name.textContent);
+
+    it('shows six tiles on a wall display', () => {
+      stubViewportWidth(1920);
+
+      renderStrip({ cameras: manyCameras(10) });
+
+      expect(screen.getAllByText('No signal')).toHaveLength(6);
+      expect(strip().style.getPropertyValue('--strip-columns')).toBe('6');
+    });
+
+    it('shows eight tiles on a 4K wall', () => {
+      stubViewportWidth(3840);
+
+      renderStrip({ cameras: manyCameras(10) });
+
+      expect(screen.getAllByText('No signal')).toHaveLength(8);
+      expect(strip().style.getPropertyValue('--strip-columns')).toBe('8');
+    });
+
+    it("holds a wall's place while the cameras load", () => {
+      stubViewportWidth(1920);
+
+      renderStrip({ cameras: null });
+
+      expect(strip().querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
+    });
+
+    it('keeps pinned cameras first on a wall', () => {
+      stubViewportWidth(1920);
+      useConsole.setState({ pinnedCameraIds: ['c9', 'c8'] });
+
+      renderStrip({ cameras: manyCameras(10) });
+
+      expect(tileNames()).toHaveLength(6);
+      expect(tileNames().slice(0, 2)).toEqual(['Camera 9', 'Camera 8']);
+    });
   });
 });

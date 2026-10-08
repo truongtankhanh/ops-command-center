@@ -46,6 +46,14 @@ describe('Icon', () => {
     expect(container.querySelector('svg')).toHaveAttribute('height', '14');
   });
 
+  it('marks its size for the display scale', () => {
+    const { container, rerender } = render(<Icon glyph={X} />);
+    expect(container.querySelector('svg')).toHaveAttribute('data-size', '18');
+
+    rerender(<Icon glyph={X} size={14} />);
+    expect(container.querySelector('svg')).toHaveAttribute('data-size', '14');
+  });
+
   it("keeps the caller's class", () => {
     const { container } = render(<Icon glyph={X} className="tint" />);
 

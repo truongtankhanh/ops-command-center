@@ -2,6 +2,7 @@ import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
+import { type Density, readDensity, writeDensity } from './lib/density';
 import type { FeedFilter } from './lib/incidents';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
 
@@ -80,6 +81,8 @@ interface ConsoleState extends ReportLocation {
   keyboardShortcuts: boolean;
   /** The keyboard shortcuts help is open. */
   shortcutHelpOpen: boolean;
+  /** How tightly the console is spaced. Comfortable by default; remembered in this browser. */
+  density: Density;
 
   select(id: string | null): void;
   startReport(): void;
@@ -119,6 +122,7 @@ interface ConsoleState extends ReportLocation {
   setKeyboardShortcuts(on: boolean): void;
   openShortcutHelp(): void;
   closeShortcutHelp(): void;
+  setDensity(density: Density): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -137,6 +141,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   criticalSound: readCriticalSound(),
   keyboardShortcuts: readKeyboardShortcuts(),
   shortcutHelpOpen: false,
+  density: readDensity(),
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
@@ -204,6 +209,10 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   },
   openShortcutHelp: () => set({ shortcutHelpOpen: true }),
   closeShortcutHelp: () => set({ shortcutHelpOpen: false }),
+  setDensity: (density) => {
+    writeDensity(density);
+    set({ density });
+  },
 }));
 
 /**

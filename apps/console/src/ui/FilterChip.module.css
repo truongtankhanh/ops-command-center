@@ -4,7 +4,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: 28px;
+  height: calc(28px * var(--ui-scale));
   padding: 0 var(--space-1) 0 var(--space-2);
   border-radius: 999px;
   background: var(--accent-tint);
@@ -22,8 +22,8 @@
   display: grid;
   place-items: center;
   /* 24 px: WCAG 2.5.8's minimum target, without relying on its spacing exception. */
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--ui-scale));
+  height: calc(24px * var(--ui-scale));
   padding: 0;
   border: 0;
   border-radius: 50%;

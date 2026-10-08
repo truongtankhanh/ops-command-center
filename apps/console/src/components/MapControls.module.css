@@ -16,8 +16,8 @@
 
 /* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
 .controls .button {
-  width: 38px;
-  height: 38px;
+  width: calc(38px * var(--ui-scale));
+  height: calc(38px * var(--ui-scale));
   padding: 0;
   border-radius: 0;
 }

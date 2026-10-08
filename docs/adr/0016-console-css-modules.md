@@ -86,5 +86,5 @@ Considered:
 - The three shared modules are temporary, and their removal is part of UI-05, UI-06 and UI-10.
 - **Revisit** when:
   - the primitives move to a `packages/ui` package (roadmap OCC-20): the package then ships its own CSS, and the consuming apps must import it;
-  - a second theme (light mode, control-room wall) is added: tokens are already custom properties, so it should be a `tokens.css` change, with no module change;
+  - a second theme (light mode) is added: colour tokens are already custom properties, so it should be a `tokens.css` change, with no module change. The control-room wall (UI-17) showed the limit of this for **sizes**: tokens covered text and spacing, but component dimensions were raw px in the modules. They are now written as `calc(<laptop px> * var(--ui-scale))` and the wall media queries in `tokens.css` change only `--ui-scale` (see [tokens.md](../design/tokens.md#display-modes-and-density-ui-17)); a new module keeps to that rule;
   - class-name typos become a real source of bugs: add typed CSS Modules (§6).
