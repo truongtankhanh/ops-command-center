@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type KeyboardEventHandler, useRef, useState } from 'react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Dialog } from './Dialog';
 
 /** Opens a dialog from a button on a small page, the way the incident sheet opens its confirmation. */
@@ -83,6 +84,24 @@ describe('Dialog', () => {
 
       expect(dialog()).toHaveAttribute('aria-modal', 'true');
       expect(dialog()).toHaveAccessibleDescription('It cannot be undone.');
+    });
+
+    it('is described by the element it names instead of its whole body', () => {
+      render(
+        <Dialog
+          title="Cameras"
+          describedBy="short"
+          onCancel={() => {}}
+          actions={<button>Close</button>}
+        >
+          <p id="short">Short.</p>
+          <ul>
+            <li>A long list</li>
+          </ul>
+        </Dialog>,
+      );
+
+      expect(screen.getByRole('dialog', { name: 'Cameras' })).toHaveAccessibleDescription('Short.');
     });
 
     it('has no description without a body', async () => {
@@ -275,5 +294,15 @@ describe('Dialog', () => {
       expect(queryDialog()).toBeNull();
       expect(document.body).toHaveFocus();
     });
+  });
+
+  // UI-16: automated accessibility check, with and without a focusable element in the body.
+  it('has no axe violations while open, with a body and actions', async () => {
+    const { unmount } = await open();
+    await expectNoAxeViolations();
+    unmount();
+
+    await open({ bodyLink: true });
+    await expectNoAxeViolations();
   });
 });

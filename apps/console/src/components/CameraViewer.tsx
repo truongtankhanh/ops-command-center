@@ -1,5 +1,5 @@
 import type { Camera } from '@occ/contracts';
-import { useRef } from 'react';
+import { useId, useRef } from 'react';
 import { useCameras, useStream, useZones } from '../api/queries';
 import { feedState } from '../lib/cameras';
 import { useConsole } from '../store';
@@ -38,6 +38,9 @@ function Viewer({ camera, cameras }: { camera: Camera; cameras: Camera[] }) {
   const closeViewer = useConsole((s) => s.closeViewer);
   const stream = useStream(camera);
   const video = useRef<HTMLDivElement>(null);
+  // The picture describes the dialog, not the whole body: the list of the zone's cameras would be
+  // read out every time the viewer opens.
+  const videoId = useId();
 
   const zone = zones.find((z) => z.id === camera.zoneId);
   const zoneCameras = cameras
@@ -55,6 +58,7 @@ function Viewer({ camera, cameras }: { camera: Camera; cameras: Camera[] }) {
     <Dialog
       size="wide"
       title={`${camera.name} · ${camera.code}`}
+      describedBy={videoId}
       onCancel={closeViewer}
       actions={
         <Button variant="ghost" onClick={closeViewer}>
@@ -74,7 +78,7 @@ function Viewer({ camera, cameras }: { camera: Camera; cameras: Camera[] }) {
       >
         <div className={styles.layout}>
           <div className={styles.main}>
-            <div ref={video} className={styles.video}>
+            <div ref={video} id={videoId} className={styles.video}>
               <CameraFeed camera={camera} resolution="viewer" />
               {live && (
                 <div className={styles.overlay}>

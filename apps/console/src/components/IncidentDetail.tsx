@@ -1,5 +1,5 @@
 import type { IncidentDetail as Detail } from '@occ/contracts';
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, isRateLimited } from '../api/client';
 import { useCameras, useIncident, useZones } from '../api/queries';
 import { typeLabel } from '../lib/incidents';
@@ -7,6 +7,7 @@ import { useConsole } from '../store';
 import text from '../styles/text.module.css';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { focusLost } from '../ui/focus';
 import { Icon } from '../ui/Icon';
 import { actorKindIcon, incidentTypeIcon, zoneKindIcon } from '../ui/icons';
 import { SeverityBadge } from '../ui/SeverityBadge';
@@ -24,6 +25,10 @@ import { LoadFailed, RateLimited } from './LoadStates';
  * states, so the data arriving never moves focus. The note being written lives in the store
  * (`noteDrafts`): leaving for another incident or the report form keeps it, and only Close or a
  * sent note clears it.
+ *
+ * Once the incident is resolved — here or by someone else — the response footer goes. If focus was
+ * in it, focus moves to the sheet, so Escape still reaches it. (An acknowledge keeps the footer:
+ * `IncidentResponse` moves focus to Resolve.)
  */
 export function IncidentDetail({ id }: { id: string }) {
   const { data: incident, error, failureReason, isPending, isFetching, refetch } = useIncident(id);
@@ -45,6 +50,17 @@ export function IncidentDetail({ id }: { id: string }) {
   }
   const keepNote = useCallback(() => setKept(true), []);
 
+  const sheetRef = useRef<HTMLElement>(null);
+  const status = incident?.status;
+  const previousStatus = useRef(status);
+  useLayoutEffect(() => {
+    // From no status to one is the incident loading, not a transition.
+    const previous = previousStatus.current;
+    previousStatus.current = status;
+    const resolvedNow = previous !== undefined && previous !== status && status === 'resolved';
+    if (resolvedNow && focusLost()) sheetRef.current?.focus({ preventScroll: true });
+  }, [status]);
+
   // Escape closes only while no note would be lost; the hint under the note says so then.
   const closeButton = (
     <Button
@@ -60,6 +76,7 @@ export function IncidentDetail({ id }: { id: string }) {
 
   return (
     <Sheet
+      ref={sheetRef}
       label={incident ? `Incident ${incident.code}` : 'Incident'}
       onClose={close}
       keepOpen={hasDraft}

@@ -30,6 +30,7 @@ export function Header() {
   const canReport = usePermission('incident:report');
   const reporting = useConsole((s) => s.reporting);
   const startReport = useConsole((s) => s.startReport);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
 
   // A note being written in the open incident survives the report form (`noteDrafts`), so `N` and
   // the button can always open it.
@@ -45,7 +46,7 @@ export function Header() {
         <Button
           variant="primary"
           icon={Plus}
-          shortcut="N"
+          shortcut={keysOn ? 'N' : undefined}
           aria-expanded={reporting}
           aria-controls="report-incident-panel"
           onClick={startReport}

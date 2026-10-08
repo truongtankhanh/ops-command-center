@@ -1,5 +1,5 @@
 import type { IncidentDetail } from '@occ/contracts';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
 import { useTransition } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
@@ -8,6 +8,7 @@ import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Field, Textarea } from '../ui/Field';
+import { focusLost } from '../ui/focus';
 import { Hint } from '../ui/Hint';
 import { Icon } from '../ui/Icon';
 import { Eye } from '../ui/icons';
@@ -61,7 +62,11 @@ function ViewOnlyFooter() {
 /**
  * Note, actions and their shortcuts. `A` / `R` work like the buttons, from anywhere in the console
  * except a text field (so typing the note never acknowledges), and only while the button is there
- * and idle. Resolving a critical incident without a note asks first, whether by click or by `R`.
+ * and idle, and while single-key shortcuts are on. Resolving a critical incident without a note
+ * asks first, whether by click or by `R`.
+ *
+ * Once the incident is acknowledged — here or by someone else — the Acknowledge button goes. If it
+ * had focus, focus moves to Resolve, the next step, so it never falls out of the sheet.
  */
 function ResponseForm({
   incident,
@@ -81,6 +86,8 @@ function ResponseForm({
   const resolve = useTransition('resolve');
   const [confirming, setConfirming] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const resolveRef = useRef<HTMLButtonElement>(null);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   const busy = acknowledge.isPending || resolve.isPending;
   const error = acknowledge.error ?? resolve.error;
   const hasNote = note.trim() !== '';
@@ -103,10 +110,22 @@ function ResponseForm({
     else send(sendResolve);
   }, [needsConfirmation, send, sendResolve]);
 
-  const acknowledgeKeyWorks = showAcknowledge && !busy && !confirming;
-  const resolveKeyWorks = showResolve && !busy && !confirming;
+  const acknowledgeKeyWorks = keysOn && showAcknowledge && !busy && !confirming;
+  const resolveKeyWorks = keysOn && showResolve && !busy && !confirming;
   useShortcut('a', runAcknowledge, acknowledgeKeyWorks);
   useShortcut('r', requestResolve, resolveKeyWorks);
+
+  // The status can change while a request still disables Resolve, which cannot take focus then: the
+  // move waits for `busy` to clear. Focus is only moved when it was lost (UI-11 DN-6).
+  const hadAcknowledge = useRef(showAcknowledge);
+  const acknowledgeGone = useRef(false);
+  useLayoutEffect(() => {
+    if (hadAcknowledge.current && !showAcknowledge) acknowledgeGone.current = true;
+    hadAcknowledge.current = showAcknowledge;
+    if (!acknowledgeGone.current || busy) return;
+    acknowledgeGone.current = false;
+    if (focusLost()) resolveRef.current?.focus();
+  }, [showAcknowledge, busy]);
 
   // Focus first, then close: the dialog only returns focus when it was lost with it.
   const addNote = () => {
@@ -150,6 +169,7 @@ function ResponseForm({
         )}
         {showResolve && (
           <Button
+            ref={resolveRef}
             // One primary action at a time. `secondary` would fail 3:1 on this footer's surface-2.
             variant={showAcknowledge ? 'ghost' : 'primary'}
             className={styles.grow}

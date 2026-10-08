@@ -109,6 +109,18 @@ describe('CameraViewer', () => {
       expect(closeButton()).toHaveFocus();
     });
 
+    // UI-16 Q11: the list would otherwise be read out as the description every time it opens.
+    it('is described by the picture, not by the list of cameras', async () => {
+      renderViewer();
+
+      const dialog = await openViewer();
+
+      const description = document.getElementById(dialog.getAttribute('aria-describedby')!);
+      expect(description).not.toBeNull();
+      expect(description).not.toContainElement(zoneList());
+      expect(dialog).not.toHaveAccessibleDescription(/Cameras in|Library reading room/);
+    });
+
     it('lists the cameras of the zone, the shown one marked', async () => {
       renderViewer();
       await openViewer();

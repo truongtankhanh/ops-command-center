@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Banner } from './Banner';
 import { Lock } from './icons';
 
@@ -49,5 +50,22 @@ describe('Banner', () => {
     );
 
     expect(screen.getByRole('status')).toHaveClass('top');
+  });
+
+  // UI-16: automated accessibility check of the fullest banner, as the session banner shows it.
+  it('has no axe violations as an alert with a second line and an action', async () => {
+    render(
+      <Banner
+        role="alert"
+        icon={Lock}
+        detail="Signing in again reloads the console."
+        action={<button type="button">Sign in again</button>}
+      >
+        Your session has expired.
+      </Banner>,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Your session has expired.');
+    await expectNoAxeViolations();
   });
 });

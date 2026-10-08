@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Popover } from './Popover';
 
 function renderPopover(props: Partial<ComponentProps<typeof Popover>> = {}) {
@@ -148,9 +149,39 @@ describe('Popover', () => {
     });
   });
 
+  it('gives function content a close that hands focus back to the trigger', async () => {
+    render(
+      <Popover trigger="Account" panelLabel="Account details">
+        {(close) => (
+          <button type="button" onClick={close}>
+            Done
+          </button>
+        )}
+      </Popover>,
+    );
+    await userEvent.click(trigger());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+    expect(panel()).toBeNull();
+    expect(trigger()).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger()).toHaveFocus();
+  });
+
   it('names a trigger that has no text of its own', () => {
     renderPopover({ trigger: <span aria-hidden="true">•</span>, triggerLabel: 'Open account' });
 
     expect(screen.getByRole('button', { name: 'Open account' })).toBeInTheDocument();
+  });
+
+  // UI-16: closed, the panel `aria-controls` points at is hidden and empty; open, it is a named group.
+  it('has no axe violations, closed and open', async () => {
+    renderPopover();
+    await expectNoAxeViolations();
+
+    await userEvent.click(trigger());
+
+    expect(panel()).not.toBeNull();
+    await expectNoAxeViolations();
   });
 });

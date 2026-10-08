@@ -9,6 +9,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Dialog.module.css';
+import { focusLost } from './focus';
 
 const FOCUSABLE = [
   'a[href]',
@@ -20,12 +21,6 @@ const FOCUSABLE = [
 ].join(', ');
 
 const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
-
-/** Focus went nowhere: the focused element was removed, or nothing had focus. */
-function focusLost(): boolean {
-  const active = document.activeElement;
-  return active === null || active === document.body;
-}
 
 /**
  * A modal dialog (WAI-ARIA APG dialog pattern), such as a confirmation before an action that cannot
@@ -39,6 +34,8 @@ function focusLost(): boolean {
  *   Tab and Shift+Tab cycle inside the dialog.
  * - `size="wide"` gives room to content such as the camera viewer (UI-13); the default fits a
  *   confirmation.
+ * - The body is the dialog's description, read out when it opens. For a long body (a list), pass
+ *   `describedBy` with the id of the short part that describes it instead.
  * - Escape and a click on the scrim call `onCancel`. Every key pressed inside the dialog is stopped
  *   there: React stops the synthetic bubble (the `Sheet`'s Escape behind it) and the native one at
  *   the portal's container (the page's single-key shortcuts on `window`).
@@ -53,12 +50,15 @@ export function Dialog({
   onCancel,
   actions,
   size = 'default',
+  describedBy,
   children,
 }: {
   title: string;
   onCancel: () => void;
   actions: ReactNode;
   size?: 'default' | 'wide';
+  /** The id of the element that describes the dialog, in place of the whole body. */
+  describedBy?: string;
   children?: ReactNode;
 }) {
   const titleId = useId();
@@ -120,7 +120,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={hasBody ? bodyId : undefined}
+        aria-describedby={describedBy ?? (hasBody ? bodyId : undefined)}
         tabIndex={-1}
         className={styles.dialog}
         data-size={size === 'wide' ? 'wide' : undefined}

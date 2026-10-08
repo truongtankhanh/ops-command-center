@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type Ref, useState } from 'react';
+import { expectNoAxeViolations } from '../test-utils';
 import { Info } from './icons';
 import { SegmentedControl } from './SegmentedControl';
 
@@ -125,5 +126,16 @@ describe('SegmentedControl', () => {
     const group = screen.getByRole('group', { name: 'Severity' });
     expect(group).toHaveAccessibleDescription('Choose a severity.');
     expect(ref.current).toBe(group);
+  });
+
+  // UI-16: automated accessibility check, unchecked with an error, then with a choice made.
+  it('has no axe violations, with an error', async () => {
+    render(<Choice error="Choose a severity." />);
+    await expectNoAxeViolations();
+
+    await userEvent.click(screen.getByRole('radio', { name: 'High' }));
+
+    expect(screen.getByRole('radio', { name: 'High' })).toBeChecked();
+    await expectNoAxeViolations();
   });
 });

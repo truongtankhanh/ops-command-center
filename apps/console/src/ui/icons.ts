@@ -124,6 +124,7 @@ export {
   Crosshair,
   Eye,
   Info,
+  Keyboard,
   LoaderCircle,
   Lock,
   LogOut,

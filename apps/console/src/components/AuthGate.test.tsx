@@ -2,7 +2,7 @@ import { act, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { signInAgain, signOut } from '../auth/session';
 import { useSession } from '../auth/store';
-import { renderWithQueryClient, resetStore } from '../test-utils';
+import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../test-utils';
 import { AuthGate } from './AuthGate';
 
 vi.mock('../auth/session', () => ({ signInAgain: vi.fn(), signOut: vi.fn() }));
@@ -162,5 +162,28 @@ describe('AuthGate', () => {
       expect(screen.getByText('Console')).toBeInTheDocument();
       expect(screen.queryByRole('alert')).toBeNull();
     });
+  });
+
+  // UI-16: every screen the gate can show. The stand-in console is a bare paragraph, so landmarks
+  // around it (`region`) are the screen-level test's concern, not this one's.
+  it.each([
+    ['signing-in', () => {}],
+    ['signing-out', () => useSession.getState().setStatus('signing-out')],
+    ['insecure-context', () => useSession.getState().setStatus('insecure-context')],
+    ['failed', () => useSession.getState().setStatus('failed')],
+    ['no-access', () => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: [] })],
+    [
+      'session-expired',
+      () => {
+        useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
+        useSession.getState().expire();
+      },
+    ],
+  ])('has no axe violations on the %s screen', async (_screen, arrange) => {
+    arrange();
+
+    renderGate();
+
+    await expectNoAxeViolations();
   });
 });

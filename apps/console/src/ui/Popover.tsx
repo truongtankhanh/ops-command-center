@@ -1,4 +1,12 @@
-import { type FocusEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import {
+  type FocusEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import styles from './Popover.module.css';
 
 /**
@@ -13,6 +21,10 @@ import styles from './Popover.module.css';
  *
  * The trigger's look (border, fill when open) is the popover's; its layout and size come from
  * `triggerClassName`. Give the trigger visible text; `triggerLabel` is for a trigger without any.
+ *
+ * `children` may be a function that gets `close`: an item that opens something else (a dialog)
+ * calls it first. It closes the panel and puts focus back on the trigger, so what opens next
+ * records the trigger, which stays in the page, as the place to return focus to.
  */
 export function Popover({
   trigger,
@@ -29,12 +41,20 @@ export function Popover({
   panelLabel: string;
   className?: string;
   panelClassName?: string;
-  children: ReactNode;
+  children: ReactNode | ((close: () => void) => ReactNode);
 }) {
-  const panelId = `${useId()}-panel`;
+  const id = useId();
+  const panelId = `${id}-panel`;
+  const triggerId = `${id}-trigger`;
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Finds the trigger by id, not through a ref: `close` is handed to function content during
+  // render, and a function that reads a ref must not be (react-hooks/refs).
+  const close = useCallback(() => {
+    setOpen(false);
+    document.getElementById(triggerId)?.focus();
+  }, [triggerId]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,8 +66,7 @@ export function Popover({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.isComposing) return;
       event.stopPropagation();
-      setOpen(false);
-      triggerRef.current?.focus();
+      close();
     };
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown, true);
@@ -55,7 +74,7 @@ export function Popover({
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown, true);
     };
-  }, [open]);
+  }, [open, close]);
 
   // Only a move to a known element outside closes it (e.g. Tab past the last item). A null target
   // is a click on non-focusable panel text or a switch to another window; outside clicks are
@@ -72,7 +91,7 @@ export function Popover({
       onBlur={onBlur}
     >
       <button
-        ref={triggerRef}
+        id={triggerId}
         type="button"
         className={triggerClassName ? `${styles.trigger} ${triggerClassName}` : styles.trigger}
         aria-expanded={open}
@@ -94,7 +113,7 @@ export function Popover({
         hidden={!open}
         className={panelClassName ? `${styles.panel} ${panelClassName}` : styles.panel}
       >
-        {open && children}
+        {open && (typeof children === 'function' ? children(close) : children)}
       </div>
     </div>
   );

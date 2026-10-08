@@ -133,7 +133,9 @@ into `tokens.css`.
   discards it." Keeps today's rule (Escape never discards; Close / Cancel do) and adds feedback (UI-10).
 - **Map controls move to the bottom-right**, so toasts and banners own the top of the stage.
 - **Shortcuts** `N` report, `/` search, `A` acknowledge, `R` resolve, `Esc` close are shown as `Kbd`
-  hints and are ignored while focus is in a text field.
+  hints and are ignored while focus is in a text field. `?` opens a list of every key, also reachable from the account
+  menu. The single-key ones (`N`, `/`, `A`, `R`, `?`) can be turned off in the account menu, for speech input
+  (WCAG 2.1.4); their hints go with them (UI-16).
 - **Feed row:** severity icon tile, type icon + title, age (warning colour and clock icon once an open
   incident passes its attention threshold, see [Approved decisions](#approved-decisions)), status chip,
   zone, code. The type is an icon next to the title, not a

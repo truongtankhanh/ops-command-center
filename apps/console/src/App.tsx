@@ -9,6 +9,7 @@ import { IncidentFeed } from './components/IncidentFeed';
 import { RegionFallback } from './components/LoadStates';
 import { OfflineBanner } from './components/OfflineBanner';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
+import { ShortcutHelp } from './components/ShortcutHelp';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
@@ -93,6 +94,7 @@ export function App() {
       </SheetHost>
       {/* One viewer for the strip, the detail's tiles and the map's cameras; a modal over everything. */}
       <CameraViewer />
+      <ShortcutHelp />
     </div>
   );
 }

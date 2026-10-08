@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RegionFallback } from '../components/LoadStates';
 import { ErrorBoundary } from './ErrorBoundary';
@@ -8,12 +8,21 @@ let broken = false;
 
 function Feed() {
   if (broken) throw new Error('boom');
-  return <p>Feed content</p>;
+  return (
+    <>
+      <p>Feed content</p>
+      <button type="button">Row</button>
+    </>
+  );
 }
 
 /** The boundary as the console places it around the feed, with the real fallback. */
 function renderRegion() {
-  return render(
+  return render(region());
+}
+
+function region() {
+  return (
     <ErrorBoundary
       region="Incidents"
       fallback={(retry) => (
@@ -25,8 +34,20 @@ function renderRegion() {
       )}
     >
       <Feed />
-    </ErrorBoundary>,
+    </ErrorBoundary>
   );
+}
+
+/** The region next to something outside it that can hold focus. */
+function renderRegionWithNeighbour() {
+  const page = () => (
+    <>
+      {region()}
+      <button type="button">Elsewhere</button>
+    </>
+  );
+  const view = render(page());
+  return { ...view, rerender: () => view.rerender(page()) };
 }
 
 const fallback = () => screen.queryByRole('region', { name: 'Incidents' });
@@ -82,6 +103,27 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByText('Feed content')).toBeInTheDocument();
     expect(fallback()).toBeNull();
+  });
+
+  // UI-16 Q7: focus that went with the broken region is not left on the page body.
+  it('gives Retry the focus when the region that had it breaks', () => {
+    const { rerender } = renderRegionWithNeighbour();
+    act(() => screen.getByRole('button', { name: 'Row' }).focus());
+
+    broken = true;
+    rerender();
+
+    expect(screen.getByRole('button', { name: 'Retry' })).toHaveFocus();
+  });
+
+  it('leaves focus alone when it was outside the region', () => {
+    const { rerender } = renderRegionWithNeighbour();
+    act(() => screen.getByRole('button', { name: 'Elsewhere' }).focus());
+
+    broken = true;
+    rerender();
+
+    expect(screen.getByRole('button', { name: 'Elsewhere' })).toHaveFocus();
   });
 
   it('falls back again when the region still breaks', async () => {

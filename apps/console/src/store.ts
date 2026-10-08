@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import type { FeedFilter } from './lib/incidents';
+import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
 
 /**
  * At most this many incidents are held as fresh. A row stays highlighted until it is looked at or
@@ -72,6 +73,13 @@ interface ConsoleState extends ReportLocation {
   pinnedCameraIds: readonly string[];
   /** A sound plays when a critical incident arrives. Off by default; remembered in this browser. */
   criticalSound: boolean;
+  /**
+   * Single-key shortcuts (`N`, `/`, `A`, `R`, `?`) work. On by default; remembered in this browser.
+   * Off is for speech input, which can type a shortcut by accident (WCAG 2.1.4).
+   */
+  keyboardShortcuts: boolean;
+  /** The keyboard shortcuts help is open. */
+  shortcutHelpOpen: boolean;
 
   select(id: string | null): void;
   startReport(): void;
@@ -108,6 +116,9 @@ interface ConsoleState extends ReportLocation {
    */
   toggleCameraPin(cameraId: string, knownIds: readonly string[]): void;
   setCriticalSound(on: boolean): void;
+  setKeyboardShortcuts(on: boolean): void;
+  openShortcutHelp(): void;
+  closeShortcutHelp(): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -124,6 +135,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
   criticalSound: readCriticalSound(),
+  keyboardShortcuts: readKeyboardShortcuts(),
+  shortcutHelpOpen: false,
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
@@ -185,6 +198,12 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     writeCriticalSound(on);
     set({ criticalSound: on });
   },
+  setKeyboardShortcuts: (on) => {
+    writeKeyboardShortcuts(on);
+    set({ keyboardShortcuts: on });
+  },
+  openShortcutHelp: () => set({ shortcutHelpOpen: true }),
+  closeShortcutHelp: () => set({ shortcutHelpOpen: false }),
 }));
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useConsole } from '../store';
 
 /** Elements where a letter key types text (or picks an option) instead of running a command. */
 function takesKeys(target: EventTarget | null): boolean {
@@ -33,13 +34,17 @@ export function isShortcut(event: KeyboardEvent, key: string): boolean {
 
 /**
  * Runs `handler` when the single-key shortcut `key` is pressed anywhere in the console, while
- * `enabled`. Pass a stable `handler` (a store action or a `useCallback`), so the listener is not
- * re-added on every render. Pair it with a visible hint and `aria-keyshortcuts` on the control it
- * triggers (`Button`'s `shortcut` prop), and only enable it while that control is available.
+ * `enabled` and while single-key shortcuts are on (`useConsole.keyboardShortcuts`, WCAG 2.1.4).
+ * Pass a stable `handler` (a store action or a `useCallback`), so the listener is not re-added on
+ * every render. Pair it with a visible hint and `aria-keyshortcuts` on the control it triggers
+ * (`Button`'s `shortcut` prop), shown only while the key works, and only enable it while that
+ * control is available.
  */
 export function useShortcut(key: string, handler: () => void, enabled: boolean): void {
+  const shortcutsOn = useConsole((s) => s.keyboardShortcuts);
+  const active = enabled && shortcutsOn;
   useEffect(() => {
-    if (!enabled) return;
+    if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       if (!isShortcut(event, key)) return;
       event.preventDefault();
@@ -47,5 +52,5 @@ export function useShortcut(key: string, handler: () => void, enabled: boolean):
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [key, handler, enabled]);
+  }, [key, handler, active]);
 }

@@ -8,6 +8,7 @@ import { registerMapImages } from '../lib/mapImages';
 import {
   cameraViewLayers,
   groundLayers,
+  INTERACTIVE_LAYERS,
   MAP_LAYERS,
   MAP_SOURCES,
   zoneOverlayLayers,
@@ -345,6 +346,17 @@ describe('CampusMap', () => {
     expect(ids(lastData(map, MAP_SOURCES.incidents))).toEqual(['a']);
   });
 
+  it('draws the cluster severity badge over the cluster count, as a label only', async () => {
+    const { map } = await renderMap([incident({ id: 'a' })]);
+    const added = map.addLayer.mock.calls.map(([layer]) => layer.id);
+
+    expect(map.layers).toContain(MAP_LAYERS.clusterSeverity);
+    expect(added.indexOf(MAP_LAYERS.clusterSeverity)).toBeGreaterThan(
+      added.indexOf(MAP_LAYERS.clusterCount),
+    );
+    expect(INTERACTIVE_LAYERS).not.toContain(MAP_LAYERS.clusterSeverity);
+  });
+
   it('updates the incident source in place on an incident event', async () => {
     const { map, client } = await renderMap([incident({ id: 'a' })]);
     const before = creations(map);
@@ -564,6 +576,16 @@ describe('CampusMap', () => {
 
       // Zone labels are DOM markers: the offline style has no glyphs for map text.
       expect(document.body).toHaveTextContent('Library');
+    });
+
+    it('hides the zone labels from assistive tech', async () => {
+      await renderMap([incident({})], { zones: [zone()] });
+
+      // Pointer-only, like the map: MapLibre would otherwise make each one a "Map marker" button.
+      const label = fake.FakeMarker.instances.find(
+        (marker) => marker.getElement().textContent === 'Library',
+      );
+      expect(label!.getElement()).toHaveAttribute('aria-hidden', 'true');
     });
 
     it("outlines the selected incident's zone", async () => {
@@ -898,6 +920,14 @@ describe('CampusMap', () => {
       expect(useConsole.getState()).toMatchObject({ reportPosition: INSIDE, reportZoneId: 'z1' });
       expect(pinMarker()!.setLngLat).toHaveBeenCalledWith(INSIDE);
       expect(pinMarker()!.getElement()).toBeInTheDocument();
+    });
+
+    it('hides the pin from assistive tech: the zone list is the keyboard route', async () => {
+      const { map } = await startPicking();
+
+      act(() => clickAt(map, INSIDE));
+
+      expect(pinMarker()!.getElement()).toHaveAttribute('aria-hidden', 'true');
     });
 
     it('places nothing outside every zone', async () => {
