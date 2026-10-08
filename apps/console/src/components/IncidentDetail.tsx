@@ -193,7 +193,7 @@ function DetailBody({
         ) : (
           <div className={styles.cameras}>
             {zoneCameras.map((camera) => (
-              <CameraTile key={camera.id} camera={camera} />
+              <CameraTile key={camera.id} camera={camera} variant="compact" />
             ))}
           </div>
         )}

@@ -1,5 +1,6 @@
 import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
+import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
 import type { FeedFilter } from './lib/incidents';
 
 /** `connecting` is the first connect only; every later attempt is `reconnecting`. */
@@ -47,6 +48,13 @@ interface ConsoleState extends ReportLocation {
    * incident or to the report form and back never loses one: only Close and a sent note clear it.
    */
   noteDrafts: Readonly<Record<string, string>>;
+  /**
+   * The camera open in the viewer, or `null`. Independent of the sheet: opening the viewer over a
+   * detail or a report draft leaves it as it was.
+   */
+  viewerCameraId: string | null;
+  /** Cameras pinned to the strip, in pin order; remembered in this browser. */
+  pinnedCameraIds: readonly string[];
 
   select(id: string | null): void;
   startReport(): void;
@@ -72,10 +80,17 @@ interface ConsoleState extends ReportLocation {
   missPin(): void;
   clearPin(): void;
   setPicking(picking: boolean): void;
+  openViewer(cameraId: string): void;
+  closeViewer(): void;
+  /**
+   * Pins a camera to the strip, or unpins it; does nothing when the strip is full. `knownIds` are
+   * the cameras that exist now, so pins of removed cameras are dropped (`togglePinned`).
+   */
+  toggleCameraPin(cameraId: string, knownIds: readonly string[]): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
-export const useConsole = create<ConsoleState>((set) => ({
+export const useConsole = create<ConsoleState>((set, get) => ({
   selectedIncidentId: null,
   filter: 'active',
   severity: null,
@@ -84,6 +99,8 @@ export const useConsole = create<ConsoleState>((set) => ({
   fresh: new Set(),
   reporting: false,
   noteDrafts: {},
+  viewerCameraId: null,
+  pinnedCameraIds: readPinnedCameras(),
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
@@ -124,6 +141,13 @@ export const useConsole = create<ConsoleState>((set) => ({
   missPin: () => set({ pinMissed: true }),
   clearPin: () => set({ reportPosition: null, pinMissed: false }),
   setPicking: (picking) => set(picking ? { picking } : { picking, pinMissed: false }),
+  openViewer: (cameraId) => set({ viewerCameraId: cameraId }),
+  closeViewer: () => set({ viewerCameraId: null }),
+  toggleCameraPin: (cameraId, knownIds) => {
+    const pinnedCameraIds = togglePinned(get().pinnedCameraIds, cameraId, knownIds);
+    writePinnedCameras(pinnedCameraIds);
+    set({ pinnedCameraIds });
+  },
 }));
 
 function withoutKey<T>(record: Readonly<Record<string, T>>, key: string): Record<string, T> {

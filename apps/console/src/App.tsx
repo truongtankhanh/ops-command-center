@@ -1,5 +1,6 @@
 import styles from './App.module.css';
 import { CameraStrip } from './components/CameraStrip';
+import { CameraViewer } from './components/CameraViewer';
 import { CampusMap } from './components/CampusMap';
 import { Header } from './components/Header';
 import { IncidentDetail } from './components/IncidentDetail';
@@ -37,6 +38,8 @@ export function App() {
           </div>
         </main>
       </SheetHost>
+      {/* One viewer for the strip, the detail's tiles and the map's cameras; a modal over everything. */}
+      <CameraViewer />
     </div>
   );
 }

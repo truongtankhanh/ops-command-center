@@ -1,0 +1,43 @@
+/* A camera frame's picture or its "no picture" state (frame 06 `.cam-off`); fills the tile or viewer. */
+
+.feed {
+  position: absolute;
+  inset: 0;
+}
+
+.feed canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.notice {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--camera-off-a) 0 10px,
+    var(--camera-off-b) 10px 20px
+  );
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  text-align: center;
+}
+
+.notice strong {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* Higher specificity than `Skeleton`'s own rule, so the override does not depend on CSS order. */
+.feed .pending {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}

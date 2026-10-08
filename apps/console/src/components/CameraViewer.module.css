@@ -1,0 +1,117 @@
+/* The camera viewer (UI-13; no frame): the picture beside the zone's cameras, in a wide `Dialog`. */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.main {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  background: var(--camera-ground);
+}
+
+.video:fullscreen {
+  border-radius: 0;
+}
+
+.overlay {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.time {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-s);
+  background: color-mix(in srgb, var(--camera-ground) 75%, transparent);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  line-height: var(--leading-m);
+}
+
+.list ul {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listTitle {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+/* The camera on screen: raised surface, primary text and the accent border (the selected-row idiom). */
+.item[aria-current='true'] {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.itemText {
+  display: grid;
+  min-width: 0;
+}
+
+.itemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-semibold);
+}
+
+.itemMeta {
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+}
+
+@media (max-width: 720px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

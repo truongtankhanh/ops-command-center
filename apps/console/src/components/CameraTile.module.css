@@ -1,45 +1,170 @@
+/*
+ * Frame 01 / 02 / 06 camera tile (`.cam*` in the mockups). The pills and caption sit on a 75–90 %
+ * `--camera-ground` over the picture; their text is checked on the solid ground (scripts/contrast.ts).
+ */
 .tile {
+  --pill-height: 20px;
   position: relative;
   aspect-ratio: 16 / 9;
   margin: 0;
-  border-radius: var(--radius-s);
+  border-radius: var(--radius-m);
   overflow: hidden;
   background: var(--camera-ground);
 }
 
-.tile canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
+/* In the selected incident's zone (frame 02); the "In zone" tag says the same in text. */
+.tile[data-linked] {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
-.label {
+.top {
   position: absolute;
+  /* Labels only: a click passes through to the picture (e.g. the Retry button of a failed stream). */
+  pointer-events: none;
+  top: var(--space-2);
+  left: var(--space-2);
+  right: var(--space-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.badges {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.pill,
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--pill-height);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-s);
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-xs);
+  white-space: nowrap;
+}
+
+.pill {
+  background: color-mix(in srgb, var(--camera-ground) 75%, transparent);
+  color: var(--text-secondary);
+}
+
+/* LIVE: the only pill in primary text, semibold and spaced as the frame draws it. */
+.pill.live {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.tag {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: var(--weight-semibold);
+}
+
+/*
+ * Open in the viewer / pin, under the top-right pill. Hidden by opacity, not `display` or
+ * `visibility`, so they stay in the Tab order and appear as soon as one takes focus.
+ */
+.actions {
+  position: absolute;
+  top: calc(var(--space-2) * 2 + var(--pill-height));
+  right: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+  opacity: 0;
+}
+
+.tile:hover .actions,
+.tile:focus-within .actions {
+  opacity: 1;
+}
+
+/* Touch screens have no hover: the actions are always there. */
+@media (hover: none) {
+  .actions {
+    opacity: 1;
+  }
+}
+
+/* Higher specificity than `Button`'s own rules, so the override does not depend on CSS order. */
+.actions .action {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  background: color-mix(in srgb, var(--surface-3) 92%, transparent);
+  color: var(--text-primary);
+}
+
+.actions .action:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+/* The look of `Button`'s `:disabled`, for a button that keeps its focus and its hint. */
+.actions .action[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.caption {
+  position: absolute;
+  pointer-events: none;
   left: 0;
   right: 0;
   bottom: 0;
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--font-ui);
-  font-size: var(--type-s);
+  padding: var(--space-5) var(--space-3) var(--space-2);
   background: linear-gradient(
     transparent,
-    color-mix(in srgb, var(--camera-ground) 65%, transparent)
+    color-mix(in srgb, var(--camera-ground) 90%, transparent)
   );
+  font-family: var(--font-ui);
 }
 
-.label span:first-child {
+.names {
+  display: grid;
+  min-width: 0;
+}
+
+.name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--type-m);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-m);
 }
 
-.offline {
-  display: grid;
-  place-items: center;
-  height: 100%;
+.secondary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-secondary);
-  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-xs);
+}
+
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

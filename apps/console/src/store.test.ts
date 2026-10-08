@@ -235,4 +235,64 @@ describe('useConsole', () => {
       });
     });
   });
+
+  // The viewer is a modal over the console: opening it must leave the sheet under it as it was,
+  // and the sheet moving on must not close it (UI-13 D10).
+  describe('camera viewer', () => {
+    it('opens a camera and closes', () => {
+      state().openViewer('c1');
+      expect(state().viewerCameraId).toBe('c1');
+
+      state().closeViewer();
+      expect(state().viewerCameraId).toBeNull();
+    });
+
+    it.each([
+      ['select an incident', () => state().select('a')],
+      ['startReport', () => state().startReport()],
+      ['closeReport', () => state().closeReport()],
+    ])('keeps the viewer open on %s', (_name, act) => {
+      state().openViewer('c1');
+
+      act();
+
+      expect(state().viewerCameraId).toBe('c1');
+    });
+  });
+
+  describe('camera pins', () => {
+    const KNOWN = ['c1', 'c2', 'c3', 'c4', 'c5'];
+    const stored = () => JSON.parse(localStorage.getItem('occ.console.pinnedCameras') ?? 'null');
+
+    beforeEach(() => localStorage.clear());
+
+    it('pins a camera and remembers it in this browser', () => {
+      state().toggleCameraPin('c1', KNOWN);
+
+      expect(state().pinnedCameraIds).toEqual(['c1']);
+      expect(stored()).toEqual(['c1']);
+    });
+
+    it('unpins it again, and remembers that too', () => {
+      state().toggleCameraPin('c1', KNOWN);
+      state().toggleCameraPin('c1', KNOWN);
+
+      expect(state().pinnedCameraIds).toEqual([]);
+      expect(stored()).toEqual([]);
+    });
+
+    it('pins no fifth camera', () => {
+      for (const id of ['c1', 'c2', 'c3', 'c4', 'c5']) state().toggleCameraPin(id, KNOWN);
+
+      expect(state().pinnedCameraIds).toEqual(['c1', 'c2', 'c3', 'c4']);
+    });
+
+    it('drops the pin of a camera that is gone', () => {
+      useConsole.setState({ pinnedCameraIds: ['gone'] });
+
+      state().toggleCameraPin('c1', KNOWN);
+
+      expect(state().pinnedCameraIds).toEqual(['c1']);
+    });
+  });
 });

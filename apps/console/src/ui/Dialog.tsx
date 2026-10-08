@@ -1,4 +1,5 @@
 import {
+  Children,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
@@ -34,7 +35,10 @@ function focusLost(): boolean {
  * - Rendered through a portal on `body`, over a `--scrim` at `--z-dialog`, so no ancestor's
  *   `overflow` or stacking context clips it. The session-expired banner (`--z-session`) stays above.
  * - Focus moves to the first focusable element in `actions` — put the safe choice first, so Enter
- *   right after opening never runs the action. Tab and Shift+Tab cycle inside the dialog.
+ *   right after opening never runs the action — or, with none there, to the first in the body.
+ *   Tab and Shift+Tab cycle inside the dialog.
+ * - `size="wide"` gives room to content such as the camera viewer (UI-13); the default fits a
+ *   confirmation.
  * - Escape and a click on the scrim call `onCancel`. Every key pressed inside the dialog is stopped
  *   there: React stops the synthetic bubble (the `Sheet`'s Escape behind it) and the native one at
  *   the portal's container (the page's single-key shortcuts on `window`).
@@ -48,16 +52,21 @@ export function Dialog({
   title,
   onCancel,
   actions,
+  size = 'default',
   children,
 }: {
   title: string;
   onCancel: () => void;
   actions: ReactNode;
+  size?: 'default' | 'wide';
   children?: ReactNode;
 }) {
   const titleId = useId();
   const bodyId = useId();
   const ref = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  // Not `children` itself: a body built from conditions (`[false, null]`) is truthy but empty.
+  const hasBody = Children.toArray(children).length > 0;
 
   // Layout effect: focus is inside before the browser paints the dialog.
   useLayoutEffect(() => {
@@ -65,7 +74,9 @@ export function Dialog({
     if (!dialog) return;
     const active = document.activeElement;
     const returnTo = active instanceof HTMLElement && active !== document.body ? active : null;
-    (focusables(dialog)[0] ?? dialog).focus({ preventScroll: true });
+    const first =
+      (actionsRef.current && focusables(actionsRef.current)[0]) ?? focusables(dialog)[0];
+    (first ?? dialog).focus({ preventScroll: true });
     return () => {
       // Waits for the dialog to leave the DOM, so `focusLost` sees where focus really ended up.
       queueMicrotask(() => {
@@ -109,20 +120,23 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={children ? bodyId : undefined}
+        aria-describedby={hasBody ? bodyId : undefined}
         tabIndex={-1}
         className={styles.dialog}
+        data-size={size === 'wide' ? 'wide' : undefined}
         onKeyDown={onKeyDown}
       >
         <h2 id={titleId} className={styles.title}>
           {title}
         </h2>
-        {children && (
+        {hasBody && (
           <div id={bodyId} className={styles.body}>
             {children}
           </div>
         )}
-        <div className={styles.actions}>{actions}</div>
+        <div ref={actionsRef} className={styles.actions}>
+          {actions}
+        </div>
       </div>
     </div>,
     document.body,

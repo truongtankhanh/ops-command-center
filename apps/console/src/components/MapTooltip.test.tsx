@@ -181,8 +181,9 @@ describe('MapTooltip', () => {
     hover(map, hit(MAP_LAYERS.clusters, { cluster_id: 7, point_count: 2, sevRank: 1 }));
     expect(map.canvas.style.cursor).toBe('pointer');
 
+    // A camera opens the viewer (UI-13).
     hover(map, hit(MAP_LAYERS.cameras, { id: 'c1' }));
-    expect(map.canvas.style.cursor).toBe('');
+    expect(map.canvas.style.cursor).toBe('pointer');
 
     hover(map);
     expect(map.canvas.style.cursor).toBe('');

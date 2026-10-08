@@ -71,10 +71,12 @@ export const useIncident = (id: string | null) =>
       newerIncident(cached as IncidentDetail | undefined, fetched as IncidentDetail),
   });
 
-export const useStream = (cameraId: string) =>
+/** An offline camera has nothing to stream: no request is sent until it is online again. */
+export const useStream = (camera: Pick<Camera, 'id' | 'online'>) =>
   useQuery({
-    queryKey: queryKeys.stream(cameraId),
-    queryFn: () => api.get<StreamDescriptor>(`/cameras/${cameraId}/stream`),
+    queryKey: queryKeys.stream(camera.id),
+    queryFn: () => api.get<StreamDescriptor>(`/cameras/${camera.id}/stream`),
+    enabled: camera.online,
     ...STATIC,
   });
 

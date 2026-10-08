@@ -20,7 +20,8 @@ see [icons.md](icons.md#map-glyphs)).
 From the brief's surface rules:
 
 - `--surface-0`: ground, map, inputs. `--surface-1`: header, feed, sheet. `--surface-2`: selected row, cards, action
-  bar. `--surface-3`: menu, toast, banner. Camera tiles sit on `--camera-ground`.
+  bar. `--surface-3`: menu, toast, banner. Camera tiles sit on `--camera-ground`; a frame with
+  no picture (offline, stream unavailable, player pending) is striped `--camera-off-a` / `--camera-off-b`.
 - Text tokens pass 4.5:1 on every surface. Critical text never sits on `--surface-3` (below 4.5:1): use the icon there
   and keep the label in `--text-primary`.
 - `--border-strong` marks input and control boundaries on `--surface-0` / `--surface-1` only (≥ 3:1).
@@ -61,8 +62,8 @@ focus ring. These may stay raw:
   and row spacing). The site plan colours are map-only values in `tokens.ts` (`mapColors.site`), not tokens.
 - The map tooltip's placement distances (flip below the anchor near the top, horizontal clamp) and the zone label
   halo (a 3 px `--surface-0` text stroke, frame 01).
-- The simulated camera image drawn on the `CameraTile` canvas: it is picture content, not UI, and real players replace
-  it (OCC-16).
+- The simulated camera image drawn on the `CameraFeed` canvas (strip, sheet and viewer): it is picture
+  content, not UI, and real players replace it (OCC-16).
 - `body` `line-height: 1.45`, unitless on purpose: it scales for every element that sets only a `font-size`. A px
   value would be inherited as is.
 
@@ -154,7 +155,13 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--danger`          | `--surface-3`                             | 5.01  | 4.5     | pass                                  |
 | `--border-strong`   | `--surface-0`                             | 3.67  | 3       | pass                                  |
 | `--border-strong`   | `--surface-1`                             | 3.31  | 3       | pass                                  |
+| `--text-primary`    | `--camera-ground`                         | 16.27 | 4.5     | pass                                  |
 | `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                  |
+| `--success`         | `--camera-ground`                         | 9.96  | 3       | pass                                  |
+| `--text-primary`    | `--camera-off-a`                          | 15.69 | 4.5     | pass                                  |
+| `--text-primary`    | `--camera-off-b`                          | 15.17 | 4.5     | pass                                  |
+| `--text-secondary`  | `--camera-off-a`                          | 9.11  | 4.5     | pass                                  |
+| `--text-secondary`  | `--camera-off-b`                          | 8.81  | 4.5     | pass                                  |
 | `map zone outline`  | `map ground`                              | 3.57  | 3       | pass                                  |
 | `--text-secondary`  | `map ground`                              | 8.80  | 4.5     | pass                                  |
 | `map zone outline`  | `map boundary`                            | 3.40  | 3       | pass                                  |
