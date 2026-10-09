@@ -156,4 +156,9 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   2026-10-09 by the tech lead, confirmed with the security lead: the API bridge, as written in the Decision. No
   browser connects to the broker, and consoles keep one authentication model (ADR-0010).
 - Which device protocols the first site actually has: MQTT is assumed; Modbus or BACnet would need a gateway that
-  publishes MQTT, outside this repository.
+  publishes MQTT, outside this repository. **Planning assumption 2026-10-09** (tech lead), pending the facilities
+  lead's site survey (V2-00.4): **a gateway is needed**. Only wireless leak sensors are likely to publish MQTT, and
+  they still need topic mapping; the other classes are expected behind Modbus, BACnet or the BMS. Proposed approach:
+  an MQTT export from the BMS, plus a Modbus/BACnet-to-MQTT gateway for devices outside it (UPS, batteries,
+  generator, switchgear), publishing the topics above. Owner and target date are open. This stays open until the
+  survey confirms it; V2-06's production rollout depends on it, the demo does not.
