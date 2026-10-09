@@ -152,6 +152,8 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 
 ## Open before acceptance
 
-- Confirm the API bridge over the browser connecting to MQTT directly (brief, open question 4).
+- ~~Confirm the API bridge over the browser connecting to MQTT directly (brief, open question 4).~~ Decided
+  2026-10-09 by the tech lead, confirmed with the security lead: the API bridge, as written in the Decision. No
+  browser connects to the broker, and consoles keep one authentication model (ADR-0010).
 - Which device protocols the first site actually has: MQTT is assumed; Modbus or BACnet would need a gateway that
   publishes MQTT, outside this repository.
