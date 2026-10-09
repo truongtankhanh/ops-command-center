@@ -1,4 +1,4 @@
-import type { LngLat, Zone, ZoneKind } from '@occ/contracts';
+import type { LngLat, Zone, ZoneKind, ZoneUse } from '@occ/contracts';
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('zone')
@@ -14,6 +14,9 @@ export class ZoneEntity {
 
   @Column({ type: 'varchar', length: 16 })
   kind: ZoneKind;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  use: ZoneUse | null;
 
   @Column({ type: 'jsonb' })
   polygon: LngLat[];
@@ -37,6 +40,7 @@ export class ZoneEntity {
       code: this.code,
       name: this.name,
       kind: this.kind,
+      use: this.use,
       polygon: this.polygon,
       center: this.center,
     };
