@@ -16,6 +16,7 @@ import {
   CircleAlert,
   CircleCheck,
   CircleDot,
+  CircleQuestionMark,
   CloudLightning,
   Cpu,
   Cross,
@@ -76,7 +77,12 @@ import type { ConnectionState } from '../store';
 export type Glyph = LucideIcon;
 
 // Each map is a `Record` over its union, so a value added to the contract fails `typecheck` here
-// until it has a glyph.
+// until it has a glyph. Data from a newer API can still carry a value this build's contract lacks
+// (rolling deploys, ADR-0021): the type, category and zone-kind accessors fall back to
+// `unknownIcon` for it rather than return `undefined`, which `Icon` cannot draw.
+
+/** A domain value this console does not know. Never a glyph for a known value. */
+export const unknownIcon: Glyph = CircleQuestionMark;
 
 const SEVERITY_ICONS: Record<IncidentSeverity, Glyph> = {
   critical: OctagonAlert,
@@ -116,7 +122,8 @@ const INCIDENT_TYPE_ICONS: Record<IncidentType, Glyph> = {
   blocked_access: Ban,
 };
 
-export const incidentTypeIcon = (type: IncidentType) => INCIDENT_TYPE_ICONS[type];
+export const incidentTypeIcon = (type: IncidentType): Glyph =>
+  INCIDENT_TYPE_ICONS[type] ?? unknownIcon;
 
 // A category glyph is never a type glyph: the incident sheet shows both chips side by side.
 const CATEGORY_ICONS: Record<IncidentCategory, Glyph> = {
@@ -128,7 +135,8 @@ const CATEGORY_ICONS: Record<IncidentCategory, Glyph> = {
   traffic: Car,
 };
 
-export const categoryIcon = (category: IncidentCategory) => CATEGORY_ICONS[category];
+export const categoryIcon = (category: IncidentCategory): Glyph =>
+  CATEGORY_ICONS[category] ?? unknownIcon;
 
 const STATUS_ICONS: Record<IncidentStatus, Glyph> = {
   open: CircleDot,
@@ -157,7 +165,7 @@ const ZONE_KIND_ICONS: Record<ZoneKind, Glyph> = {
   water: WavesHorizontal,
 };
 
-export const zoneKindIcon = (kind: ZoneKind) => ZONE_KIND_ICONS[kind];
+export const zoneKindIcon = (kind: ZoneKind): Glyph => ZONE_KIND_ICONS[kind] ?? unknownIcon;
 
 const ACTOR_KIND_ICONS: Record<ActorKind, Glyph> = {
   user: User,

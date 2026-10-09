@@ -18,6 +18,14 @@ local `Glyph` type, so replacing the set means rewriting that one file.
 Every domain map is a `Record` over its union, so adding a value to `@occ/contracts` (or to the store's
 `ConnectionState`) fails `typecheck` until it has a glyph.
 
+**Unknown values (V2-03.2).** A newer API can send an incident type, category or zone kind that this console's
+contract lacks (ADR-0021, rolling deploys). `incidentTypeIcon`, `categoryIcon` and `zoneKindIcon` then return
+`unknownIcon` (`CircleQuestionMark`) instead of `undefined`, which `Icon` cannot draw. Next to the glyph, the label
+shows the raw id (`typeLabel`). `unknownIcon` has one meaning, "a value this console does not know": it is never the
+glyph of a known value, and nothing else uses it. It is the one deliberate exception to "one glyph per domain value".
+`severityIcon`, `statusIcon`, `eventKindIcon` and `actorKindIcon` have no fallback, because no planned contract change
+widens those unions.
+
 | Accessor                         | Value                                                                                                    | Glyph                                                                                                           |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `severityIcon`                   | `critical` / `high` / `medium` / `low`                                                                   | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                                       |
@@ -34,6 +42,7 @@ Every domain map is a `Record` over its union, so adding a value to `@occ/contra
 | `actorKindIcon`                  | `user` / `system`                                                                                        | `User` / `Cpu`                                                                                                  |
 | `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                       | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                        |
 | `cameraIcon`                     | `online: true` / `false`                                                                                 | `Video` / `VideoOff`                                                                                            |
+| `unknownIcon`                    | fallback of `incidentTypeIcon` / `categoryIcon` / `zoneKindIcon` for a value outside the contract        | `CircleQuestionMark` (never a known value's glyph)                                                              |
 
 Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
 `ChevronDown`, `LogOut`, for the map controls (frame 01) `Minus` (zoom out) and `Scan` (fit campus, the frame's
@@ -149,13 +158,18 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
    `symbol` layer orders overlapping markers with `symbol-sort-key`, and the glyph keeps its exact colour at 12–14 px.
    The SDF route planned here before UI-08 (a `circle` layer for the disc plus recoloured glyphs) was dropped: across
    two layers, a lower marker's glyph is drawn over a higher marker's disc where they overlap.
-2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (192), `incident-resolved-{type}` (24),
-   `camera-online` / `camera-offline`, `cluster-severity-{severity}` (4, UI-16) — 222 images. The cluster badge is a
-   16 px box: a severity disc (r 7, 1.5 px ground edge) with the severity glyph at 10 px in `--on-accent`, drawn on
-   the cluster's ring at its top-right by its own `symbol` layer, so a cluster's highest severity is not told by the
-   ring colour alone (WCAG 1.4.1). Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam`): open =
-   severity disc with an `--on-accent` glyph, acknowledged = ground disc in a severity ring with a severity glyph,
-   resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4).
+2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (192), `incident-resolved-{type}` (24), the same
+   9 forms for a type outside the contract (`incident-{severity}-{open|acknowledged}-unknown`,
+   `incident-resolved-unknown`, drawn with `unknownIcon`, V2-03.2), `camera-online` / `camera-offline`,
+   `cluster-severity-{severity}` (4, UI-16) — 231 images. `incidentImageId` maps any type that is not in
+   `INCIDENT_TYPES` to the `unknown` suffix (`markerType` in `lib/mapFeatures.ts`; a unit test keeps `unknown` out of
+   the contract). The unknown-type forms are registered up front with all the others, not on `styleimagemissing`
+   (item 6): that event needs the image added synchronously, and glyph images decode asynchronously (item 4). The
+   cluster badge is a 16 px box: a severity disc (r 7, 1.5 px ground edge) with the severity glyph at 10 px in
+   `--on-accent`, drawn on the cluster's ring at its top-right by its own `symbol` layer, so a cluster's highest
+   severity is not told by the ring colour alone (WCAG 1.4.1). Geometry follows frames 01, 02 and 04 (`.mk-*`,
+   `.pl-cam`): open = severity disc with an `--on-accent` glyph, acknowledged = ground disc in a severity ring with a
+   severity glyph, resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4).
 3. **SVG markup from the component.** One `createRoot` on a detached element renders each glyph with `flushSync`
    and `createElement(glyph, { size, color, strokeWidth })`; its `innerHTML` is the markup, and the root is unmounted
    at the end. Done in the map's `load` handler, never during render or in a layout effect (`flushSync` warns there).

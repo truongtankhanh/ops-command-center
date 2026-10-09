@@ -1,9 +1,12 @@
 import {
+  categoryOf,
+  INCIDENT_TYPES,
   type Incident,
   type IncidentCategory,
   type IncidentEventKind,
   type IncidentSeverity,
   type IncidentStatus,
+  type IncidentType,
   severityRank,
 } from '@occ/contracts';
 
@@ -281,7 +284,22 @@ const TYPE_LABELS: Record<Incident['type'], string> = {
   blocked_access: 'Blocked access',
 };
 
-export const typeLabel = (type: Incident['type']) => TYPE_LABELS[type];
+/**
+ * Whether `type` is in this build's contract. An incident from a newer API can carry a type added
+ * after this console was built (rolling deploys, ADR-0021); the type says it cannot, the data can.
+ */
+export const isKnownType = (type: string): type is IncidentType =>
+  (INCIDENT_TYPES as readonly string[]).includes(type);
+
+/** An unknown type reads as its raw id (`gas_leak`), never as an empty label. */
+export const typeLabel = (type: Incident['type']): string => TYPE_LABELS[type] ?? type;
+
+/**
+ * The type's category, or `null` for a type this console does not know. Anything scoped by
+ * category treats `null` as out of scope: a technician only views it, an `'all'` role still acts.
+ */
+export const categoryOfType = (type: Incident['type']): IncidentCategory | null =>
+  isKnownType(type) ? categoryOf(type) : null;
 
 const CATEGORY_LABELS: Record<IncidentCategory, string> = {
   security: 'Security',

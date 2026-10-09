@@ -283,6 +283,20 @@ describe('session', () => {
       });
     });
 
+    it('reads the technician role (ADR-0021)', async () => {
+      const { useSession, manager } = await loadStarted();
+
+      manager.userLoaded!({
+        profile: PROFILE,
+        access_token: accessToken({ realm_access: { roles: ['technician', 'default-roles-occ'] } }),
+      });
+
+      expect(useSession.getState().user).toEqual({
+        displayName: 'Demo Operator',
+        roles: ['technician'],
+      });
+    });
+
     it.each([
       { label: 'the access token is missing', token: undefined },
       { label: 'the token is not a JWT', token: 'opaque-token' },

@@ -93,10 +93,10 @@ function signInAs(role: Role) {
 }
 
 /** Everything the panel reads is already cached, so its first render is the detail. */
-function renderDetail(incident = detail()) {
+function renderDetail(incident = detail(), zones: Zone[] = [zone]) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incident(incident.id), incident);
-  client.setQueryData(queryKeys.zones, [zone]);
+  client.setQueryData(queryKeys.zones, zones);
   // No camera: CameraTile would request a stream and draw on a canvas jsdom does not have.
   client.setQueryData(queryKeys.cameras, []);
   return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
@@ -163,6 +163,21 @@ describe('IncidentDetail', () => {
       // The lifecycle stepper carries the status.
       expect(screen.queryByText('Open')).toBeNull();
       expect(screen.queryByText('Being handled')).toBeNull();
+    });
+
+    // A newer API can send a type or zone kind this build's contract lacks (ADR-0021, rolling
+    // deploys); the type system cannot model them, hence the casts.
+    it('names a type this console does not know by its raw id', () => {
+      renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }));
+
+      expect(screen.getByText('not_in_contract')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Door forced open' })).toBeInTheDocument();
+    });
+
+    it('still shows the zone when its kind is one this console does not know', () => {
+      renderDetail(detail(), [{ ...zone, kind: 'not_in_contract' as Zone['kind'] }]);
+
+      expect(screen.getByText('Library')).toBeInTheDocument();
     });
 
     it('shows an open incident waiting for acknowledgement', () => {
