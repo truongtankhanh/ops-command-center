@@ -399,7 +399,7 @@ of one neutral; in WebGL they become one material's base colour (`--tw-top`) und
 | 10 Incident raised by telemetry      | Incident detail over the twin: source "Telemetry rule", the rule and the reading that broke it, a link to the asset and part ("Show in 3D"), system actor in the timeline, selected beacon ring                                                       |
 | 11 Technician, out-of-scope incident | A security incident opened by a technician: the sheet ends in the designed view-only footer and points to "Mine to handle" (ADR-0021)                                                                                                                 |
 | 12 Building level                    | Data Center in focus: walls see-through, equipment inside (UPS, batteries, precision cooling, rack rows), other buildings faded; breadcrumb, building summary, Assets filtered by zone                                                                |
-| 13 Heat overlay                      | Heat layer on: buildings coloured by indoor temperature on the sequential accent ramp with values; buildings without a reading faded; "Colour by" picker and legend                                                                                   |
+| 13 Heat overlay                      | Heat layer on: buildings coloured by indoor temperature (`indoorTempC` from air handlers and indoor climate sensors) on the sequential accent ramp with values; buildings without a reading faded; "Colour by" picker and legend                      |
 | 14 2D view by choice                 | The user picked 2D on a capable device: site plan with asset markers (fault and stale variants), asset tooltip, Assets layer toggle; 3D stays one click away                                                                                          |
 | 15 Asset without a 3D model          | Leak sensor LKS-B3 inside Dormitory B, drawn as a neutral box, in fault with its incident's severity; inspector with readings, the linked incident and why it is a box                                                                                |
 | 16 Keyboard shortcuts                | The `?` help for V2: V1's groups plus the 3D view (keys and pointer), asset inspector, `F` and `V`; new rows marked; the 3D view's keys work in the canvas prototype                                                                                  |
@@ -409,6 +409,17 @@ of one neutral; in WebGL they become one material's base colour (`--tw-top`) und
 
 Frames 01, 04, 06 and 07 show the full demo campus of the [Campus model](#campus-model) and incidents from several
 categories.
+
+### Frames to revise after Phase 0
+
+Phase 0 (V2-00, 2026-10-09) kept every decision as drawn except the ones below. These frames are revised on the canvas
+and in [mockups/](mockups/) together; until then, this brief, the ADRs and [asset-classes.md](asset-classes.md) win.
+
+| Frame                           | Change                                                                                                                                                | Decision                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 00 Foundations V2               | Node tree: `Switch` is `turn X ±35°`, not `flip`. `extras` list: drop `partRole` (the node name is the role); `axis` and `range` only on moving parts | V2-00.10 (ADR-0020)              |
+| 13 Heat overlay                 | Every building has a reading: indoor climate sensors where there is no air handler. Only a building whose sensor is silent is faded                   | V2-00.5 (`indoor_climate` class) |
+| 02, 03, 05, 08, 12, 15 (Assets) | The Assets list holds the 22 equipment assets (BAT-01, CRAC-01 and CRAC-02 too, not only in frame 12) and the indoor climate sensors                  | V2-00.5                          |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).
