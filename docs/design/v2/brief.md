@@ -429,8 +429,11 @@ brief, the ADR wins.
 3. **3D by default, or 2D by default with 3D as a mode?** The mockups default to 3D on capable devices.
 4. **Telemetry transport**: API bridge over Socket.IO (recommended) or browser → broker over MQTT-over-WebSocket?
    The second exposes the broker and adds a second auth model.
-5. **Read-only twin.** No device control (start / stop / setpoints) from the console in V2. Controlling equipment is
-   a safety decision with its own interlocks and audit; confirm it stays out of scope.
+5. ~~**Read-only twin.** No device control (start / stop / setpoints) from the console in V2. Controlling equipment
+   is a safety decision with its own interlocks and audit; confirm it stays out of scope.~~
+   **Decided 2026-10-09: V2.0 is read-only** (tech lead, confirmed with the operations lead and the facilities lead).
+   The API has no write routes (ADR-0018) and its broker account may publish nothing (ADR-0019). Commanding equipment
+   would need a new ADR (command path, interlocks, confirmation step, audit, permission) outside V2.0.
 6. ~~**Video wall (UI-17).** One WebGL context per wall screen, at pixel ratio 1.0 — or the wall keeps the 2D map?~~
    **Decided 2026-10-08: 3D with a fixed camera** (frame 18, principle 4's exception, ADR-0020). A wall screen whose
    GPU cannot hold the frame budget falls back to the 2D map like any other device.
