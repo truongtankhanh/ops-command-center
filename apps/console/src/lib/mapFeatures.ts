@@ -9,7 +9,7 @@ import {
 } from '@occ/contracts';
 import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
 import { distanceM, offsetM } from './geo';
-import { isActive } from './incidents';
+import { isActive, isKnownType } from './incidents';
 
 /**
  * Incidents closer than this share a fan-out ring: one marker (24 px) at the map's max zoom (20),
@@ -47,15 +47,30 @@ export interface CameraViewProperties {
 /** No segment of a view's arc spans more than this: 18 for a 90° view, 72 for a full circle. */
 const VIEW_SEGMENT_DEG = 5;
 
+/**
+ * Stands in for a type this console does not know in image ids (`incident-high-open-unknown`), so
+ * the marker uses a generic image registered with the others instead of one that does not exist.
+ */
+export const UNKNOWN_TYPE_IMAGE = 'unknown';
+
+/** The type part of an incident image id. */
+export type MarkerType = IncidentType | typeof UNKNOWN_TYPE_IMAGE;
+
+export const markerType = (type: MarkerType): MarkerType =>
+  isKnownType(type) ? type : UNKNOWN_TYPE_IMAGE;
+
 /** A resolved incident is drawn in a neutral form, the same for every severity. */
-export const resolvedImageId = (type: IncidentType): string => `incident-resolved-${type}`;
+export const resolvedImageId = (type: MarkerType): string =>
+  `incident-resolved-${markerType(type)}`;
 
 export const incidentImageId = ({
   severity,
   status,
   type,
-}: Pick<Incident, 'severity' | 'status' | 'type'>): string =>
-  status === 'resolved' ? resolvedImageId(type) : `incident-${severity}-${status}-${type}`;
+}: Pick<Incident, 'severity' | 'status'> & { type: MarkerType }): string =>
+  status === 'resolved'
+    ? resolvedImageId(type)
+    : `incident-${severity}-${status}-${markerType(type)}`;
 
 export const cameraImageId = (online: boolean): string =>
   online ? 'camera-online' : 'camera-offline';

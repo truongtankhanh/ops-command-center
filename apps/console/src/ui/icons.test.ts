@@ -5,7 +5,10 @@ import {
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
   INCIDENT_TYPES,
+  type IncidentCategory,
+  type IncidentType,
   ZONE_KINDS,
+  type ZoneKind,
 } from '@occ/contracts';
 import {
   actorKindIcon,
@@ -16,6 +19,7 @@ import {
   incidentTypeIcon,
   severityIcon,
   statusIcon,
+  unknownIcon,
   zoneKindIcon,
 } from './icons';
 
@@ -46,5 +50,26 @@ describe('connection glyphs', () => {
   it('gives live, reconnecting and offline their own glyphs', () => {
     const glyphs = (['live', 'reconnecting', 'offline'] as const).map(connectionIcon);
     expect(new Set(glyphs).size).toBe(3);
+  });
+});
+
+// A newer API can send a value this build's contract lacks (ADR-0021, rolling deploys); the type
+// system cannot model it, hence the casts.
+describe('unknown values', () => {
+  const UNKNOWN = 'not_in_contract';
+
+  it('draws an unknown type, category or zone kind with the generic glyph', () => {
+    expect(incidentTypeIcon(UNKNOWN as IncidentType)).toBe(unknownIcon);
+    expect(categoryIcon(UNKNOWN as IncidentCategory)).toBe(unknownIcon);
+    expect(zoneKindIcon(UNKNOWN as ZoneKind)).toBe(unknownIcon);
+  });
+
+  it('never uses the generic glyph for a known type, category or zone kind', () => {
+    const known = [
+      ...INCIDENT_TYPES.map(incidentTypeIcon),
+      ...INCIDENT_CATEGORIES.map(categoryIcon),
+      ...ZONE_KINDS.map(zoneKindIcon),
+    ];
+    expect(known).not.toContain(unknownIcon);
   });
 });

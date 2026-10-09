@@ -211,6 +211,17 @@ describe('IncidentFeed', () => {
       expect(screen.getAllByText('INC-000001')).toHaveLength(2);
     });
 
+    it('names a type this console does not know by its raw id', () => {
+      // A newer API can send a type this build's contract lacks (ADR-0021, rolling deploys); the
+      // type system cannot model it, hence the cast.
+      const type = 'not_in_contract' as Incident['type'];
+      renderFeed([
+        { ...base, type, id: 'u', title: 'Odd report', status: 'open', severity: 'high' },
+      ]);
+
+      expect(row(/High severity,\s*not_in_contract:\s*Odd report/)).toBeInTheDocument();
+    });
+
     it('flags an open incident past its attention threshold, not an acknowledged one', () => {
       // Ten minutes is past the high threshold (5 min) and far from it, so the real clock will do.
       const tenMinutesAgo = new Date(Date.now() - 10 * 60_000).toISOString();

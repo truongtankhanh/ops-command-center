@@ -1,4 +1,11 @@
-import { type Camera, type Incident, INCIDENT_SEVERITIES, type LngLat } from '@occ/contracts';
+import {
+  type Camera,
+  type Incident,
+  INCIDENT_SEVERITIES,
+  INCIDENT_TYPES,
+  type IncidentType,
+  type LngLat,
+} from '@occ/contracts';
 import {
   cameraFeatures,
   cameraImageId,
@@ -8,7 +15,9 @@ import {
   fanOut,
   incidentFeatures,
   incidentImageId,
+  type MarkerType,
   resolvedImageId,
+  UNKNOWN_TYPE_IMAGE,
 } from './mapFeatures';
 
 const ANCHOR: LngLat = [108.4415, 11.953];
@@ -61,6 +70,22 @@ describe('image ids', () => {
       resolvedImageId('crowding'),
     );
     expect(resolvedImageId('crowding')).toBe('incident-resolved-crowding');
+  });
+
+  // A newer API can send a type this build's contract lacks (ADR-0021, rolling deploys); the type
+  // system cannot model it, hence the cast.
+  it('names an unknown type by the generic images registered for it', () => {
+    const type = 'not_in_contract' as IncidentType;
+    expect(incidentImageId({ severity: 'high', status: 'open', type })).toBe(
+      'incident-high-open-unknown',
+    );
+    expect(incidentImageId({ severity: 'high', status: 'resolved', type })).toBe(
+      'incident-resolved-unknown',
+    );
+  });
+
+  it('keeps the generic suffix apart from every contract type', () => {
+    expect(INCIDENT_TYPES as readonly MarkerType[]).not.toContain(UNKNOWN_TYPE_IMAGE);
   });
 
   it('names camera images by state', () => {

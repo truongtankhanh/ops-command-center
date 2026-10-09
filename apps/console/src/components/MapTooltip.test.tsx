@@ -128,6 +128,18 @@ describe('MapTooltip', () => {
     expect(tooltip()).toHaveTextContent('Open');
   });
 
+  it('describes an incident whose type this console does not know', () => {
+    // A newer API can send a type this build's contract lacks (ADR-0021, rolling deploys); the
+    // type system cannot model it, hence the cast.
+    const map = fakeMap();
+    renderTooltip(map, { incidents: [incident({ type: 'not_in_contract' as Incident['type'] })] });
+
+    hover(map, hit(MAP_LAYERS.incidents, { id: 'a' }));
+
+    expect(screen.getByText('Door forced open')).toBeInTheDocument();
+    expect(screen.getByText('INC-000001 · Library · 5m')).toBeInTheDocument();
+  });
+
   it('anchors above the marker where the map projects it', () => {
     const map = fakeMap();
     renderTooltip(map, { incidents: [incident()] });

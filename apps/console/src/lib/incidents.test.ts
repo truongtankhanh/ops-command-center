@@ -1,7 +1,14 @@
-import { type Incident, INCIDENT_EVENT_KINDS, INCIDENT_SEVERITIES } from '@occ/contracts';
+import {
+  type Incident,
+  INCIDENT_EVENT_KINDS,
+  INCIDENT_SEVERITIES,
+  INCIDENT_TYPES,
+  type IncidentType,
+} from '@occ/contracts';
 import {
   acknowledgeDuration,
   ATTENTION_THRESHOLD_MS,
+  categoryOfType,
   compareIncidents,
   countActiveBySeverity,
   countByFilter,
@@ -11,6 +18,7 @@ import {
   formatAgo,
   formatClock,
   formatDuration,
+  isKnownType,
   isPastAttention,
   lifecycleSteps,
   matchesFilter,
@@ -21,6 +29,7 @@ import {
   openDuration,
   searchTerms,
   severityLabel,
+  typeLabel,
   upsertIncident,
 } from './incidents';
 
@@ -339,6 +348,41 @@ describe('formatAge', () => {
     [72 * 3_600_000, '3d'],
   ])('formats %i ms as %s', (elapsed, expected) => {
     expect(formatAge('2026-10-01T08:00:00.000Z', t0 + elapsed)).toBe(expected);
+  });
+});
+
+// A newer API can send a type this build's contract lacks (ADR-0021, rolling deploys); the type
+// system cannot model it, hence the cast.
+const UNKNOWN_TYPE = 'not_in_contract' as IncidentType;
+
+describe('isKnownType', () => {
+  it('knows every contract type', () => {
+    expect(INCIDENT_TYPES.every(isKnownType)).toBe(true);
+  });
+
+  it('does not know a type outside the contract', () => {
+    expect(isKnownType('not_in_contract')).toBe(false);
+  });
+});
+
+describe('typeLabel', () => {
+  it('names a known type', () => {
+    expect(typeLabel('water_leak')).toBe('Water leak');
+  });
+
+  it('shows an unknown type as its raw id', () => {
+    expect(typeLabel(UNKNOWN_TYPE)).toBe('not_in_contract');
+  });
+});
+
+describe('categoryOfType', () => {
+  it('gives a known type its category', () => {
+    expect(categoryOfType('water_leak')).toBe('facilities');
+    expect(categoryOfType('intrusion')).toBe('security');
+  });
+
+  it('gives an unknown type no category', () => {
+    expect(categoryOfType(UNKNOWN_TYPE)).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { mapColors } from '../styles/tokens';
-import { cameraIcon, incidentTypeIcon, severityIcon } from '../ui/icons';
+import { cameraIcon, incidentTypeIcon, severityIcon, unknownIcon } from '../ui/icons';
 import {
   addClusterCountImage,
   glyphStyle,
@@ -67,6 +67,11 @@ describe('glyphStyle', () => {
       glyph: cameraIcon(true),
       color: mapColors.textSecondary,
     });
+  });
+
+  it('draws an unknown type with the generic glyph', () => {
+    expect(glyphStyle({ ...open, type: 'unknown' }).glyph).toBe(unknownIcon);
+    expect(glyphStyle({ kind: 'resolved', type: 'unknown' }).glyph).toBe(unknownIcon);
   });
 });
 
@@ -163,13 +168,15 @@ describe('registerMapImages', () => {
 
     await registerMapImages(asMap(map), new AbortController().signal);
 
-    // 4 severities × 2 statuses × 24 types, 24 resolved, 2 cameras, 4 cluster badges.
-    expect(map.images.size).toBe(222);
+    // 4 severities × 2 statuses × (24 types + unknown), 25 resolved, 2 cameras, 4 cluster badges.
+    expect(map.images.size).toBe(231);
     expect(map.images.get('incident-critical-open-fire_alarm')).toEqual({ pixelRatio: 1 });
     expect(map.images.has('incident-low-acknowledged-crowding')).toBe(true);
     expect(map.images.has('incident-resolved-suspicious_object')).toBe(true);
     expect(map.images.has('camera-offline')).toBe(true);
     expect(map.images.has('cluster-severity-critical')).toBe(true);
+    expect(map.images.has('incident-critical-open-unknown')).toBe(true);
+    expect(map.images.has('incident-resolved-unknown')).toBe(true);
   });
 
   it('renders the glyph from the icon set into the image', async () => {

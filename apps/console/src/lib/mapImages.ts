@@ -1,21 +1,18 @@
-import {
-  INCIDENT_SEVERITIES,
-  INCIDENT_TYPES,
-  type IncidentSeverity,
-  type IncidentType,
-} from '@occ/contracts';
+import { INCIDENT_SEVERITIES, INCIDENT_TYPES, type IncidentSeverity } from '@occ/contracts';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { mapColors } from '../styles/tokens';
-import { cameraIcon, type Glyph, incidentTypeIcon, severityIcon } from '../ui/icons';
+import { cameraIcon, type Glyph, incidentTypeIcon, severityIcon, unknownIcon } from '../ui/icons';
 import {
   cameraImageId,
   CLUSTER_COUNT_PREFIX,
   clusterSeverityImageId,
   incidentImageId,
+  type MarkerType,
   resolvedImageId,
+  UNKNOWN_TYPE_IMAGE,
 } from './mapFeatures';
 
 /*
@@ -30,9 +27,9 @@ export type MarkerForm =
       kind: 'incident';
       severity: IncidentSeverity;
       status: 'open' | 'acknowledged';
-      type: IncidentType;
+      type: MarkerType;
     }
-  | { kind: 'resolved'; type: IncidentType }
+  | { kind: 'resolved'; type: MarkerType }
   | { kind: 'camera'; online: boolean }
   | { kind: 'cluster-severity'; severity: IncidentSeverity };
 
@@ -67,6 +64,9 @@ interface GlyphStyle {
   strokeWidth: number;
 }
 
+const typeGlyph = (type: MarkerType): Glyph =>
+  type === UNKNOWN_TYPE_IMAGE ? unknownIcon : incidentTypeIcon(type);
+
 export function glyphStyle(form: MarkerForm): GlyphStyle {
   switch (form.kind) {
     case 'camera':
@@ -78,14 +78,14 @@ export function glyphStyle(form: MarkerForm): GlyphStyle {
       };
     case 'resolved':
       return {
-        glyph: incidentTypeIcon(form.type),
+        glyph: typeGlyph(form.type),
         size: RESOLVED.glyph,
         strokeWidth: 2.6,
         color: mapColors.textTertiary,
       };
     case 'incident':
       return {
-        glyph: incidentTypeIcon(form.type),
+        glyph: typeGlyph(form.type),
         size: GLYPH_SIZE[form.severity],
         strokeWidth: 2.6,
         // Open: on the severity disc. Acknowledged: on the ground, inside a severity ring.
@@ -167,11 +167,14 @@ const disc = (centre: number, radius: number, fill: string, stroke: string, widt
 
 /**
  * Every form the map can draw: 4 severities × 2 statuses for each of `INCIDENT_TYPES`, one resolved
- * form per type, 2 cameras, 4 cluster badges (222 with 24 types).
+ * form per type, the same 9 for an unknown type, 2 cameras, 4 cluster badges (231 with 24 types).
+ * The unknown-type forms are registered up front with the others, not on `styleimagemissing`: that
+ * event needs the image added synchronously, and glyph images decode asynchronously.
  */
 function markerForms(): MarkerForm[] {
+  const types: readonly MarkerType[] = [...INCIDENT_TYPES, UNKNOWN_TYPE_IMAGE];
   return [
-    ...INCIDENT_TYPES.flatMap((type): MarkerForm[] => [
+    ...types.flatMap((type): MarkerForm[] => [
       ...INCIDENT_SEVERITIES.flatMap((severity) =>
         (['open', 'acknowledged'] as const).map((status): MarkerForm => ({
           kind: 'incident',
