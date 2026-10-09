@@ -158,7 +158,9 @@ describe('Rate limiting (e2e)', () => {
 async function startApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = configureApp(moduleRef.createNestApplication());
-  await app.init();
+  // Listening already, so supertest reuses this address instead of opening and closing a server
+  // around every request (hundreds here, some of them concurrent).
+  await app.listen(0);
   return app;
 }
 
