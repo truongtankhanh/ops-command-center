@@ -134,6 +134,40 @@ const PAIRS: Pair[] = [
   // UI-14 adds no new pair: the toast's kicker, title and detail and its severity border are the
   // `--surface-3` pairs above; a fresh critical row keeps the fresh-row tint pairs; the user menu's
   // sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).
+  // Digital twin (V2, frame 00), measured on the top face, the lightest of the three. The edge of a
+  // hovered, selected or alarmed part bounds it against the ground and its idle neighbours, so those
+  // pairs are held to 3:1; between the part's own faces it only draws the shape.
+  ...cross(['--accent', ...SEVERITIES], ['--tw-top', '--tw-ground'], UI),
+  {
+    fg: '--accent',
+    bg: '--tw-hover-top',
+    min: UI,
+    reportOnly: 'between the part’s own faces; held on the ground and idle neighbours',
+  },
+  // The alarm faces are the critical reference mix; the other severities are mixed by the scene.
+  ...SEVERITIES.map((sev) => ({
+    fg: sev,
+    bg: '--tw-alarm-top',
+    min: UI,
+    reportOnly: 'between the part’s own faces; held on the ground and idle neighbours',
+  })),
+  // A stale part's dashed edge is dim on purpose: stale is the dash, the stopped motion and the age
+  // on every value (brief § Principles 3), not a brighter outline.
+  {
+    fg: '--tw-stale-edge',
+    bg: '--tw-stale-top',
+    min: UI,
+    reportOnly: 'dim on purpose; the dash, stopped motion and value ages carry stale',
+  },
+  // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground.
+  { fg: '--text-secondary', bg: '--tw-ground', min: TEXT },
+  // The heat ramp's ends on the ground: lightness carries the value, not a boundary.
+  ...['--heat-0', '--heat-5'].map((fg) => ({
+    fg,
+    bg: '--tw-ground',
+    min: UI,
+    reportOnly: 'lightness carries the value; the legend and the Assets tab carry the number',
+  })),
 ];
 
 const tokensCss = readFileSync(TOKENS_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -202,9 +236,21 @@ function parseColour(value: string, ref: string): Rgba {
   if (rgb) return { r: +rgb[1]!, g: +rgb[2]!, b: +rgb[3]!, a: rgb[4] === undefined ? 1 : +rgb[4] };
   const variable = /^var\((--[\w-]+)\)$/.exec(value);
   if (variable) return resolve(variable[1]!);
-  const mix = /^color-mix\(in srgb,\s*(.+?)\s+([\d.]+)%\s*,\s*(.+)\)$/.exec(value);
-  if (mix) return mixSrgb(parseColour(mix[1]!, ref), parseColour(mix[3]!, ref), +mix[2]! / 100);
+  const mix = /^color-mix\(in srgb,\s*(.+?)\s+([\d.]+%|var\(--[\w-]+\))\s*,\s*(.+)\)$/.exec(value);
+  if (mix) {
+    const weight = percentage(mix[2]!, ref);
+    return mixSrgb(parseColour(mix[1]!, ref), parseColour(mix[3]!, ref), weight / 100);
+  }
   throw new Error(`${ref}: cannot read colour "${value}"`);
+}
+
+/** A `color-mix` weight: `35%`, or a token holding one (`--tw-alarm-mix`). */
+function percentage(value: string, ref: string): number {
+  const variable = /^var\((--[\w-]+)\)$/.exec(value);
+  const resolved = variable ? css.get(variable[1]!) : value;
+  const percent = resolved === undefined ? null : /^([\d.]+)%$/.exec(resolved);
+  if (!percent) throw new Error(`${ref}: cannot read percentage "${value}"`);
+  return +percent[1]!;
 }
 
 /** CSS Color 5 `color-mix(in srgb, …)`: interpolates premultiplied by alpha. */

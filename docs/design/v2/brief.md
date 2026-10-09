@@ -382,6 +382,11 @@ of one neutral; in WebGL they become one material's base colour (`--tw-top`) und
 | `--tw-ghost-opacity`              | 0.18                              | Context while an asset is isolated        |
 | `--heat-0 … --heat-5`             | `#1f2a4d` → `#b3bdff`             | Telemetry overlay, sequential, accent hue |
 
+Contrast (V2-02.1): a hover, selected or alarmed part's edge is held to 3:1 on the ground and on idle neighbours, not
+on the part's own face, where it only draws the shape; the stale edge stays below 3:1 on purpose, because the dash,
+the stopped motion and the age on every value carry stale (Principle 3). Ratios and reasons:
+[tokens.md](../tokens.md#digital-twin-v2).
+
 ## Frame index
 
 | Frame                                | Shows                                                                                                                                                                                                                                                 |
