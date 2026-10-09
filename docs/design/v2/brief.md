@@ -348,6 +348,19 @@ Stale is decided per asset in the worker, so one silent device does not grey the
 A developer-only HUD (`?debug=twin`, development builds only) shows FPS, p95 frame time, draw calls, triangles,
 telemetry messages per second and worker posts per frame (frame 00).
 
+### Reference hardware
+
+Decided 2026-10-09 (V2-00.9) by the tech lead. The frame budget is measured on these two machines (V2-19). They are a
+deliberate floor, weaker than a typical control-room machine: a build that holds the budget here holds it on the real
+ones. If a site's own hardware turns out weaker, the floor moves down to it.
+
+| Machine          | CPU                            | GPU                          | RAM   | Software                                                               | Screens                                                                        |
+| ---------------- | ------------------------------ | ---------------------------- | ----- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Reference laptop | Intel Core i5-1235U (12th gen) | Intel Iris Xe (integrated)   | 16 GB | Windows 11, plugged in, balanced power; Chrome stable                  | 1920 × 1080 at 125 % scaling (`devicePixelRatio` 1.25)                         |
+| Wall controller  | Intel Core i7-12700 (12th gen) | NVIDIA T1000 8 GB, 4 outputs | 32 GB | Windows 11; Chrome stable, one window and one WebGL context per screen | 4 × 3840 × 2160 at 60 Hz, pixel ratio 1.0 (the 4K wall mode, ≥ 3200 px, UI-17) |
+
+Each measurement records the Chrome version and the GPU driver version, so it can be repeated.
+
 ## New tokens
 
 Added in [mockups/twin.css](mockups/twin.css), ready for `tokens.css`. The material values are the three face tones
