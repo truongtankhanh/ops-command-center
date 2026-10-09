@@ -19,7 +19,8 @@ The twin needs, per asset:
 
 Constraints:
 
-- **Migrations only, run at boot in one transaction** (ADR-0004), with several replicas (ADR-0008).
+- **Migrations only, run at boot**: all pending migrations in one transaction (`transaction: 'all'` in
+  `migrate-on-boot.ts`), one replica at a time under an advisory lock (ADR-0004, ADR-0008).
 - **Rolling deploys.** An older console can meet a newer API, and the reverse, for as long as a rollout takes (as
   ADR-0017).
 - **No new infrastructure without a reason.** The target is an on-prem host with PostgreSQL (ADR-0007, ADR-0008).
@@ -80,22 +81,26 @@ the server, and a sustained breach is an ordinary incident linked to its asset.
     `expected_interval_s` (how often a device sends it), `headline` (nullable rank 1–2: shown in the tooltip and the
     Assets list).
   - `asset`: `code` (unique, `^[A-Z]{2,4}-[0-9]{2,4}$`, e.g. `CT-01`), `name`, `asset_class_id`, `zone_id`,
-    `longitude` / `latitude` (stored as `camera` stores its position), `elevation_m` (base above ground, e.g. 14 for
-    a roof), `heading_deg` (`0 ≤ heading < 360`, clockwise from true north, as `Camera.fieldOfView`).
+    `lng` / `lat` (`double precision NOT NULL`, as `camera` and `incident` store a position; `position: LngLat` in
+    the contract), `elevation_m` (base above ground, e.g. 14 for a roof), `heading_deg` (`0 ≤ heading < 360`,
+    clockwise from true north, as `camera.fov_heading_deg` / `CameraFieldOfView.heading`).
   - `zone.height_m` (nullable): the extrusion height of a building shell in 3D. `null` draws the client's default.
 - **Threshold rules** (`telemetry_rule`): `asset_class_id`, `asset_id` (nullable: set, it overrides the class rule
   with the same `name` for that asset only), `name` (e.g. `Motor over-temperature`), `key`, `comparator` (`above` |
   `below`), `limit`, `clear` (the hysteresis level: the rule re-arms only after the reading passes it back),
   `for_s` (how long the breach must last), `severity`, `incident_type` (a `facilities` or `environment` type,
-  [ADR-0021](0021-incident-categories-zone-uses-and-technician-role.md); default `equipment_fault`), `enabled`.
+  [ADR-0021](0021-incident-categories-zone-uses-and-technician-role.md); default `equipment_fault`), `enabled`. Only
+  `equipment_fault` exists today; the other types and their `CHECK` land with ADR-0021's migration (V2-03), before
+  rules are evaluated (V2-07).
   Rules are seeded and changed by migration or
   database write until an editing API exists, the same position as ADR-0017's site plan.
 - **Evaluation.** One replica evaluates rules (the telemetry leader, ADR-0019) as readings arrive. When a reading
   stays past `limit` for `for_s`, it creates an incident:
   - the rule's `incident_type` and `severity`, title `<rule name> — <asset name>`, the asset's zone and
     position;
-  - `source` **`telemetry`** (added to `INCIDENT_SOURCES`), actor `{ kind: 'system', subject: 'telemetry',
-displayName: 'Telemetry rule' }` (ADR-0011);
+  - `source` **`telemetry`** (added to `INCIDENT_SOURCES` and to the `incident.source` `CHECK`, today
+    `incident_source_check`), actor `SystemActors.telemetry` = `{ kind: 'system', subject: 'telemetry',
+displayName: 'Telemetry rule' }` in `apps/api/src/incidents/actors.ts`, next to `SystemActors.simulator` (ADR-0011);
   - the `reported` timeline note records the evidence: `motorTempC 92 > 85 for 60 s`;
   - new nullable columns `incident.asset_id` and `incident.telemetry_rule_id`, and a **partial unique index on
     `(asset_id, telemetry_rule_id) WHERE status <> 'resolved'`**. A second breach of the same rule while its
@@ -115,8 +120,10 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
     "Limit 85 °C");
   - `GET /api/assets/:code/telemetry?from=&to=`: samples, at most 1 h and 720 buckets per call.
   - No write routes. No command path to any device exists in the API.
-- **Seed.** The demo campus gains its asset classes (cooling tower first), assets, points and rules in
-  `database/seed/`, topped up on the reference campus the way ADR-0017 tops up the site plan.
+- **Seed.** The demo campus gains its asset classes, assets, points and rules
+  ([asset-classes.md](../design/v2/asset-classes.md)) in `database/seed/`. An existing reference campus is topped up
+  by `SeedService.topUp` (under `SEED_ON_BOOT`, missing rows only), with `isComplete` extended to check the seed
+  asset codes, the way ADR-0017 added the site plan and the cameras' fields of view.
 
 ## Consequences
 
@@ -125,20 +132,20 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 - **The catalogue is data.** A new tower is a row; a new kind of equipment is a class, its points, its rules and a
   model (ADR-0020), with no console build.
 - **Rolling deploys.**
-  - Every migration is additive and nullable; older replicas keep working against the new schema and never write
-    `asset_id`.
-  - An older console ignores `assetId` and the new routes. It shows a `telemetry` incident's reporter as a user,
-    because `IncidentDetail` maps every source other than `simulator` to `user`; the console change that ships
-    with this ADR must map `telemetry` to `system`. The label is wrong only during the rollout.
+  - Every migration is additive (new tables, nullable columns) except the widened `incident.source` `CHECK`, which
+    existing rows still satisfy; older replicas keep working against the new schema and never write `asset_id`.
+  - An older console ignores `assetId` and the new routes. It shows a `telemetry` incident's reporter as "Operator",
+    because `IncidentDetail` maps every source other than `simulator` to `user`; the console change that ships with this
+    ADR must map `telemetry` to `system`. The label is wrong only during the rollout.
   - A newer console must treat `404` on `/api/assets` (an older replica) as "no assets" and draw the twin without
     equipment.
 - **Rules are not instant.** A breach raises an incident after `for_s`. A leader failover restarts the timers, so
   an alarm can be late by up to `for_s` once (ADR-0019).
 - **History is coarse.** 5 s buckets are enough for a 15-minute sparkline (180 points) and an after-the-fact look;
   the console's worker keeps the finer live tail. Values within a bucket other than the last are not stored.
-- **Storage.** About 17,000 rows per asset per day: roughly 240,000 rows a day for the demo's 14 assets, 1.7 million
-  for 100. That is an estimate to check in V2-04, not a measurement. Dropping a whole partition keeps retention
-  cheap.
+- **Storage.** About 17,000 rows per asset per day: roughly 540,000 rows a day for the demo's 31 assets
+  (asset-classes.md), 1.7 million for 100. That is an estimate to check in V2-06, not a measurement. Dropping a whole
+  partition keeps retention cheap.
 - **No editing API.** Changing a rule or adding an asset is a migration or a database write, as for the site plan.
   An admin UI is a follow-up, with its own permission (ADR-0011 has none for it yet).
 - **Proving it.** The e2e suite seeds a class with one rule, feeds readings through the mock source (ADR-0019), and

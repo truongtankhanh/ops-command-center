@@ -202,8 +202,8 @@ Static part: `Enclosure` (drawn see-through, frame 08). Tank capacity (2,500 L i
 ## Threshold rules
 
 Decided 2026-10-09 (V2-00.6) by the tech lead, confirmed with the operations lead. Starting `telemetry_rule` rows for
-V2.0, one or more per class or an explicit "no rule in V2.0". V2-07 seeds them as class rules; no asset has an
-override at start. Rules raise only `facilities` or `environment` types
+V2.0, one or more per class or an explicit "no rule in V2.0". V2-05 seeds them as class rules with the catalogue, and
+V2-07 evaluates them; no asset has an override at start. Rules raise only `facilities` or `environment` types
 ([ADR-0021](../../adr/0021-incident-categories-zone-uses-and-technician-role.md)).
 
 - **Owner:** operations owns the values, per class, with per-asset overrides. Until an editing API exists, a change
@@ -256,10 +256,16 @@ override at start. Rules raise only `facilities` or `environment` types
    arms), otherwise always Running; Fault comes from an open incident and "No data" from freshness. Decide in V2-05.
 2. **Gas detector's gas.** `gasPpm` assumes one gas per detector, named on the asset. If a detector reads several
    gases, the class needs one key per gas. Confirm with the lab safety lead before V2-05.
-3. **Switch motion.** The brief's model tree draws `Switch` as "flip X ±35°", but ADR-0020's motions are `spin`,
-   `turn`, `slide` and `tint`. This list uses `turn` over [-35, 35]; V2-00.10 aligns the brief.
+3. ~~**Switch motion.** The brief's model tree draws `Switch` as "flip X ±35°", but ADR-0020's motions are `spin`,
+   `turn`, `slide` and `tint`. This list uses `turn` over [-35, 35]; V2-00.10 aligns the brief.~~
+   **Closed 2026-10-09 (V2-00.10):** the brief now draws `Switch` as `turn X ±35°`.
 4. ~~**Telemetry and fire safety.** A gas detector over its limit is a fire-safety event, handled by operators, but
    ADR-0021 lets telemetry rules raise only `facilities` and `environment` types. Allowing `gas_leak` for telemetry
    would change ADR-0021; decide in V2-00.8. Until then, gas concentration raises no incident from the console.~~
    **Decided 2026-10-09 (V2-00.8):** no. Gas alarms stay with the gas detection panel; telemetry never raises a
    `fire_safety` type, so `gas_detector` keeps only its fault rule.
+5. **Booleans and enums in bindings.** The worker posts one `Float32Array` of targets (ADR-0020), but `switchState`
+   (`enum`) and `breakerClosed` (`boolean`) drive `turn` parts. Neither ADR says how such a value becomes a number
+   (for example 0 / 1, and an enum's index in `enum_values`, mapped onto `range`). Decide in V2-14.
+6. **When an asset looks stale.** Freshness is decided per point (ADR-0019), but the twin greys a whole asset
+   (brief § Freshness). Which points make the asset stale (any, all, or its headline points) is open; decide in V2-08.
