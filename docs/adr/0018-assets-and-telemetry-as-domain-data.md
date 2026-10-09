@@ -152,4 +152,6 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 
 - Which equipment classes are in V2.0 beyond the cooling tower (brief, open question 2).
 - Who owns threshold values: operations per class, with per-asset overrides, is assumed here (brief, open question 7).
-- Confirm the twin stays read-only (brief, open question 5).
+- ~~Confirm the twin stays read-only (brief, open question 5).~~ Decided 2026-10-09 by the tech lead, confirmed with
+  the operations lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and
+  ADR-0019's broker ACL ("may publish nothing") is unchanged.
