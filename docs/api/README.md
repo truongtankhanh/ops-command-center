@@ -32,7 +32,10 @@ Last reconciled: 2026-10-06
   - Authentication runs before validation: a request without a valid token gets **401** even if its
     body is also invalid.
 - **Roles.** The token's realm roles decide what the caller may do
-  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)). The map is
+  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)). They are read from
+  the access token's `realm_access.roles` claim: an identity provider other than the bundled
+  Keycloak must issue `operator`, `supervisor`, `technician` or `viewer` there, or every request
+  gets **403**. The map is
   `ROLE_PERMISSIONS` in `@occ/contracts`, and `ROLE_CATEGORY_SCOPE` limits acknowledge and
   resolve to the incident categories a role handles
   ([ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)):

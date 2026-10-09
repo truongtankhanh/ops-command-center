@@ -20,6 +20,10 @@
         "description": "Same rights as operator for now; supervisor-only actions are not defined yet"
       },
       {
+        "name": "technician",
+        "description": "Reports any incident; acknowledges and resolves Facilities and Environment incidents"
+      },
+      {
         "name": "viewer",
         "description": "Read-only: sees incidents, zones, cameras and live updates"
       }
@@ -78,6 +82,16 @@
       "lastName": "Supervisor",
       "credentials": [{ "type": "password", "value": "supervisor", "temporary": false }],
       "realmRoles": ["supervisor"]
+    },
+    {
+      "username": "technician",
+      "enabled": true,
+      "email": "technician@occ.example",
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Technician",
+      "credentials": [{ "type": "password", "value": "technician", "temporary": false }],
+      "realmRoles": ["technician"]
     },
     {
       "username": "viewer",
