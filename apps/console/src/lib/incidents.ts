@@ -1,5 +1,6 @@
 import {
   type Incident,
+  type IncidentCategory,
   type IncidentEventKind,
   type IncidentSeverity,
   type IncidentStatus,
@@ -256,12 +257,42 @@ const TYPE_LABELS: Record<Incident['type'], string> = {
   intrusion: 'Intrusion',
   fire_alarm: 'Fire alarm',
   equipment_fault: 'Equipment fault',
-  medical: 'Medical',
+  // Not "Medical": that is its category's label, and the sheet shows both chips side by side.
+  medical: 'Medical emergency',
   crowding: 'Crowding',
   suspicious_object: 'Suspicious object',
+  theft: 'Theft',
+  vandalism: 'Vandalism',
+  suspicious_person: 'Suspicious person',
+  assault: 'Assault',
+  fire: 'Fire',
+  gas_leak: 'Gas leak',
+  hazmat_spill: 'Hazmat spill',
+  injury: 'Injury',
+  power_outage: 'Power outage',
+  water_leak: 'Water leak',
+  lift_entrapment: 'Lift entrapment',
+  hvac_fault: 'HVAC fault',
+  network_outage: 'Network outage',
+  severe_weather: 'Severe weather',
+  flooding: 'Flooding',
+  fallen_tree: 'Fallen tree',
+  traffic_accident: 'Traffic accident',
+  blocked_access: 'Blocked access',
 };
 
 export const typeLabel = (type: Incident['type']) => TYPE_LABELS[type];
+
+const CATEGORY_LABELS: Record<IncidentCategory, string> = {
+  security: 'Security',
+  fire_safety: 'Fire & safety',
+  medical: 'Medical',
+  facilities: 'Facilities',
+  environment: 'Environment',
+  traffic: 'Traffic',
+};
+
+export const categoryLabel = (category: IncidentCategory) => CATEGORY_LABELS[category];
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
   open: 'Open',

@@ -3,6 +3,7 @@ import { type Role, ROLES } from '@occ/contracts';
 const ROLE_LABELS: Record<Role, string> = {
   operator: 'Operator',
   supervisor: 'Supervisor',
+  technician: 'Technician',
   viewer: 'Viewer',
 };
 

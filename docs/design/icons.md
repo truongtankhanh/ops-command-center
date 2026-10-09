@@ -18,16 +18,22 @@ local `Glyph` type, so replacing the set means rewriting that one file.
 Every domain map is a `Record` over its union, so adding a value to `@occ/contracts` (or to the store's
 `ConnectionState`) fails `typecheck` until it has a glyph.
 
-| Accessor           | Value                                                                                         | Glyph                                                                                    |
-| ------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `severityIcon`     | `critical` / `high` / `medium` / `low`                                                        | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                |
-| `incidentTypeIcon` | `intrusion` / `fire_alarm` / `equipment_fault` / `medical` / `crowding` / `suspicious_object` | `DoorOpen` / `Flame` / `Wrench` / `HeartPulse` / `Users` / `Package`                     |
-| `statusIcon`       | `open` / `acknowledged` / `resolved`                                                          | `CircleDot` / `UserCheck` / `CircleCheck`                                                |
-| `eventKindIcon`    | `reported` / `acknowledged` / `resolved`                                                      | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)            |
-| `zoneKindIcon`     | `building` / `parking` / `gate` / `outdoor`                                                   | `Building2` / `SquareParking` / `Fence` / `Trees`                                        |
-| `actorKindIcon`    | `user` / `system`                                                                             | `User` / `Cpu`                                                                           |
-| `connectionIcon`   | `live` / `connecting` / `reconnecting` / `offline`                                            | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only) |
-| `cameraIcon`       | `online: true` / `false`                                                                      | `Video` / `VideoOff`                                                                     |
+| Accessor                         | Value                                                                                                    | Glyph                                                                                                           |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `severityIcon`                   | `critical` / `high` / `medium` / `low`                                                                   | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                                       |
+| `incidentTypeIcon` (security)    | `intrusion` / `crowding` / `suspicious_object` / `theft` / `vandalism` / `suspicious_person` / `assault` | `DoorOpen` / `Users` / `Package` / `HandGrab` / `SprayCan` / `UserRoundSearch` / `HandFist`                     |
+| `incidentTypeIcon` (fire_safety) | `fire_alarm` / `fire` / `gas_leak` / `hazmat_spill`                                                      | `Flame` / `FlameKindling` / `Cylinder` / `Biohazard`                                                            |
+| `incidentTypeIcon` (medical)     | `medical` / `injury`                                                                                     | `HeartPulse` / `Cross`                                                                                          |
+| `incidentTypeIcon` (facilities)  | `equipment_fault` / `power_outage` / `water_leak` / `lift_entrapment` / `hvac_fault` / `network_outage`  | `Wrench` / `Zap` / `Droplet` / `ArrowUpDown` / `Fan` / `ServerOff`                                              |
+| `incidentTypeIcon` (environment) | `severe_weather` / `flooding` / `fallen_tree`                                                            | `Tornado` / `WavesArrowUp` / `TreeDeciduous`                                                                    |
+| `incidentTypeIcon` (traffic)     | `traffic_accident` / `blocked_access`                                                                    | `CarFront` / `Ban`                                                                                              |
+| `categoryIcon`                   | `security` / `fire_safety` / `medical` / `facilities` / `environment` / `traffic`                        | `ShieldUser` / `FireExtinguisher` / `Stethoscope` / `HardHat` / `CloudLightning` / `Car` (never a type's glyph) |
+| `statusIcon`                     | `open` / `acknowledged` / `resolved`                                                                     | `CircleDot` / `UserCheck` / `CircleCheck`                                                                       |
+| `eventKindIcon`                  | `reported` / `acknowledged` / `resolved`                                                                 | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)                                   |
+| `zoneKindIcon`                   | `building` / `parking` / `gate` / `outdoor` / `sports` / `utility` / `water`                             | `Building2` / `SquareParking` / `Fence` / `Trees` / `Volleyball` / `UtilityPole` / `WavesHorizontal`            |
+| `actorKindIcon`                  | `user` / `system`                                                                                        | `User` / `Cpu`                                                                                                  |
+| `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                       | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                        |
+| `cameraIcon`                     | `online: true` / `false`                                                                                 | `Video` / `VideoOff`                                                                                            |
 
 Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
 `ChevronDown`, `LogOut`, for the map controls (frame 01) `Minus` (zoom out) and `Scan` (fit campus, the frame's
@@ -49,7 +55,7 @@ twin tickets to wire: `Activity`, `Pause`, `Fan`, `Thermometer` and `Zap` for as
 Standby, Fan speed, the temperatures, Mains supply), `RotateCcw` / `RotateCw` and `House` for the 3D view's Rotate
 left / Rotate right and Reset view, `MapIcon` for the 2D view (Lucide's alias of `Map`, so it does not shadow the
 global `Map`), and `Box` for an asset drawn without a 3D model (frame 15). `Zap` and `Fan` are also the glyphs of
-`power_outage` and `hvac_fault` ([below](#v2-values-decided-in-v2-022-wired-in-v2-031)) with the same meaning —
+`power_outage` and `hvac_fault` ([below](#v2-values-frame-deviations-and-choices-v2-022)) with the same meaning —
 electric supply, air handling — as `connecting` and `reconnecting` share theirs. The frames give `Activity` (Running,
 Vibration, the Telemetry source), `Pause` (Standby, Telemetry paused) and `Box` (no model, isolated, see-through) more
 than one meaning; that is settled when they are wired, not here.
@@ -59,23 +65,12 @@ principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in 
 label is the map's cluster badge (10 px, below), where `medium` / `low` are told apart by the inner mark and the
 severity colour; the cluster's tooltip names the severity and the feed lists every incident.
 
-### V2 values (decided in V2-02.2, wired in V2-03.1)
+### V2 values: frame deviations and choices (V2-02.2)
 
-[ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md) adds 18 incident types, six categories
-and three zone kinds. Their glyphs are decided here; V2-03.1 adds the values to `@occ/contracts` (the `Record`s then
-force each glyph), adds the `categoryIcon` accessor, and moves these rows into the table above. The six existing types
-and the four existing zone kinds keep their glyphs.
-
-| Accessor                         | Value                                                                               | Glyph                                                                                    |
-| -------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `incidentTypeIcon` (security)    | `theft` / `vandalism` / `suspicious_person` / `assault`                             | `HandGrab` / `SprayCan` / `UserRoundSearch` / `HandFist`                                 |
-| `incidentTypeIcon` (fire_safety) | `fire` / `gas_leak` / `hazmat_spill`                                                | `FlameKindling` / `Cylinder` / `Biohazard`                                               |
-| `incidentTypeIcon` (medical)     | `injury`                                                                            | `Cross`                                                                                  |
-| `incidentTypeIcon` (facilities)  | `power_outage` / `water_leak` / `lift_entrapment` / `hvac_fault` / `network_outage` | `Zap` / `Droplet` / `ArrowUpDown` / `Fan` / `ServerOff`                                  |
-| `incidentTypeIcon` (environment) | `severe_weather` / `flooding` / `fallen_tree`                                       | `Tornado` / `WavesArrowUp` / `TreeDeciduous`                                             |
-| `incidentTypeIcon` (traffic)     | `traffic_accident` / `blocked_access`                                               | `CarFront` / `Ban`                                                                       |
-| `categoryIcon`                   | `security` / `fire_safety` / `medical` / `facilities` / `environment` / `traffic`   | `ShieldUser` / `FireExtinguisher` / `Stethoscope` / `HardHat` / `CloudLightning` / `Car` |
-| `zoneKindIcon`                   | `sports` / `utility` / `water`                                                      | `Volleyball` / `UtilityPole` / `WavesHorizontal`                                         |
+[ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md) added 18 incident types, six categories
+and three zone kinds. Their glyphs were decided in V2-02.2 and wired in V2-03.1, which added the values to
+`@occ/contracts`, the `categoryIcon` accessor and the rows of the table above. The six V1 types and the four V1 zone
+kinds kept their glyphs. This section keeps the reasons.
 
 Where the frames differ (they are listed in the brief's
 [Frames to revise after Phase 0](v2/brief.md#frames-to-revise-after-phase-0)):
@@ -154,8 +149,8 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
    `symbol` layer orders overlapping markers with `symbol-sort-key`, and the glyph keeps its exact colour at 12–14 px.
    The SDF route planned here before UI-08 (a `circle` layer for the disc plus recoloured glyphs) was dropped: across
    two layers, a lower marker's glyph is drawn over a higher marker's disc where they overlap.
-2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (48), `incident-resolved-{type}` (6),
-   `camera-online` / `camera-offline`, `cluster-severity-{severity}` (4, UI-16) — 60 images. The cluster badge is a
+2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (192), `incident-resolved-{type}` (24),
+   `camera-online` / `camera-offline`, `cluster-severity-{severity}` (4, UI-16) — 222 images. The cluster badge is a
    16 px box: a severity disc (r 7, 1.5 px ground edge) with the severity glyph at 10 px in `--on-accent`, drawn on
    the cluster's ring at its top-right by its own `symbol` layer, so a cluster's highest severity is not told by the
    ring colour alone (WCAG 1.4.1). Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam`): open =

@@ -1,5 +1,6 @@
 import {
   ACTOR_KINDS,
+  INCIDENT_CATEGORIES,
   INCIDENT_EVENT_KINDS,
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
@@ -9,6 +10,7 @@ import {
 import {
   actorKindIcon,
   cameraIcon,
+  categoryIcon,
   connectionIcon,
   eventKindIcon,
   incidentTypeIcon,
@@ -23,6 +25,7 @@ describe('icon maps', () => {
   it.each([
     ['severity', INCIDENT_SEVERITIES.map(severityIcon)],
     ['incident type', INCIDENT_TYPES.map(incidentTypeIcon)],
+    ['category', INCIDENT_CATEGORIES.map(categoryIcon)],
     ['status', INCIDENT_STATUSES.map(statusIcon)],
     ['event kind', INCIDENT_EVENT_KINDS.map(eventKindIcon)],
     ['zone kind', ZONE_KINDS.map(zoneKindIcon)],

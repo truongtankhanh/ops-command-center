@@ -7,6 +7,8 @@ describe('rolesLabel', () => {
     // Contract order, not the token's order.
     [['viewer', 'operator'], 'Operator · Viewer'],
     [['supervisor', 'operator', 'viewer'], 'Operator · Supervisor · Viewer'],
+    [['technician', 'operator'], 'Operator · Technician'],
+    [['viewer', 'technician'], 'Technician · Viewer'],
     [['operator', 'operator'], 'Operator'],
     [[], ''],
   ])('labels %j as "%s"', (roles, expected) => {

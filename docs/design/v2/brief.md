@@ -420,7 +420,7 @@ categories.
 Phase 0 (V2-00, 2026-10-09) kept every decision as drawn except the ones below. These frames were revised on the
 canvas and in [mockups/](mockups/) together on 2026-10-09 (V2-00.12); where a frame and this brief, an ADR or
 [asset-classes.md](asset-classes.md) still disagree, the written decision wins. The rows decided in V2-02.2 (glyphs)
-came later and are not redrawn yet; until they are, [icons.md](../icons.md#v2-values-decided-in-v2-022-wired-in-v2-031)
+came later and are not redrawn yet; until they are, [icons.md](../icons.md#v2-values-frame-deviations-and-choices-v2-022)
 is the source.
 
 | Frame                                | Change                                                                                                                                                                | Decision                         |

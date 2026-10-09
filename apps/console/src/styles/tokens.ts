@@ -5,6 +5,11 @@ const zoneFill: Record<Zone['kind'], string> = {
   parking: '#182d3b',
   gate: '#1d3a3b',
   outdoor: '#15302a',
+  // No frame draws a sports zone (V2-03.1): an olive no other fill uses, in the same lightness band.
+  sports: '#24361e',
+  // `utility` and `water` as twin.css draws them (`.tw-zone[data-kind]`).
+  utility: '#1a282e',
+  water: '#112833',
 };
 
 /**
