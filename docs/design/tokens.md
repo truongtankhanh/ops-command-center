@@ -65,6 +65,40 @@ From the brief's surface rules:
   over `--scrim`), `--z-session`. The session-expired banner stays above a dialog, so signing in again is always
   reachable.
 
+## Digital twin (V2)
+
+The 3D scene's tokens, from the V2 brief's [New tokens](v2/brief.md#new-tokens) and frame 00 (`v2/mockups/twin.css`).
+Added in V2-02.1, before any component uses them. WebGL cannot read custom properties either: the scene's copy goes
+in `tokens.ts` with its first consumer, checked for drift like `mapColors`.
+
+| Token                                          | Value                                                        | Use                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
+| `--tw-top` / `-south` / `-east`                | `#2a4658` / `#1f3748` / `#172b3a`                            | Part material, idle: three faces lit from the north-west |
+| `--tw-edge`, `--tw-blade`                      | `#3e5a6e`, `#4d6a80`                                         | Part outline; fan blades                                 |
+| `--tw-ground`, `--tw-grid`, `--tw-road`        | `#0f1d27`, `#14242f`, `#182a36`                              | Campus ground, its grid, roads                           |
+| `--tw-steel-top` / `-south` / `-east`          | `#435766` / `#334553` / `#273745`                            | Motors, pumps, pipes, valves, cabinets                   |
+| `--tw-concrete-top` / `-south` / `-east`       | `#363c41` / `#2b3034` / `#22262a`                            | Basins, plinths, skids                                   |
+| `--tw-rail`                                    | `#8199aa`                                                    | Handrails, ladders, fan guard mesh                       |
+| `--tw-hover-top` / `-south` / `-east`          | 30 % `--accent` into the material                            | Hover and selection; the edge is `--accent`              |
+| `--tw-alarm-mix`, `--tw-alarm-top` / … `-east` | 35 %; `--tw-alarm-mix` of `--sev-critical` into the material | A part with an open incident it raised; edge in severity |
+| `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                        |
+| `--tw-stale-edge`                              | `#4a555c`, dashed                                            | No recent data: the edge                                 |
+| `--tw-ghost-opacity`                           | `0.18`                                                       | The rest of the campus while one asset is isolated       |
+| `--heat-0` … `--heat-5`                        | `#1f2a4d` → `#b3bdff`                                        | Telemetry overlay: sequential, the accent's hue          |
+
+- **Alarm per severity.** Only the critical faces are tokens (frame 00's reference). The scene mixes
+  `--tw-alarm-mix` of the incident's severity into the material itself, rather than 12 more tokens here.
+- **Edges.** A hovered, selected or alarmed part's edge is held to 3:1 on `--tw-top` (an idle neighbour) and on
+  `--tw-ground`. On the part's own hover or alarm face it falls below 3:1 (it only draws the shape there), so those
+  pairs are reported only.
+- **Stale is dim on purpose.** `--tw-stale-edge` stays below 3:1: stale is carried by the dash, the stopped motion and
+  the age on every value (V2 brief § Principles 3), not by a brighter outline that would outshine live parts.
+- **Heat ramp.** Lightness carries the value; the legend and the Assets tab carry the number (V2 brief § Principles
+  1 and 2). Its ends on the ground are reported only.
+- **Not tokens yet.** twin.css's other literals (zone fills for the V2 zone kinds, details, louvres, ribs, seams, the
+  blade hover, the see-through shell) land with the task that needs them: the zone fills with the zone kinds
+  (V2-03.1), the rest with the scene.
+
 ## What may stay a raw value
 
 Component CSS and TSX use tokens for colour, `font-size` / `line-height` / `font-weight`, spacing (padding, margin,
@@ -136,103 +170,122 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 
 ### Checked pairs
 
-| Foreground          | Background                                | Ratio | Minimum | Result                                |
-| ------------------- | ----------------------------------------- | ----- | ------- | ------------------------------------- |
-| `--text-primary`    | `--surface-0`                             | 15.16 | 4.5     | pass                                  |
-| `--text-primary`    | `--surface-1`                             | 13.68 | 4.5     | pass                                  |
-| `--text-primary`    | `--surface-2`                             | 11.96 | 4.5     | pass                                  |
-| `--text-primary`    | `--surface-3`                             | 10.25 | 4.5     | pass                                  |
-| `--text-secondary`  | `--surface-0`                             | 8.80  | 4.5     | pass                                  |
-| `--text-secondary`  | `--surface-1`                             | 7.94  | 4.5     | pass                                  |
-| `--text-secondary`  | `--surface-2`                             | 6.95  | 4.5     | pass                                  |
-| `--text-secondary`  | `--surface-3`                             | 5.95  | 4.5     | pass                                  |
-| `--text-tertiary`   | `--surface-0`                             | 7.06  | 4.5     | pass                                  |
-| `--text-tertiary`   | `--surface-1`                             | 6.37  | 4.5     | pass                                  |
-| `--text-tertiary`   | `--surface-2`                             | 5.57  | 4.5     | pass                                  |
-| `--text-tertiary`   | `--surface-3`                             | 4.77  | 4.5     | pass                                  |
-| `--status-resolved` | `--surface-0`                             | 8.24  | 4.5     | pass                                  |
-| `--status-resolved` | `--surface-1`                             | 7.44  | 4.5     | pass                                  |
-| `--status-resolved` | `--surface-2`                             | 6.50  | 4.5     | pass                                  |
-| `--status-resolved` | `--surface-3`                             | 5.57  | 4.5     | pass                                  |
-| `--accent`          | `--surface-0`                             | 7.06  | 4.5     | pass                                  |
-| `--accent`          | `--surface-1`                             | 6.37  | 4.5     | pass                                  |
-| `--accent`          | `--surface-2`                             | 5.57  | 4.5     | pass                                  |
-| `--accent`          | `--surface-3`                             | 4.77  | 4.5     | pass                                  |
-| `--on-accent`       | `--accent`                                | 7.06  | 4.5     | pass                                  |
-| `--sev-critical`    | `--surface-0`                             | 5.84  | 4.5     | pass                                  |
-| `--sev-critical`    | `--surface-1`                             | 5.27  | 4.5     | pass                                  |
-| `--sev-critical`    | `--surface-2`                             | 4.61  | 4.5     | pass                                  |
-| `--sev-high`        | `--surface-0`                             | 8.81  | 4.5     | pass                                  |
-| `--sev-high`        | `--surface-1`                             | 7.95  | 4.5     | pass                                  |
-| `--sev-high`        | `--surface-2`                             | 6.95  | 4.5     | pass                                  |
-| `--sev-medium`      | `--surface-0`                             | 11.90 | 4.5     | pass                                  |
-| `--sev-medium`      | `--surface-1`                             | 10.74 | 4.5     | pass                                  |
-| `--sev-medium`      | `--surface-2`                             | 9.39  | 4.5     | pass                                  |
-| `--sev-low`         | `--surface-0`                             | 8.91  | 4.5     | pass                                  |
-| `--sev-low`         | `--surface-1`                             | 8.04  | 4.5     | pass                                  |
-| `--sev-low`         | `--surface-2`                             | 7.03  | 4.5     | pass                                  |
-| `--sev-critical`    | `--surface-3`                             | 3.95  | 4.5     | reported only: icon only on surface-3 |
-| `--success`         | `--surface-1`                             | 8.37  | 4.5     | pass                                  |
-| `--success`         | `--surface-2`                             | 7.32  | 4.5     | pass                                  |
-| `--success`         | `--surface-3`                             | 6.27  | 4.5     | pass                                  |
-| `--warning`         | `--surface-1`                             | 9.06  | 4.5     | pass                                  |
-| `--warning`         | `--surface-2`                             | 7.92  | 4.5     | pass                                  |
-| `--warning`         | `--surface-3`                             | 6.79  | 4.5     | pass                                  |
-| `--danger`          | `--surface-1`                             | 6.69  | 4.5     | pass                                  |
-| `--danger`          | `--surface-2`                             | 5.85  | 4.5     | pass                                  |
-| `--danger`          | `--surface-3`                             | 5.01  | 4.5     | pass                                  |
-| `--border-strong`   | `--surface-0`                             | 3.67  | 3       | pass                                  |
-| `--border-strong`   | `--surface-1`                             | 3.31  | 3       | pass                                  |
-| `--text-primary`    | `--camera-ground`                         | 16.27 | 4.5     | pass                                  |
-| `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                  |
-| `--success`         | `--camera-ground`                         | 9.96  | 3       | pass                                  |
-| `--text-primary`    | `--camera-off-a`                          | 15.69 | 4.5     | pass                                  |
-| `--text-primary`    | `--camera-off-b`                          | 15.17 | 4.5     | pass                                  |
-| `--text-secondary`  | `--camera-off-a`                          | 9.11  | 4.5     | pass                                  |
-| `--text-secondary`  | `--camera-off-b`                          | 8.81  | 4.5     | pass                                  |
-| `map zone outline`  | `map ground`                              | 3.57  | 3       | pass                                  |
-| `--text-secondary`  | `map ground`                              | 8.80  | 4.5     | pass                                  |
-| `map zone outline`  | `map boundary`                            | 3.40  | 3       | pass                                  |
-| `--text-secondary`  | `map boundary`                            | 8.39  | 4.5     | pass                                  |
-| `--accent`          | `map boundary`                            | 6.73  | 3       | pass                                  |
-| `--accent`          | `map zone building`                       | 5.01  | 3       | pass                                  |
-| `--accent`          | `map zone parking`                        | 5.58  | 3       | pass                                  |
-| `--accent`          | `map zone gate`                           | 4.79  | 3       | pass                                  |
-| `--accent`          | `map zone outdoor`                        | 5.54  | 3       | pass                                  |
-| `--sev-critical`    | `--surface-3`                             | 3.95  | 3       | pass                                  |
-| `--sev-high`        | `--surface-3`                             | 5.96  | 3       | pass                                  |
-| `--sev-medium`      | `--surface-3`                             | 8.05  | 3       | pass                                  |
-| `--sev-low`         | `--surface-3`                             | 6.02  | 3       | pass                                  |
-| `--text-primary`    | `--sev-critical-bg` over `--surface-1`    | 11.48 | 4.5     | pass                                  |
-| `--text-primary`    | `--sev-high-bg` over `--surface-1`        | 10.37 | 4.5     | pass                                  |
-| `--text-primary`    | `--sev-medium-bg` over `--surface-1`      | 9.61  | 4.5     | pass                                  |
-| `--text-primary`    | `--sev-low-bg` over `--surface-1`         | 10.06 | 4.5     | pass                                  |
-| `--sev-critical`    | `--sev-critical-bg` over `--surface-1`    | 4.43  | 3       | pass                                  |
-| `--sev-high`        | `--sev-high-bg` over `--surface-1`        | 6.03  | 3       | pass                                  |
-| `--sev-medium`      | `--sev-medium-bg` over `--surface-1`      | 7.55  | 3       | pass                                  |
-| `--sev-low`         | `--sev-low-bg` over `--surface-1`         | 5.91  | 3       | pass                                  |
-| `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 5.68  | 4.5     | pass                                  |
-| `--text-primary`    | `--sev-critical-hot-bg`                   | 10.99 | 4.5     | pass                                  |
-| `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.24  | 3       | pass                                  |
-| `--text-secondary`  | `--sev-critical-bg` over `--surface-1`    | 6.67  | 4.5     | pass                                  |
-| `--warning`         | `--sev-critical-bg` over `--surface-1`    | 7.60  | 4.5     | pass                                  |
-| `--status-resolved` | `--sev-critical-bg` over `--surface-1`    | 6.25  | 4.5     | pass                                  |
-| `--text-secondary`  | `--sev-high-bg` over `--surface-1`        | 6.02  | 4.5     | pass                                  |
-| `--warning`         | `--sev-high-bg` over `--surface-1`        | 6.87  | 4.5     | pass                                  |
-| `--status-resolved` | `--sev-high-bg` over `--surface-1`        | 5.64  | 4.5     | pass                                  |
-| `--text-secondary`  | `--sev-medium-bg` over `--surface-1`      | 5.58  | 4.5     | pass                                  |
-| `--warning`         | `--sev-medium-bg` over `--surface-1`      | 6.36  | 4.5     | pass                                  |
-| `--status-resolved` | `--sev-medium-bg` over `--surface-1`      | 5.23  | 4.5     | pass                                  |
-| `--text-secondary`  | `--sev-low-bg` over `--surface-1`         | 5.84  | 4.5     | pass                                  |
-| `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                  |
-| `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                  |
-| `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                  |
-| `--on-accent`       | `--sev-critical`                          | 5.84  | 3       | pass                                  |
-| `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                  |
-| `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                  |
-| `--on-accent`       | `--sev-low`                               | 8.91  | 3       | pass                                  |
-| `--warning`         | `--warning-tint` over `--surface-1`       | 7.09  | 3       | pass                                  |
-| `--danger`          | `--danger-tint` over `--surface-1`        | 5.56  | 3       | pass                                  |
+| Foreground          | Background                                | Ratio | Minimum | Result                                                                                     |
+| ------------------- | ----------------------------------------- | ----- | ------- | ------------------------------------------------------------------------------------------ |
+| `--text-primary`    | `--surface-0`                             | 15.16 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-1`                             | 13.68 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-2`                             | 11.96 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-3`                             | 10.25 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-0`                             | 8.80  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-1`                             | 7.94  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-2`                             | 6.95  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-3`                             | 5.95  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-0`                             | 7.06  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-1`                             | 6.37  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-2`                             | 5.57  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-3`                             | 4.77  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-0`                             | 8.24  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-1`                             | 7.44  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-2`                             | 6.50  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-3`                             | 5.57  | 4.5     | pass                                                                                       |
+| `--accent`          | `--surface-0`                             | 7.06  | 4.5     | pass                                                                                       |
+| `--accent`          | `--surface-1`                             | 6.37  | 4.5     | pass                                                                                       |
+| `--accent`          | `--surface-2`                             | 5.57  | 4.5     | pass                                                                                       |
+| `--accent`          | `--surface-3`                             | 4.77  | 4.5     | pass                                                                                       |
+| `--on-accent`       | `--accent`                                | 7.06  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-0`                             | 5.84  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-1`                             | 5.27  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-2`                             | 4.61  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-0`                             | 8.81  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-1`                             | 7.95  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-2`                             | 6.95  | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-0`                             | 11.90 | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-1`                             | 10.74 | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-2`                             | 9.39  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-0`                             | 8.91  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-1`                             | 8.04  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-2`                             | 7.03  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-3`                             | 3.95  | 4.5     | reported only: icon only on surface-3                                                      |
+| `--success`         | `--surface-1`                             | 8.37  | 4.5     | pass                                                                                       |
+| `--success`         | `--surface-2`                             | 7.32  | 4.5     | pass                                                                                       |
+| `--success`         | `--surface-3`                             | 6.27  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-1`                             | 9.06  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-2`                             | 7.92  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-3`                             | 6.79  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-1`                             | 6.69  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-2`                             | 5.85  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-3`                             | 5.01  | 4.5     | pass                                                                                       |
+| `--border-strong`   | `--surface-0`                             | 3.67  | 3       | pass                                                                                       |
+| `--border-strong`   | `--surface-1`                             | 3.31  | 3       | pass                                                                                       |
+| `--text-primary`    | `--camera-ground`                         | 16.27 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                                                                       |
+| `--success`         | `--camera-ground`                         | 9.96  | 3       | pass                                                                                       |
+| `--text-primary`    | `--camera-off-a`                          | 15.69 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--camera-off-b`                          | 15.17 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-off-a`                          | 9.11  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-off-b`                          | 8.81  | 4.5     | pass                                                                                       |
+| `map zone outline`  | `map ground`                              | 3.57  | 3       | pass                                                                                       |
+| `--text-secondary`  | `map ground`                              | 8.80  | 4.5     | pass                                                                                       |
+| `map zone outline`  | `map boundary`                            | 3.40  | 3       | pass                                                                                       |
+| `--text-secondary`  | `map boundary`                            | 8.39  | 4.5     | pass                                                                                       |
+| `--accent`          | `map boundary`                            | 6.73  | 3       | pass                                                                                       |
+| `--accent`          | `map zone building`                       | 5.01  | 3       | pass                                                                                       |
+| `--accent`          | `map zone parking`                        | 5.58  | 3       | pass                                                                                       |
+| `--accent`          | `map zone gate`                           | 4.79  | 3       | pass                                                                                       |
+| `--accent`          | `map zone outdoor`                        | 5.54  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--surface-3`                             | 3.95  | 3       | pass                                                                                       |
+| `--sev-high`        | `--surface-3`                             | 5.96  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--surface-3`                             | 8.05  | 3       | pass                                                                                       |
+| `--sev-low`         | `--surface-3`                             | 6.02  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-bg` over `--surface-1`    | 11.48 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-high-bg` over `--surface-1`        | 10.37 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-medium-bg` over `--surface-1`      | 9.61  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-low-bg` over `--surface-1`         | 10.06 | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--sev-critical-bg` over `--surface-1`    | 4.43  | 3       | pass                                                                                       |
+| `--sev-high`        | `--sev-high-bg` over `--surface-1`        | 6.03  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--sev-medium-bg` over `--surface-1`      | 7.55  | 3       | pass                                                                                       |
+| `--sev-low`         | `--sev-low-bg` over `--surface-1`         | 5.91  | 3       | pass                                                                                       |
+| `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 5.68  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-hot-bg`                   | 10.99 | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.24  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-critical-bg` over `--surface-1`    | 6.67  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-critical-bg` over `--surface-1`    | 7.60  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-critical-bg` over `--surface-1`    | 6.25  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-high-bg` over `--surface-1`        | 6.02  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-high-bg` over `--surface-1`        | 6.87  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-high-bg` over `--surface-1`        | 5.64  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-medium-bg` over `--surface-1`      | 5.58  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-medium-bg` over `--surface-1`      | 6.36  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-medium-bg` over `--surface-1`      | 5.23  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-low-bg` over `--surface-1`         | 5.84  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                                                                       |
+| `--on-accent`       | `--sev-critical`                          | 5.84  | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-low`                               | 8.91  | 3       | pass                                                                                       |
+| `--warning`         | `--warning-tint` over `--surface-1`       | 7.09  | 3       | pass                                                                                       |
+| `--danger`          | `--danger-tint` over `--surface-1`        | 5.56  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-top`                                | 3.90  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-ground`                             | 6.73  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--tw-top`                                | 3.23  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--tw-ground`                             | 5.57  | 3       | pass                                                                                       |
+| `--sev-high`        | `--tw-top`                                | 4.87  | 3       | pass                                                                                       |
+| `--sev-high`        | `--tw-ground`                             | 8.40  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--tw-top`                                | 6.57  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--tw-ground`                             | 11.34 | 3       | pass                                                                                       |
+| `--sev-low`         | `--tw-top`                                | 4.92  | 3       | pass                                                                                       |
+| `--sev-low`         | `--tw-ground`                             | 8.49  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-hover-top`                          | 2.50  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-critical`    | `--tw-alarm-top`                          | 2.32  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-high`        | `--tw-alarm-top`                          | 3.50  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-medium`      | `--tw-alarm-top`                          | 4.73  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-low`         | `--tw-alarm-top`                          | 3.54  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--tw-stale-edge`   | `--tw-stale-top`                          | 1.68  | 3       | reported only: dim on purpose; the dash, stopped motion and value ages carry stale         |
+| `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
+| `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
+| `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 
 ### Values copied out of tokens.css
 
