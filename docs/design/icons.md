@@ -44,10 +44,59 @@ keeps one meaning. For the keyboard shortcuts (UI-16) `Keyboard` marks the singl
 menu; the menu's "Keyboard shortcuts" entry uses `Info`, so the two rows do not repeat a glyph. `Rows3` (UI-17) marks
 the account menu's "Compact layout" switch (density).
 
+For the digital twin (V2, [brief](v2/brief.md) § What changes; frames 00, 02–17), re-exported in V2-02.2 for the
+twin tickets to wire: `Activity`, `Pause`, `Fan`, `Thermometer` and `Zap` for asset states and readings (Running,
+Standby, Fan speed, the temperatures, Mains supply), `RotateCcw` / `RotateCw` and `House` for the 3D view's Rotate
+left / Rotate right and Reset view, `MapIcon` for the 2D view (Lucide's alias of `Map`, so it does not shadow the
+global `Map`), and `Box` for an asset drawn without a 3D model (frame 15). `Zap` and `Fan` are also the glyphs of
+`power_outage` and `hvac_fault` ([below](#v2-values-decided-in-v2-022-wired-in-v2-031)) with the same meaning —
+electric supply, air handling — as `connecting` and `reconnecting` share theirs. The frames give `Activity` (Running,
+Vibration, the Telemetry source), `Pause` (Standby, Telemetry paused) and `Box` (no model, isolated, see-through) more
+than one meaning; that is settled when they are wired, not here.
+
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in the DOM. The one place without a
 label is the map's cluster badge (10 px, below), where `medium` / `low` are told apart by the inner mark and the
 severity colour; the cluster's tooltip names the severity and the feed lists every incident.
+
+### V2 values (decided in V2-02.2, wired in V2-03.1)
+
+[ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md) adds 18 incident types, six categories
+and three zone kinds. Their glyphs are decided here; V2-03.1 adds the values to `@occ/contracts` (the `Record`s then
+force each glyph), adds the `categoryIcon` accessor, and moves these rows into the table above. The six existing types
+and the four existing zone kinds keep their glyphs.
+
+| Accessor                         | Value                                                                               | Glyph                                                                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `incidentTypeIcon` (security)    | `theft` / `vandalism` / `suspicious_person` / `assault`                             | `HandGrab` / `SprayCan` / `UserRoundSearch` / `HandFist`                                 |
+| `incidentTypeIcon` (fire_safety) | `fire` / `gas_leak` / `hazmat_spill`                                                | `FlameKindling` / `Cylinder` / `Biohazard`                                               |
+| `incidentTypeIcon` (medical)     | `injury`                                                                            | `Cross`                                                                                  |
+| `incidentTypeIcon` (facilities)  | `power_outage` / `water_leak` / `lift_entrapment` / `hvac_fault` / `network_outage` | `Zap` / `Droplet` / `ArrowUpDown` / `Fan` / `ServerOff`                                  |
+| `incidentTypeIcon` (environment) | `severe_weather` / `flooding` / `fallen_tree`                                       | `Tornado` / `WavesArrowUp` / `TreeDeciduous`                                             |
+| `incidentTypeIcon` (traffic)     | `traffic_accident` / `blocked_access`                                               | `CarFront` / `Ban`                                                                       |
+| `categoryIcon`                   | `security` / `fire_safety` / `medical` / `facilities` / `environment` / `traffic`   | `ShieldUser` / `FireExtinguisher` / `Stethoscope` / `HardHat` / `CloudLightning` / `Car` |
+| `zoneKindIcon`                   | `sports` / `utility` / `water`                                                      | `Volleyball` / `UtilityPole` / `WavesHorizontal`                                         |
+
+Where the frames differ (they are listed in the brief's
+[Frames to revise after Phase 0](v2/brief.md#frames-to-revise-after-phase-0)):
+
+- Frame 09 draws `network_outage` with `WifiOff`, the `offline` connection glyph; `ServerOff` replaces it so that a
+  campus network incident never reads as "this console is offline".
+- Frames 00, 09 and 11 draw the Security category with `Shield`, the "no access" glyph (UI-15); `ShieldUser` replaces
+  it. Frame 11 is the screen where a technician may not act, where a plain shield would read as "no access".
+- Frames 00 and 09 draw Fire & safety, Medical and Facilities with the glyphs of `fire_alarm`, `medical` and
+  `equipment_fault` (`Flame`, `HeartPulse`, `Wrench`); `FireExtinguisher`, `Stethoscope` and `HardHat` replace them.
+  The incident sheet shows the type chip next to the category chip (frame 11), so a shared glyph would show twice. A
+  category glyph is never a type glyph.
+
+No frame draws `theft`, `vandalism`, `suspicious_person`, `assault`, `fire`, `gas_leak`, `hazmat_spill`,
+`severe_weather`, `flooding`, `fallen_tree`, `traffic_accident` or the zone kinds `sports`, `utility`, `water`; their
+glyphs were chosen in V2-02.2 and signed off in its PR. Close neighbours kept apart on purpose: `fire` / `fire_alarm`
+(`FlameKindling` / `Flame`); `severe_weather` / the Environment category (`Tornado` / `CloudLightning`); `flooding` /
+zone kind `water` (`WavesArrowUp`, rising water / `WavesHorizontal`, a body of water); `fallen_tree` / zone kind
+`outdoor` (`TreeDeciduous` / `Trees`); `traffic_accident` / the Traffic category (`CarFront` / `Car`);
+`suspicious_person` / actor `user` (`UserRoundSearch` / `User`). `WavesHorizontal` is the name in `lucide-react`
+1.52.0; `Waves` is only its old alias.
 
 ## Using `Icon`
 
