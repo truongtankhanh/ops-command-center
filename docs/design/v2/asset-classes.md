@@ -4,7 +4,7 @@ Status: **decided** 2026-10-09 (V2-00.5) by the tech lead, confirmed with the op
 lead. The catalogue that [ADR-0018](../../adr/0018-assets-and-telemetry-as-domain-data.md) defines as tables: the
 V2.0 asset classes, and for each class its `telemetry_point` rows and, for modelled classes, the parts bound to them
 ([ADR-0020](../../adr/0020-digital-twin-rendering-and-model-pipeline.md) `extras.bind`). V2-05 seeds these rows;
-V2-13 commissions the models from them. Threshold rules are not here (V2-00.6).
+V2-13 commissions the models from them. The starting threshold rules (V2-00.6) follow the points.
 
 Classes come from the mockups' catalogue. Ranges and intervals are set for typical campus equipment; the readings in
 the mockups are illustrative sample data (brief § Notes), not limits.
@@ -199,6 +199,56 @@ Static part: `Enclosure` (drawn see-through, frame 08). Tank capacity (2,500 L i
 | `indoorTempC` | Temperature | °C     | number | 0–45                          | 60           | 1        |
 | `humidityPct` | Humidity    | %      | number | 0–100                         | 60           | 2        |
 
+## Threshold rules
+
+Decided 2026-10-09 (V2-00.6) by the tech lead, confirmed with the operations lead. Starting `telemetry_rule` rows for
+V2.0, one or more per class or an explicit "no rule in V2.0". V2-07 seeds them as class rules; no asset has an
+override at start. Rules raise only `facilities` or `environment` types
+([ADR-0021](../../adr/0021-incident-categories-zone-uses-and-technician-role.md)).
+
+- **Owner:** operations owns the values, per class, with per-asset overrides. Until an editing API exists, a change
+  is a migration or a reviewed database write (ADR-0018).
+- **Booleans** compare as 1 (true) and 0 (false): "true" is `above 0.5`, "false" is `below 0.5`, and `clear` equals
+  `limit`. Enum points have no rules in V2.0.
+- **Review** every value after the first week of real data; values that are too tight flood the feed.
+
+| Class               | `name`                    | `key`                     | `comparator` | `limit` | `clear` | `for_s` | `severity` | `incident_type`   |
+| ------------------- | ------------------------- | ------------------------- | ------------ | ------- | ------- | ------- | ---------- | ----------------- |
+| `cooling_tower`     | Motor over-temperature    | `motorTempC`              | above        | 85      | 80      | 60      | critical   | `equipment_fault` |
+| `cooling_tower`     | High vibration            | `vibrationMms`            | above        | 7.1     | 5.0     | 120     | high       | `equipment_fault` |
+| `cooling_tower`     | Motor overcurrent         | `motorCurrentA`           | above        | 24      | 22      | 60      | high       | `equipment_fault` |
+| `standby_generator` | Low fuel                  | `fuelLevelPct`            | below        | 25      | 30      | 300     | high       | `equipment_fault` |
+| `standby_generator` | Low starter battery       | `starterBatteryV`         | below        | 24.0    | 25.0    | 300     | high       | `equipment_fault` |
+| `standby_generator` | Coolant too cold to start | `coolantTempC`            | below        | 30      | 35      | 600     | medium     | `equipment_fault` |
+| `ups`               | UPS overload              | `loadPct`                 | above        | 90      | 80      | 300     | high       | `equipment_fault` |
+| `ups`               | Low battery autonomy      | `autonomyMin`             | below        | 10      | 15      | 30      | critical   | `equipment_fault` |
+| `ups_battery`       | Battery room too warm     | `roomTempC`               | above        | 30      | 27      | 600     | medium     | `hvac_fault`      |
+| `precision_cooling` | High supply air           | `supplyAirTempC`          | above        | 27      | 25      | 300     | high       | `hvac_fault`      |
+| `transformer`       | Transformer overload      | `loadPct`                 | above        | 100     | 90      | 600     | high       | `equipment_fault` |
+| `transformer`       | Winding over-temperature  | `windingTempC`            | above        | 120     | 110     | 300     | high       | `equipment_fault` |
+| `switchgear`        | Bus undervoltage          | `busVoltageKv`            | below        | 19.8    | 20.9    | 10      | critical   | `power_outage`    |
+| `chiller`           | High chilled water supply | `chilledWaterSupplyTempC` | above        | 10      | 8       | 600     | high       | `hvac_fault`      |
+| `air_handler`       | Zone too warm             | `indoorTempC`             | above        | 27      | 25      | 900     | medium     | `hvac_fault`      |
+| `booster_pump`      | Low discharge pressure    | `dischargePressureBar`    | below        | 2.0     | 2.5     | 120     | medium     | `equipment_fault` |
+| `lift`              | Lift out of service       | `inService`               | below        | 0.5     | 0.5     | 300     | medium     | `equipment_fault` |
+| `barrier_arm`       | Barrier fault             | `faultActive`             | above        | 0.5     | 0.5     | 30      | low        | `equipment_fault` |
+| `fume_hood`         | Low face velocity         | `faceVelocityMs`          | below        | 0.4     | 0.45    | 60      | high       | `hvac_fault`      |
+| `gas_detector`      | Gas detector fault        | `sensorFault`             | above        | 0.5     | 0.5     | 60      | medium     | `equipment_fault` |
+| `leak_sensor`       | Water leak                | `leakDetected`            | above        | 0.5     | 0.5     | 10      | medium     | `water_leak`      |
+| `leak_sensor`       | Leak sensor battery low   | `batteryPct`              | below        | 20      | 25      | 3600    | low        | `equipment_fault` |
+| `indoor_climate`    | No rule in V2.0           |                           |              |         |         |         |            |                   |
+
+- The cooling tower's motor rule is the one drawn in frames 04 and 10; the generator's fuel and battery limits and
+  the leak sensor's battery limit are the ones its inspector shows (frames 08, 15).
+- **One detector per outage.** Only the switchgear raises `power_outage` (22 kV nominal, alarm at −10 %, clear at
+  −5 %). The generator and UPS see the same outage; rules on them would open two more incidents for one event.
+- **Lift entrapment** has no rule: the points cannot tell a stuck car with people inside from a car out of service.
+  Entrapments stay reported by people or the lift's own alarm.
+- **Gas concentration** has no rule: a gas alarm is a `gas_leak`, in the `fire_safety` category, which telemetry
+  rules may not raise (ADR-0021). The gas detection panel keeps its own alarm path; only the detector's fault is
+  watched here. See open question 4.
+- **Indoor climate** feeds the heat overlay only; comfort alerts would flood the feed.
+
 ## Open questions
 
 1. **Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that
@@ -208,3 +258,6 @@ Static part: `Enclosure` (drawn see-through, frame 08). Tank capacity (2,500 L i
    gases, the class needs one key per gas. Confirm with the lab safety lead before V2-05.
 3. **Switch motion.** The brief's model tree draws `Switch` as "flip X ±35°", but ADR-0020's motions are `spin`,
    `turn`, `slide` and `tint`. This list uses `turn` over [-35, 35]; V2-00.10 aligns the brief.
+4. **Telemetry and fire safety.** A gas detector over its limit is a fire-safety event, handled by operators, but
+   ADR-0021 lets telemetry rules raise only `facilities` and `environment` types. Allowing `gas_leak` for telemetry
+   would change ADR-0021; decide in V2-00.8. Until then, gas concentration raises no incident from the console.

@@ -154,7 +154,10 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
   the tech lead, confirmed with the operations lead and the facilities lead: 16 classes with their `telemetry_point`
   rows, `footprint_m` and bound parts, in [asset-classes.md](../design/v2/asset-classes.md). Two are modelled
   (`cooling_tower`, `standby_generator`); the others have `model_key` null.
-- Who owns threshold values: operations per class, with per-asset overrides, is assumed here (brief, open question 7).
+- ~~Who owns threshold values: operations per class, with per-asset overrides, is assumed here (brief, open question
+  7).~~ Decided 2026-10-09 by the tech lead, confirmed with the operations lead: operations owns them, per class with
+  per-asset overrides, changed by migration or reviewed database write. The 22 starting rules are in
+  [asset-classes.md § Threshold rules](../design/v2/asset-classes.md#threshold-rules).
 - ~~Confirm the twin stays read-only (brief, open question 5).~~ Decided 2026-10-09 by the tech lead, confirmed with
   the operations lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and
   ADR-0019's broker ACL ("may publish nothing") is unchanged.

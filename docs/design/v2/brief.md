@@ -448,8 +448,11 @@ brief, the ADR wins.
 6. ~~**Video wall (UI-17).** One WebGL context per wall screen, at pixel ratio 1.0 — or the wall keeps the 2D map?~~
    **Decided 2026-10-08: 3D with a fixed camera** (frame 18, principle 4's exception, ADR-0020). A wall screen whose
    GPU cannot hold the frame budget falls back to the 2D map like any other device.
-7. **Thresholds** that raise incidents: per asset class with per-asset overrides, owned by operations (as V1's
-   attention thresholds were).
+7. ~~**Thresholds** that raise incidents: per asset class with per-asset overrides, owned by operations (as V1's
+   attention thresholds were).~~
+   **Decided 2026-10-09: owned by operations** (tech lead, confirmed with the operations lead), per class with
+   per-asset overrides. The 22 starting rules: [asset-classes.md § Threshold rules](asset-classes.md#threshold-rules),
+   to be reviewed after the first week of real data.
 
 ## Notes
 
