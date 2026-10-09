@@ -1,6 +1,6 @@
 # ADR-0019: Telemetry comes in over MQTT to the API, and goes out to consoles on a `/telemetry` Socket.IO namespace
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md)
 
@@ -160,15 +160,17 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 - **Revisit** shared subscriptions or EMQX if one site outgrows a single Mosquitto, a binary encoding (MessagePack)
   if JSON frames become the bottleneck, and the watch limit of 4 if a wall display needs more.
 
-## Open before acceptance
+## Decided before acceptance
 
-- ~~Confirm the API bridge over the browser connecting to MQTT directly (brief, open question 4).~~ Decided
-  2026-10-09 by the tech lead, confirmed with the security lead: the API bridge, as written in the Decision. No
-  browser connects to the broker, and consoles keep one authentication model (ADR-0010).
-- Which device protocols the first site actually has: MQTT is assumed; Modbus or BACnet would need a gateway that
-  publishes MQTT, outside this repository. **Planning assumption 2026-10-09** (tech lead), pending the facilities
-  lead's site survey (V2-00.4): **a gateway is needed**. Only wireless leak sensors are likely to publish MQTT, and
-  they still need topic mapping; the other classes are expected behind Modbus, BACnet or the BMS. Proposed approach:
-  an MQTT export from the BMS, plus a Modbus/BACnet-to-MQTT gateway for devices outside it (UPS, batteries,
-  generator, switchgear), publishing the topics above. Owner and target date are open. This stays open until the
-  survey confirms it; V2-06's production rollout depends on it, the demo does not.
+- **API bridge, not browser to broker** (brief, open question 4). Decided 2026-10-09 by the tech lead, confirmed
+  with the security lead: the API bridge, as written in the Decision. No browser connects to the broker, and
+  consoles keep one authentication model (ADR-0010).
+- **Device protocols at the first site.** Deferred 2026-10-09 by the tech lead to V2-06's production rollout: the
+  decision above does not depend on it, because any gateway lives outside this repository and publishes the topics
+  above. Planning assumption, pending the facilities lead's site survey (V2-00.4): **a gateway is needed**. Only
+  wireless leak sensors are likely to publish MQTT, and they still need topic mapping; the other classes are expected
+  behind Modbus, BACnet or the BMS. Proposed approach: an MQTT export from the BMS, plus a Modbus/BACnet-to-MQTT
+  gateway for devices outside it (UPS, batteries, generator, switchgear). Owner and target date are open. The demo
+  does not depend on it. If the survey finds a source that cannot publish MQTT even through a gateway, this ADR is
+  amended before V2-06's MQTT source ships.
+- **Reviewed against the code** 2026-10-09 (V2-00.10, PR #32): facts corrected in place; no decision changed.

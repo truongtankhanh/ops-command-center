@@ -1,6 +1,6 @@
 # ADR-0020: The digital twin renders with three.js in a lazy console chunk; models are budgeted, content-hashed static files
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md), [ADR-0019](0019-telemetry-transport.md)
 
@@ -147,19 +147,18 @@ their author, checked in CI, and served by nginx as immutable files.
 - **Revisit** MapLibre with a custom layer if the twin must sit on a real basemap or terrain, and object storage
   for models if several sites share one deployment.
 
-## Open before acceptance
+## Decided before acceptance
 
-- ~~Part-name language: this ADR uses English roles (`FanBlade`, `Switch`), matching every identifier in the
-  codebase; the request's examples were Vietnamese (`CanhQuat`, `CongTac`) (brief, open question 1).~~ Decided
-  2026-10-09 by the tech lead: English roles, as written in the model contract above.
-- ~~3D by default on capable devices, or 2D by default with 3D as a mode (brief, open question 3).~~ Decided
-  2026-10-09 by the tech lead, confirmed with the operations lead: 3D by default on devices that pass the capability
-  check; 2D is the switch and the fallback. The `localStorage` memory of the last choice is unchanged. With 3D as the
-  default, the lazy chunk loads on start for capable devices; the 2D view, the fallback and the sign-in screens still
-  never download it.
-- ~~Video walls: 3D at pixel ratio 1.0, or keep walls on the 2D map (brief, open question 6).~~ Decided: 3D with a
-  fixed camera (see Decision).
-- ~~Who authors the first models (brief, open question 2).~~ Decided 2026-10-09 by the tech lead: an external 3D
-  vendor, with the model contract and budgets above in the purchase scope. Delivery order: `cooling_tower`, then
-  `standby_generator` ([asset-classes.md](../design/v2/asset-classes.md)), both before V2-13 starts. The vendor's
-  name and the calendar date are named when the purchase is placed.
+- **Part-name language** (brief, open question 1). Decided 2026-10-09 by the tech lead: English roles (`FanBlade`,
+  `Switch`), as written in the model contract above; the request's Vietnamese examples (`CanhQuat`, `CongTac`) are
+  not used.
+- **Default view** (brief, open question 3). Decided 2026-10-09 by the tech lead, confirmed with the operations lead:
+  3D by default on devices that pass the capability check; 2D is the switch and the fallback. The `localStorage`
+  memory of the last choice is unchanged. With 3D as the default, the lazy chunk loads on start for capable devices;
+  the 2D view, the fallback and the sign-in screens still never download it.
+- **Video walls** (brief, open question 6). Decided 2026-10-08: 3D with a fixed camera (see Decision).
+- **Model authors** (brief, open question 2). Decided 2026-10-09 by the tech lead: an external 3D vendor, with the
+  model contract and budgets above in the purchase scope. Delivery order: `cooling_tower`, then `standby_generator`
+  ([asset-classes.md](../design/v2/asset-classes.md)), both before V2-13 starts. The vendor's name and the calendar
+  date are named when the purchase is placed.
+- **Reviewed against the code** 2026-10-09 (V2-00.10, PR #32): facts corrected in place; no decision changed.

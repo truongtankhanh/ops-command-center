@@ -415,8 +415,8 @@ Implementation tickets, their order, dependencies and which ticket builds each f
 
 ## Architecture impact
 
-V2 is not a UI-only change. Four proposed ADRs decide the parts outside the console's look; where they refine this
-brief, the ADR wins.
+V2 is not a UI-only change. Four ADRs, accepted 2026-10-09, decide the parts outside the console's look; where they
+refine this brief, the ADR wins.
 
 1. **[ADR-0018](../../adr/0018-assets-and-telemetry-as-domain-data.md) — assets, telemetry points and threshold
    rules as domain data.** Asset classes, assets, points and rules in PostgreSQL; a sustained breach raises a
