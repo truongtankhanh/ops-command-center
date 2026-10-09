@@ -60,18 +60,18 @@ category.
 - **Categories** (`INCIDENT_CATEGORIES`) and their types (`INCIDENT_TYPES`, the six existing ones kept, with their
   ids):
 
-  | Category      | Types                                                                                              |
-  | ------------- | -------------------------------------------------------------------------------------------------- |
-  | `security`    | `intrusion`, `theft`, `vandalism`, `suspicious_object`, `suspicious_person`, `assault`, `crowding` |
-  | `fire_safety` | `fire_alarm`, `fire`, `gas_leak`, `hazmat_spill`                                                   |
-  | `medical`     | `medical` (medical emergency), `injury`                                                            |
-  | `facilities`  | `equipment_fault`, `power_outage`, `water_leak`, `lift_entrapment`, `hvac_fault`, `network_outage` |
-  | `environment` | `severe_weather`, `flooding`, `fallen_tree`                                                        |
-  | `traffic`     | `traffic_accident`, `blocked_access`                                                               |
+  | Category      | Types (default severity)                                                                                                                                |
+  | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `security`    | `intrusion` (high), `theft` (medium), `vandalism` (low), `suspicious_object` (medium), `suspicious_person` (medium), `assault` (high), `crowding` (low) |
+  | `fire_safety` | `fire_alarm` (high), `fire` (critical), `gas_leak` (critical), `hazmat_spill` (high)                                                                    |
+  | `medical`     | `medical` (medical emergency, high), `injury` (medium)                                                                                                  |
+  | `facilities`  | `equipment_fault` (medium), `power_outage` (high), `water_leak` (medium), `lift_entrapment` (high), `hvac_fault` (medium), `network_outage` (medium)    |
+  | `environment` | `severe_weather` (high), `flooding` (high), `fallen_tree` (medium)                                                                                      |
+  | `traffic`     | `traffic_accident` (high), `blocked_access` (low)                                                                                                       |
   - `INCIDENT_TYPE_CATEGORY: Record<IncidentType, IncidentCategory>` and `categoryOf(type)` live in contracts. The
     category is derived, never stored, so it cannot disagree with the type.
-  - `INCIDENT_TYPE_DEFAULT_SEVERITY` suggests a severity in the report form (e.g. `lift_entrapment` → `high`,
-    `fire` → `critical`). The reporter can change it; the API does not enforce it.
+  - `INCIDENT_TYPE_DEFAULT_SEVERITY` suggests a severity in the report form: the value in brackets above. The
+    reporter can change it; the API does not enforce it.
   - Every type keeps its own icon (V1 brief); the category is the first step of the report form, a feed filter and
     the permission scope below.
 
@@ -125,6 +125,12 @@ category.
 
 ## Open before acceptance
 
-- Confirm the type list with the campus's security and facilities leads; the list here follows common campus
-  practice, not a specific site's procedures.
-- Whether `supervisor` gets anything a technician or operator does not (still open since ADR-0011).
+- ~~Confirm the type list with the campus's security and facilities leads; the list here follows common campus
+  practice, not a specific site's procedures.~~ Decided 2026-10-09 by the tech lead, confirmed with the security lead
+  and the facilities lead: the six categories and 24 types above are final, unchanged, with the default severities
+  now in the table. The technician scope (acknowledge and resolve `facilities` and `environment` only) is confirmed.
+  Telemetry rules stay limited to `facilities` and `environment`: a gas detector's alarm stays with the gas detection
+  panel, and telemetry never raises `gas_leak` or any other `fire_safety` type.
+- ~~Whether `supervisor` gets anything a technician or operator does not (still open since ADR-0011).~~ Decided
+  2026-10-09 by the tech lead: no supervisor-only rights in V2. `supervisor` keeps the same rights as `operator`;
+  supervisor-only actions stay a follow-up of ADR-0011.

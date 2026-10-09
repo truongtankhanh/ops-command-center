@@ -246,7 +246,7 @@ override at start. Rules raise only `facilities` or `environment` types
   Entrapments stay reported by people or the lift's own alarm.
 - **Gas concentration** has no rule: a gas alarm is a `gas_leak`, in the `fire_safety` category, which telemetry
   rules may not raise (ADR-0021). The gas detection panel keeps its own alarm path; only the detector's fault is
-  watched here. See open question 4.
+  watched here (open question 4, decided).
 - **Indoor climate** feeds the heat overlay only; comfort alerts would flood the feed.
 
 ## Open questions
@@ -258,6 +258,8 @@ override at start. Rules raise only `facilities` or `environment` types
    gases, the class needs one key per gas. Confirm with the lab safety lead before V2-05.
 3. **Switch motion.** The brief's model tree draws `Switch` as "flip X ±35°", but ADR-0020's motions are `spin`,
    `turn`, `slide` and `tint`. This list uses `turn` over [-35, 35]; V2-00.10 aligns the brief.
-4. **Telemetry and fire safety.** A gas detector over its limit is a fire-safety event, handled by operators, but
+4. ~~**Telemetry and fire safety.** A gas detector over its limit is a fire-safety event, handled by operators, but
    ADR-0021 lets telemetry rules raise only `facilities` and `environment` types. Allowing `gas_leak` for telemetry
-   would change ADR-0021; decide in V2-00.8. Until then, gas concentration raises no incident from the console.
+   would change ADR-0021; decide in V2-00.8. Until then, gas concentration raises no incident from the console.~~
+   **Decided 2026-10-09 (V2-00.8):** no. Gas alarms stay with the gas detection panel; telemetry never raises a
+   `fire_safety` type, so `gas_detector` keeps only its fault rule.
