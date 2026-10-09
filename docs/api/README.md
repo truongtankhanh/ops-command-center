@@ -33,18 +33,24 @@ Last reconciled: 2026-10-06
     body is also invalid.
 - **Roles.** The token's realm roles decide what the caller may do
   ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)). The map is
-  `ROLE_PERMISSIONS` in `@occ/contracts`:
+  `ROLE_PERMISSIONS` in `@occ/contracts`, and `ROLE_CATEGORY_SCOPE` limits acknowledge and
+  resolve to the incident categories a role handles
+  ([ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)):
 
-  | Action                                                 | `viewer` | `operator` | `supervisor` |
-  | ------------------------------------------------------ | :------: | :--------: | :----------: |
-  | Read zones, site plan, cameras, stream URLs, incidents |   yes    |    yes     |     yes      |
-  | Subscribe to `/events`                                 |   yes    |    yes     |     yes      |
-  | Report, acknowledge, resolve (`incident:*`)            |    no    |    yes     |     yes      |
-  - **403** — the token has none of these roles (`No role grants access to this API`), or its roles
-    lack the permission the endpoint needs (`Missing permission: incident:acknowledge`). Signing in
+  | Action                                                    | `viewer` | `operator` | `supervisor` |          `technician`           |
+  | --------------------------------------------------------- | :------: | :--------: | :----------: | :-----------------------------: |
+  | Read zones, site plan, cameras, stream URLs, incidents    |   yes    |    yes     |     yes      |               yes               |
+  | Subscribe to `/events`                                    |   yes    |    yes     |     yes      |               yes               |
+  | Report (`incident:report`)                                |    no    |    yes     |     yes      |               yes               |
+  | Acknowledge, resolve (`incident:acknowledge`, `:resolve`) |    no    |    yes     |     yes      | Facilities and Environment only |
+  - **403** — the token has none of these roles (`No role grants access to this API`), its roles
+    lack the permission the endpoint needs (`Missing permission: incident:acknowledge`), or the
+    incident's category is outside the role's scope (`Not allowed for this category`). Signing in
     again as the same user will not help.
   - Authorization runs after authentication and before validation: a `viewer` sending an invalid
-    body, or an unknown incident id, gets **403**, not **400** or **404**.
+    body, or an unknown incident id, gets **403**, not **400** or **404**. The category is known
+    only once the incident is found, so `Not allowed for this category` comes after **400** and
+    **404**, and before **409** (see [incidents.md](incidents.md#order-of-answers)).
 
 - **Validation.** Bodies and query strings are validated; unknown fields are rejected, not
   ignored. A validation failure returns **400** with every problem listed in `message`.

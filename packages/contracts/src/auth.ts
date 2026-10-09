@@ -14,13 +14,14 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 /**
  * `supervisor` has the same rights as `operator` until supervisor-only actions are defined.
- * `technician` only reports for now: acknowledge and resolve arrive with the API's category check
- * (V2-03.4), so no build grants a right the API does not scope.
+ * `technician` holds every permission, but acknowledges and resolves only within
+ * `ROLE_CATEGORY_SCOPE`: the API checks the incident's category once it has loaded it, so
+ * `hasPermission` alone is not enough for those two (use `hasPermissionFor`).
  */
 export const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = {
   operator: PERMISSIONS,
   supervisor: PERMISSIONS,
-  technician: ['incident:report'],
+  technician: PERMISSIONS,
   viewer: [],
 };
 

@@ -22,8 +22,18 @@ Every timeline entry has an `actor`: who caused it
 
 ¹ `system` marks entries recorded before actors existed.
 
-Reading needs any role; reporting, acknowledging and resolving need `operator` or `supervisor`
-(see [README](README.md)). Every endpoint below answers **403** to a token without a role.
+Reading needs any role. Reporting needs `operator`, `supervisor` or `technician`. Acknowledging
+and resolving need `operator` or `supervisor`, or `technician` for Facilities and Environment
+incidents only (see [README](README.md)). Every endpoint below answers **403** to a token without
+a role.
+
+#### Order of answers
+
+Acknowledge and resolve check, in this order: the token (**401**), the role's permission
+(**403** `Missing permission: …`), the id and body (**400**), that the incident exists (**404**),
+the incident's category against the role's scope (**403** `Not allowed for this category`), and
+the transition itself (**409**). So a `technician` resolving a Security incident that is already
+resolved gets **403**, not **409**.
 
 | Enum       | Values                                  |
 | ---------- | --------------------------------------- |
@@ -151,11 +161,12 @@ both acknowledge it. Broadcasts `incident.updated`.
 
 **200** — `IncidentDetail`
 **401** — missing or invalid bearer token
-**403** — the token has no role, or its role cannot acknowledge (`viewer`)
+**403** — the token has no role, its role cannot acknowledge (`viewer`), or the incident's
+category is outside the role's scope (`technician`; see [Order of answers](#order-of-answers))
 **404** — unknown incident
 **409** — the incident is not `open`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:95`
+Source: `apps/api/src/incidents/incidents.controller.ts:117`
 
 ### Resolve an incident
 
@@ -172,8 +183,9 @@ the entry's actor. Broadcasts `incident.updated`.
 
 **200** — `IncidentDetail`
 **401** — missing or invalid bearer token
-**403** — the token has no role, or its role cannot resolve (`viewer`)
+**403** — the token has no role, its role cannot resolve (`viewer`), or the incident's category
+is outside the role's scope (`technician`; see [Order of answers](#order-of-answers))
 **404** — unknown incident
 **409** — the incident is already `resolved`
 
-Source: `apps/api/src/incidents/incidents.controller.ts:112`
+Source: `apps/api/src/incidents/incidents.controller.ts:136`

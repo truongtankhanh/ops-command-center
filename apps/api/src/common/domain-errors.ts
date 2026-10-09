@@ -22,6 +22,16 @@ export class InvalidTransitionError extends DomainError {
   }
 }
 
+/**
+ * The caller's role holds the permission, but not for this incident's category (ADR-0021): a
+ * technician acknowledging a security incident, for example.
+ */
+export class CategoryOutOfScopeError extends DomainError {
+  constructor() {
+    super('Not allowed for this category');
+  }
+}
+
 /** A reported position must agree with the zone it names, or the map and the zone disagree. */
 export class PositionOutsideZoneError extends DomainError {
   constructor(zoneCode: string) {

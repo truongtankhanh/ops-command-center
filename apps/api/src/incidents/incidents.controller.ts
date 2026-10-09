@@ -33,6 +33,14 @@ import {
 import { IdempotencyKeyHeader, IdempotencyKeyPipe } from './idempotency-key.pipe';
 import { IncidentsService } from './incidents.service';
 
+/**
+ * Replaces the class-level 403 description on acknowledge and resolve only: they are the routes
+ * scoped by category (ADR-0021), and a handler's response overrides the class's for the same status.
+ */
+const SCOPED_FORBIDDEN_DESCRIPTION =
+  "No role grants access, the role lacks the permission, or the incident's category is outside " +
+  "the role's scope";
+
 @ApiTags('incidents')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ type: ApiErrorDto, description: 'Missing or invalid bearer token' })
@@ -114,13 +122,14 @@ export class IncidentsController {
   @ApiOkResponse({ type: IncidentDetailDto })
   @ApiBadRequestResponse({ type: ApiErrorDto, description: 'Malformed id or invalid body' })
   @ApiNotFoundResponse({ type: ApiErrorDto, description: 'Incident does not exist' })
+  @ApiForbiddenResponse({ type: ApiErrorDto, description: SCOPED_FORBIDDEN_DESCRIPTION })
   @ApiConflictResponse({ type: ApiErrorDto, description: 'Incident is not open' })
   acknowledge(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TransitionIncidentDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<IncidentDetail> {
-    return this.incidents.acknowledge(id, userActor(user), body.note);
+    return this.incidents.acknowledge(id, userActor(user), user.roles, body.note);
   }
 
   /** Close an incident, optionally with a resolution note. */
@@ -132,12 +141,13 @@ export class IncidentsController {
   @ApiOkResponse({ type: IncidentDetailDto })
   @ApiBadRequestResponse({ type: ApiErrorDto, description: 'Malformed id or invalid body' })
   @ApiNotFoundResponse({ type: ApiErrorDto, description: 'Incident does not exist' })
+  @ApiForbiddenResponse({ type: ApiErrorDto, description: SCOPED_FORBIDDEN_DESCRIPTION })
   @ApiConflictResponse({ type: ApiErrorDto, description: 'Incident is already resolved' })
   resolve(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: TransitionIncidentDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<IncidentDetail> {
-    return this.incidents.resolve(id, userActor(user), body.note);
+    return this.incidents.resolve(id, userActor(user), user.roles, body.note);
   }
 }

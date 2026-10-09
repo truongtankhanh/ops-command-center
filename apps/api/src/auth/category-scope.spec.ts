@@ -54,12 +54,10 @@ describe('hasPermissionFor', () => {
     },
   );
 
-  // Fail closed until the API checks the category (V2-03.4): the technician holds only
-  // `incident:report` for now. V2-03.4 grants acknowledge and resolve and flips this case to `true`.
   it.each(scopedActions(['facilities', 'environment']))(
-    'does not let a technician %s a %s incident yet, even in its scope',
+    'lets a technician %s a %s incident, in its scope',
     (permission, category) => {
-      expect(hasPermissionFor(['technician'], permission, category)).toBe(false);
+      expect(hasPermissionFor(['technician'], permission, category)).toBe(true);
     },
   );
 
@@ -76,6 +74,9 @@ describe('hasPermissionFor', () => {
   it('is not changed by a role that grants nothing', () => {
     expect(hasPermissionFor(['viewer', 'technician'], 'incident:report', 'security')).toBe(true);
     expect(hasPermissionFor(['viewer', 'technician'], 'incident:acknowledge', 'facilities')).toBe(
+      true,
+    );
+    expect(hasPermissionFor(['viewer', 'technician'], 'incident:acknowledge', 'security')).toBe(
       false,
     );
   });

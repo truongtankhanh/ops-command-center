@@ -1,16 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import {
   type Actor,
+  categoryOf,
+  hasPermissionFor,
   INCIDENT_SEVERITIES,
   type Incident,
   type IncidentDetail,
   IncidentEvents,
   type IncidentSource,
   type ListIncidentsQuery,
+  type Permission,
   type ReportIncidentRequest,
+  type Role,
 } from '@occ/contracts';
 import { DataSource, type EntityManager } from 'typeorm';
-import { EntityNotFoundError, PositionOutsideZoneError } from '../common/domain-errors';
+import {
+  CategoryOutOfScopeError,
+  EntityNotFoundError,
+  PositionOutsideZoneError,
+} from '../common/domain-errors';
 import { isInPolygon } from '../common/geo';
 import { OutboxRelay } from '../outbox/outbox-relay.service';
 import { ZoneEntity } from '../zones/zone.entity';
@@ -28,12 +36,21 @@ import { persistIncident } from './persist-incident';
 const SEVERITY_ORDER = `ARRAY[${INCIDENT_SEVERITIES.map((s) => `'${s}'`).join(',')}]::varchar[]`;
 
 /**
+ * Whose category scope an acknowledge or resolve is checked against (ADR-0021): the signed-in
+ * user's roles, or `'system'` for changes the API makes on its own (`SystemActors`), which are not
+ * scoped. Required, so a new caller cannot skip the check by leaving it out; never `'system'` for a
+ * request.
+ */
+export type TransitionScope = readonly Role[] | 'system';
+
+/**
  * Application service for incidents. Every write runs in one transaction that also records its
  * domain event in the outbox, so an event exists exactly when its change committed. `OutboxRelay`
  * publishes it to listeners (e.g. the WebSocket gateway); this service only nudges it (ADR-0007).
  * Reporting with an idempotency key is safe to retry: the same key returns the first response
  * instead of creating a second incident (ADR-0009). Every write takes the actor to record on the
  * timeline; callers pass the signed-in user or a system actor, never request input (ADR-0011).
+ * Acknowledge and resolve are also scoped by the incident's category (ADR-0021).
  */
 @Injectable()
 export class IncidentsService {
@@ -121,17 +138,33 @@ export class IncidentsService {
     return detail;
   }
 
-  acknowledge(id: string, actor: Actor, note?: string): Promise<IncidentDetail> {
-    return this.transition(id, (incident, at) => incident.acknowledge(at, actor, note ?? null));
+  acknowledge(
+    id: string,
+    actor: Actor,
+    scope: TransitionScope,
+    note?: string,
+  ): Promise<IncidentDetail> {
+    return this.transition(id, 'incident:acknowledge', scope, (incident, at) =>
+      incident.acknowledge(at, actor, note ?? null),
+    );
   }
 
-  resolve(id: string, actor: Actor, note?: string): Promise<IncidentDetail> {
-    return this.transition(id, (incident, at) => incident.resolve(at, actor, note ?? null));
+  resolve(
+    id: string,
+    actor: Actor,
+    scope: TransitionScope,
+    note?: string,
+  ): Promise<IncidentDetail> {
+    return this.transition(id, 'incident:resolve', scope, (incident, at) =>
+      incident.resolve(at, actor, note ?? null),
+    );
   }
 
   /** Loads the incident under a row lock so concurrent operators cannot both transition it. */
   private async transition(
     id: string,
+    permission: Permission,
+    scope: TransitionScope,
     apply: (incident: IncidentEntity, at: Date) => void,
   ): Promise<IncidentDetail> {
     await this.dataSource.transaction(async (manager) => {
@@ -140,6 +173,11 @@ export class IncidentsService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!locked) throw new EntityNotFoundError('Incident', id);
+      // Before `apply`, so an out-of-scope incident answers 403 even when the transition itself
+      // would be a 409. Throwing rolls back: the lock is released and no outbox row is written.
+      if (scope !== 'system' && !hasPermissionFor(scope, permission, categoryOf(locked.type))) {
+        throw new CategoryOutOfScopeError();
+      }
       apply(locked, this.now());
       await persistIncident(manager, locked, IncidentEvents.Updated);
     });

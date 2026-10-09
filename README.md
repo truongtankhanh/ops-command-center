@@ -18,7 +18,7 @@ docker compose up --build
 # API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
-Sign in as `operator`, `supervisor` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). `operator` and `supervisor` may report, acknowledge and resolve incidents; `viewer` is read-only, and every timeline entry shows who made it ([ADR-0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md)).
+Sign in as `operator`, `supervisor` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). `operator` and `supervisor` may report, acknowledge and resolve incidents; `technician` may report anything and acknowledge or resolve Facilities and Environment incidents ([ADR-0021](docs/adr/0021-incident-categories-zone-uses-and-technician-role.md)); `viewer` is read-only, and every timeline entry shows who made it ([ADR-0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md)).
 
 The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
 

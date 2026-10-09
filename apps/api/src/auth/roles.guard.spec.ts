@@ -74,7 +74,7 @@ describe('RolesGuard', () => {
     expect(run).toThrow('No role grants access to this API');
   });
 
-  it.each<Role>(['viewer', 'operator', 'supervisor'])(
+  it.each<Role>(['viewer', 'operator', 'supervisor', 'technician'])(
     'lets a %s read without a permission',
     (role) => {
       expect(guard.canActivate(contextFor(read, { user: userWith(role) }))).toBe(true);
@@ -90,6 +90,18 @@ describe('RolesGuard', () => {
 
   it.each<Role>(['operator', 'supervisor'])('lets a %s take a guarded action', (role) => {
     expect(guard.canActivate(contextFor(acknowledge, { user: userWith(role) }))).toBe(true);
+  });
+
+  // The guard has no incident to read a category from: it checks the permission only, and
+  // `IncidentsService` checks the category once the incident is loaded (ADR-0021).
+  it('lets a technician report, and leaves the category of acknowledge to the service', () => {
+    const { report } = ReportOnlyController.prototype;
+    const user = userWith('technician');
+
+    expect(guard.canActivate(contextFor(report, { user, controller: ReportOnlyController }))).toBe(
+      true,
+    );
+    expect(guard.canActivate(contextFor(acknowledge, { user }))).toBe(true);
   });
 
   it('grants a permission when any one of the roles has it', () => {
