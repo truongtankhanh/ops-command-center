@@ -166,8 +166,8 @@ const disc = (centre: number, radius: number, fill: string, stroke: string, widt
   `<circle cx="${centre}" cy="${centre}" r="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="${width}"/>`;
 
 /**
- * Every form the map can draw: 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras, 4
- * cluster badges.
+ * Every form the map can draw: 4 severities × 2 statuses for each of `INCIDENT_TYPES`, one resolved
+ * form per type, 2 cameras, 4 cluster badges (222 with 24 types).
  */
 function markerForms(): MarkerForm[] {
   return [

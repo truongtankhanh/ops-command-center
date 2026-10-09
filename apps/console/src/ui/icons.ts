@@ -7,15 +7,30 @@
  * the generic UI glyphs at the bottom.
  */
 import {
+  ArrowUpDown,
+  Ban,
+  Biohazard,
   Building2,
+  Car,
+  CarFront,
   CircleAlert,
   CircleCheck,
   CircleDot,
+  CloudLightning,
   Cpu,
+  Cross,
+  Cylinder,
   DoorOpen,
+  Droplet,
+  Fan,
   Fence,
+  FireExtinguisher,
   Flag,
   Flame,
+  FlameKindling,
+  HandFist,
+  HandGrab,
+  HardHat,
   HeartPulse,
   Info,
   type LucideIcon,
@@ -23,19 +38,32 @@ import {
   Package,
   Radio,
   RefreshCw,
+  ServerOff,
+  ShieldUser,
+  SprayCan,
   SquareParking,
+  Stethoscope,
+  Tornado,
+  TreeDeciduous,
   Trees,
   TriangleAlert,
   User,
   UserCheck,
+  UserRoundSearch,
   Users,
+  UtilityPole,
   Video,
   VideoOff,
+  Volleyball,
+  WavesArrowUp,
+  WavesHorizontal,
   WifiOff,
   Wrench,
+  Zap,
 } from 'lucide-react';
 import type {
   ActorKind,
+  IncidentCategory,
   IncidentEventKind,
   IncidentSeverity,
   IncidentStatus,
@@ -59,6 +87,8 @@ const SEVERITY_ICONS: Record<IncidentSeverity, Glyph> = {
 
 export const severityIcon = (severity: IncidentSeverity) => SEVERITY_ICONS[severity];
 
+// `Zap` and `Fan` are also generic twin glyphs (mains supply; fan, fan speed) with the same meaning:
+// electric supply and air handling.
 const INCIDENT_TYPE_ICONS: Record<IncidentType, Glyph> = {
   intrusion: DoorOpen,
   fire_alarm: Flame,
@@ -66,9 +96,39 @@ const INCIDENT_TYPE_ICONS: Record<IncidentType, Glyph> = {
   medical: HeartPulse,
   crowding: Users,
   suspicious_object: Package,
+  theft: HandGrab,
+  vandalism: SprayCan,
+  suspicious_person: UserRoundSearch,
+  assault: HandFist,
+  fire: FlameKindling,
+  gas_leak: Cylinder,
+  hazmat_spill: Biohazard,
+  injury: Cross,
+  power_outage: Zap,
+  water_leak: Droplet,
+  lift_entrapment: ArrowUpDown,
+  hvac_fault: Fan,
+  network_outage: ServerOff,
+  severe_weather: Tornado,
+  flooding: WavesArrowUp,
+  fallen_tree: TreeDeciduous,
+  traffic_accident: CarFront,
+  blocked_access: Ban,
 };
 
 export const incidentTypeIcon = (type: IncidentType) => INCIDENT_TYPE_ICONS[type];
+
+// A category glyph is never a type glyph: the incident sheet shows both chips side by side.
+const CATEGORY_ICONS: Record<IncidentCategory, Glyph> = {
+  security: ShieldUser,
+  fire_safety: FireExtinguisher,
+  medical: Stethoscope,
+  facilities: HardHat,
+  environment: CloudLightning,
+  traffic: Car,
+};
+
+export const categoryIcon = (category: IncidentCategory) => CATEGORY_ICONS[category];
 
 const STATUS_ICONS: Record<IncidentStatus, Glyph> = {
   open: CircleDot,
@@ -92,6 +152,9 @@ const ZONE_KIND_ICONS: Record<ZoneKind, Glyph> = {
   parking: SquareParking,
   gate: Fence,
   outdoor: Trees,
+  sports: Volleyball,
+  utility: UtilityPole,
+  water: WavesHorizontal,
 };
 
 export const zoneKindIcon = (kind: ZoneKind) => ZONE_KIND_ICONS[kind];

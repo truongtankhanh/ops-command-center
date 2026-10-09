@@ -269,7 +269,7 @@ describe('useLiveIncidents', () => {
           key: 'incident-1',
           urgent: true,
           severity: 'critical',
-          kicker: 'New critical · Medical',
+          kicker: 'New critical · Medical emergency',
           title: 'Person down at entrance',
           detail: 'Main Gate · INC-000042 · just now',
           action: expect.objectContaining({ label: 'View incident' }),
@@ -286,7 +286,7 @@ describe('useLiveIncidents', () => {
 
       const assertive = container.querySelector('[aria-live="assertive"]');
       const polite = container.querySelector('[aria-live="polite"]');
-      expect(assertive).toHaveTextContent('New critical · Medical');
+      expect(assertive).toHaveTextContent('New critical · Medical emergency');
       expect(assertive).toHaveTextContent('Person down at entrance');
       expect(polite).toBeEmptyDOMElement();
     });
@@ -298,7 +298,7 @@ describe('useLiveIncidents', () => {
       act(() => socket.fire(IncidentEvents.Created, incident));
 
       expect(toasts()).toEqual([
-        expect.objectContaining({ kicker: 'New high · Medical', severity: 'high' }),
+        expect.objectContaining({ kicker: 'New high · Medical emergency', severity: 'high' }),
       ]);
       expect(toasts()[0]!.urgent).toBeFalsy();
       expect(container.querySelector('[aria-live="polite"]')).toHaveTextContent(

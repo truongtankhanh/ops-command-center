@@ -4,9 +4,49 @@
  * (validation, filters) and narrowed at compile time.
  */
 
-export const ZONE_KINDS = ['building', 'parking', 'gate', 'outdoor'] as const;
+/** How a zone is drawn, not what it is used for (that is `ZoneUse`, ADR-0021). */
+export const ZONE_KINDS = [
+  'building',
+  'parking',
+  'gate',
+  'outdoor',
+  'sports',
+  'utility',
+  'water',
+] as const;
 export type ZoneKind = (typeof ZONE_KINDS)[number];
 
+/** What a `building` zone is used for (ADR-0021). Other kinds have no use. */
+export const ZONE_USES = [
+  'academic',
+  'library',
+  'laboratory',
+  'residential',
+  'dining',
+  'healthcare',
+  'sports_hall',
+  'administration',
+  'data_center',
+  'security_post',
+  'utility_plant',
+] as const;
+export type ZoneUse = (typeof ZONE_USES)[number];
+
+/** Every incident type belongs to exactly one category (`INCIDENT_TYPE_CATEGORY`, ADR-0021). */
+export const INCIDENT_CATEGORIES = [
+  'security',
+  'fire_safety',
+  'medical',
+  'facilities',
+  'environment',
+  'traffic',
+] as const;
+export type IncidentCategory = (typeof INCIDENT_CATEGORIES)[number];
+
+/**
+ * Values are only ever appended, never reordered: the index orders the report form and the map
+ * images. The first six are the V1 types; the rest follow ADR-0021's table, category by category.
+ */
 export const INCIDENT_TYPES = [
   'intrusion',
   'fire_alarm',
@@ -14,12 +54,91 @@ export const INCIDENT_TYPES = [
   'medical',
   'crowding',
   'suspicious_object',
+  'theft',
+  'vandalism',
+  'suspicious_person',
+  'assault',
+  'fire',
+  'gas_leak',
+  'hazmat_spill',
+  'injury',
+  'power_outage',
+  'water_leak',
+  'lift_entrapment',
+  'hvac_fault',
+  'network_outage',
+  'severe_weather',
+  'flooding',
+  'fallen_tree',
+  'traffic_accident',
+  'blocked_access',
 ] as const;
 export type IncidentType = (typeof INCIDENT_TYPES)[number];
 
 /** Ordered from least to most severe — index is used for sorting. */
 export const INCIDENT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
+
+/** Derived from the type and never stored, so the two cannot disagree (ADR-0021). */
+export const INCIDENT_TYPE_CATEGORY: Readonly<Record<IncidentType, IncidentCategory>> = {
+  intrusion: 'security',
+  fire_alarm: 'fire_safety',
+  equipment_fault: 'facilities',
+  medical: 'medical',
+  crowding: 'security',
+  suspicious_object: 'security',
+  theft: 'security',
+  vandalism: 'security',
+  suspicious_person: 'security',
+  assault: 'security',
+  fire: 'fire_safety',
+  gas_leak: 'fire_safety',
+  hazmat_spill: 'fire_safety',
+  injury: 'medical',
+  power_outage: 'facilities',
+  water_leak: 'facilities',
+  lift_entrapment: 'facilities',
+  hvac_fault: 'facilities',
+  network_outage: 'facilities',
+  severe_weather: 'environment',
+  flooding: 'environment',
+  fallen_tree: 'environment',
+  traffic_accident: 'traffic',
+  blocked_access: 'traffic',
+};
+
+export const categoryOf = (type: IncidentType): IncidentCategory => INCIDENT_TYPE_CATEGORY[type];
+
+/**
+ * The severity the report form suggests for each type (ADR-0021's table). The reporter can change
+ * it, and the API does not enforce it.
+ */
+export const INCIDENT_TYPE_DEFAULT_SEVERITY: Readonly<Record<IncidentType, IncidentSeverity>> = {
+  intrusion: 'high',
+  fire_alarm: 'high',
+  equipment_fault: 'medium',
+  medical: 'high',
+  crowding: 'low',
+  suspicious_object: 'medium',
+  theft: 'medium',
+  vandalism: 'low',
+  suspicious_person: 'medium',
+  assault: 'high',
+  fire: 'critical',
+  gas_leak: 'critical',
+  hazmat_spill: 'high',
+  injury: 'medium',
+  power_outage: 'high',
+  water_leak: 'medium',
+  lift_entrapment: 'high',
+  hvac_fault: 'medium',
+  network_outage: 'medium',
+  severe_weather: 'high',
+  flooding: 'high',
+  fallen_tree: 'medium',
+  traffic_accident: 'high',
+  blocked_access: 'low',
+};
 
 export const INCIDENT_STATUSES = ['open', 'acknowledged', 'resolved'] as const;
 export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
@@ -45,6 +164,11 @@ export interface Zone {
   code: string;
   name: string;
   kind: ZoneKind;
+  /**
+   * Buildings only; drives report-form suggestions and restricts nothing. A client reads a missing
+   * `use` as `null`: an API before the `zone.use` column never sends it.
+   */
+  use?: ZoneUse | null;
   /** Closed ring of [lng, lat] points. */
   polygon: LngLat[];
   center: LngLat;

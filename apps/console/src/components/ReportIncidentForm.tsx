@@ -1,6 +1,5 @@
 import {
   INCIDENT_SEVERITIES,
-  INCIDENT_TYPES,
   type IncidentSeverity,
   type IncidentType,
   type LngLat,
@@ -25,7 +24,19 @@ import styles from './ReportIncidentForm.module.css';
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
 const DEFAULT_SEVERITY: IncidentSeverity = 'medium';
-const TYPE_OPTIONS = INCIDENT_TYPES.map((value) => ({
+/**
+ * The six V1 types until V2-03.6 adds the category step: a grid of all 24 is too long to scan, and
+ * an API before V2-03.3 refuses the others.
+ */
+const V1_TYPES: readonly IncidentType[] = [
+  'intrusion',
+  'fire_alarm',
+  'equipment_fault',
+  'medical',
+  'crowding',
+  'suspicious_object',
+];
+const TYPE_OPTIONS = V1_TYPES.map((value) => ({
   value,
   label: typeLabel(value),
   icon: incidentTypeIcon(value),

@@ -237,6 +237,13 @@ export function groundLayers(lat: number): LayerSpecification[] {
           mapColors.zoneFill.parking,
           'gate',
           mapColors.zoneFill.gate,
+          'sports',
+          mapColors.zoneFill.sports,
+          'utility',
+          mapColors.zoneFill.utility,
+          'water',
+          mapColors.zoneFill.water,
+          // Also the fill of a kind this console does not know yet.
           mapColors.zoneFill.outdoor,
         ],
       },

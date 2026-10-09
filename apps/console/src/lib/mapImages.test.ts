@@ -163,8 +163,8 @@ describe('registerMapImages', () => {
 
     await registerMapImages(asMap(map), new AbortController().signal);
 
-    // 4 severities × 2 statuses × 6 types, 6 resolved, 2 cameras, 4 cluster badges.
-    expect(map.images.size).toBe(60);
+    // 4 severities × 2 statuses × 24 types, 24 resolved, 2 cameras, 4 cluster badges.
+    expect(map.images.size).toBe(222);
     expect(map.images.get('incident-critical-open-fire_alarm')).toEqual({ pixelRatio: 1 });
     expect(map.images.has('incident-low-acknowledged-crowding')).toBe(true);
     expect(map.images.has('incident-resolved-suspicious_object')).toBe(true);

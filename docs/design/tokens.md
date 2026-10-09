@@ -95,9 +95,12 @@ in `tokens.ts` with its first consumer, checked for drift like `mapColors`.
   the age on every value (V2 brief § Principles 3), not by a brighter outline that would outshine live parts.
 - **Heat ramp.** Lightness carries the value; the legend and the Assets tab carry the number (V2 brief § Principles
   1 and 2). Its ends on the ground are reported only.
-- **Not tokens yet.** twin.css's other literals (zone fills for the V2 zone kinds, details, louvres, ribs, seams, the
-  blade hover, the see-through shell) land with the task that needs them: the zone fills with the zone kinds
-  (V2-03.1), the rest with the scene.
+- **Zone fills for the V2 zone kinds** landed with the kinds (V2-03.1) in `mapColors.zoneFill`
+  (`src/styles/tokens.ts`), checked against `--accent` below: `utility` `#1a282e` and `water` `#112833` as twin.css
+  draws them, `sports` `#24361e` chosen in V2-03.1 (no frame draws a sports zone; an olive no other fill uses, in the
+  same lightness band).
+- **Not tokens yet.** twin.css's other literals (details, louvres, ribs, seams, the blade hover, the see-through
+  shell) land with the scene.
 
 ## What may stay a raw value
 
@@ -233,6 +236,9 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--accent`          | `map zone parking`                        | 5.58  | 3       | pass                                                                                       |
 | `--accent`          | `map zone gate`                           | 4.79  | 3       | pass                                                                                       |
 | `--accent`          | `map zone outdoor`                        | 5.54  | 3       | pass                                                                                       |
+| `--accent`          | `map zone sports`                         | 5.09  | 3       | pass                                                                                       |
+| `--accent`          | `map zone utility`                        | 5.95  | 3       | pass                                                                                       |
+| `--accent`          | `map zone water`                          | 6.00  | 3       | pass                                                                                       |
 | `--sev-critical`    | `--surface-3`                             | 3.95  | 3       | pass                                                                                       |
 | `--sev-high`        | `--surface-3`                             | 5.96  | 3       | pass                                                                                       |
 | `--sev-medium`      | `--surface-3`                             | 8.05  | 3       | pass                                                                                       |

@@ -102,7 +102,7 @@ type Form = ReturnType<typeof renderForm>['form'];
 const titleBox = (form: Form) => form.getByRole('textbox', { name: 'Title' });
 
 async function fillRequired(form: Form) {
-  await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
+  await userEvent.click(form.getByRole('radio', { name: 'Medical emergency' }));
   await userEvent.click(form.getByLabelText('High'));
   await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
   await userEvent.type(titleBox(form), '  Person down at entrance ');
@@ -418,7 +418,7 @@ describe('ReportIncidentForm', () => {
       expect(form.queryByText('Choose a location.')).toBeNull();
       expect(form.queryByText('Enter a title.')).toBeNull();
 
-      await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Medical emergency' }));
       await userEvent.click(submit);
       expect(form.queryByText('Choose a type.')).toBeNull();
       expect(form.getByRole('combobox', { name: 'Location' })).toHaveFocus();
