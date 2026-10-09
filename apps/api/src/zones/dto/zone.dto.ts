@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { type LngLat, type Zone, ZONE_KINDS, type ZoneKind } from '@occ/contracts';
+import {
+  type LngLat,
+  type Zone,
+  ZONE_KINDS,
+  ZONE_USES,
+  type ZoneKind,
+  type ZoneUse,
+} from '@occ/contracts';
 
 /** OpenAPI shape of `Zone`. `implements` keeps it in lockstep with the shared contract. */
 export class ZoneDto implements Zone {
@@ -13,9 +20,19 @@ export class ZoneDto implements Zone {
   @ApiProperty({ example: 'Library' })
   name: string;
 
-  /** What kind of area this is: a `building`, `parking` lot, campus `gate` or `outdoor` space. */
+  /**
+   * What kind of area this is: a `building`, `parking` lot, campus `gate`, `outdoor` space,
+   * `sports` ground, `utility` area or `water`.
+   */
   @ApiProperty({ enum: ZONE_KINDS })
   kind: ZoneKind;
+
+  /**
+   * What a building is used for (ADR-0021). `null` for every other kind, and for a building whose
+   * use is not set. Drives report-form suggestions only; restricts nothing.
+   */
+  @ApiProperty({ enum: ZONE_USES, nullable: true })
+  use: ZoneUse | null;
 
   @ApiProperty({
     description: 'Closed ring of [lng, lat] points',

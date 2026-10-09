@@ -887,8 +887,26 @@
             "example": "Library"
           },
           "kind": {
-            "description": "What kind of area this is: a `building`, `parking` lot, campus `gate` or `outdoor` space.",
-            "enum": ["building", "parking", "gate", "outdoor"],
+            "description": "What kind of area this is: a `building`, `parking` lot, campus `gate`, `outdoor` space,\n`sports` ground, `utility` area or `water`.",
+            "enum": ["building", "parking", "gate", "outdoor", "sports", "utility", "water"],
+            "type": "string"
+          },
+          "use": {
+            "nullable": true,
+            "description": "What a building is used for (ADR-0021). `null` for every other kind, and for a building whose\nuse is not set. Drives report-form suggestions only; restricts nothing.",
+            "enum": [
+              "academic",
+              "library",
+              "laboratory",
+              "residential",
+              "dining",
+              "healthcare",
+              "sports_hall",
+              "administration",
+              "data_center",
+              "security_post",
+              "utility_plant"
+            ],
             "type": "string"
           },
           "polygon": {
@@ -913,7 +931,7 @@
             }
           }
         },
-        "required": ["id", "code", "name", "kind", "polygon", "center"]
+        "required": ["id", "code", "name", "kind", "use", "polygon", "center"]
       },
       "SitePolygonDto": {
         "type": "object",
@@ -1189,7 +1207,25 @@
               "equipment_fault",
               "medical",
               "crowding",
-              "suspicious_object"
+              "suspicious_object",
+              "theft",
+              "vandalism",
+              "suspicious_person",
+              "assault",
+              "fire",
+              "gas_leak",
+              "hazmat_spill",
+              "injury",
+              "power_outage",
+              "water_leak",
+              "lift_entrapment",
+              "hvac_fault",
+              "network_outage",
+              "severe_weather",
+              "flooding",
+              "fallen_tree",
+              "traffic_accident",
+              "blocked_access"
             ],
             "type": "string"
           },
@@ -1343,7 +1379,25 @@
               "equipment_fault",
               "medical",
               "crowding",
-              "suspicious_object"
+              "suspicious_object",
+              "theft",
+              "vandalism",
+              "suspicious_person",
+              "assault",
+              "fire",
+              "gas_leak",
+              "hazmat_spill",
+              "injury",
+              "power_outage",
+              "water_leak",
+              "lift_entrapment",
+              "hvac_fault",
+              "network_outage",
+              "severe_weather",
+              "flooding",
+              "fallen_tree",
+              "traffic_accident",
+              "blocked_access"
             ],
             "type": "string"
           },
@@ -1456,7 +1510,25 @@
               "equipment_fault",
               "medical",
               "crowding",
-              "suspicious_object"
+              "suspicious_object",
+              "theft",
+              "vandalism",
+              "suspicious_person",
+              "assault",
+              "fire",
+              "gas_leak",
+              "hazmat_spill",
+              "injury",
+              "power_outage",
+              "water_leak",
+              "lift_entrapment",
+              "hvac_fault",
+              "network_outage",
+              "severe_weather",
+              "flooding",
+              "fallen_tree",
+              "traffic_accident",
+              "blocked_access"
             ]
           },
           "severity": {

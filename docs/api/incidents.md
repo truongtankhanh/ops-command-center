@@ -25,11 +25,27 @@ Every timeline entry has an `actor`: who caused it
 Reading needs any role; reporting, acknowledging and resolving need `operator` or `supervisor`
 (see [README](README.md)). Every endpoint below answers **403** to a token without a role.
 
-| Enum       | Values                                                                                   |
-| ---------- | ---------------------------------------------------------------------------------------- |
-| `type`     | `intrusion`, `fire_alarm`, `equipment_fault`, `medical`, `crowding`, `suspicious_object` |
-| `severity` | `low`, `medium`, `high`, `critical`                                                      |
-| `status`   | `open`, `acknowledged`, `resolved`                                                       |
+| Enum       | Values                                  |
+| ---------- | --------------------------------------- |
+| `type`     | the 24 ids in "Types by category" below |
+| `severity` | `low`, `medium`, `high`, `critical`     |
+| `status`   | `open`, `acknowledged`, `resolved`      |
+
+#### Types by category
+
+Every type belongs to exactly one category
+([ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)). The category is
+not a field of the API: clients derive it from `type` with `categoryOf` in `@occ/contracts`.
+New types are only ever added, so a client must expect a `type` it does not know.
+
+| Category      | Types                                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------------- |
+| `security`    | `intrusion`, `theft`, `vandalism`, `suspicious_object`, `suspicious_person`, `assault`, `crowding` |
+| `fire_safety` | `fire_alarm`, `fire`, `gas_leak`, `hazmat_spill`                                                   |
+| `medical`     | `medical`, `injury`                                                                                |
+| `facilities`  | `equipment_fault`, `power_outage`, `water_leak`, `lift_entrapment`, `hvac_fault`, `network_outage` |
+| `environment` | `severe_weather`, `flooding`, `fallen_tree`                                                        |
+| `traffic`     | `traffic_accident`, `blocked_access`                                                               |
 
 ### List incidents
 

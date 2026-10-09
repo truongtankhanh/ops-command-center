@@ -12,6 +12,7 @@ import {
   EventsConnectErrors,
   type EventsHandshakeAuth,
   IDEMPOTENCY_KEY_HEADER,
+  INCIDENT_TYPES,
   type Incident,
   IncidentEvents,
   type LngLat,
@@ -96,6 +97,9 @@ describe('Incidents (e2e)', () => {
     expect(zones.body).toHaveLength(9);
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
+
+    // No zone has a use until the seed sets them (V2-04.2); `null`, not missing, so the key is sent.
+    for (const z of zones.body as Zone[]) expect([z.code, z.use]).toEqual([z.code, null]);
 
     // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
     const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -287,6 +291,42 @@ describe('Incidents (e2e)', () => {
         expect.stringContaining('extra'),
       ]),
     );
+  });
+
+  // After the lifecycle case: each report here takes the next incident code.
+  it('accepts every contract type and refuses an unknown one', async () => {
+    // Every type, not one: the migration's literal list must match the contract's.
+    for (const type of INCIDENT_TYPES) {
+      const res = await api(app)
+        .post('/api/incidents')
+        .send({ type, severity: 'medium', title: `Every type: ${type}`, zoneId: zone.id });
+      expect([type, res.status]).toEqual([type, 201]);
+    }
+
+    const unknown = await api(app)
+      .post('/api/incidents')
+      .send({ type: 'unknown', severity: 'medium', title: 'Not a type', zoneId: zone.id })
+      .expect(400);
+    expect(unknown.body.message).toEqual(expect.arrayContaining([expect.stringContaining('type')]));
+  });
+
+  it('allows a use only on a building, and only a known one', async () => {
+    const db = app.get(DataSource);
+    const setUse = (code: string, use: string | null) =>
+      db.query(`UPDATE "zone" SET "use" = $2 WHERE "code" = $1`, [code, use]);
+    const refused = { code: '23514', constraint: 'zone_use_check' };
+
+    try {
+      await expect(setUse('PRK-WEST', 'library')).rejects.toMatchObject(refused);
+      await expect(setUse('BLD-LIB', 'garage')).rejects.toMatchObject(refused);
+
+      await setUse('BLD-LIB', 'library');
+      const zones = (await api(app).get('/api/zones').expect(200)).body as Zone[];
+      expect(zones.find((z) => z.code === 'BLD-LIB')?.use).toBe('library');
+    } finally {
+      // Later cases and a re-run of the seed expect the campus as seeded.
+      await setUse('BLD-LIB', null);
+    }
   });
 
   it('rejects a position outside the zone with 400 and creates nothing', async () => {
