@@ -28,8 +28,9 @@ handshake's `auth` payload (`EventsHandshakeAuth`), never in the URL, and pass `
 so every reconnect sends the current token:
 `io('/events', { transports: ['websocket'], auth: (cb) => cb({ token }) })`.
 
-- Any role may connect: `viewer`, `operator` or `supervisor`
-  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)).
+- Any role may connect: `viewer`, `operator`, `supervisor` or `technician`
+  ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md),
+  [ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)).
 - A refused handshake raises `connect_error` and never connects. Its message is one of
   `EventsConnectErrors`: `Unauthorized` (no token, or one the API does not accept — sign in again),
   `Identity provider unavailable` (the API cannot check tokens right now — retry later), or

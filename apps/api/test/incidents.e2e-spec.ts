@@ -15,6 +15,7 @@ import {
   INCIDENT_TYPES,
   type Incident,
   IncidentEvents,
+  type IncidentType,
   type LngLat,
   type ServerToClientEvents,
   type SitePlan,
@@ -31,6 +32,7 @@ import { CAMERAS } from '../src/database/seed/campus';
 import { SeedService } from '../src/database/seed/seed.service';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
+import { IncidentsService } from '../src/incidents/incidents.service';
 import { persistIncident } from '../src/incidents/persist-incident';
 import { OutboxEvents } from '../src/outbox/outbox-events';
 import { OutboxRelay } from '../src/outbox/outbox-relay.service';
@@ -554,46 +556,67 @@ describe('Incidents (e2e)', () => {
     });
   });
 
-  /** What each role may do: viewers read, operators and supervisors also write (ADR-0011). */
+  /**
+   * What each role may do: viewers read, operators and supervisors also write (ADR-0011), and a
+   * technician acknowledges and resolves only Facilities and Environment incidents (ADR-0021).
+   */
   describe('roles', () => {
     let viewer: string;
-    const newBody = (title: string) => ({
-      type: 'medical',
+    let technician: string;
+    const typedBody = (type: IncidentType, title: string) => ({
+      type,
       severity: 'low',
       title,
       zoneId: zone.id,
     });
+    const newBody = (title: string) => typedBody('medical', title);
+    /** `fire_alarm` is out of a technician's scope (Fire & safety), `water_leak` in it (Facilities). */
+    const SPLIT_TYPES = ['fire_alarm', 'water_leak'] as const;
+    const transition = (
+      withToken: string,
+      id: string,
+      action: 'acknowledge' | 'resolve',
+      body: object = {},
+    ) => api(app, withToken).post(`/api/incidents/${id}/${action}`).send(body);
 
     beforeAll(async () => {
       viewer = await signToken({ sub: 'e2e-viewer', name: 'E2E Viewer', roles: ['viewer'] });
+      technician = await signToken({
+        sub: 'e2e-technician',
+        name: 'E2E Technician',
+        roles: ['technician'],
+      });
     });
 
     it('lets a viewer read but not report, acknowledge or resolve (403)', async () => {
-      const target = await reportIncident(app, newBody('Viewer target')).expect(201);
-      const id = target.body.id as string;
+      // In and out of a technician's scope alike: a viewer's 403 comes from the guard.
+      for (const type of SPLIT_TYPES) {
+        const target = await reportIncident(app, typedBody(type, 'Viewer target')).expect(201);
+        const id = target.body.id as string;
 
-      const writes: [string, request.Test][] = [
-        ['incident:report', reportIncident(app, newBody('Viewer target'), undefined, viewer)],
-        [
-          'incident:acknowledge',
-          api(app, viewer).post(`/api/incidents/${id}/acknowledge`).send({}),
-        ],
-        ['incident:resolve', api(app, viewer).post(`/api/incidents/${id}/resolve`).send({})],
-      ];
-      for (const [permission, req] of writes) {
-        const res = await req;
-        // The permission makes a failure say which write got through.
-        expect([permission, res.status]).toEqual([permission, 403]);
-        expect(res.body).toMatchObject({
-          statusCode: 403,
-          error: 'FORBIDDEN',
-          message: `Missing permission: ${permission}`,
-        });
+        const writes: [string, request.Test][] = [
+          [
+            'incident:report',
+            reportIncident(app, typedBody(type, 'Viewer target'), undefined, viewer),
+          ],
+          ['incident:acknowledge', transition(viewer, id, 'acknowledge')],
+          ['incident:resolve', transition(viewer, id, 'resolve')],
+        ];
+        for (const [permission, req] of writes) {
+          const res = await req;
+          // The type and permission make a failure say which write got through.
+          expect([type, permission, res.status]).toEqual([type, permission, 403]);
+          expect(res.body).toMatchObject({
+            statusCode: 403,
+            error: 'FORBIDDEN',
+            message: `Missing permission: ${permission}`,
+          });
+        }
+
+        const after = await api(app).get(`/api/incidents/${id}`).expect(200);
+        expect(after.body).toMatchObject({ status: 'open', version: 1 });
       }
-
-      const after = await api(app).get(`/api/incidents/${id}`).expect(200);
-      expect(after.body).toMatchObject({ status: 'open', version: 1 });
-      expect(await countIncidents(app, 'Viewer target')).toBe(1);
+      expect(await countIncidents(app, 'Viewer target')).toBe(SPLIT_TYPES.length);
     });
 
     it('lets a viewer read everything and listen to /events', async () => {
@@ -664,6 +687,109 @@ describe('Incidents (e2e)', () => {
         kind: 'acknowledged',
         actor: { kind: 'user', subject: 'e2e-supervisor', displayName: 'E2E Supervisor' },
       });
+    });
+
+    // ADR-0021 § Proving it.
+    it("scopes a technician's acknowledge and resolve to facilities and environment", async () => {
+      // Reporting is never scoped.
+      const fireAlarm = await reportIncident(
+        app,
+        typedBody('fire_alarm', 'Technician fire alarm'),
+        undefined,
+        technician,
+      ).expect(201);
+      const fireAlarmId = fireAlarm.body.id as string;
+
+      for (const action of ['acknowledge', 'resolve'] as const) {
+        const res = await transition(technician, fireAlarmId, action);
+        expect([action, res.status]).toEqual([action, 403]);
+        expect(res.body).toMatchObject({
+          statusCode: 403,
+          error: 'FORBIDDEN',
+          message: 'Not allowed for this category',
+        });
+      }
+      const untouched = await api(app).get(`/api/incidents/${fireAlarmId}`).expect(200);
+      expect(untouched.body).toMatchObject({ status: 'open', version: 1 });
+
+      const leak = await reportIncident(app, typedBody('water_leak', 'Technician leak')).expect(
+        201,
+      );
+      const ack = await transition(technician, leak.body.id, 'acknowledge').expect(200);
+      expect(ack.body.status).toBe('acknowledged');
+      expect(ack.body.timeline.at(-1)).toMatchObject({
+        kind: 'acknowledged',
+        actor: { kind: 'user', subject: 'e2e-technician', displayName: 'E2E Technician' },
+      });
+      const resolved = await transition(technician, leak.body.id, 'resolve').expect(200);
+      expect(resolved.body.status).toBe('resolved');
+    });
+
+    it('answers a technician 403, not 409, on a resolved incident outside its scope', async () => {
+      const intrusion = await reportIncident(
+        app,
+        typedBody('intrusion', 'Resolved intrusion'),
+      ).expect(201);
+      await transition(token, intrusion.body.id, 'resolve').expect(200);
+
+      const res = await transition(technician, intrusion.body.id, 'resolve').expect(403);
+      expect(res.body.message).toBe('Not allowed for this category');
+    });
+
+    it('checks the category after validating the request and finding the incident', async () => {
+      // 404, not 403: the category is unknown until the incident is loaded.
+      await transition(technician, '00000000-0000-4000-8000-000000000000', 'acknowledge').expect(
+        404,
+      );
+
+      const fireAlarm = await reportIncident(
+        app,
+        typedBody('fire_alarm', 'Order of answers'),
+      ).expect(201);
+      // 400, not 403: pipes run before the service.
+      const invalid = await transition(technician, fireAlarm.body.id, 'acknowledge', {
+        note: 123,
+      }).expect(400);
+      // `@MaxLength` also reports on a non-string, so the type error is one message of several.
+      expect(invalid.body.message).toEqual(expect.arrayContaining(['note must be a string']));
+    });
+
+    it('lets operators and supervisors act on every category', async () => {
+      const supervisor = await signToken({ sub: 'e2e-supervisor', roles: ['supervisor'] });
+      const actors: [string, string][] = [
+        ['operator', token],
+        ['supervisor', supervisor],
+      ];
+
+      for (const [role, withToken] of actors) {
+        for (const type of SPLIT_TYPES) {
+          const target = await reportIncident(
+            app,
+            typedBody(type, `${role} acts on ${type}`),
+          ).expect(201);
+          const res = await transition(withToken, target.body.id, 'acknowledge');
+          expect([role, type, res.status]).toEqual([role, type, 200]);
+        }
+      }
+    });
+
+    // The simulator passes `'system'`, which no request can choose, and acts on every type.
+    it("does not scope the API's own transitions", async () => {
+      const fireAlarm = await reportIncident(
+        app,
+        typedBody('fire_alarm', 'System transitions'),
+      ).expect(201);
+      const incidents = app.get(IncidentsService);
+
+      await incidents.acknowledge(fireAlarm.body.id, SystemActors.simulator, 'system');
+      const resolved = await incidents.resolve(fireAlarm.body.id, SystemActors.simulator, 'system');
+
+      expect(resolved.status).toBe('resolved');
+      expect(resolved.timeline.map((entry) => entry.actor)).toEqual([
+        OPERATOR_ACTOR,
+        SystemActors.simulator,
+        SystemActors.simulator,
+      ]);
     });
   });
 

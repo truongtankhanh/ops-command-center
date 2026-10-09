@@ -113,6 +113,7 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
       await this.incidentsService.resolve(
         toResolve.id,
         SystemActors.simulator,
+        'system',
         'Handled by field team (simulated).',
       );
     }
@@ -126,7 +127,7 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
       order: { reportedAt: 'ASC' },
     });
     if (toAcknowledge && random() < 0.5) {
-      await this.incidentsService.acknowledge(toAcknowledge.id, SystemActors.simulator);
+      await this.incidentsService.acknowledge(toAcknowledge.id, SystemActors.simulator, 'system');
     }
   }
 }

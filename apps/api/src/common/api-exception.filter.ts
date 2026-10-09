@@ -9,6 +9,7 @@ import {
 import type { ApiError } from '@occ/contracts';
 import type { Request, Response } from 'express';
 import {
+  CategoryOutOfScopeError,
   DomainError,
   EntityNotFoundError,
   InvalidTransitionError,
@@ -59,6 +60,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     // POST /incidents as a reused Idempotency-Key (ADR-0009).
     if (exception instanceof PositionOutsideZoneError) {
       return { statusCode: HttpStatus.BAD_REQUEST, message: exception.message };
+    }
+    // The category half of authorization: `RolesGuard` checked the permission, the service checks
+    // the incident's category once it is loaded (ADR-0021).
+    if (exception instanceof CategoryOutOfScopeError) {
+      return { statusCode: HttpStatus.FORBIDDEN, message: exception.message };
     }
     if (exception instanceof DomainError) {
       return { statusCode: HttpStatus.UNPROCESSABLE_ENTITY, message: exception.message };

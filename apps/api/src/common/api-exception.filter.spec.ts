@@ -1,6 +1,7 @@
 import { type ArgumentsHost, BadRequestException } from '@nestjs/common';
 import { ApiExceptionFilter } from './api-exception.filter';
 import {
+  CategoryOutOfScopeError,
   EntityNotFoundError,
   InvalidTransitionError,
   PositionOutsideZoneError,
@@ -26,6 +27,7 @@ describe('ApiExceptionFilter', () => {
     [new InvalidTransitionError('INC-000001', 'resolved', 'resolve'), 409, 'CONFLICT'],
     [new BadRequestException(['title should not be empty']), 400, 'BAD_REQUEST'],
     [new PositionOutsideZoneError('BLD-LIB'), 400, 'BAD_REQUEST'],
+    [new CategoryOutOfScopeError(), 403, 'FORBIDDEN'],
   ])('maps %p to %i', (error, statusCode, name) => {
     const { host, status, json } = hostFor();
 
@@ -44,6 +46,16 @@ describe('ApiExceptionFilter', () => {
 
     expect(json).toHaveBeenCalledWith(
       expect.objectContaining({ statusCode: 404, message: 'Site plan was not found' }),
+    );
+  });
+
+  it('says why a category is refused, as ADR-0021 words it', () => {
+    const { host, json } = hostFor('/api/incidents/1/acknowledge');
+
+    filter.catch(new CategoryOutOfScopeError(), host);
+
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ statusCode: 403, message: 'Not allowed for this category' }),
     );
   });
 
