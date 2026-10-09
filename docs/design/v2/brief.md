@@ -217,7 +217,7 @@ a live text summary (`aria-label`, as in the mockups) and is a single tab stop.
 | Item                | Budget                                                                          | Enforced by                                                    |
 | ------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | Format              | glTF 2.0 binary (`.glb`)                                                        | CI rejects `.gltf` + loose files                               |
-| Triangles per asset | ≤ 50,000                                                                        | `gltf-transform inspect` in CI                                 |
+| Triangles per asset | ≤ 50,000                                                                        | `pnpm models:check` (gltf-transform) in CI                     |
 | Triangles on screen | ≤ 250,000                                                                       | LOD1 (≈ 25 % of LOD0) below 5 % screen height; frustum culling |
 | Textures            | 1024², KTX2 (Basis), ≤ 3 per material                                           | CI                                                             |
 | File per asset      | ≤ 1.5 MB                                                                        | CI                                                             |
@@ -241,7 +241,7 @@ CoolingTower               class root · one file for every cooling tower
 ├─ Pipe, Riser             static
 ├─ Valve                   turn X 0–90° · valveOpenPct
 └─ ControlPanel            static
-   └─ Switch               flip X ±35° · switchState
+   └─ Switch               turn X ±35° · switchState
 ```
 
 - **One model per asset class**, instanced for every asset of the class: CT-01 and CT-02 load the same file. The
@@ -255,7 +255,6 @@ CoolingTower               class root · one file for every cooling tower
 
   ```json
   {
-    "partRole": "FanBlade",
     "bind": "fanSpeedRpm",
     "motion": "spin",
     "axis": "y",
@@ -287,8 +286,10 @@ Device / PLC ──MQTT──▶ Broker ──▶ API telemetry bridge ──Soc
   over a Socket.IO namespace that reuses ADR-0010's token and ADR-0011's roles. Every replica subscribes to the
   broker itself, so readings never go through the outbox or `NOTIFY` ([ADR-0019](../../adr/0019-telemetry-transport.md)).
   One authentication and authorization model instead of two.
-- **The API caps each asset at 10 Hz** and sends only changed keys. The console never depends on a device's rate.
-- **Threshold breaches become incidents on the server** (type `equipment_fault`, at most one open per asset and
+- **The API sends a 1 Hz overview of every asset and at most 10 Hz for the assets a console watches**, changed keys
+  only ([ADR-0019](../../adr/0019-telemetry-transport.md)). The console never depends on a device's rate.
+- **Threshold breaches become incidents on the server** (the rule's `facilities` or `environment` type,
+  `equipment_fault` by default, at most one open per asset and
   rule, [ADR-0018](../../adr/0018-assets-and-telemetry-as-domain-data.md)), so they
   reach the feed, toasts and other consoles the same way as any incident (frame 04). The client never decides that
   something is an incident.
@@ -296,10 +297,11 @@ Device / PLC ──MQTT──▶ Broker ──▶ API telemetry bridge ──Soc
 ### Message shape (draft for the contract)
 
 ```ts
-// Server → client, namespace /telemetry. One message per asset per tick, changed keys only.
+// Server → client, namespace /telemetry: `telemetry.frame`, at most 10 Hz per watched asset, changed keys only.
 interface TelemetryFrame {
   assetCode: string; // "CT-01"
   at: string; // ISO time the device measured it
+  receivedAt: string; // ISO time the API received it (freshness, ADR-0019)
   values: Record<string, number | boolean | string>; // { fanSpeedRpm: 1420, motorTempC: 71.2 }
 }
 ```
@@ -328,11 +330,12 @@ interface TelemetryFrame {
 
 | Age of the last reading                  | Twin                                                                                    |
 | ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| < 3 × the asset's expected interval      | Live                                                                                    |
+| < 3 × the point's `expected_interval_s`  | Live                                                                                    |
 | ≥ 3 × interval, or the namespace is down | **Stale**: motion stops, parts grey with dashed edges, values show their age (frame 05) |
 | Device reports offline                   | `Offline` state; same look as stale                                                     |
 
-Stale is decided per asset in the worker, so one silent device does not grey the whole campus.
+Stale is decided in the worker per point, from `receivedAt` and its `expected_interval_s` (ADR-0019), so one silent
+device does not grey the whole campus.
 
 ## Performance
 

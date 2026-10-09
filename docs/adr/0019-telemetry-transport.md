@@ -77,23 +77,31 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   - `mock`: an in-process generator. Each value is a pure function of asset, key and time, so every replica
     produces the same readings with no coordination. The default outside production; in production it needs
     `DEMO_MODE=true`, like `CAMERA_SOURCE=mock`.
-  - `mqtt`: `MqttTelemetrySource` on MQTT.js, configured by `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` (a secret,
-    injected per ADR-0006) and `MQTT_CA_FILE`. In production `MQTT_URL` must be `mqtts://`, unless `DEMO_MODE`.
+  - `mqtt`: `MqttTelemetrySource` on MQTT.js, configured by `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` (a second
+    secret beside `DATABASE_URL`, today the only one the API reads; injected per ADR-0006) and `MQTT_CA_FILE`. In
+    production `MQTT_URL` must be `mqtts://`, unless `DEMO_MODE`.
   - `off`: no telemetry; the twin shows assets with no readings.
 - **Topics and payload.**
   - `occ/{siteCode}/asset/{assetCode}/telemetry`, QoS 0: `{ "at": "<ISO time measured>", "values": { "<key>":
-<number | boolean | string> } }`, at most 4 KB.
+<number | boolean | string> } }`, at most 4 KB. An `enum` point (ADR-0018) sends one of its `enum_values` as a
+    string.
   - `occ/{siteCode}/asset/{assetCode}/status`, QoS 1, retained: `{ "online": true | false }`. A device sets its
     last will to `{ "online": false }`, so the broker announces a dead device.
 - **Validation in the bridge.** Unknown asset, unknown key, wrong kind or a value outside the point's `min`/`max`
   (ADR-0018) is dropped and counted, never clamped. An `at` more than 5 minutes from the API's clock is replaced by
   the receive time and counted. The bridge keeps at most one pending reading per asset and key: latest wins.
-- **Leader.** `TelemetryLeader` holds a new session-level advisory lock (`AdvisoryLocks.Telemetry`) exactly as
-  `SimulatorLeader` does. Only the leader writes `telemetry_sample` rows, manages their partitions and evaluates
+- **Leader.** `TelemetryLeader` holds a new session-level advisory lock (`AdvisoryLocks.Telemetry`, the next free
+  key after `Simulator`) with the same mechanism as `SimulatorLeader`: `pg_try_advisory_lock` on a dedicated
+  connection, a `SELECT 1` keep-alive, the connection discarded on failure and unlocked before the pool closes.
+  Unlike the simulator, which checks on each of its ticks, it runs its own check timer; V2-06 sets the interval. It
+  holds a third long-lived pool connection per replica, after the outbox listener and the simulator leader
+  (ADR-0008). Only the leader writes `telemetry_sample` rows, manages their partitions and evaluates
   threshold rules. Every replica, the leader included, serves its own consoles.
 - **Namespace `/telemetry`**, separate from `/events` because its delivery is best-effort and latest-wins:
-  - The same handshake middleware as `/events`: the token in the `auth` payload, any known role, `connect_error`
-    from `EventsConnectErrors`, the transport closed when the token expires. WebSocket only.
+  - The same handshake rules as `/events`, today private to `EventsGateway` and extracted for reuse: the token in
+    `handshake.auth`, any known role, `connect_error` from `EventsConnectErrors`, the transport closed when the
+    token expires. WebSocket only. Handshakes pass nginx's `location /socket.io/` and share its per-IP limit with
+    `/events`, so each console makes two.
   - Server → client (types in `@occ/contracts`):
     - `telemetry.overview`, every second: `{ at, assets: { [assetCode]: { online, receivedAt, headline } } }`;
     - `telemetry.frame`, at most 10 Hz per watched asset: `{ assetCode, at, receivedAt, values }`, changed keys
@@ -110,14 +118,16 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   (stale after three intervals), and from `online`. The server never invents a value.
 - **Compose.**
   - Default: `TELEMETRY_SOURCE=mock`, so `docker compose up` shows a live twin with no broker.
-  - Profile `telemetry`: `eclipse-mosquitto:2` (pinned minor) on the internal network only, no host port, with a
-    password file and ACL from `ops/mosquitto/`, plus a small publisher (`ops/telemetry-sim`) that plays the demo
-    devices over real MQTT. The API then runs with `TELEMETRY_SOURCE=mqtt`.
+  - Profile `telemetry` (beside the existing `observability`): `eclipse-mosquitto:2` (pinned minor) on the Compose
+    network, no host port, with a password file and ACL from `ops/mosquitto/`, plus a small publisher
+    (`ops/telemetry-sim`) that plays the demo devices over real MQTT. A profile cannot change the `api` service's
+    environment, so it is run as `TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up`.
 - **Broker access.** Anonymous access off. Each device has its own credentials and may publish only under its own
   `occ/{site}/asset/{code}/`. The API's account may subscribe to `occ/+/asset/+/#` and may publish nothing. No
   route through nginx reaches the broker. A real site exposes `8883` (TLS) to its device network only.
-- **Observability** (ADR-0014, ADR-0015): `occ_telemetry_messages_total{result}` (`accepted`, `unknown_asset`,
-  `invalid`, `clock_skew`), `occ_telemetry_upstream_up`, `occ_telemetry_sockets`, `occ_telemetry_leader`; labels
+- **Observability** (ADR-0014, ADR-0015): `telemetry_messages_total{result}` (`accepted`, `unknown_asset`,
+  `invalid`, `clock_skew`), `telemetry_upstream_up`, `telemetry_connected_consoles` (as `realtime_connected_consoles`),
+  `telemetry_leader`; no `occ_` prefix, as for the existing metrics, which the `service` label identifies; labels
   never carry an asset code. Upstream disconnects and leader changes are logged once per change, never per message.
 - **Readiness is unchanged** (ADR-0013). A replica whose broker connection is down still serves incidents, cameras
   and the site plan; consoles see `telemetry.status: paused` instead.
@@ -125,7 +135,7 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 ## Consequences
 
 - **Consoles get one auth model and a bounded stream.** About 15 KB/s of overview for 100 assets plus about 16 KB/s
-  per watched set, whatever the devices send. These are estimates to measure in V2-04.
+  per watched set, whatever the devices send. These are estimates to measure in V2-06.
 - **The broker is never public**, and no command reaches a device: the API cannot publish, and devices cannot read
   each other's topics. Commanding equipment would need a new ADR.
 - **Replicas do not coordinate readings.** Each replica's consoles see the same values within network jitter, and

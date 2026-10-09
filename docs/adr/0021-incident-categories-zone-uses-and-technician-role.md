@@ -88,18 +88,24 @@ category.
   - holds `incident:acknowledge` and `incident:resolve` **only for `facilities` and `environment`**.
   - `ROLE_PERMISSIONS` stays as it is; a new `ROLE_CATEGORY_SCOPE: Record<Role, readonly IncidentCategory[] | 'all'>`
     limits acknowledge and resolve. `operator` and `supervisor` are `'all'`; `viewer` has no permission to scope.
-    The API checks the permission first, then the incident's category against the scope, and answers `403`
-    "Not allowed for this category" when it is out of scope.
+    The API checks the permission first (`RolesGuard`, `@RequirePermission`), then, once the incident is loaded in
+    the service, its category against the scope, and answers `403` "Not allowed for this category" (the `message` of
+    the existing `ApiErrorDto`) when it is out of scope.
   - The console uses the same table to show a view-only footer on out-of-scope incidents, as it does for viewers,
     and adds a "Mine to handle" tab (brief, frame 09).
 - **Telemetry rules** (ADR-0018) may raise only `facilities` or `environment` types; a rule names its type
   (default `equipment_fault`).
 - **Migration** `IncidentCategoriesAndZoneUse`: replaces the `CHECK` constraints on `incident.type`, `zone.kind` and
-  `incident.source` (with `telemetry` from ADR-0018), adds `zone.use` with its `CHECK`. Types and kinds are only
-  added, never renamed, so existing rows stay valid. Column widths (`varchar(32)`, `varchar(16)`) already fit.
+  `incident.source` (with `telemetry` from ADR-0018; today unnamed inline checks, so Postgres named them
+  `incident_type_check`, `zone_kind_check` and `incident_source_check`), adds `zone.use` with its `CHECK`. Types and
+  kinds are only added, never renamed, so existing rows stay valid. Column widths (`varchar(32)`, `varchar(16)`) already
+  fit.
 - **Seed.** The demo campus gains the zones drawn in the brief (dormitories, Science Lab, Health Clinic, Sports
   Hall, Admin Building, Utility Plant, East Gate, East Parking, Lake, Security office) and the simulator draws from
-  the full type list, weighted towards the common ones.
+  the full type list, weighted towards the common ones. The simulator picks a zone first and then a scenario allowed
+  for that zone's kind, and fails when none is (`pickWeighted([])` in `scenarios.ts`), so `SCENARIOS` gains a
+  weighted scenario per new type and covers every zone kind in use, including `utility` and `water`. No demo zone
+  uses `sports` yet (the Sports Field stays `outdoor`).
 
 ## Consequences
 
@@ -108,11 +114,14 @@ category.
 - **Technicians work in the same console** without the right to resolve a security incident. The scope is enforced
   by the API; hiding buttons is only presentation.
 - **Rolling deploys.**
-  - An older console receiving a new type has no icon or label for it. The console change that ships with this ADR
-    must render an unknown type with a generic icon and its raw id, and be deployed before the API starts
-    producing new types (the simulator is the first producer).
-  - An older replica refuses new types on insert after the migration only if it validates against its own list; it
-    does (`class-validator` on `ReportIncidentRequest`). Deploy all replicas together, as for ADR-0011.
+  - An older console **fails** on a new type, not only shows it without an icon: `incidentTypeIcon()` returns
+    `undefined`, so the incident list region, the incident sheet and the map tooltip fall to their error state, the
+    label is empty and the map marker is never drawn (its image is built only for known types). A new zone kind
+    (`utility`, `water`) breaks the sheet the same way through `zoneKindIcon()`. The console change that ships with
+    this ADR must render an unknown type or kind with a generic icon and its raw id, and be deployed before the API
+    starts producing new types or the seed adds new kinds (the simulator is the first producer).
+  - An older replica refuses new types on insert after the migration only if it validates against its own list; it does
+    (`class-validator` on `ReportIncidentDto`, `@IsIn(INCIDENT_TYPES)`). Deploy all replicas together, as for ADR-0011.
 - **The IdP contract grows**: a real deployment's IdP must also issue `technician` in `realm_access.roles` for
   technical staff.
 - **Fixed lists.** A site that needs a type not listed here needs a contract change and a release; that is the cost

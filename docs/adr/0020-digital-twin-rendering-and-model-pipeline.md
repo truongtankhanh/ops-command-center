@@ -11,8 +11,8 @@ parts that move with live readings at 60 FPS, light models (`.glb`, under 50,000
 shadows, and telemetry handled off the render thread.
 
 The console is React 19 with Vite, TanStack Query, zustand and MapLibre for the 2D map (UI-08, UI-09). It runs on
-laptops for 12-hour shifts, and on video walls at up to 3200 px wide (UI-17). Some of those machines will have weak
-GPUs or WebGL disabled by policy.
+laptops for 12-hour shifts, and on video walls from 1920 px wide, with a 4K wall mode from 3200 px (UI-17). Some of
+those machines will have weak GPUs or WebGL disabled by policy.
 
 Constraints:
 
@@ -69,7 +69,8 @@ their author, checked in CI, and served by nginx as immutable files.
   lockfile. Model checks add `@gltf-transform/core` and `@gltf-transform/functions` as dev dependencies.
 - **Lazy chunk.** The twin is one `React.lazy` boundary behind the `3D` view. The 2D view, the fallback and the
   sign-in screens never download it. The chunk budget is 350 KB gzipped including three.js; the CI build reports it
-  and fails above it. That number is a budget to confirm in V2-05, not a measurement.
+  and fails above it. That number is a budget to confirm in V2-12, not a measurement. No bundle check exists today:
+  CI runs `pnpm build`, and Vite only warns above 1,200 KB minified (`chunkSizeWarningLimit`).
 - **Capability check.** The console renders the twin only if a WebGL 2 context can be created. Otherwise, and after
   a `webglcontextlost` that does not restore within 5 s, it shows the 2D map with the reason (brief, frame 07). The
   viewer's last choice of 2D or 3D is a per-browser convenience in `localStorage`.
@@ -87,8 +88,8 @@ their author, checked in CI, and served by nginx as immutable files.
     incident it flies to it and returns to the fixed view after 60 s or on acknowledgement. Each wall screen is one
     WebGL context; a screen that cannot hold the frame budget falls back to the 2D map.
   - Camera: `CameraControls` with the limits in the brief (distance, tilt 20°–78° from vertical, target clamped to
-    the site boundary + 40 m, zoom to cursor, damping, fly-to 600 ms or instant with reduced motion). The view never
-    moves on its own.
+    the site boundary + 40 m, zoom to cursor, damping, fly-to 600 ms or instant with reduced motion). Outside the
+    video wall, the view never moves on its own.
   - Picking: raycast against BVH-accelerated meshes, at most once per frame.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
@@ -99,15 +100,17 @@ their author, checked in CI, and served by nginx as immutable files.
     a root named after the class. Code finds a part with `assetRoot.getObjectByName('FanBlade')`, so names are an
     interface: renaming one is a breaking change to the model.
   - Every bound node carries glTF `extras`: `{ "bind": "fanSpeedRpm", "motion": "spin" | "turn" | "slide" |
-"tint", "axis": "x" | "y" | "z", "range": [min, max] }`. `bind` must be a `telemetry_point.key` of the class
+"tint", "axis": "x" | "y" | "z", "range": [min, max] }`; `axis` and `range` apply to `spin`, `turn` and `slide`,
+    and a `tint` node (state only) carries neither. `bind` must be a `telemetry_point.key` of the class
     (ADR-0018). The console builds its bindings from `extras`, so a new class needs a model and catalogue rows, not
     code.
   - Each bound node's pivot sits on its axis of motion; +Y up; 1 unit = 1 m; origin at the centre of the footprint.
   - Static nodes are merged at load; only bound nodes stay separate.
-- **Budgets, checked by `pnpm models:check` in CI** on every `.glb` under `ops/models/`: at most 50,000 triangles,
-  textures KTX2 and at most 1024², at most 4 materials, at most 1.5 MB, Meshopt-compressed geometry, every `extras.bind`
-  a valid key of its class, every node name unique. The authoring commands (`gltf-transform` with `meshopt`, `uastc` /
-  `etc1s`, and `simplify` for LOD1) are documented next to the models.
+- **Budgets, checked by `pnpm models:check` in CI** (added in V2-13; no such script exists yet) on every `.glb` under
+  `ops/models/`: at most 50,000 triangles, textures KTX2 and at most 1024², at most 4 materials, at most 1.5 MB,
+  Meshopt-compressed geometry, every `extras.bind` a valid key of its class, every node name unique. The authoring
+  commands (`gltf-transform` with `meshopt`, `uastc` / `etc1s`, and `simplify` for LOD1) are documented next to the
+  models.
 - **Serving.**
   - Files are named `<class>.<first 12 hex of SHA-256>.glb`. nginx serves `/models/` from a mounted directory with
     `Cache-Control: public, max-age=31536000, immutable`; a new model is a new file name, so no cache is ever wrong.
@@ -120,7 +123,8 @@ their author, checked in CI, and served by nginx as immutable files.
     east-north-up projection, staleness, camera clamps.
   - DOM around the scene (tooltip, callout, inspector, Assets tab, fallback) is tested with Testing Library as today,
     with the canvas mocked.
-  - Real WebGL rendering is covered by the Playwright smoke (OCC-25) with a software renderer.
+  - Real WebGL rendering is covered by the Playwright smoke (OCC-25, not built yet; Playwright is not installed)
+    with a software renderer.
 
 ## Consequences
 
