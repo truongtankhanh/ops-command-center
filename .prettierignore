@@ -4,3 +4,5 @@ pnpm-lock.yaml
 .turbo
 # Verbatim copy of the design canvas source (docs/design/brief.md)
 docs/design/mockups
+# Verbatim copy of the V2 design canvas source (docs/design/v2/brief.md)
+docs/design/v2/mockups

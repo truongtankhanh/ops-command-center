@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Heat overlay — indoor temperature</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./console.css">
+<link rel="stylesheet" href="./twin.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="app">
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-critical" viewBox="0 0 24 24"><path d="M12 16h.01"></path><path d="M12 8v4"></path><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"></path></symbol>
+<symbol id="i-high" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
+<symbol id="i-medium" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-low" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
+<symbol id="i-intrusion" viewBox="0 0 24 24"><path d="M13 4h3a2 2 0 0 1 2 2v14"></path><path d="M2 20h3"></path><path d="M13 20h9"></path><path d="M10 12v.01"></path><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"></path></symbol>
+<symbol id="i-equipment_fault" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></symbol>
+<symbol id="i-crowding" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></symbol>
+<symbol id="i-suspicious_object" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="m7.5 4.27 9 5.15"></path></symbol>
+<symbol id="i-fire_alarm" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></symbol>
+<symbol id="i-water_leak" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></symbol>
+<symbol id="i-injury" viewBox="0 0 24 24"><path d="M4 9a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4a1 1 0 0 1 1 1v4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-4a1 1 0 0 1 1-1h4a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-4a1 1 0 0 1-1-1V4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4a1 1 0 0 1-1 1z"></path></symbol>
+<symbol id="i-blocked_access" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="m4.9 4.9 14.2 14.2"></path></symbol>
+<symbol id="i-open" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="1"></circle></symbol>
+<symbol id="i-acknowledged" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="m16 11 2 2 4-4"></path></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></symbol>
+<symbol id="i-live" viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19.1"></path></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"></path><path d="M15 5.764v15"></path><path d="M9 3.236v15"></path></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="m21 3-7 7"></path><path d="m3 21 7-7"></path></symbol>
+</defs></svg>
+
+<header class="hdr">
+<div class="brand">
+<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#223848"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#8c9bff"></circle></svg>
+<div>
+<h1 class="brand-name">Ops Command Center</h1>
+<button class="brand-site" type="button">Langbiang Tech Campus<svg class="ic ic-s" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+</div>
+</div>
+<ul class="kpis" aria-label="Active incidents by severity — select to filter the feed">
+<li><button class="kpi" type="button" data-severity="critical" data-zero="true" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-critical"></use></svg><span class="kpi-n">0</span><span class="kpi-label">Critical</span></button></li>
+<li><button class="kpi" type="button" data-severity="high" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-high"></use></svg><span class="kpi-n">2</span><span class="kpi-label">High</span></button></li>
+<li><button class="kpi" type="button" data-severity="medium" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-medium"></use></svg><span class="kpi-n">4</span><span class="kpi-label">Medium</span></button></li>
+<li><button class="kpi" type="button" data-severity="low" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-low"></use></svg><span class="kpi-n">2</span><span class="kpi-label">Low</span></button></li>
+</ul>
+<div class="spacer"></div>
+<span class="conns">
+<span class="conn" data-state="live" role="status"><svg class="ic ic-s" aria-hidden="true"><use href="#i-live"></use></svg>Live</span>
+<span class="conn" data-state="live" role="status"><svg class="ic ic-s" aria-hidden="true"><use href="#i-activity"></use></svg>Telemetry</span>
+</span>
+<time class="clock" datetime="2026-10-08T15:42:00+07:00"><span class="clock-time">15:42</span><span class="clock-date">Thu 8 Oct · GMT+7</span></time>
+<button class="btn btn-primary" type="button" aria-expanded="false" aria-controls="report-incident-panel"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg>Report incident<span class="kbd">N</span></button>
+<button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar">DO</span><span><span class="user-name">Demo Operator</span><span class="user-role">Operator</span></span><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+</header>
+
+<main class="workspace">
+<aside class="feed" aria-label="Incidents and assets">
+<div class="panel-switch" role="tablist" aria-label="Side panel">
+<button type="button" role="tab" aria-selected="true">Incidents <span class="count">8</span></button>
+<button type="button" role="tab" aria-selected="false" tabindex="-1">Assets <span class="count">19</span></button>
+</div>
+<div class="feed-top">
+<label class="search"><span class="sprite">Search incidents</span><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><input type="search" placeholder="Search code, title or zone"><span class="kbd">/</span></label>
+</div>
+<div class="tabs" role="tablist" aria-label="Filter incidents">
+<button class="tab" role="tab" type="button" aria-selected="true">Active <span class="count">8</span></button>
+<button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Resolved <span class="count">2</span></button>
+<button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">All <span class="count">10</span></button>
+</div>
+<ul class="feed-list" role="tabpanel" aria-label="Active incidents">
+<sc-for list="{{rows}}" as="item" hint-placeholder-count="8">
+<li>
+<button class="row" type="button" data-severity="{{item.sev}}" data-status="{{item.status}}" aria-current="false">
+<span class="sev-ic" title="{{item.sevLabel}}"><svg class="ic" aria-hidden="true"><use href="#i-{{item.sev}}"></use></svg><span class="sprite">{{item.sevLabel}} severity</span></span>
+<span class="row-title"><svg class="ic ic-s" aria-hidden="true"><use href="#i-{{item.type}}"></use></svg><span class="sprite">{{item.typeLabel}}: </span>{{item.title}}</span>
+<time class="row-age {{item.ageCls}}"><sc-if value="{{item.late}}" hint-placeholder-val="{{ false }}"><svg class="ic ic-s" aria-hidden="true"><use href="#i-clock"></use></svg></sc-if>{{item.age}}</time>
+<span class="row-meta">
+<span class="status" data-status="{{item.status}}"><svg class="ic" aria-hidden="true"><use href="#i-{{item.status}}"></use></svg>{{item.statusLabel}}</span>
+<span class="sep">·</span>
+<span>{{item.zone}}</span>
+<span class="code" style="margin-left: auto">{{item.code}}</span>
+</span>
+</button>
+</li>
+</sc-for>
+</ul>
+</aside>
+
+<div class="stage">
+<section class="twin" aria-label="Campus 3D view">
+<div style="position: absolute; left: 0; top: 0">
+<dc-import name="TwinScene" scene="campus" w="1072" h="671" view="{{twin.view}}" states="{{twin.states}}" tip="{{twin.tip}}" tips="{{twin.tips}}" beacons="{{twin.beacons}}" leader="{{twin.leader}}" pin="{{twin.pin}}" pick-on-ground="{{twin.pickOnGround}}" loading="{{twin.loading}}" loaded="{{twin.loaded}}" all-stale="{{twin.allStale}}" inset-right="{{twin.insetRight}}" hint-at="{{twin.hintAt}}" focus="{{twin.focus}}" heat="{{twin.heat}}" heat-labels="{{twin.heatLabels}}" aria="Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer. Drag to rotate." hint-size="1072px,671px"></dc-import>
+</div>
+
+<div class="tw-tools">
+<div class="viewseg" role="group" aria-label="View"><button type="button" aria-pressed="true"><svg class="ic ic-s" aria-hidden="true"><use href="#i-box"></use></svg>3D</button><button type="button" aria-pressed="false"><svg class="ic ic-s" aria-hidden="true"><use href="#i-map"></use></svg>2D</button></div>
+<div class="layers" role="group" aria-label="Layers"><span>Show</span><button class="layer" type="button" aria-pressed="true"><i class="tick"></i>Incidents</button><button class="layer" type="button" aria-pressed="false"><i class="tick"></i>Cameras</button><button class="layer" type="button" aria-pressed="true"><i class="tick"></i>Heat</button></div>
+<button class="colour-by" type="button" aria-haspopup="listbox">Colour by <b>Indoor temperature</b><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+</div>
+
+<div class="heat-legend" role="note">
+<b>Indoor temperature, by building</b>
+<div class="ramp" aria-hidden="true"><i style="background: #1f2a4d"></i><i style="background: #2b3a72"></i><i style="background: #3d4f99"></i><i style="background: #5868c4"></i><i style="background: #7b8af0"></i><i style="background: #b3bdff"></i></div>
+<div class="scale"><span>19 °C</span><span>23 °C</span><span>27 °C</span></div>
+<span>A reading, not a severity. Faded buildings report none.</span>
+</div>
+</section>
+
+<section class="cams" aria-label="Cameras">
+<figure class="cam">
+<div class="scene scene-a"><div class="block lit" style="left: 18%; top: 22%; width: 26%; height: 20%"></div><div class="block" style="left: 58%; top: 28%; width: 18%; height: 14%"></div></div>
+<div class="cam-top"><span class="live"><i></i>LIVE</span><span class="cam-code">CAM-L03</span></div>
+<figcaption class="cam-bot"><span><span class="cam-name">Science Lab, level 2</span><br><span class="cam-zone">Science Lab</span></span><span class="cam-time">15:42:07</span></figcaption>
+</figure>
+<figure class="cam">
+<div class="scene scene-b"><div class="block lit" style="left: 8%; top: 25%; width: 34%; height: 30%"></div><div class="block" style="left: 64%; top: 36%; width: 22%; height: 19%"></div></div>
+<div class="cam-top"><span class="live"><i></i>LIVE</span><span class="cam-code">CAM-H01</span></div>
+<figcaption class="cam-bot"><span><span class="cam-name">Service corridor</span><br><span class="cam-zone">Innovation Hub</span></span><span class="cam-time">15:42:07</span></figcaption>
+</figure>
+<figure class="cam">
+<div class="scene scene-c"><div class="block" style="left: 30%; top: 20%; width: 40%; height: 16%"></div></div>
+<div class="cam-top"><span class="live"><i></i>LIVE</span><span class="cam-code">CAM-R02</span></div>
+<figcaption class="cam-bot"><span><span class="cam-name">Dormitory B lobby</span><br><span class="cam-zone">Dormitory B</span></span><span class="cam-time">15:42:07</span></figcaption>
+</figure>
+<figure class="cam">
+<div class="scene scene-d"><div class="block lit" style="left: 12%; top: 26%; width: 20%; height: 22%"></div><div class="block lit" style="left: 70%; top: 26%; width: 20%; height: 22%"></div></div>
+<div class="cam-top"><span class="live"><i></i>LIVE</span><span class="cam-code">CAM-G01</span></div>
+<button class="cam-expand" type="button" aria-label="Open CAM-G01 in the viewer"><svg class="ic ic-s" aria-hidden="true"><use href="#i-expand"></use></svg></button>
+<figcaption class="cam-bot"><span><span class="cam-name">Main gate inbound</span><br><span class="cam-zone">Main Gate</span></span><span class="cam-time">15:42:07</span></figcaption>
+</figure>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (r) => ({ late: false, ...r, ageCls: r.late ? 'is-late' : '' });
+    return {
+      twin: { heat: { InnovationHub: 0.375, Library: 0.300, LectureHallA: 0.575, DataCenter: 0.388, StudentCenter: 0.725, SportsHall: 0.862, AdminBuilding: 0.450, ScienceLab: 0.250, DormitoryA: 0.638, DormitoryB: 0.925, HealthClinic: 0.438, SecurityOffice: 0.625 }, heatLabels: { InnovationHub: '22.0 °C', Library: '21.4 °C', LectureHallA: '23.6 °C', DataCenter: '22.1 °C', StudentCenter: '24.8 °C', SportsHall: '25.9 °C', AdminBuilding: '22.6 °C', ScienceLab: '21.0 °C', DormitoryA: '24.1 °C', DormitoryB: '26.4 °C', HealthClinic: '22.5 °C', SecurityOffice: '24.0 °C' }, beacons: [
+        { p: [150, -200, 16], sev: 'high', icon: 'fire_alarm', fill: true },
+        { p: [-100, -38, 0], sev: 'high', icon: 'intrusion', fill: true },
+        { p: [205, 180, 20], sev: 'medium', icon: 'water_leak' },
+        { p: [122, 112, 0], sev: 'medium', icon: 'suspicious_object' },
+        { p: [-40, -208, 14], sev: 'medium', icon: 'injury' },
+        { p: [197, -25, 0], sev: 'medium', icon: 'equipment_fault' },
+        { p: [185, 140, 0], sev: 'low', icon: 'blocked_access', fill: true },
+        { p: [0, 248, 0], sev: 'low', icon: 'crowding', fill: true }
+      ] },
+      beacons: [
+        { p: [150, -200, 16], sev: 'high', icon: 'fire_alarm', fill: true },
+        { p: [-100, -38, 0], sev: 'high', icon: 'intrusion', fill: true },
+        { p: [205, 180, 20], sev: 'medium', icon: 'water_leak' },
+        { p: [122, 112, 0], sev: 'medium', icon: 'suspicious_object' },
+        { p: [-40, -208, 14], sev: 'medium', icon: 'injury' },
+        { p: [197, -25, 0], sev: 'medium', icon: 'equipment_fault' },
+        { p: [185, 140, 0], sev: 'low', icon: 'blocked_access', fill: true },
+        { p: [0, 248, 0], sev: 'low', icon: 'crowding', fill: true }
+      ],
+      rows: [
+        row({ code: 'INC-000110', sev: 'high', sevLabel: 'High', title: 'Smoke detector — Science Lab, room 204', status: 'open', statusLabel: 'Open', type: 'fire_alarm', typeLabel: 'Fire alarm', zone: 'Science Lab', age: '3m' }),
+        row({ code: 'INC-000104', sev: 'high', sevLabel: 'High', title: 'Door forced open — service corridor', status: 'open', statusLabel: 'Open', type: 'intrusion', typeLabel: 'Intrusion', zone: 'Innovation Hub', age: '14m', late: true }),
+        row({ code: 'INC-000108', sev: 'medium', sevLabel: 'Medium', title: 'Water leak — Dormitory B, level 3', status: 'acknowledged', statusLabel: 'Being handled', type: 'water_leak', typeLabel: 'Water leak', zone: 'Dormitory B', age: '25m' }),
+        row({ code: 'INC-000103', sev: 'medium', sevLabel: 'Medium', title: 'Unattended bag — student center plaza', status: 'acknowledged', statusLabel: 'Being handled', type: 'suspicious_object', typeLabel: 'Suspicious object', zone: 'Student Center', age: '22m' }),
+        row({ code: 'INC-000109', sev: 'medium', sevLabel: 'Medium', title: 'Student fell — Sports Hall, court 2', status: 'acknowledged', statusLabel: 'Being handled', type: 'injury', typeLabel: 'Injury', zone: 'Sports Hall', age: '9m' }),
+        row({ code: 'INC-000105', sev: 'medium', sevLabel: 'Medium', title: 'Loading bay camera offline', status: 'acknowledged', statusLabel: 'Being handled', type: 'equipment_fault', typeLabel: 'Equipment fault', zone: 'Data Center', age: '1h' }),
+        row({ code: 'INC-000111', sev: 'low', sevLabel: 'Low', title: 'Fire lane blocked by a delivery van', status: 'open', statusLabel: 'Open', type: 'blocked_access', typeLabel: 'Blocked access', zone: 'East Parking', age: '4m' }),
+        row({ code: 'INC-000106', sev: 'low', sevLabel: 'Low', title: 'Queue building at main gate', status: 'open', statusLabel: 'Open', type: 'crowding', typeLabel: 'Crowding', zone: 'Main Gate', age: '6m' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

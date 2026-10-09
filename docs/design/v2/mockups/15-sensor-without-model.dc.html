@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Asset without a model — leak sensor</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./console.css">
+<link rel="stylesheet" href="./twin.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="app">
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-critical" viewBox="0 0 24 24"><path d="M12 16h.01"></path><path d="M12 8v4"></path><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"></path></symbol>
+<symbol id="i-high" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></symbol>
+<symbol id="i-medium" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="i-low" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
+<symbol id="i-video-off" viewBox="0 0 24 24"><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"></path><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"></path><path d="m2 2 20 20"></path></symbol>
+<symbol id="i-live" viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19.1"></path></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></symbol>
+<symbol id="i-fan" viewBox="0 0 24 24"><path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path><path d="M12 12v.01"></path></symbol>
+<symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"></path></symbol>
+<symbol id="i-power" viewBox="0 0 24 24"><path d="M12 2v10"></path><path d="M18.4 6.6a9 9 0 1 1-12.77.04"></path></symbol>
+<symbol id="i-gate" viewBox="0 0 24 24"><path d="M4 3 2 5v15c0 .6.4 1 1 1h2c.6 0 1-.4 1-1V5Z"></path><path d="M6 8h4"></path><path d="M6 18h4"></path><path d="m12 3-2 2v15c0 .6.4 1 1 1h2c.6 0 1-.4 1-1V5Z"></path><path d="M14 8h4"></path><path d="M14 18h4"></path><path d="m20 3-2 2v15c0 .6.4 1 1 1h2c.6 0 1-.4 1-1V5Z"></path></symbol>
+<symbol id="i-droplet" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"></path></symbol>
+<symbol id="i-lift" viewBox="0 0 24 24"><path d="m21 16-4 4-4-4"></path><path d="M17 20V4"></path><path d="m3 8 4-4 4 4"></path><path d="M7 4v16"></path></symbol>
+<symbol id="i-wave" viewBox="0 0 24 24"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"></path></symbol>
+<symbol id="i-rotl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></symbol>
+<symbol id="i-rotr" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></symbol>
+<symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.333 2q2 0 3.067-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.528"></path></symbol>
+<symbol id="i-focus" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2"></path><path d="M17 3h2a2 2 0 0 1 2 2v2"></path><path d="M21 17v2a2 2 0 0 1-2 2h-2"></path><path d="M7 21H5a2 2 0 0 1-2-2v-2"></path></symbol>
+<symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle></symbol>
+<symbol id="i-battery" viewBox="0 0 24 24"><rect width="16" height="10" x="2" y="7" rx="2" ry="2"></rect><path d="M22 11v2"></path></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></symbol>
+<symbol id="i-acknowledged" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="m16 11 2 2 4-4"></path></symbol>
+</defs></svg>
+
+<header class="hdr">
+<div class="brand">
+<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#223848"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#8c9bff"></circle></svg>
+<div>
+<h1 class="brand-name">Ops Command Center</h1>
+<button class="brand-site" type="button">Langbiang Tech Campus<svg class="ic ic-s" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+</div>
+</div>
+<ul class="kpis" aria-label="Active incidents by severity — select to filter the feed">
+<li><button class="kpi" type="button" data-severity="critical" data-zero="true" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-critical"></use></svg><span class="kpi-n">0</span><span class="kpi-label">Critical</span></button></li>
+<li><button class="kpi" type="button" data-severity="high" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-high"></use></svg><span class="kpi-n">1</span><span class="kpi-label">High</span></button></li>
+<li><button class="kpi" type="button" data-severity="medium" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-medium"></use></svg><span class="kpi-n">2</span><span class="kpi-label">Medium</span></button></li>
+<li><button class="kpi" type="button" data-severity="low" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="#i-low"></use></svg><span class="kpi-n">1</span><span class="kpi-label">Low</span></button></li>
+</ul>
+<div class="spacer"></div>
+<span class="conns">
+<span class="conn" data-state="live" role="status"><svg class="ic ic-s" aria-hidden="true"><use href="#i-live"></use></svg>Live</span>
+<span class="conn" data-state="live" role="status"><svg class="ic ic-s" aria-hidden="true"><use href="#i-activity"></use></svg>Telemetry</span>
+</span>
+<time class="clock" datetime="2026-10-08T15:42:00+07:00"><span class="clock-time">15:42</span><span class="clock-date">Thu 8 Oct · GMT+7</span></time>
+<button class="btn btn-primary" type="button" aria-expanded="false" aria-controls="report-incident-panel"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg>Report incident<span class="kbd">N</span></button>
+<button class="user" type="button" aria-haspopup="menu" aria-expanded="false"><span class="avatar">DO</span><span><span class="user-name">Demo Operator</span><span class="user-role">Operator</span></span><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevron"></use></svg></button>
+</header>
+
+<main class="workspace">
+<aside class="feed" aria-label="Incidents and assets">
+<div class="panel-switch" role="tablist" aria-label="Side panel">
+<button type="button" role="tab" aria-selected="false" tabindex="-1">Incidents <span class="count">4</span></button>
+<button type="button" role="tab" aria-selected="true">Assets <span class="count">19</span></button>
+</div>
+<div class="feed-top">
+<label class="search"><span class="sprite">Search assets</span><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><input type="search" placeholder="Search asset, code or zone"><span class="kbd">/</span></label>
+</div>
+<div class="tabs" role="tablist" aria-label="Filter assets">
+<button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">All <span class="count">19</span></button>
+<button class="tab" role="tab" type="button" aria-selected="true">Faults <span class="count">1</span></button>
+<button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">No data <span class="count">1</span></button>
+</div>
+<ul class="feed-list" role="tabpanel" aria-label="Assets by zone">
+<sc-for list="{{assets}}" as="a" hint-placeholder-count="8">
+<li>
+<sc-if value="{{a.group}}" hint-placeholder-val="{{ false }}"><p class="asset-group">{{a.group}}</p></sc-if>
+<button class="asset-row" type="button" aria-current="{{a.current}}" data-severity="{{a.sev}}">
+<span class="asset-ic"><svg class="ic" aria-hidden="true"><use href="#i-{{a.icon}}"></use></svg></span>
+<span class="asset-name">{{a.name}}</span>
+<span class="asset-val">{{a.val}}</span>
+<span class="asset-meta"><span class="dstate" data-state="{{a.state}}"><svg class="ic" aria-hidden="true"><use href="#i-{{a.stateIcon}}"></use></svg>{{a.stateLabel}}</span><span class="code">{{a.code}}</span></span>
+</button>
+</li>
+</sc-for>
+</ul>
+</aside>
+
+<div class="stage">
+<section class="twin" aria-label="Cooling tower 1, isolated">
+<div style="position: absolute; left: 0; top: 0">
+<dc-import name="TwinScene" scene="campus" w="1072" h="671" view="{{twin.view}}" states="{{twin.states}}" tip="{{twin.tip}}" tips="{{twin.tips}}" beacons="{{twin.beacons}}" leader="{{twin.leader}}" pin="{{twin.pin}}" pick-on-ground="{{twin.pickOnGround}}" loading="{{twin.loading}}" loaded="{{twin.loaded}}" all-stale="{{twin.allStale}}" inset-right="{{twin.insetRight}}" hint-at="{{twin.hintAt}}" focus="{{twin.focus}}" heat="{{twin.heat}}" heat-labels="{{twin.heatLabels}}" aria="Dormitory B in focus; the level 3 leak sensor, drawn as a neutral box, is in fault. Drag to rotate." hint-size="1072px,671px"></dc-import>
+</div>
+
+
+<div class="tw-tools">
+<nav class="crumbs" aria-label="Scene level"><a class="back" href="#" aria-label="Up one level — Dormitory B"><svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg></a><a href="#">Campus</a><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevr"></use></svg><a href="#">Dormitory B</a><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevr"></use></svg><strong>LKS-B3</strong></nav>
+</div>
+
+
+<div class="legend tw-legend"><span><svg class="ic ic-s" aria-hidden="true"><use href="#i-box"></use></svg>Walls see-through, other buildings faded. <span class="kbd">Esc</span> returns to Dormitory B</span></div>
+
+</section>
+
+<section class="cams" aria-label="Cameras">
+<figure class="cam is-linked">
+<div class="scene scene-b"><div class="block lit" style="left: 8%; top: 25%; width: 34%; height: 30%"></div><div class="block" style="left: 64%; top: 36%; width: 22%; height: 19%"></div></div>
+<div class="cam-top"><span class="live"><i></i>LIVE</span><span class="cam-tag">On this asset</span></div>
+<figcaption class="cam-bot"><span><span class="cam-name">Level 3 corridor</span><br><span class="cam-zone">CAM-R05 · Dormitory B</span></span><span class="cam-time">15:42:07</span></figcaption>
+</figure>
+<figure class="cam">
+<div class="cam-off"><svg class="ic ic-l" aria-hidden="true"><use href="#i-video-off"></use></svg><strong>No signal</strong><span>CAM-R06 · since 14:38</span></div>
+</figure>
+<figure class="cam"><div class="scene scene-a"></div></figure>
+<figure class="cam"><div class="scene scene-d"></div></figure>
+</section>
+
+<aside class="sheet" aria-labelledby="asset-title">
+<div class="sheet-head">
+<div class="sheet-toprow"><span class="sheet-code">LKS-B3 · Leak sensor</span><button class="close" type="button">Close<span class="kbd">Esc</span><svg class="ic" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
+<h2 class="sheet-title" id="asset-title">Leak sensor, level 3</h2>
+<div class="badges">
+<span class="dstate dstate-pill" data-state="fault" data-severity="medium"><svg class="ic" aria-hidden="true"><use href="#i-medium"></use></svg>Fault · INC-000108</span>
+<span class="chip">Dormitory B · level 3, riser cupboard</span>
+<span class="chip"><svg class="ic" aria-hidden="true"><use href="#i-box"></use></svg>No 3D model</span>
+</div>
+</div>
+<div class="sheet-body">
+<section class="sheet-section">
+<h3 class="eyebrow">Live readings <span class="freshness"><i></i>Updated 4 s ago</span></h3>
+<ul class="telem">
+<li><span class="telem-label"><span><svg class="ic ic-s" aria-hidden="true"><use href="#i-droplet"></use></svg>Leak</span><small>Since 15:17</small></span><svg class="spark" viewBox="0 0 96 28" aria-hidden="true"><polyline class="line" points="0,22 40,22 44,6 96,6"></polyline><circle class="now" cx="96" cy="6" r="2.5"></circle></svg><span class="telem-val">Wet</span></li>
+<li><span class="telem-label"><span><svg class="ic ic-s" aria-hidden="true"><use href="#i-battery"></use></svg>Battery</span><small>Replace below 20 %</small></span><svg class="spark" viewBox="0 0 96 28" aria-hidden="true"><line class="limit" x1="0" y1="24" x2="96" y2="24"></line><polyline class="line" points="0,8 32,8 64,8 96,8"></polyline><circle class="now" cx="96" cy="8" r="2.5"></circle></svg><span class="telem-val">87 <small>%</small></span></li>
+<li><span class="telem-label"><span><svg class="ic ic-s" aria-hidden="true"><use href="#i-live"></use></svg>Signal</span><small>Gateway GW-B2</small></span><svg class="spark" viewBox="0 0 96 28" aria-hidden="true"><polyline class="line" points="0,12 16,13 32,12 48,14 64,13 80,12 96,13"></polyline><circle class="now" cx="96" cy="13" r="2.5"></circle></svg><span class="telem-val">−71 <small>dBm</small></span></li>
+</ul>
+</section>
+<section class="sheet-section">
+<h3 class="eyebrow">Incident raised by this sensor</h3>
+<button class="row" type="button" data-severity="medium" data-status="acknowledged">
+<span class="sev-ic"><svg class="ic" aria-hidden="true"><use href="#i-medium"></use></svg></span>
+<span class="row-title"><svg class="ic ic-s" aria-hidden="true"><use href="#i-droplet"></use></svg>Water leak — Dormitory B, level 3</span>
+<time class="row-age">25m</time>
+<span class="row-meta"><span class="status" data-status="acknowledged"><svg class="ic" aria-hidden="true"><use href="#i-acknowledged"></use></svg>Being handled · Minh Tran</span><span class="code" style="margin-left: auto">INC-000108</span></span>
+</button>
+</section>
+<section class="sheet-section">
+<h3 class="eyebrow">In the twin</h3>
+<p class="hint" style="margin: 0"><svg class="ic ic-s" aria-hidden="true"><use href="#i-info"></use></svg>This asset class has no model yet, so it is drawn as a 1.4 m neutral box at its position. Its readings, states and incident work exactly as for modelled assets.</p>
+</section>
+</div>
+<div class="sheet-foot">
+<div class="actions" style="margin-top: 0">
+<button class="btn btn-secondary btn-block" type="button">Open INC-000108</button>
+<button class="btn btn-ghost" type="button"><svg class="ic" aria-hidden="true"><use href="#i-focus"></use></svg>Focus<span class="kbd">F</span></button>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const states = { running: ['activity', 'Running'], standby: ['pause', 'Standby'], stale: ['clock', 'No data since 15:20'], fault: ['medium', 'Fault · INC-000108'] };
+    const a = (r) => ({ group: '', current: 'false', sev: '', ...r, stateIcon: states[r.state][0], stateLabel: states[r.state][1] });
+    return {
+      twin: { focus: 'DormitoryB', view: { target: [180, 181, 8], zoom: 4.6 }, states: { LKSB3: 'alarm:medium' }, insetRight: 440, beacons: [{ p: [204, 193, 9.4], sev: 'medium', icon: 'water_leak', sel: true }] },
+      assets: [
+        a({ group: 'Dormitory B', code: 'LKS-B3', name: 'Leak sensor, level 3', icon: 'droplet', state: 'fault', sev: 'medium', val: 'Wet', current: 'true' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

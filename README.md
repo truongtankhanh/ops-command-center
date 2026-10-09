@@ -107,6 +107,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0014](docs/adr/0014-structured-logging-and-correlation.md)          | JSON logs with redaction; one `requestId` from nginx through the outbox to every replica; log level raised at runtime with a TTL     |
 | [0015](docs/adr/0015-metrics-and-tracing.md)                         | Prometheus metrics on a port of its own that nginx never proxies; bounded labels; tracing deferred with its sampling recorded        |
 | [0016](docs/adr/0016-console-css-modules.md)                         | Console styles in CSS Modules per component; only tokens and element defaults are global; variants are attributes, not classes       |
+| [0017](docs/adr/0017-site-plan-as-data.md)                           | The site plan and camera fields of view are data served by the API, so a site's geometry changes without a console build             |
 
 ### Design details worth a look
 

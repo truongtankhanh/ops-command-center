@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Twin foundations</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./console.css">
+<link rel="stylesheet" href="./twin.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.fnd{width:1440px;height:2440px;box-sizing:border-box;padding:48px 56px;background:var(--surface-0);color:var(--text-primary);font-family:var(--font-body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.fnd h1{margin:0;font-family:var(--font-ui);font-weight:600;font-size:32px;line-height:1.1}
+.fnd h2{margin:0 0 14px;font-family:var(--font-ui);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-tertiary)}
+.fnd-head{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.fnd-head p{margin:2px 0 0;color:var(--text-secondary)}
+.fnd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.card{padding:20px 22px 22px;border-radius:var(--radius-l);background:var(--surface-1);box-shadow:var(--shadow-1),inset 0 0 0 1px var(--border-subtle)}
+.card.wide{grid-column:span 2}
+.sub{margin:0 0 8px;font-family:var(--font-ui);font-size:14px;color:var(--text-secondary)}
+.states{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.state{display:grid;justify-items:center;gap:6px;padding:14px 8px 12px;border-radius:var(--radius-m);background:var(--surface-0);text-align:center}
+.state svg{width:84px;height:96px}
+.state b{font-family:var(--font-ui);font-weight:600;font-size:15px}
+.state small{font-size:13px;color:var(--text-secondary);line-height:1.35}
+.swrow{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--text-secondary)}
+.swrow i{display:inline-block;width:28px;height:20px;border-radius:var(--radius-s);box-shadow:inset 0 0 0 1px var(--border-subtle);vertical-align:middle;margin-right:4px}
+.ramp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));height:40px;border-radius:var(--radius-m);overflow:hidden}
+.ramp-scale{display:flex;justify-content:space-between;margin-top:6px;font-family:var(--font-ui);font-size:13px;color:var(--text-secondary)}
+.rules{margin:14px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14px;color:var(--text-secondary)}
+.rules b{color:var(--text-primary);font-weight:600}
+.limits{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;align-items:start}
+.limits svg{width:260px;height:200px}
+.limits svg text{font-family:var(--font-ui);font-size:12px;fill:var(--text-secondary)}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:14px}
+.dl dt{color:var(--text-secondary)}
+.dl dd{margin:0;font-family:var(--font-ui);font-weight:600}
+.code{margin:0;padding:14px 16px;border-radius:var(--radius-m);background:var(--surface-0);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.6;color:var(--text-primary);white-space:pre;overflow:hidden}
+.code em{font-style:normal;color:var(--text-tertiary)}
+.code b{font-weight:400;color:var(--accent)}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{padding:0 8px 8px 0;text-align:left;font-family:var(--font-ui);font-weight:600;font-size:13px;color:var(--text-tertiary);box-shadow:inset 0 -1px 0 var(--border-subtle)}
+.tbl td{padding:7px 8px 7px 0;box-shadow:inset 0 -1px 0 var(--border-subtle);vertical-align:top}
+.tbl td:nth-child(2){font-family:var(--font-ui);font-weight:600;white-space:nowrap}
+.tbl td:nth-child(3){color:var(--text-secondary)}
+.flow{display:grid;grid-template-columns:repeat(13,auto);align-items:stretch;justify-content:space-between;gap:0}
+.node{display:grid;align-content:start;gap:4px;width:150px;padding:12px 12px 12px;border-radius:var(--radius-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border-subtle)}
+.node.thread{box-shadow:inset 0 0 0 1px var(--accent)}
+.node b{display:flex;align-items:center;gap:6px;font-family:var(--font-ui);font-weight:600;font-size:15px}
+.node small{font-size:13px;color:var(--text-secondary);line-height:1.35}
+.node .tag{justify-self:start;margin-top:4px;padding:1px 6px;border-radius:var(--radius-s);background:var(--surface-0);font-family:var(--font-ui);font-size:12px;color:var(--text-tertiary)}
+.arrow{display:grid;place-items:center;color:var(--text-tertiary)}
+.flow-note{display:flex;gap:24px;margin-top:14px;font-size:14px;color:var(--text-secondary)}
+.flow-note code{padding:1px 6px;border-radius:var(--radius-s);background:var(--surface-0);font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--text-primary)}
+.comp{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:16px 0 0;font-size:14px}
+.keys dt{display:flex;gap:4px;align-items:center;justify-content:flex-end}
+.keys dd{margin:0;color:var(--text-secondary)}
+.tips{display:flex;gap:20px;align-items:flex-start}
+.tips .tw-tip,.tips .tw-callout{position:static}
+.dstates{display:flex;flex-wrap:wrap;gap:10px}
+.cats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.cat{display:grid;align-content:start;gap:6px;padding:14px 14px 12px;border-radius:var(--radius-m);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--border-subtle)}
+.cat b{display:flex;align-items:center;gap:8px;font-family:var(--font-ui);font-weight:600;font-size:16px}
+.cat b .ic{color:var(--accent)}
+.cat small{font-size:13px;line-height:1.45;color:var(--text-secondary)}
+.cat .who{justify-self:start;margin-top:4px;padding:1px 7px;border-radius:var(--radius-s);background:var(--surface-0);font-family:var(--font-ui);font-size:12px;color:var(--text-tertiary)}
+</style>
+</helmet>
+<div class="fnd">
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="i-critical" viewBox="0 0 24 24"><path d="M12 16h.01"></path><path d="M12 8v4"></path><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"></path></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></symbol>
+<symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></symbol>
+<symbol id="i-offline" viewBox="0 0 24 24"><path d="M12 20h.01"></path><path d="M8.5 16.429a5 5 0 0 1 7 0"></path><path d="M5 12.859a10 10 0 0 1 5.17-2.69"></path><path d="M19 12.859a10 10 0 0 0-2.007-1.523"></path><path d="M2 8.82a15 15 0 0 1 4.177-2.643"></path><path d="M22 8.82a15 15 0 0 0-11.288-3.764"></path><path d="m2 2 20 20"></path></symbol>
+<symbol id="i-fan" viewBox="0 0 24 24"><path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path><path d="M12 12v.01"></path></symbol>
+<symbol id="i-thermo" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"></path></symbol>
+<symbol id="i-rotl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></symbol>
+<symbol id="i-rotr" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></symbol>
+<symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></symbol>
+<symbol id="i-map" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"></path><path d="M15 5.764v15"></path><path d="M9 3.236v15"></path></symbol>
+<symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></symbol>
+<symbol id="i-pointer" viewBox="0 0 24 24"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"></path></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></symbol>
+<symbol id="i-c-security" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path></symbol>
+<symbol id="i-c-fire" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></symbol>
+<symbol id="i-c-medical" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"></path></symbol>
+<symbol id="i-c-facilities" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></symbol>
+<symbol id="i-c-environment" viewBox="0 0 24 24"><path d="M6 16.326A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.973"></path><path d="m13 12-3 5h4l-3 5"></path></symbol>
+<symbol id="i-c-traffic" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"></path><circle cx="7" cy="17" r="2"></circle><path d="M9 17h6"></path><circle cx="17" cy="17" r="2"></circle></symbol>
+<symbol id="i-cpu" viewBox="0 0 24 24"><rect width="16" height="16" x="4" y="4" rx="2"></rect><rect width="6" height="6" x="9" y="9" rx="1"></rect><path d="M15 2v2"></path><path d="M15 20v2"></path><path d="M2 15h2"></path><path d="M2 9h2"></path><path d="M20 15h2"></path><path d="M20 9h2"></path><path d="M9 2v2"></path><path d="M9 20v2"></path></symbol>
+</defs></svg>
+
+<div class="fnd-head">
+<svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" style="width: 44px; height: 44px"><rect width="32" height="32" rx="8" fill="#223848"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#8c9bff"></circle></svg>
+<div>
+<h1>Console V2 — digital twin foundations</h1>
+<p>Adds a 3D stage to the V1 console. V1 tokens, type, icons and components are unchanged; everything below is new.</p>
+</div>
+</div>
+
+<div class="fnd-grid">
+
+<section class="card wide">
+<h2>Part states — one neutral material, colour only for interaction and severity</h2>
+<div class="states">
+<div class="state"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Idle</b><small>Three-face neutral; baked AO only</small></div>
+<div class="state"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part is-hover"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Hover</b><small>+30 % accent, 1 px accent edge, pointer cursor</small></div>
+<div class="state"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part is-selected"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Selected</b><small>Hover fill + 2 px outline; callout open</small></div>
+<div class="state" data-severity="critical"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part is-alarm"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Alarm</b><small>+35 % of the linked incident's severity; marker pulses, part does not</small></div>
+<div class="state"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part is-stale"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Stale</b><small>Desaturated, dashed edge; motion holds at last value</small></div>
+<div class="state"><svg viewBox="-40 -46 80 92" aria-hidden="true"><g class="tw-part is-ghost"><polygon class="f-s" points="-34.6,-20 0,0 0,40 -34.6,20"></polygon><polygon class="f-e" points="34.6,-20 0,0 0,40 34.6,20"></polygon><polygon class="f-t" points="0,-40 34.6,-20 0,0 -34.6,-20"></polygon></g></svg><b>Ghosted</b><small>18 % opacity: context while an asset is isolated</small></div>
+</div>
+<div class="swrow">
+<span><i style="background: #2a4658"></i>Top #2a4658</span>
+<span><i style="background: #1f3748"></i>South #1f3748</span>
+<span><i style="background: #172b3a"></i>East #172b3a</span>
+<span><i style="background: #3e5a6e"></i>Edge #3e5a6e</span>
+<span><i style="background: #0f1d27"></i>Ground #0f1d27</span>
+<span><i style="background: #475f8a"></i>Hover top #475f8a</span>
+<span><i style="background: #754d55"></i>Alarm top #754d55</span>
+<span><i style="background: #2b3338"></i>Stale top #2b3338</span>
+<span><i style="background: #435766"></i>Steel top #435766</span>
+<span><i style="background: #363c41"></i>Concrete top #363c41</span>
+</div>
+</section>
+
+<section class="card">
+<h2>Telemetry overlay — sequential, one hue</h2>
+<p class="sub">Optional layer (off by default): tints parts by one chosen reading.</p>
+<div class="ramp"><i style="background: #1f2a4d"></i><i style="background: #2b3a72"></i><i style="background: #3d4f99"></i><i style="background: #5868c4"></i><i style="background: #7b8af0"></i><i style="background: #b3bdff"></i></div>
+<div class="ramp-scale"><span>24 °C</span><span>Water outlet temperature</span><span>38 °C</span></div>
+<ul class="rules">
+<li><b>Never a severity hue.</b> Red, orange, yellow and cyan stay reserved for incidents.</li>
+<li><b>A breached limit is an incident,</b> raised server-side; the overlay only shows the reading.</li>
+<li><b>Lightness carries the value,</b> so it survives colour-vision deficiency and the 2D fallback.</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>Camera limits</h2>
+<div class="limits">
+<svg viewBox="0 0 260 200" aria-hidden="true">
+<line x1="10" y1="176" x2="250" y2="176" stroke="#34495a" stroke-width="1.5"></line>
+<path d="M130 176 L 70 42 A 146 146 0 0 1 200 52 Z" fill="rgb(140 155 255 / 0.10)" stroke="none"></path>
+<path d="M130 176 L 70 42" stroke="#8c9bff" stroke-width="1.5" stroke-dasharray="4 3"></path>
+<path d="M130 176 L 200 52" stroke="#8c9bff" stroke-width="1.5" stroke-dasharray="4 3"></path>
+<path d="M 106 122 A 60 60 0 0 1 160 124" fill="none" stroke="#5a7488" stroke-width="1.5"></path>
+<path d="M 118 150 A 28 28 0 0 1 144 151" fill="none" stroke="#5a7488" stroke-width="1.5"></path>
+<circle cx="130" cy="176" r="5" fill="#8c9bff"></circle>
+<rect x="190" y="40" width="20" height="14" rx="3" fill="#223848" stroke="#a6b8c5"></rect>
+<text x="6" y="196">Ground — the camera never goes below 8° above it</text>
+<text x="44" y="34">78° from vertical</text>
+<text x="172" y="30">20°</text>
+<text x="164" y="118">max distance</text>
+<text x="146" y="150">min</text>
+</svg>
+<dl class="dl">
+<dt>Distance — campus</dt><dd>60 – 900 m</dd>
+<dt>Distance — asset</dt><dd>4 – 40 m</dd>
+<dt>Tilt (polar)</dt><dd>20° – 78° from vertical</dd>
+<dt>Pan</dt><dd>Target clamped to site boundary + 40 m</dd>
+<dt>Zoom</dt><dd>Toward the cursor, not the centre</dd>
+<dt>Damping</dt><dd>0.12 (settles in ≈ 300 ms)</dd>
+<dt>Fly-to</dt><dd>600 ms ease-out; instant with reduced motion</dd>
+<dt>Idle rotation</dt><dd>None — the view never moves on its own</dd>
+</dl>
+</div>
+</section>
+
+<section class="card">
+<h2>Model contract — one glTF file per asset class</h2>
+<pre class="code">CoolingTower               <em>cooling_tower.glb · CT-01, CT-02 share it</em>
+├─ Casing                  <em>static</em>
+├─ FanStack                <em>static</em>
+│  └─ <b>FanBlade</b>             <em>spin +Y · fanSpeedRpm</em>
+├─ <b>FanMotor</b>                <em>state tint · motorTempC</em>
+├─ <b>Pump</b>                    <em>state tint · pumpFlowM3h</em>
+├─ Pipe, Riser             <em>static</em>
+├─ <b>Valve</b>                   <em>turn X 0–90° · valveOpenPct</em>
+└─ ControlPanel            <em>static</em>
+   └─ <b>Switch</b>               <em>flip X ±35° · switchState</em></pre>
+<ul class="rules">
+<li><b>Name</b> = the part role, English PascalCase, unique per file. Code finds it under each asset's instance root; artists never rename.</li>
+<li><b>Pivot</b> on the part's own axis of motion; +Y up, 1 unit = 1 m, origin at the asset's footprint centre.</li>
+<li><b>extras</b> on every bound node: <code>partRole</code>, <code>bind</code> (telemetry key), <code>range</code> (motion limits).</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>Budgets — checked in CI on every .glb</h2>
+<table class="tbl">
+<thead><tr><th>Item</th><th>Budget</th><th>How</th></tr></thead>
+<tbody>
+<tr><td>Triangles per asset</td><td>≤ 50,000</td><td>gltf-transform inspect in CI</td></tr>
+<tr><td>Triangles on screen</td><td>≤ 250,000</td><td>LOD1 at 5 % screen, culling</td></tr>
+<tr><td>Textures</td><td>1024², KTX2</td><td>≤ 3 maps per material</td></tr>
+<tr><td>File per asset</td><td>≤ 1.5 MB</td><td>Meshopt geometry, KTX2 textures</td></tr>
+<tr><td>Materials per asset</td><td>≤ 4</td><td>Shared library, no per-part copies</td></tr>
+<tr><td>Draw calls</td><td>≤ 150</td><td>Merged statics, instanced repeats</td></tr>
+<tr><td>Dynamic shadows</td><td>None</td><td>Baked AO + one blob shadow decal</td></tr>
+<tr><td>Pixel ratio</td><td>≤ 1.5 (wall 1.0)</td><td>Drops further if frames run long</td></tr>
+<tr><td>Main thread / frame</td><td>≤ 8 ms</td><td>No telemetry parsing on it</td></tr>
+</tbody>
+</table>
+</section>
+
+<section class="card wide">
+<h2>Real-time data path — the render thread only ever reads the latest snapshot</h2>
+<div class="flow">
+<div class="node"><b><svg class="ic ic-s" aria-hidden="true"><use href="#i-cpu"></use></svg>Devices</b><small>PLC / gateway publishes readings</small><span class="tag">MQTT</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node"><b>Broker</b><small>TLS, per-device credentials, topic ACL</small><span class="tag">site/+/asset/+/telemetry</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node"><b>API bridge</b><small>Validates, caps at 10 Hz per asset, raises threshold incidents</small><span class="tag">NestJS</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node"><b>/telemetry</b><small>Socket.IO namespace, same OIDC token and roles as /events</small><span class="tag">WebSocket</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node thread"><b>Telemetry worker</b><small>Parses, keeps a 15 min ring buffer, coalesces to one snapshot per frame</small><span class="tag">Web Worker</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node thread"><b>Render loop</b><small>requestAnimationFrame: eases each bound node toward its target</small><span class="tag">main thread</span></div>
+<span class="arrow"><svg class="ic" aria-hidden="true"><use href="#i-arrow"></use></svg></span>
+<div class="node"><b>three.js</b><small>Renders on demand; idle scene costs no frames</small><span class="tag">WebGL 2</span></div>
+</div>
+<div class="flow-note">
+<span>Easing, frame-rate independent: <code>x += (target − x) · (1 − e^(−λ·dt))</code>, λ = 8 /s; rotation speed eased, angle integrated.</span>
+<span>Worker → main: one transferable <code>Float32Array</code> per frame, never a message per reading.</span>
+</div>
+</section>
+
+<section class="card">
+<h2>Scene controls</h2>
+<div class="comp">
+<div class="viewseg" role="group" aria-label="View"><button type="button" aria-pressed="true"><svg class="ic ic-s" aria-hidden="true"><use href="#i-box"></use></svg>3D</button><button type="button" aria-pressed="false"><svg class="ic ic-s" aria-hidden="true"><use href="#i-map"></use></svg>2D</button></div>
+<div class="layers" role="group" aria-label="Layers"><span>Show</span><button class="layer" type="button" aria-pressed="true"><i class="tick"></i>Incidents</button><button class="layer" type="button" aria-pressed="true"><i class="tick"></i>Cameras</button><button class="layer" type="button" aria-pressed="false"><i class="tick"></i>Heat</button></div>
+<nav class="crumbs" aria-label="Scene level"><a class="back" href="#" aria-label="Up one level"><svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg></a><a href="#">Campus</a><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevr"></use></svg><a href="#">Data Center</a><svg class="ic ic-s" aria-hidden="true"><use href="#i-chevr"></use></svg><strong>CT-01</strong></nav>
+<div style="display: flex; gap: 8px; align-items: flex-end">
+<div class="map-ctrl" role="group" aria-label="Camera" style="position: static"><button type="button" aria-label="Zoom in"><svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg></button><button type="button" aria-label="Zoom out"><svg class="ic" aria-hidden="true"><use href="#i-minus"></use></svg></button><button type="button" aria-label="Rotate left"><svg class="ic" aria-hidden="true"><use href="#i-rotl"></use></svg></button><button type="button" aria-label="Rotate right"><svg class="ic" aria-hidden="true"><use href="#i-rotr"></use></svg></button><button type="button" aria-label="Reset view"><svg class="ic" aria-hidden="true"><use href="#i-home"></use></svg></button></div>
+<button class="compass" type="button" aria-label="Face north — the view is rotated 60°"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path class="n" d="M12 2 17 12H7z"></path><path d="M7 12h10l-5 10z" fill="#5a7488"></path></svg></button>
+</div>
+</div>
+<dl class="keys">
+<dt>Drag</dt><dd>Orbit around the target</dd>
+<dt><span class="kbd">Shift</span>+ drag</dt><dd>Pan (also right-drag, two-finger drag)</dd>
+<dt>Wheel</dt><dd>Zoom toward the cursor</dd>
+<dt><span class="kbd">F</span></dt><dd>Fly to the selection</dd>
+<dt><span class="kbd">Home</span></dt><dd>Reset to the campus view</dd>
+<dt><span class="kbd">←</span><span class="kbd">→</span><span class="kbd">↑</span><span class="kbd">↓</span></dt><dd>Orbit and tilt, while the scene has focus</dd>
+<dt><span class="kbd">V</span></dt><dd>Switch 3D / 2D</dd>
+<dt><span class="kbd">Esc</span></dt><dd>Up one level: part → asset → building → campus</dd>
+</dl>
+</section>
+
+<section class="card">
+<h2>Hover tooltip and part callout</h2>
+<div class="tips">
+<div class="tw-tip" role="tooltip">
+<div class="tw-tip-head"><span class="tw-tip-name">Cooling tower 1</span><span class="tw-tip-code">CT-01</span></div>
+<span class="dstate" data-state="running" style="margin-top: 4px"><svg class="ic" aria-hidden="true"><use href="#i-activity"></use></svg>Running</span>
+<dl class="tw-tip-kv">
+<dt><svg class="ic ic-s" aria-hidden="true"><use href="#i-fan"></use></svg>Fan</dt><dd>1,420 rpm</dd>
+<dt><svg class="ic ic-s" aria-hidden="true"><use href="#i-thermo"></use></svg>Motor</dt><dd>71 °C</dd>
+</dl>
+<div class="tw-tip-foot"><svg class="ic ic-s" aria-hidden="true"><use href="#i-pointer"></use></svg>Click to inspect</div>
+</div>
+<div class="tw-callout" role="dialog" aria-label="Fan blade">
+<div class="tw-callout-head"><span><small>CT-01 · FanBlade</small><strong>Fan blade</strong></span><button class="close" type="button" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-x"></use></svg></button></div>
+<div class="tw-callout-body">
+<div class="big-val"><b>1,420</b><span>rpm</span></div>
+<p class="target">Set point 1,450 rpm · eased, 2 Hz feed</p>
+<dl class="mini-kv"><dt>Blade pitch</dt><dd>14°</dd><dt>Run hours</dt><dd>6,218 h</dd><dt>Next service</dt><dd>in 12 days</dd></dl>
+</div>
+</div>
+</div>
+</section>
+
+<section class="card">
+<h2>Device state — shape and text, never colour alone</h2>
+<div class="dstates">
+<span class="dstate dstate-pill" data-state="running"><svg class="ic" aria-hidden="true"><use href="#i-activity"></use></svg>Running</span>
+<span class="dstate dstate-pill" data-state="standby"><svg class="ic" aria-hidden="true"><use href="#i-pause"></use></svg>Standby</span>
+<span class="dstate dstate-pill" data-state="fault" data-severity="critical"><svg class="ic" aria-hidden="true"><use href="#i-critical"></use></svg>Fault · INC-000107</span>
+<span class="dstate dstate-pill" data-state="stale"><svg class="ic" aria-hidden="true"><use href="#i-clock"></use></svg>No data since 15:41</span>
+<span class="dstate dstate-pill" data-state="standby"><svg class="ic" aria-hidden="true"><use href="#i-offline"></use></svg>Offline</span>
+</div>
+<p class="sub" style="margin-top: 14px">A fault always points at the incident that carries it; its colour is that incident's severity.</p>
+</section>
+
+<section class="card">
+<h2>Frame budget HUD — developers only</h2>
+<div class="hud"><span>FPS</span><b>60</b><span>Frame (p95)</span><b>11.8 ms</b><span>Draw calls</span><b>96</b><span>Triangles</span><b>182 k</b><span>Telemetry msgs/s</span><b>84</b><span>Worker → main</span><b>1 / frame</b></div>
+<p class="sub" style="margin-top: 14px">Shown with <code>?debug=twin</code> in development builds only; never shipped to operators.</p>
+</section>
+
+<section class="card wide">
+<h2>Incident categories — the category drives the report form, the filters and who may act</h2>
+<div class="cats">
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-security"></use></svg>Security</b><small>Intrusion · Theft · Vandalism · Suspicious object · Suspicious person · Assault · Crowding</small><span class="who">Operators</span></div>
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-fire"></use></svg>Fire &amp; safety</b><small>Fire alarm · Fire · Gas leak · Hazmat spill</small><span class="who">Operators</span></div>
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-medical"></use></svg>Medical</b><small>Medical emergency · Injury</small><span class="who">Operators</span></div>
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-facilities"></use></svg>Facilities</b><small>Equipment fault · Power outage · Water leak · Lift entrapment · HVAC fault · Network outage</small><span class="who">Operators, technicians</span></div>
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-environment"></use></svg>Environment</b><small>Severe weather · Flooding · Fallen tree</small><span class="who">Operators, technicians</span></div>
+<div class="cat"><b><svg class="ic" aria-hidden="true"><use href="#i-c-traffic"></use></svg>Traffic</b><small>Traffic accident · Blocked access</small><span class="who">Operators</span></div>
+</div>
+<p class="sub" style="margin-top: 14px">Anyone signed in with a role that may report can report any category. Each type keeps its own icon (V1 rule); the category groups the form step, the feed filter and the permission to acknowledge and resolve.</p>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2440}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Twin scene</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./console.css">
+<link rel="stylesheet" href="./twin.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div class="tw-scene" style="position: relative; width: {{w}}px; height: {{hgt}}px; overflow: hidden; background: #0c1821; font-family: var(--font-body); color: var(--text-primary)">
+<svg class="sprite" aria-hidden="true" focusable="false"><defs>
+<symbol id="ts-activity" viewBox="0 0 24 24"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></symbol>
+<symbol id="ts-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"></rect><rect x="6" y="4" width="4" height="16" rx="1"></rect></symbol>
+<symbol id="ts-medium" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4"></path><path d="M12 16h.01"></path></symbol>
+<symbol id="ts-critical" viewBox="0 0 24 24"><path d="M12 16h.01"></path><path d="M12 8v4"></path><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"></path></symbol>
+<symbol id="ts-fan" viewBox="0 0 24 24"><path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path><path d="M12 12v.01"></path></symbol>
+<symbol id="ts-thermo" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"></path></symbol>
+<symbol id="ts-fuel" viewBox="0 0 24 24"><path d="M3 22h12"></path><path d="M4 9h10"></path><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"></path><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"></path></symbol>
+<symbol id="ts-battery" viewBox="0 0 24 24"><rect width="16" height="10" x="2" y="7" rx="2" ry="2"></rect><path d="M22 11v2"></path></symbol>
+<symbol id="ts-pointer" viewBox="0 0 24 24"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"></path></symbol>
+<symbol id="ts-plus" viewBox="0 0 24 24"><path d="M5 12h14"></path><path d="M12 5v14"></path></symbol>
+<symbol id="ts-minus" viewBox="0 0 24 24"><path d="M5 12h14"></path></symbol>
+<symbol id="ts-rotl" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></symbol>
+<symbol id="ts-rotr" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></symbol>
+<symbol id="ts-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></symbol>
+<symbol id="ts-move" viewBox="0 0 24 24"><path d="M12 2v20"></path><path d="m15 19-3 3-3-3"></path><path d="m19 9 3 3-3 3"></path><path d="M2 12h20"></path><path d="m5 9-3 3 3 3"></path><path d="m9 5 3-3 3 3"></path></symbol>
+</defs></svg>
+
+<canvas ref="{{h.setCanvas}}" role="img" aria-label="{{aria}}" style="position: absolute; left: 0; top: 0; width: {{w}}px; height: {{hgt}}px; touch-action: none; cursor: {{cursor}}; pointer-events: {{decorPe}}" onPointerDown="{{h.down}}" onPointerMove="{{h.move}}" onPointerUp="{{h.up}}" onPointerLeave="{{h.leave}}" onWheel="{{h.wheel}}" onContextMenu="{{h.ctx}}" onKeyDown="{{h.key}}" tabIndex="0"></canvas>
+
+<sc-if value="{{tip.show}}" hint-placeholder-val="{{ false }}">
+<div class="tw-tip" role="tooltip" data-severity="{{tip.sev}}" style="left: {{tip.left}}px; top: {{tip.top}}px; pointer-events: none">
+<div class="tw-tip-head"><span class="tw-tip-name">{{tip.name}}</span><span class="tw-tip-code">{{tip.code}}</span></div>
+<sc-if value="{{tip.hasState}}" hint-placeholder-val="{{ false }}"><span class="dstate" data-state="{{tip.stateKey}}" style="margin-top: 4px"><svg class="ic" aria-hidden="true"><use href="#ts-{{tip.stateIcon}}"></use></svg>{{tip.stateLabel}}</span></sc-if>
+<sc-if value="{{tip.hasRows}}" hint-placeholder-val="{{ false }}"><dl class="tw-tip-kv"><sc-for list="{{tip.rows}}" as="r" hint-placeholder-count="2"><dt><svg class="ic ic-s" aria-hidden="true"><use href="#ts-{{r.icon}}"></use></svg>{{r.label}}</dt><dd>{{r.val}}</dd></sc-for></dl></sc-if>
+<div class="tw-tip-foot"><svg class="ic ic-s" aria-hidden="true"><use href="#ts-pointer"></use></svg>{{tip.foot}}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{chrome}}" hint-placeholder-val="{{ true }}"><p class="tw-drag-hint" style="right: {{hintRight}}px; {{hintPos}}"><svg class="ic ic-s" aria-hidden="true"><use href="#ts-move"></use></svg>Drag to rotate · <span class="kbd">Shift</span> + drag to pan</p></sc-if>
+
+<sc-if value="{{chrome}}" hint-placeholder-val="{{ true }}"><div class="scene-ctrl" style="right: {{ctrlRight}}px">
+<button class="compass" type="button" aria-label="Face north" onClick="{{h.north}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="transform: {{compass}}"><path class="n" d="M12 2 17 12H7z"></path><path d="M7 12h10l-5 10z" fill="#5a7488"></path></svg></button>
+<div class="map-ctrl" role="group" aria-label="Camera">
+<button type="button" aria-label="Zoom in" onClick="{{h.zoomIn}}"><svg class="ic" aria-hidden="true"><use href="#ts-plus"></use></svg></button>
+<button type="button" aria-label="Zoom out" onClick="{{h.zoomOut}}"><svg class="ic" aria-hidden="true"><use href="#ts-minus"></use></svg></button>
+<button type="button" aria-label="Rotate left" onClick="{{h.rotL}}"><svg class="ic" aria-hidden="true"><use href="#ts-rotl"></use></svg></button>
+<button type="button" aria-label="Rotate right" onClick="{{h.rotR}}"><svg class="ic" aria-hidden="true"><use href="#ts-rotr"></use></svg></button>
+<button type="button" aria-label="Reset view" onClick="{{h.reset}}"><svg class="ic" aria-hidden="true"><use href="#ts-home"></use></svg></button>
+</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scene":{"editor":"enum","options":["campus","tower","genset"],"default":"campus"},"view":{"editor":null},"beacons":{"editor":null},"states":{"editor":null},"tip":{"editor":null},"tips":{"editor":null},"leader":{"editor":null},"pin":{"editor":null},"pickOnGround":{"editor":null},"loading":{"editor":null},"loaded":{"editor":null},"allStale":{"editor":null},"insetRight":{"editor":null},"hintAt":{"editor":null},"focus":{"editor":null},"chrome":{"editor":null},"decor":{"editor":null},"spin":{"editor":null},"ui":{"editor":null},"heat":{"editor":null},"heatLabels":{"editor":null},"ctrlRight":{"editor":null},"aria":{"editor":null},"w":{"editor":null},"h":{"editor":null},"$preview":{"width":1072,"height":671}}'>
+class Component extends DCLogic {
+  // ------------------------------------------------------------ lifecycle
+  componentDidMount() {
+    this.ensure();
+    this.request();
+    const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (Number(this.props.spin) && !reduce && typeof requestAnimationFrame === 'function') {
+      let last = 0;
+      const step = (t) => {
+        if (this.unmounted) return;
+        if (last && !this.drag) { this.cam.yaw = (this.cam.yaw + (Number(this.props.spin) * (t - last)) / 1000) % 360; this.paint(); }
+        last = t;
+        this.spinRaf = requestAnimationFrame(step);
+      };
+      this.spinRaf = requestAnimationFrame(step);
+    }
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.request());
+  }
+
+  componentWillUnmount() {
+    this.unmounted = true;
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.spinRaf) cancelAnimationFrame(this.spinRaf);
+  }
+
+  ensure() {
+    if (this.scn) return;
+    const p = this.props;
+    this.W = Number(p.w) || 1072;
+    this.H = Number(p.h) || 671;
+    this.inset = Number(p.insetRight) || 0;
+    this.scn = this.build(p.scene || 'campus');
+    this.home = this.initialCam();
+    this.cam = this.cloneCam(this.home);
+    this.pin = p.pin ? p.pin.slice() : null;
+    this.hover = null;
+    this.sel = null;
+    this.live = false;
+    this.drag = null;
+    this.tipView = { show: false };
+    this.compassDeg = 0;
+  }
+
+  request() {
+    if (this.raf) return;
+    const run = () => {
+      this.raf = 0;
+      this.paint();
+      this.setState({ v: ((this.state && this.state.v) || 0) + 1 });
+    };
+    this.raf = -1;
+    const id = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(run) : setTimeout(run, 16);
+    if (this.raf === -1) this.raf = id;
+  }
+
+  // ------------------------------------------------------------ template values
+  renderVals() {
+    this.ensure();
+    if (!this.h) this.h = this.makeHandlers();
+    const ctrl = (this.props.ctrlRight != null ? Number(this.props.ctrlRight) : 12) + this.inset;
+    return {
+      w: this.W,
+      hgt: this.H,
+      tip: this.tipView,
+      compass: 'rotate(' + this.compassDeg.toFixed(1) + 'deg)',
+      ctrlRight: ctrl,
+      hintRight: (this.props.hintAt || (this.inset ? 'top' : 'bottom')) === 'top' ? this.inset + 12 : ctrl + 52,
+      hintPos: (this.props.hintAt || (this.inset ? 'top' : 'bottom')) === 'top' ? 'top: 12px; bottom: auto' : '',
+      cursor: this.drag ? 'grabbing' : this.hover ? 'pointer' : 'grab',
+      chrome: this.props.chrome !== false && !this.props.decor,
+      decorPe: this.props.decor ? 'none' : 'auto',
+      aria: this.props.aria || '3D view. Drag to rotate, shift and drag to pan, wheel to zoom.',
+      h: this.h,
+    };
+  }
+
+  makeHandlers() {
+    const self = this;
+    const pt = (e) => {
+      const r = e.currentTarget.getBoundingClientRect();
+      return [((e.clientX - r.left) * self.W) / r.width, ((e.clientY - r.top) * self.H) / r.height];
+    };
+    return {
+      setCanvas: (el) => { if (el && el !== self.canvas) { self.canvas = el; self.request(); } },
+      down: (e) => {
+        const [x, y] = pt(e);
+        if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+        self.drag = { x, y, x0: x, y0: y, pan: e.shiftKey || e.button === 2, moved: false };
+        self.request();
+      },
+      move: (e) => {
+        const [x, y] = pt(e);
+        self.mouse = [x, y];
+        const d = self.drag;
+        if (d) {
+          const dx = x - d.x, dy = y - d.y;
+          if (Math.abs(x - d.x0) + Math.abs(y - d.y0) > 3) d.moved = true;
+          d.x = x; d.y = y;
+          if (d.pan) self.panBy(dx, dy);
+          else {
+            self.cam.yaw = (self.cam.yaw - dx * 0.4 + 360) % 360;
+            self.cam.pitch = Math.max(20, Math.min(78, self.cam.pitch - dy * 0.3));
+          }
+          self.live = true;
+          self.request();
+          return;
+        }
+        const hit = self.pick(x, y);
+        if (hit !== self.hover || self.tipView.show) { self.hover = hit; self.live = true; self.request(); }
+      },
+      up: (e) => {
+        const d = self.drag;
+        self.drag = null;
+        if (e.currentTarget.releasePointerCapture) { try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (err) { /* already released */ } }
+        if (d && !d.moved) {
+          const [x, y] = pt(e);
+          if (self.props.pickOnGround) {
+            const g = self.ground(x, y);
+            if (g) self.pin = [g[0], g[1], 0];
+          } else {
+            const hit = self.pick(x, y);
+            self.sel = hit && hit !== self.sel ? hit : null;
+          }
+          self.live = true;
+        }
+        self.request();
+      },
+      leave: () => { if (!self.drag) { self.hover = null; self.mouse = null; self.request(); } },
+      wheel: (e) => {
+        const [x, y] = pt(e);
+        self.zoomAt(Math.exp(-e.deltaY * 0.0015), x, y);
+      },
+      ctx: (e) => { e.preventDefault(); },
+      // Keys act only while the scene has focus, so they never fight the lists' arrows or Home.
+      key: (e) => {
+        const k = e.key, c = self.cam;
+        if (e.shiftKey && k.indexOf('Arrow') === 0) {
+          const d = 40, map = { ArrowLeft: [d, 0], ArrowRight: [-d, 0], ArrowUp: [0, d], ArrowDown: [0, -d] };
+          self.panBy(map[k][0], map[k][1]);
+        } else if (k === 'ArrowLeft') c.yaw = (c.yaw + 15) % 360;
+        else if (k === 'ArrowRight') c.yaw = (c.yaw + 345) % 360;
+        else if (k === 'ArrowUp') c.pitch = Math.max(20, c.pitch - 5);
+        else if (k === 'ArrowDown') c.pitch = Math.min(78, c.pitch + 5);
+        else if (k === '+' || k === '=') { self.zoomAt(1.25); }
+        else if (k === '-' || k === '_') { self.zoomAt(0.8); }
+        else if (k === 'Home') { self.cam = self.cloneCam(self.home); }
+        else if (k === 'Escape') { if (!self.sel) return; self.sel = null; }
+        else return;
+        e.preventDefault();
+        self.live = true;
+        self.request();
+      },
+      zoomIn: () => self.zoomAt(1.25),
+      zoomOut: () => self.zoomAt(0.8),
+      rotL: () => { self.cam.yaw = (self.cam.yaw + 30) % 360; self.request(); },
+      rotR: () => { self.cam.yaw = (self.cam.yaw + 330) % 360; self.request(); },
+      north: () => { self.cam.yaw = 0; self.request(); },
+      reset: () => {
+        self.cam = self.cloneCam(self.home);
+        self.sel = null; self.live = false; self.hover = null;
+        self.pin = self.props.pin ? self.props.pin.slice() : null;
+        self.request();
+      },
+    };
+  }
+
+  // ------------------------------------------------------------ camera
+  cloneCam(c) { return { yaw: c.yaw, pitch: c.pitch, s: c.s, T: c.T.slice(), sMin: c.sMin, sMax: c.sMax }; }
+
+  basis(yaw, pitch) {
+    const a = (yaw * Math.PI) / 180, t = (pitch * Math.PI) / 180;
+    const hx = Math.sin(a), hy = Math.cos(a), st = Math.sin(t), ct = Math.cos(t);
+    return { r: [hy, -hx, 0], u: [-ct * hx, -ct * hy, st], f: [-st * hx, -st * hy, -ct], c: [st * hx, st * hy, ct], h: [hx, hy], ct: ct };
+  }
+
+  center() { return [(this.W - this.inset) / 2, this.H / 2]; }
+
+  proj(p, B, cam) {
+    const v0 = p[0] - cam.T[0], v1 = p[1] - cam.T[1], v2 = p[2] - cam.T[2];
+    const [cx, cy] = this.center();
+    return [
+      cx + cam.s * (v0 * B.r[0] + v1 * B.r[1] + v2 * B.r[2]),
+      cy - cam.s * (v0 * B.u[0] + v1 * B.u[1] + v2 * B.u[2]),
+      v0 * B.f[0] + v1 * B.f[1] + v2 * B.f[2],
+    ];
+  }
+
+  fitScale(yaw, pitch, T) {
+    const B = this.basis(yaw, pitch);
+    const [[x0, y0, z0], [x1, y1, z1]] = this.scn.bounds;
+    let mx = 1e-6, my = 1e-6;
+    for (const x of [x0, x1]) for (const y of [y0, y1]) for (const z of [z0, z1]) {
+      const v = [x - T[0], y - T[1], z - T[2]];
+      mx = Math.max(mx, Math.abs(v[0] * B.r[0] + v[1] * B.r[1] + v[2] * B.r[2]));
+      my = Math.max(my, Math.abs(v[0] * B.u[0] + v[1] * B.u[1] + v[2] * B.u[2]));
+    }
+    return Math.min(((this.W - this.inset) / 2) * 0.94 / mx, (this.H / 2) * 0.94 / my);
+  }
+
+  initialCam() {
+    const v = this.props.view || {};
+    const yaw = v.yaw != null ? v.yaw : 45, pitch = v.pitch != null ? v.pitch : 55;
+    const T = v.target ? v.target.slice() : this.scn.center.slice();
+    const fit = this.fitScale(yaw, pitch, this.scn.center);
+    const s = fit * (v.zoom || 1);
+    return { yaw, pitch, T, s, sMin: fit * 0.6, sMax: fit * this.scn.maxZoom };
+  }
+
+  ground(x, y) {
+    const cam = this.cam, B = this.basis(cam.yaw, cam.pitch);
+    const [cx, cy] = this.center();
+    const a = (x - cx) / cam.s, b = -(y - cy) / cam.s;
+    const base = [cam.T[0] + a * B.r[0] + b * B.u[0], cam.T[1] + a * B.r[1] + b * B.u[1], cam.T[2] + a * B.r[2] + b * B.u[2]];
+    if (Math.abs(B.f[2]) < 1e-6) return null;
+    const t = -base[2] / B.f[2];
+    return [base[0] + t * B.f[0], base[1] + t * B.f[1]];
+  }
+
+  clampTarget() {
+    const [x0, x1, y0, y1] = this.scn.pan;
+    const T = this.cam.T;
+    T[0] = Math.max(x0, Math.min(x1, T[0]));
+    T[1] = Math.max(y0, Math.min(y1, T[1]));
+  }
+
+  panBy(dx, dy) {
+    const cam = this.cam, B = this.basis(cam.yaw, cam.pitch), s = cam.s, k = 1 / Math.max(B.ct, 0.25);
+    cam.T[0] += (-dx * B.r[0]) / s - (dy * B.h[0] * k) / s;
+    cam.T[1] += (-dx * B.r[1]) / s - (dy * B.h[1] * k) / s;
+    this.clampTarget();
+  }
+
+  zoomAt(f, x, y) {
+    const cam = this.cam;
+    const before = x != null ? this.ground(x, y) : null;
+    cam.s = Math.max(cam.sMin, Math.min(cam.sMax, cam.s * f));
+    if (before) {
+      const after = this.ground(x, y);
+      if (after) { cam.T[0] += before[0] - after[0]; cam.T[1] += before[1] - after[1]; this.clampTarget(); }
+    }
+    this.live = true;
+    this.request();
+  }
+
+  // ------------------------------------------------------------ geometry helpers
+  box(id, node, b, m, o) {
+    const [x0, x1, y0, y1, z0, z1] = b;
+    const F = {
+      t: { pts: [[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], n: [0, 0, 1] },
+      s: { pts: [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], n: [0, 1, 0] },
+      n: { pts: [[x1, y0, z1], [x0, y0, z1], [x0, y0, z0], [x1, y0, z0]], n: [0, -1, 0] },
+      e: { pts: [[x1, y1, z1], [x1, y0, z1], [x1, y0, z0], [x1, y1, z0]], n: [1, 0, 0] },
+      w: { pts: [[x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0]], n: [-1, 0, 0] },
+    };
+    const faces = ['t', 's', 'n', 'e', 'w'].map((k) => Object.assign({ key: k }, F[k]));
+    return Object.assign({ id, node, m: m || 'part', faces, lines: [], c: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2] }, o || {});
+  }
+
+  prism(id, node, cx, cy, r0, r1, z0, z1, m, o) {
+    const N = (o && o.seg) || 16, faces = [];
+    const dz = (r0 - r1) / Math.max(z1 - z0, 1e-6);
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2, b = ((i + 1) / N) * Math.PI * 2, mm = (a + b) / 2;
+      faces.push({ key: 'side', soft: true, n: [Math.cos(mm), Math.sin(mm), dz], pts: [
+        [cx + r0 * Math.cos(a), cy + r0 * Math.sin(a), z0], [cx + r0 * Math.cos(b), cy + r0 * Math.sin(b), z0],
+        [cx + r1 * Math.cos(b), cy + r1 * Math.sin(b), z1], [cx + r1 * Math.cos(a), cy + r1 * Math.sin(a), z1]] });
+    }
+    const top = [];
+    for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2; top.push([cx + r1 * Math.cos(a), cy + r1 * Math.sin(a), z1]); }
+    faces.push({ key: 't', n: [0, 0, 1], pts: top, color: o && o.topColor });
+    return Object.assign({ id, node, m: m || 'part', faces, lines: [], c: [cx, cy, (z0 + z1) / 2] }, o || {});
+  }
+
+  flatPoly(id, node, pts, m, n, o) {
+    const c = [0, 0, 0];
+    for (const p of pts) { c[0] += p[0] / pts.length; c[1] += p[1] / pts.length; c[2] += p[2] / pts.length; }
+    return Object.assign({ id, node, m, faces: [{ key: 'p', n, pts, color: o && o.color }], lines: [], c }, o || {});
+  }
+
+  lineObj(id, node, segs, color, w, o) {
+    const c = [0, 0, 0];
+    let k = 0;
+    for (const s of segs) for (const p of s) { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; k++; }
+    return Object.assign({ id, node, m: 'line', faces: [], lines: [{ segs, color, w }], c: [c[0] / k, c[1] / k, c[2] / k] }, o || {});
+  }
+
+  ring(cx, cy, r, z, n) {
+    const segs = [];
+    n = n || 24;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, b = ((i + 1) / n) * Math.PI * 2;
+      segs.push([[cx + r * Math.cos(a), cy + r * Math.sin(a), z], [cx + r * Math.cos(b), cy + r * Math.sin(b), z]]);
+    }
+    return segs;
+  }
+
+  blades(id, node, cx, cy, r, z, parent) {
+    const out = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2 + 0.3;
+      const p = (rr, da) => [cx + rr * Math.cos(a + da), cy + rr * Math.sin(a + da), z];
+      out.push(this.flatPoly(id + '-b' + i, node, [p(r * 0.2, -0.45), p(r * 0.95, -0.1), p(r * 0.97, 0.16), p(r * 0.2, 0.42)], 'blade', [0, 0, 1], { parent }));
+    }
+    const hub = [];
+    for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; hub.push([cx + r * 0.2 * Math.cos(a), cy + r * 0.2 * Math.sin(a), z + 0.01]); }
+    out.push(this.flatPoly(id + '-hub', node, hub, 'hub', [0, 0, 1], { parent: id + '-b5' }));
+    return out;
+  }
+
+  rail(id, node, path, z, parent) {
+    const segs = [];
+    for (const h of [0.55, 1.1]) for (let i = 0; i < path.length - 1; i++) segs.push([[path[i][0], path[i][1], z + h], [path[i + 1][0], path[i + 1][1], z + h]]);
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i], [bx, by] = path[i + 1];
+      const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / 2));
+      for (let k = 0; k <= n; k++) { const x = ax + ((bx - ax) * k) / n, y = ay + ((by - ay) * k) / n; segs.push([[x, y, z], [x, y, z + 1.1]]); }
+    }
+    return this.lineObj(id, node, segs, '#8199aa', 1, { parent });
+  }
+
+  // ------------------------------------------------------------ scenes
+  build(kind) {
+    if (kind === 'tower') return this.towerScene();
+    if (kind === 'genset') return this.gensetScene();
+    return this.campusScene();
+  }
+
+  campusScene() {
+    const S = { ground: [], meshes: [], labels: [], cams: [], names: {}, anchors: {}, buildings: {}, maxZoom: 14,
+      bounds: [[-282, -247, 0], [228, 277, 30]], center: [-27, 15, 0], pan: [-322, 268, -287, 317] };
+    const rect = (x0, x1, y0, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    S.ground.push({ t: 'poly', pts: rect(-282, 228, -247, 277), fill: '#0f1d27', stroke: '#34495a', w: 1.2, dash: [6, 4] });
+    for (let x = -250; x <= 200; x += 50) S.ground.push({ t: 'line', pts: [[x, -247], [x, 277]], stroke: '#14242f', w: 1 });
+    for (let y = -200; y <= 250; y += 50) S.ground.push({ t: 'line', pts: [[-282, y], [228, y]], stroke: '#14242f', w: 1 });
+    for (const r of [[[0, 277], [0, 35]], [[-215, 140], [-215, 55], [215, 55]], [[-55, 55], [-55, -160], [120, -160], [120, 55]], [[0, 150], [215, 150]], [[60, -160], [60, -170]]])
+      S.ground.push({ t: 'road', pts: r, w: 9 });
+    const FILL = { outdoor: '#15302a', building: '#1d3545', parking: '#182d3b', gate: '#1d3a3b', utility: '#1a282e', water: '#112833' };
+    const Z = [
+      [-210, -90, -225, -155, 'outdoor', []], [-165, -75, -90, -30, 'building', ['InnovationHub']], [5, 75, -145, -95, 'building', ['Library']],
+      [145, 205, -63, -17, 'building', ['DataCenter', 'CT01', 'CT02']], [-35, 75, -35, 35, 'outdoor', []], [-100, -20, 90, 130, 'building', ['LectureHallA']],
+      [74, 146, 70, 120, 'building', ['StudentCenter']], [-260, -170, 140, 210, 'parking', []], [-30, 30, 239, 261, 'gate', ['GatePostW', 'GatePostE', 'BarrierArm']],
+      [10, 120, -244, -170, 'utility', ['UtilityPlant', 'Substation']], [125, 215, -244, -180, 'building', ['ScienceLab']], [-80, 0, -244, -170, 'building', ['SportsHall']],
+      [-272, -180, -20, 48, 'building', ['AdminBuilding']], [-150, -40, 165, 228, 'water', []], [155, 215, 92, 140, 'parking', []], [205, 228, 38, 72, 'gate', []],
+      [35, 125, 158, 205, 'building', ['DormitoryA']], [135, 222, 158, 205, 'building', ['DormitoryB']], [145, 222, 212, 268, 'building', ['HealthClinic']],
+      [26, 58, 238, 265, 'building', ['SecurityOffice']], [196, 220, -52, -41, 'building', ['GEN01']],
+    ];
+    for (const [x0, x1, y0, y1, k, nodes] of Z) S.ground.push({ t: 'poly', pts: rect(x0, x1, y0, y1), fill: FILL[k], stroke: '#56728a', w: 1, dash: k === 'utility' ? [4, 3] : null, nodes });
+    S.ground.push({ t: 'poly', pts: rect(-200, -100, -215, -165), fill: null, stroke: '#2a4a43', w: 1 });
+    S.ground.push({ t: 'line', pts: [[-150, -215], [-150, -165]], stroke: '#2a4a43', w: 1 });
+    for (const y of [160, 175, 190]) S.ground.push({ t: 'line', pts: [[-252, y], [-178, y]], stroke: '#2a4152', w: 1, dash: [2, 3] });
+    for (const y of [108, 124]) S.ground.push({ t: 'line', pts: [[162, y], [208, y]], stroke: '#2a4152', w: 1, dash: [2, 3] });
+
+    const B = [
+      ['InnovationHub', 'Innovation Hub', -157, -83, -82, -38, 24], ['Library', 'Library', 13, 67, -137, -103, 18], ['LectureHallA', 'Lecture Hall A', -92, -28, 98, 122, 16],
+      ['DataCenter', 'Data Center', 153, 197, -55, -25, 14], ['StudentCenter', 'Student Center', 82, 138, 78, 112, 12], ['SportsHall', 'Sports Hall', -72, -8, -238, -178, 14],
+      ['AdminBuilding', 'Admin Building', -265, -187, -12, 40, 14], ['UtilityPlant', 'Utility Plant', 22, 70, -234, -196, 9], ['Substation', 'Substation', 80, 108, -228, -205, 5, 'steel'],
+      ['ScienceLab', 'Science Lab', 135, 205, -238, -188, 16], ['DormitoryA', 'Dormitory A', 42, 118, 162, 200, 20], ['DormitoryB', 'Dormitory B', 142, 218, 162, 200, 20],
+      ['HealthClinic', 'Health Clinic', 152, 215, 218, 262, 10], ['SecurityOffice', 'Security office', 30, 54, 242, 262, 6],
+    ];
+    for (const [node, label, x0, x1, y0, y1, h, m] of B) {
+      S.meshes.push(this.box(node, node, [x0, x1, y0, y1, 0, h], m || 'part'));
+      S.names[node] = label;
+      S.buildings[node] = true;
+      S.anchors[node] = [(x0 + x1) / 2, (y0 + y1) / 2, h];
+      if (node !== 'Substation') S.labels.push([(x0 + x1) / 2, (y0 + y1) / 2, h + 9, label]);
+    }
+    // Cooling towers on the Data Center roof
+    for (const [node, ox, oy, label] of [['CT01', 157, -51, 'Cooling tower 1'], ['CT02', 170, -51, 'Cooling tower 2']]) {
+      const z = 14;
+      S.meshes.push(this.box(node + '-basin', node, [ox - 0.4, ox + 8.4, oy - 0.4, oy + 6.4, z, z + 0.6], 'concrete', { parent: 'DataCenter', extra: true }));
+      S.meshes.push(this.box(node + '-casing', node, [ox, ox + 8, oy, oy + 6, z + 0.6, z + 5], 'part', { parent: node + '-basin', extra: true }));
+      S.meshes.push(this.prism(node + '-stack', node, ox + 4, oy + 3, 2.35, 2.75, z + 5, z + 6.8, 'part', { parent: node + '-casing', topColor: '#081016', extra: true }));
+      for (const b of this.blades(node, node, ox + 4, oy + 3, 2.3, z + 6.7, node + '-stack')) { b.extra = true; S.meshes.push(b); }
+      S.names[node] = label;
+      S.anchors[node] = [ox + 4, oy + 3, z + 6.8];
+    }
+    // Standby generator beside the Data Center
+    S.meshes.push(this.box('GEN01-skid', 'GEN01', [201.7, 214.3, -48.3, -44.7, 0, 0.4], 'concrete', { extra: true }));
+    S.meshes.push(this.box('GEN01-box', 'GEN01', [202, 214, -48, -45, 0.4, 3.3], 'part', { parent: 'GEN01-skid', extra: true }));
+    S.meshes.push(this.prism('GEN01-stack', 'GEN01', 212.6, -46.5, 0.3, 0.3, 3.3, 4.8, 'steel', { parent: 'GEN01-box', seg: 8, extra: true }));
+    S.names.GEN01 = 'Standby generator';
+    S.anchors.GEN01 = [208, -46.5, 3.3];
+    // Main gate
+    S.meshes.push(this.box('GatePostW', 'BarrierArm', [-24, -18, 247, 253, 0, 7], 'part', { extra: true }));
+    S.meshes.push(this.box('BarrierArm', 'BarrierArm', [-18, 14, 249.4, 250.6, 5, 5.9], 'steel', { extra: true }));
+    S.meshes.push(this.box('GatePostE', 'BarrierArm', [18, 24, 247, 253, 0, 7], 'part', { extra: true }));
+    S.names.BarrierArm = 'Barrier arm, inbound';
+    // Roof equipment and the generator belong to the Data Center when a building is in focus
+    for (const m of S.meshes) if (/^(CT01|CT02|GEN01)/.test(m.id)) m.owner = 'DataCenter';
+    // Inside the Data Center: shown only when the building is in focus (walls see-through)
+    const inDC = { inside: 'DataCenter', owner: 'DataCenter' };
+    for (const [i, y] of [[0, -50], [1, -46], [2, -42], [3, -38]]) S.meshes.push(this.box('Racks-' + i, 'Racks', [158, 184, y, y + 1.2, 0, 2.2], 'steel', inDC));
+    S.meshes.push(this.box('CRAC01', 'CRAC01', [188, 192, -52, -48.5, 0, 2.4], 'part', inDC));
+    S.meshes.push(this.box('CRAC02', 'CRAC02', [188, 192, -44, -40.5, 0, 2.4], 'part', inDC));
+    S.meshes.push(this.box('UPS01', 'UPS01', [158, 171, -31, -28.4, 0, 2.2], 'steel', inDC));
+    S.meshes.push(this.box('Batteries', 'Batteries', [173, 186, -31, -28.4, 0, 2.0], 'steel', inDC));
+    Object.assign(S.names, { Racks: 'Server racks, 4 rows', CRAC01: 'Precision cooling 1', CRAC02: 'Precision cooling 2', UPS01: 'UPS room', Batteries: 'UPS batteries' });
+    Object.assign(S.anchors, { UPS01: [164.5, -29.7, 2.2], CRAC01: [190, -50.2, 2.4], Racks: [171, -44, 2.2] });
+    // Inside Dormitory B: floor slabs, a lift shaft and a leak sensor without a 3D model (a neutral box)
+    const inDB = { inside: 'DormitoryB', owner: 'DormitoryB' };
+    for (const z of [4, 8, 12, 16]) S.meshes.push(this.box('DBslab-' + z, 'DormBFloors', [142.4, 217.6, 162.4, 199.6, z - 0.3, z], 'slab', Object.assign({ pick: false }, inDB)));
+    S.meshes.push(this.box('LFTB1', 'LFTB1', [150, 154, 168, 172, 0, 20], 'steel', inDB));
+    S.meshes.push(this.box('LKSB3', 'LKSB3', [203.3, 204.7, 192.3, 193.7, 8, 9.4], 'neutral', inDB));
+    Object.assign(S.names, { LFTB1: 'Lift 1', LKSB3: 'Leak sensor, level 3', DormBFloors: 'Floors' });
+    Object.assign(S.anchors, { LKSB3: [204, 193, 9.4], LFTB1: [152, 170, 20] });
+    for (const l of [[-150, -190, 2, 'Sports Field'], [20, 0, 2, 'Central Lawn'], [-215, 175, 2, 'West Parking'], [-95, 196, 2, 'Lake'], [185, 116, 2, 'East Parking'], [216, 55, 4, 'East Gate'], [0, 262, 10, 'Main Gate'], [66, -175, 2, 'Utility yard']])
+      S.labels.push(l);
+    S.cams = [[-26, 238], [26, 262], [-120, -30], [-74, -70], [40, -97], [148, -40], [200, -20, true], [-60, 130], [80, 92], [-169, 155], [-245, 211], [-212, -190], [80, 204], [180, 204], [132, -186], [150, 266], [66, -170]];
+    return S;
+  }
+
+  towerScene() {
+    const S = { ground: [], meshes: [], labels: [], cams: [], names: {}, anchors: {}, buildings: {}, maxZoom: 4,
+      bounds: [[-3, -3, 0], [13, 10, 7]], center: [5, 3.5, 2.5], pan: [-2, 12, -2, 9] };
+    S.ground.push({ t: 'poly', pts: [[-3, -3], [13, -3], [13, 10], [-3, 10]], fill: '#0f1d27', stroke: '#14242f', w: 1 });
+    const M = S.meshes, L = (a, b, c, d) => [[a, b, c], [a, b, d]];
+    M.push(this.box('Basin', 'Basin', [-0.4, 8.4, -0.4, 6.4, 0, 0.6], 'concrete'));
+    const louv = { s: [], n: [], e: [], w: [] };
+    for (let z = 0.8; z < 2.5; z += 0.22) {
+      louv.s.push([[0.15, 6, z], [7.85, 6, z]]); louv.n.push([[0.15, 0, z], [7.85, 0, z]]);
+      louv.e.push([[8, 0.15, z], [8, 5.85, z]]); louv.w.push([[0, 0.15, z], [0, 5.85, z]]);
+    }
+    const lower = this.box('CasingLower', 'Casing', [0, 8, 0, 6, 0.6, 2.6], 'part', { parent: 'Basin' });
+    for (const k of ['s', 'n', 'e', 'w']) lower.lines.push({ face: k, segs: louv[k], color: '#2a4253', w: 1 });
+    M.push(lower);
+    const upper = this.box('CasingUpper', 'Casing', [0, 8, 0, 6, 2.6, 5], 'part', { parent: 'CasingLower' });
+    const ribs = { s: [], n: [], e: [], w: [] };
+    for (let x = 1; x < 8; x += 1) { ribs.s.push(L(x, 6, 2.6, 5)); ribs.n.push(L(x, 0, 2.6, 5)); }
+    for (let y = 1; y < 6; y += 1) { ribs.e.push(L(8, y, 2.6, 5)); ribs.w.push(L(0, y, 2.6, 5)); }
+    for (const k of ['s', 'n', 'e', 'w']) upper.lines.push({ face: k, segs: ribs[k], color: '#2b4356', w: 1 });
+    M.push(upper);
+    M.push(this.rail('RailN', 'Casing', [[0, 0], [8, 0]], 5, 'CasingUpper'));
+    M.push(this.rail('RailW', 'Casing', [[0, 6], [0, 0]], 5, 'CasingUpper'));
+    M.push(this.rail('RailS', 'Casing', [[8, 6], [0, 6]], 5, 'CasingUpper'));
+    M.push(this.rail('RailE', 'Casing', [[8, 0], [8, 6]], 5, 'CasingUpper'));
+    const lad = [L(8.06, 4.9, 0.6, 6.2), L(8.06, 5.45, 0.6, 6.2)];
+    for (let z = 0.9; z < 6.1; z += 0.32) lad.push([[8.06, 4.9, z], [8.06, 5.45, z]]);
+    M.push(this.lineObj('Ladder', 'Casing', lad, '#8199aa', 1, { parent: 'CasingLower' }));
+    M.push(this.prism('FanStack', 'FanStack', 4, 3, 2.35, 2.75, 5, 6.8, 'part', { parent: 'CasingUpper', topColor: '#081016', seg: 24 }));
+    for (const b of this.blades('FanBlade', 'FanBlade', 4, 3, 2.45, 6.72, 'FanStack')) M.push(b);
+    const g = this.ring(4, 3, 0.94, 6.82).concat(this.ring(4, 3, 1.77, 6.82), this.ring(4, 3, 2.6, 6.82, 32));
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; g.push([[4 + 0.5 * Math.cos(a), 3 + 0.5 * Math.sin(a), 6.82], [4 + 2.6 * Math.cos(a), 3 + 2.6 * Math.sin(a), 6.82]]); }
+    M.push(this.lineObj('Guard', 'FanBlade', g, '#8199aa', 0.8, { parent: 'FanBlade-hub', pick: false }));
+    M.push(this.box('DriveShaft', 'FanMotor', [5.9, 6.3, 0.85, 1.15, 5.25, 5.55], 'steel', { parent: 'CasingUpper' }));
+    const motor = this.box('FanMotor', 'FanMotor', [6.3, 7.6, 0.45, 1.55, 5, 5.95], 'steel', { parent: 'CasingUpper' });
+    const fins = [];
+    for (let y = 0.65; y < 1.5; y += 0.2) fins.push(L(7.6, y, 5.1, 5.85));
+    motor.lines.push({ face: 'e', segs: fins, color: '#1a2833', w: 1 });
+    M.push(motor);
+    M.push(this.box('Plinth', 'ControlPanel', [0.9, 2.7, 6.5, 7.3, 0, 0.15], 'concrete'));
+    const cab = this.box('ControlPanel', 'ControlPanel', [1, 2.6, 6.6, 7.2, 0.15, 2.3], 'steel', { parent: 'Plinth' });
+    cab.lines.push({ face: 's', segs: [L(1.8, 7.2, 0.3, 2.15)], color: '#1a2833', w: 1 });
+    M.push(cab);
+    M.push(this.flatPoly('Screen', 'ControlPanel', [[1.15, 7.21, 2.0], [1.65, 7.21, 2.0], [1.65, 7.21, 1.6], [1.15, 7.21, 1.6]], 'screen', [0, 1, 0], { parent: 'ControlPanel' }));
+    M.push(this.box('Switch', 'Switch', [2.05, 2.35, 7.2, 7.45, 1.15, 1.7], 'steel', { parent: 'ControlPanel' }));
+    M.push(this.box('Pipe', 'Pipe', [8.4, 8.7, 1.75, 2.25, 0.45, 0.95], 'steel'));
+    M.push(this.box('PumpSkid', 'Pump', [8.5, 10.7, 0.9, 3.1, 0, 0.25], 'concrete'));
+    M.push(this.prism('PumpVolute', 'Pump', 9.2, 2, 0.6, 0.6, 0.25, 1.15, 'steel', { parent: 'PumpSkid' }));
+    M.push(this.box('PumpMotor', 'Pump', [9.8, 10.55, 1.5, 2.5, 0.25, 1.05], 'steel', { parent: 'PumpSkid' }));
+    M.push(this.prism('Riser', 'Pipe', 9.05, 4.25, 0.27, 0.27, 0, 5.35, 'steel', { seg: 12 }));
+    M.push(this.box('RiserTop', 'Pipe', [7.6, 9.05, 4.0, 4.5, 5.1, 5.6], 'steel', { parent: 'Riser' }));
+    M.push(this.prism('FlangeLo', 'Valve', 9.05, 4.25, 0.42, 0.42, 2.15, 2.3, 'steel', { parent: 'Riser', seg: 12 }));
+    M.push(this.box('Valve', 'Valve', [8.7, 9.4, 3.9, 4.6, 2.3, 2.95], 'steel', { parent: 'FlangeLo' }));
+    M.push(this.prism('FlangeHi', 'Valve', 9.05, 4.25, 0.42, 0.42, 2.95, 3.1, 'steel', { parent: 'Valve', seg: 12 }));
+    M.push(this.lineObj('Wheel', 'Valve', this.ring(9.05, 4.25, 0.45, 3.55, 16).concat([[[9.05, 4.25, 3.1], [9.05, 4.25, 3.55]]]), '#8fa6b6', 1.5, { parent: 'FlangeHi' }));
+    Object.assign(S.names, { Basin: 'Basin', Casing: 'Casing', FanStack: 'Fan stack', FanBlade: 'Fan blade', FanMotor: 'Fan motor', ControlPanel: 'Control panel', Switch: 'Switch', Pipe: 'Pipe', Pump: 'Pump', Valve: 'Valve' });
+    S.anchors.FanBlade = [4, 3, 6.72];
+    return S;
+  }
+
+  gensetScene() {
+    const S = { ground: [], meshes: [], labels: [], cams: [], names: {}, anchors: {}, buildings: {}, maxZoom: 4,
+      bounds: [[-2.5, -2.5, 0], [14.5, 5.5, 5.6]], center: [6, 1.5, 2], pan: [-1, 13, -2, 5] };
+    S.ground.push({ t: 'poly', pts: [[-2.5, -2.5], [14.5, -2.5], [14.5, 5.5], [-2.5, 5.5]], fill: '#0f1d27', stroke: '#14242f', w: 1 });
+    const M = S.meshes, L = (a, b, c, d) => [[a, b, c], [a, b, d]];
+    const tank = this.box('FuelTank', 'FuelTank', [-0.2, 12.2, -0.2, 3.2, 0, 0.9], 'steel');
+    tank.lines.push({ face: 's', segs: [[[0.4, 3.2, 0.45], [11.6, 3.2, 0.45]]], color: '#1a2833', w: 1 });
+    tank.lines.push({ face: 'e', segs: [[[12.2, 0.3, 0.45], [12.2, 2.7, 0.45]]], color: '#1a2833', w: 1 });
+    M.push(tank);
+    M.push(this.box('Battery', 'Battery', [0.4, 1.6, 0.5, 2.4, 0.9, 1.5], 'steel', { parent: 'FuelTank' }));
+    M.push(this.box('Alternator', 'Alternator', [2.0, 4.0, 0.7, 2.3, 0.9, 2.5], 'steel', { parent: 'FuelTank' }));
+    M.push(this.box('AltBell', 'Alternator', [1.8, 2.0, 0.9, 2.1, 1.1, 2.3], 'steel', { parent: 'FuelTank' }));
+    M.push(this.box('Engine', 'Engine', [4.2, 8.2, 0.6, 2.4, 0.9, 2.6], 'steel', { parent: 'FuelTank' }));
+    const head = this.box('EngineHead', 'Engine', [4.6, 7.8, 0.9, 2.1, 2.6, 3.0], 'steel', { parent: 'Engine' });
+    const hf = [];
+    for (let x = 4.9; x < 7.8; x += 0.6) hf.push(L(x, 2.1, 2.65, 2.95));
+    head.lines.push({ face: 's', segs: hf, color: '#1a2833', w: 1 });
+    M.push(head);
+    const rad = this.box('Radiator', 'Radiator', [9.6, 10.6, 0.3, 2.7, 0.9, 3.3], 'steel', { parent: 'FuelTank' });
+    const rf = [];
+    for (let y = 0.5; y < 2.6; y += 0.22) rf.push(L(10.6, y, 1.1, 3.1));
+    rad.lines.push({ face: 'e', segs: rf, color: '#1a2833', w: 1 });
+    M.push(rad);
+    const enc = this.box('Enclosure', 'Enclosure', [0, 12, 0, 3, 0.9, 3.8], 'xray', { last: 1 });
+    const es = [], en = [], ee = [];
+    for (const x of [3, 6, 9]) { es.push(L(x, 3, 1.0, 3.7)); en.push(L(x, 0, 1.0, 3.7)); }
+    for (let y = 0.3; y < 2.8; y += 0.25) ee.push(L(12, y, 1.2, 3.5));
+    enc.lines.push({ face: 's', segs: es, color: '#2b4356', w: 1 }, { face: 'n', segs: en, color: '#2b4356', w: 1 }, { face: 'e', segs: ee, color: '#2b4356', w: 1 });
+    M.push(enc);
+    M.push(this.box('Silencer', 'Silencer', [6.5, 9.5, 1.1, 1.9, 3.8, 4.4], 'steel', { last: 2 }));
+    M.push(this.prism('ExhaustStack', 'ExhaustStack', 9.2, 1.5, 0.22, 0.26, 4.4, 5.6, 'steel', { last: 3, seg: 12 }));
+    M.push(this.box('ControlPanel', 'ControlPanel', [0.5, 1.7, 3.0, 3.25, 1.5, 2.8], 'steel', { last: 4 }));
+    M.push(this.flatPoly('GenScreen', 'ControlPanel', [[0.6, 3.26, 2.65], [1.0, 3.26, 2.65], [1.0, 3.26, 2.3], [0.6, 3.26, 2.3]], 'screen', [0, 1, 0], { last: 5 }));
+    M.push(this.box('Breaker', 'Breaker', [1.15, 1.5, 3.25, 3.45, 1.75, 2.2], 'steel', { last: 6 }));
+    Object.assign(S.names, { FuelTank: 'Fuel tank', Battery: 'Battery', Alternator: 'Alternator', Engine: 'Engine', Radiator: 'Radiator', Enclosure: 'Enclosure', Silencer: 'Silencer', ExhaustStack: 'Exhaust stack', ControlPanel: 'Control panel', Breaker: 'Main breaker' });
+    S.anchors.Breaker = [1.32, 3.45, 2.0];
+    return S;
+  }
+
+  // ------------------------------------------------------------ states and colours
+  stateOf(node) {
+    if (!node) return null;
+    const p = this.props, st = p.states || {};
+    if (this.sel === node) return 'selected';
+    if (this.live && this.hover === node) return 'hover';
+    const s = st[node];
+    if (s && !(s === 'hover' && this.live)) return s;
+    if (p.allStale) return 'stale';
+    if (p.loading && this.scn.buildings[node] && (p.loaded || []).indexOf(node) < 0) return 'placeholder';
+    return null;
+  }
+
+  rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+
+  shade(hex, n) {
+    const [r, g, b] = this.rgb(hex);
+    const len = Math.hypot(n[0], n[1], n[2]) || 1;
+    const d = (n[0] * -0.45 + n[1] * -0.55 + n[2] * 0.7) / (len * 0.9975);
+    const sw = (n[0] * -0.6 + n[1] * 0.8) / len;
+    const k = Math.min(1.05, 0.55 + 0.45 * Math.max(0, d) / 0.7018 + 0.1 * Math.max(0, sw));
+    return 'rgb(' + Math.round(Math.min(255, r * k)) + ',' + Math.round(Math.min(255, g * k)) + ',' + Math.round(Math.min(255, b * k)) + ')';
+  }
+
+  sevOf(st) { return st && st.indexOf('alarm') === 0 ? (st.split(':')[1] || 'critical') : null; }
+
+  heatColor(t) {
+    const R = ['#1f2a4d', '#2b3a72', '#3d4f99', '#5868c4', '#7b8af0', '#b3bdff'];
+    const x = Math.max(0, Math.min(1, t)) * (R.length - 1), i = Math.min(R.length - 2, Math.floor(x)), f = x - i;
+    const a = this.rgb(R[i]), b = this.rgb(R[i + 1]);
+    const h = (v) => ('0' + Math.round(v).toString(16)).slice(-2);
+    return '#' + h(a[0] + (b[0] - a[0]) * f) + h(a[1] + (b[1] - a[1]) * f) + h(a[2] + (b[2] - a[2]) * f);
+  }
+
+  baseColor(m, face, st, node) {
+    const MAT = { part: '#2a4658', steel: '#435766', concrete: '#363c41', blade: '#4d6a80', hub: '#5a7488', screen: '#2b3f66', xray: '#2a4658', slab: '#2a3843', neutral: '#4b5d6b' };
+    const ALARM = { critical: '#754d55', high: '#756551', medium: '#707653', low: '#417284' };
+    const interior = face.color === '#081016';
+    if (st === 'stale') return interior ? '#0b0f12' : '#2b3338';
+    if (interior) return face.color;
+    if (st === 'hover' || st === 'selected') return m === 'blade' ? '#6878b8' : '#475f8a';
+    const sev = this.sevOf(st);
+    if (sev) return ALARM[sev] || ALARM.critical;
+    const heat = this.props.heat;
+    if (heat && node && heat[node] != null && face.key !== 'p') return this.heatColor(heat[node]);
+    return face.color || MAT[m] || MAT.part;
+  }
+
+  edge(m, st) {
+    const SEV = { critical: '#ff5a4e', high: '#ff9f43', medium: '#f2d04b', low: '#6cc3d5' };
+    if (st === 'placeholder') return ['#34495a', 1, [4, 4]];
+    if (st === 'stale') return ['#4a555c', 0.8, [3, 3]];
+    if (st === 'selected') return ['#8c9bff', 2, null];
+    if (st === 'hover') return ['#8c9bff', 1, null];
+    const sev = this.sevOf(st);
+    if (sev) return [SEV[sev] || SEV.critical, 1.5, null];
+    if (m === 'xray' || m === 'slab') return ['#5a7488', 1, null];
+    return ['#3e5a6e', 0.8, null];
+  }
+
+  // ------------------------------------------------------------ drawing
+  path(g, pts) {
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath();
+  }
+
+  icon(name) {
+    const I = {
+      video: 'm16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z',
+      'video-off': 'M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2M2 2l20 20',
+      intrusion: 'M13 4h3a2 2 0 0 1 2 2v14M2 20h3M13 20h9M10 12v.01M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z',
+      suspicious_object: 'M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73zM12 22V12M3.3 7l8.7 5 8.7-5M7.5 4.27l9 5.15',
+      crowding: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M5 7a4 4 0 1 0 8 0a4 4 0 1 0-8 0M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+      equipment_fault: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+      fire_alarm: 'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+      water_leak: 'M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z',
+      injury: 'M4 9a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h4a1 1 0 0 1 1 1v4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-4a1 1 0 0 1 1-1h4a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-4a1 1 0 0 1-1-1V4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4a1 1 0 0 1-1 1z',
+      blocked_access: 'M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0M4.9 4.9l14.2 14.2',
+    };
+    this.icons = this.icons || {};
+    if (!this.icons[name] && I[name] && typeof Path2D !== 'undefined') this.icons[name] = new Path2D(I[name]);
+    return this.icons[name];
+  }
+
+  drawIcon(g, name, x, y, size, color, w) {
+    const p = this.icon(name);
+    if (!p) return;
+    g.save();
+    g.translate(x - size / 2, y - size / 2);
+    g.scale(size / 24, size / 24);
+    g.strokeStyle = color;
+    g.lineWidth = w;
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    g.stroke(p);
+    g.restore();
+  }
+
+  paint() {
+    const cv = this.canvas;
+    if (!cv || !cv.getContext) return;
+    this.ensure();
+    const W = this.W, H = this.H, dpr = Math.min((typeof window !== 'undefined' && window.devicePixelRatio) || 1, 2);
+    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.fillStyle = '#0c1821';
+    g.fillRect(0, 0, W, H);
+    const cam = this.cam, B = this.basis(cam.yaw, cam.pitch), S = this.scn, p = this.props;
+    const P = (q) => this.proj(q.length === 2 ? [q[0], q[1], 0] : q, B, cam);
+    const hot = (nodes) => nodes && nodes.some((n) => { const s = this.stateOf(n); return s === 'hover' || s === 'selected' || s === 'alarm'; });
+
+    // ground
+    for (const it of S.ground) {
+      const pts = it.pts.map(P);
+      g.setLineDash(it.dash || []);
+      if (it.t === 'road') {
+        g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+        g.strokeStyle = '#182a36'; g.lineWidth = Math.max(2, it.w * cam.s); g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke();
+      } else if (it.t === 'line') {
+        g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); g.lineTo(pts[1][0], pts[1][1]);
+        g.strokeStyle = it.stroke; g.lineWidth = it.w; g.stroke();
+      } else {
+        this.path(g, pts);
+        if (it.fill) { g.fillStyle = it.fill; g.fill(); }
+        const h = hot(it.nodes);
+        g.strokeStyle = h ? '#8c9bff' : it.stroke; g.lineWidth = h ? 1.5 : it.w; g.stroke();
+      }
+    }
+    g.setLineDash([]);
+
+    // meshes, back to front
+    const focus = p.focus || null;
+    const vis = S.meshes.filter((m) => !(p.loading && m.extra) && (!m.inside || m.inside === focus));
+    const depth = {};
+    for (const m of vis) depth[m.id] = P(m.c)[2];
+    let innerMin = Infinity;
+    for (const m of vis) if (m.inside && m.inside === focus) innerMin = Math.min(innerMin, depth[m.id]);
+    const sd = (m) => {
+      if (m.last) return -1e9 + m.last;
+      if (focus && m.id === focus && innerMin < Infinity) return Math.min(depth[m.id], innerMin - 0.002);
+      if (m.parent && depth[m.parent] != null) { const pd = sd(S.meshes.find((x) => x.id === m.parent)); return Math.min(depth[m.id], pd - 0.001) - 1e-6 * (depth[m.id] > pd ? 1 : 0); }
+      return depth[m.id];
+    };
+    const order = vis.map((m) => [sd(m), m]).sort((a, b) => b[0] - a[0]);
+    this.hits = [];
+    for (const [, m] of order) this.drawMesh(g, m, B, P);
+
+    // labels (none on a decorative backdrop: it carries no site data)
+    const ui = Number(p.ui) || 1;
+    const fontL = '500 ' + Math.round(12 * ui) + 'px "Barlow Semi Condensed", "Arial Narrow", sans-serif';
+    if (!p.decor) {
+    g.font = fontL;
+    g.textAlign = 'center';
+    g.lineJoin = 'round';
+    const heatLabels = p.heatLabels || {};
+    const byLabel = {};
+    for (const k in S.names) byLabel[S.names[k]] = k;
+    for (const [x, y, z, t] of S.labels) {
+      const q = P([x, y, z]), node = byLabel[t];
+      g.globalAlpha = focus && node !== focus ? 0.35 : 1;
+      g.lineWidth = 3; g.strokeStyle = '#0c1821'; g.strokeText(t, q[0], q[1]);
+      g.fillStyle = '#a6b8c5'; g.fillText(t, q[0], q[1]);
+      if (node && heatLabels[node]) {
+        g.font = '600 ' + Math.round(13 * ui) + 'px "Barlow Semi Condensed", "Arial Narrow", sans-serif';
+        g.strokeText(heatLabels[node], q[0], q[1] + 15 * ui); g.fillStyle = '#e4edf3'; g.fillText(heatLabels[node], q[0], q[1] + 15 * ui);
+        g.font = fontL;
+      }
+    }
+    g.globalAlpha = 1;
+    }
+
+    // cameras
+    if (!p.loading && !p.decor) for (const [x, y, off] of S.cams) {
+      const a = P([x, y, 0]);
+      g.strokeStyle = '#5a7488'; g.lineWidth = 1; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(a[0], a[1] - 8 * ui); g.stroke();
+      const cx = a[0], cy = a[1] - 14 * ui, cs = 6 * ui;
+      g.beginPath(); g.roundRect ? g.roundRect(cx - cs, cy - cs, 2 * cs, 2 * cs, 3) : g.rect(cx - cs, cy - cs, 2 * cs, 2 * cs);
+      g.fillStyle = '#13222d'; g.fill(); g.setLineDash(off ? [2, 2] : []); g.strokeStyle = '#91a5b4'; g.stroke(); g.setLineDash([]);
+      this.drawIcon(g, off ? 'video-off' : 'video', cx, cy, 8 * ui, off ? '#91a5b4' : '#a6b8c5', 2.4);
+    }
+
+    // incident beacons: screen-sized markers on a short stem
+    const SEV = { critical: '#ff5a4e', high: '#ff9f43', medium: '#f2d04b', low: '#6cc3d5' };
+    for (const bc of p.beacons || []) {
+      const a = P(bc.p), col = SEV[bc.sev] || '#a6b8c5', top = a[1] - 24 * ui, r = (bc.big ? 11 : 10) * ui;
+      g.fillStyle = col; g.globalAlpha = 0.35; g.beginPath(); g.ellipse(a[0], a[1], 7, 4, 0, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+      g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(a[0], top); g.stroke();
+      if (bc.pulse) { g.globalAlpha = 0.5; g.beginPath(); g.arc(a[0], top, r + 6, 0, Math.PI * 2); g.stroke(); g.globalAlpha = 1; }
+      if (bc.sel) { g.strokeStyle = '#8c9bff'; g.lineWidth = 2.5; g.beginPath(); g.arc(a[0], top, r + 5, 0, Math.PI * 2); g.stroke(); g.strokeStyle = col; }
+      g.beginPath(); g.arc(a[0], top, r, 0, Math.PI * 2);
+      if (bc.fill) { g.fillStyle = col; g.fill(); g.lineWidth = 2.5; g.strokeStyle = '#0c1821'; g.stroke(); this.drawIcon(g, bc.icon, a[0], top, 12 * ui, '#0c1821', 2.6); }
+      else { g.fillStyle = '#0c1821'; g.fill(); g.lineWidth = 3; g.strokeStyle = col; g.stroke(); this.drawIcon(g, bc.icon, a[0], top, 12 * ui, col, 2.6); }
+      if (bc.tag) {
+        g.font = '600 11px "Barlow Semi Condensed", sans-serif';
+        const tw = g.measureText(bc.tag).width + 14, tx = a[0] + r + 8, ty = top - 9;
+        g.beginPath(); g.roundRect ? g.roundRect(tx, ty, tw, 18, 4) : g.rect(tx, ty, tw, 18);
+        g.fillStyle = '#223848'; g.fill(); g.strokeStyle = '#8c9bff'; g.lineWidth = 1; g.stroke();
+        g.fillStyle = '#e4edf3'; g.textAlign = 'left'; g.fillText(bc.tag, tx + 7, ty + 13); g.textAlign = 'center';
+      }
+    }
+
+    // picked location
+    if (this.pin) {
+      const a = P(this.pin);
+      g.beginPath(); g.moveTo(a[0], a[1]);
+      g.bezierCurveTo(a[0] - 6, a[1] - 9, a[0] - 10, a[1] - 13, a[0] - 10, a[1] - 18);
+      g.arc(a[0], a[1] - 18, 10, Math.PI, 0);
+      g.bezierCurveTo(a[0] + 10, a[1] - 13, a[0] + 6, a[1] - 9, a[0], a[1]);
+      g.fillStyle = '#8c9bff'; g.fill(); g.strokeStyle = '#0c1821'; g.lineWidth = 2; g.stroke();
+      g.beginPath(); g.arc(a[0], a[1] - 18, 3.5, 0, Math.PI * 2); g.fillStyle = '#0c1821'; g.fill();
+    }
+
+    // leader from a fixed callout to its part
+    const ld = p.leader;
+    if (ld && S.anchors[ld.node]) {
+      const a = P(S.anchors[ld.node]), f = ld.from, mid = ld.dir === 'v' ? [f[0], f[1] + 40] : [f[0] + 32, f[1]];
+      g.strokeStyle = '#8c9bff'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(f[0], f[1]); g.lineTo(mid[0], mid[1]); g.lineTo(a[0], a[1]); g.stroke();
+      g.beginPath(); g.arc(a[0], a[1], 5, 0, Math.PI * 2); g.fillStyle = '#0c1821'; g.fill(); g.lineWidth = 2; g.stroke();
+    }
+
+    // compass: where north points on screen
+    const nx = -B.r[1], ny = B.u[1];
+    this.compassDeg = (Math.atan2(nx, -ny) * 180) / Math.PI;
+    this.tipView = this.computeTip(P);
+  }
+
+  drawMesh(g, m, B, P) {
+    const st = this.stateOf(m.node);
+    const focus = this.props.focus, heat = this.props.heat;
+    const own = m.owner || m.node;
+    const ghost = (focus && own !== focus) || (heat && !(m.node in heat) && !this.sevOf(st) && st !== 'hover' && st !== 'selected');
+    const mat = focus && m.id === focus ? 'xray' : m.m;
+    const [ec, ew, edash] = this.edge(mat, st);
+    const alpha = ghost ? 0.18 : mat === 'xray' && st !== 'selected' && st !== 'hover' ? 0.14 : mat === 'slab' ? 0.45 : 1;
+    const faces = [];
+    for (const f of m.faces) {
+      const n = f.n, vis = n[0] * B.c[0] + n[1] * B.c[1] + n[2] * B.c[2];
+      if (vis <= 1e-6) continue;
+      const pts = f.pts.map(P);
+      let d = 0;
+      for (const q of pts) d += q[2] / pts.length;
+      faces.push([d, f, pts]);
+    }
+    faces.sort((a, b) => b[0] - a[0]);
+    const shown = {};
+    for (const [, f, pts] of faces) {
+      shown[f.key] = true;
+      this.path(g, pts);
+      if (st !== 'placeholder') {
+        const col = this.shade(this.baseColor(mat, f, st, m.node), f.n);
+        g.fillStyle = col;
+        g.globalAlpha = alpha;
+        g.fill();
+        if (f.soft) { g.setLineDash([]); g.strokeStyle = col; g.lineWidth = 0.6; g.stroke(); }
+      }
+      g.globalAlpha = ghost ? 0.3 : 1;
+      if (!f.soft || st === 'placeholder') { g.setLineDash(edash || []); g.strokeStyle = ec; g.lineWidth = ew; g.stroke(); }
+      g.globalAlpha = 1;
+      if (m.node && m.pick !== false && !ghost && !(focus && m.id === focus)) this.hits.push([pts, m.node]);
+    }
+    g.setLineDash([]);
+    if (ghost) g.globalAlpha = 0.3;
+    for (const l of m.lines) {
+      if (l.face && !shown[l.face]) continue;
+      g.beginPath();
+      for (const [a, b] of l.segs) { const p = P(a), q = P(b); g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); }
+      g.setLineDash(st === 'stale' || st === 'placeholder' ? [3, 3] : []);
+      g.strokeStyle = st === 'stale' ? '#3a4247' : st === 'selected' || st === 'hover' ? '#8c9bff' : l.color;
+      g.lineWidth = l.w;
+      g.stroke();
+    }
+    g.setLineDash([]);
+    g.globalAlpha = 1;
+  }
+
+  inside(pts, x, y) {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1] || 1e-9) + a[0]) c = !c;
+    }
+    return c;
+  }
+
+  pick(x, y) {
+    const hs = this.hits || [];
+    for (let i = hs.length - 1; i >= 0; i--) if (this.inside(hs[i][0], x, y)) return hs[i][1];
+    return null;
+  }
+
+  // ------------------------------------------------------------ tooltip
+  defaultTips() {
+    return {
+      CT01: { name: 'Cooling tower 1', code: 'CT-01', state: ['running', 'activity', 'Running'], rows: [['fan', 'Fan', '1,420 rpm'], ['thermo', 'Motor', '71 °C']], foot: 'Click to inspect · Data Center roof' },
+      CT02: { name: 'Cooling tower 2', code: 'CT-02', state: ['standby', 'pause', 'Standby'], rows: [['fan', 'Fan', '0 rpm'], ['thermo', 'Motor', '29 °C']], foot: 'Click to inspect · Data Center roof' },
+      GEN01: { name: 'Standby generator', code: 'GEN-01', state: ['standby', 'pause', 'Standby · Auto'], rows: [['fuel', 'Fuel', '86 %'], ['battery', 'Battery', '27.4 V']], foot: 'Click to inspect · east yard' },
+      UPS01: { name: 'UPS room', code: 'UPS-01', state: ['running', 'activity', 'Running · on mains'], rows: [['battery', 'Load', '38 %'], ['battery', 'Autonomy', '22 min']], foot: 'Click to inspect' },
+      Batteries: { name: 'UPS batteries', code: 'BAT-01', state: ['running', 'activity', 'Float charge'], rows: [['battery', 'Charge', '100 %'], ['thermo', 'Room', '23.4 °C']], foot: 'Click to inspect' },
+      CRAC01: { name: 'Precision cooling 1', code: 'CRAC-01', state: ['running', 'activity', 'Running'], rows: [['thermo', 'Supply', '18.2 °C'], ['thermo', 'Return', '27.5 °C']], foot: 'Click to inspect' },
+      CRAC02: { name: 'Precision cooling 2', code: 'CRAC-02', state: ['running', 'activity', 'Running'], rows: [['thermo', 'Supply', '18.6 °C'], ['thermo', 'Return', '27.1 °C']], foot: 'Click to inspect' },
+      LKSB3: { name: 'Leak sensor, level 3', code: 'LKS-B3', sev: 'medium', state: ['fault', 'medium', 'Fault · INC-000108'], rows: [['thermo', 'Leak', 'Wet since 15:17']], foot: 'No 3D model · drawn as a box' },
+      LFTB1: { name: 'Lift 1', code: 'LFT-B1', state: ['running', 'activity', 'Running'], rows: [['activity', 'Car at', 'Floor 2']], foot: 'Click to inspect' },
+    };
+  }
+
+  computeTip(P) {
+    const p = this.props, S = this.scn;
+    const tips = Object.assign(this.defaultTips(), p.tips || {});
+    let node = null, left = 0, top = 0;
+    if (this.live) {
+      if (this.hover && this.mouse && !this.drag) { node = this.hover; left = this.mouse[0] + 18; top = this.mouse[1] + 18; }
+    } else if (p.tip && p.tip.node && S.anchors[p.tip.node]) {
+      node = p.tip.node;
+      const a = P(S.anchors[node]);
+      left = a[0] - 16 - 256; top = a[1] - 70;
+    }
+    if (!node) return { show: false };
+    const fallback = { name: S.names[node] || '', code: '', foot: p.pickOnGround ? 'Click to place the incident here' : 'Click to select' };
+    const t = Object.assign({}, fallback, tips[node] || {}, p.tip && p.tip.node === node && !this.live ? p.tip : {});
+    if (!t.name) return { show: false };
+    const rows = (t.rows || []).map((r) => ({ icon: r[0], label: r[1], val: r[2] }));
+    left = Math.max(8, Math.min(this.W - this.inset - 264, left));
+    top = Math.max(60, Math.min(this.H - 170, top));
+    return {
+      show: true, left: Math.round(left), top: Math.round(top), name: t.name, code: t.code || '', sev: t.sev || '',
+      hasState: !!t.state, stateKey: t.state ? t.state[0] : '', stateIcon: t.state ? t.state[1] : '', stateLabel: t.state ? t.state[2] : '',
+      hasRows: rows.length > 0, rows, foot: t.foot || 'Click to select',
+    };
+  }
+}
+</script>
+</body>
+</html>
