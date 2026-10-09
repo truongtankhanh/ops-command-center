@@ -32,6 +32,7 @@ import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
 import { persistIncident } from '../src/incidents/persist-incident';
 import { OutboxEvents } from '../src/outbox/outbox-events';
+import { OutboxRelay } from '../src/outbox/outbox-relay.service';
 import { OutboxEntity } from '../src/outbox/outbox.entity';
 import { SimulatorLeader } from '../src/simulator/simulator-leader.service';
 import { SimulatorService } from '../src/simulator/simulator.service';
@@ -745,6 +746,9 @@ describe('Incidents (e2e)', () => {
     let socketB: EventsSocket;
 
     beforeAll(async () => {
+      // A's relay publishes after the response, so an earlier case's `created` can still be in
+      // flight. Announced after B starts listening, it would be the first event B sees.
+      await app.get(OutboxRelay).drain();
       // B finds the schema migrated and the campus seeded, so it does neither.
       const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
       appB = configureApp(moduleRef.createNestApplication());
