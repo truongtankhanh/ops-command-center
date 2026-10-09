@@ -39,8 +39,10 @@ same.
 - **Indoor climate sensor** is the one class the mockups do not list as an asset: frame 13's heat overlay colours
   every building by indoor temperature, and air handlers exist in only three of its twelve buildings. Air handlers
   and this class share the key `indoorTempC`, so the overlay reads one key.
-- **Demo assets:** 22 equipment assets, plus one indoor climate sensor per building that has no air handler. The
-  Assets lists show 19; BAT-01, CRAC-01 and CRAC-02 appear inside the Data Center in frame 12.
+- **Demo assets:** 22 equipment assets, plus one indoor climate sensor per building that has no air handler (nine).
+  The Assets lists of the frames show all 31 (BAT-01, CRAC-01 and CRAC-02 under the Data Center). The sensor codes
+  drawn there, `ICS-` plus the building's zone-code suffix (`ICS-DC`, `ICS-LAB`, …), are sample data: confirm them
+  before V2-05 seeds the sensors.
 
 ## Telemetry points
 

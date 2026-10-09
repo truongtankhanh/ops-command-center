@@ -412,14 +412,15 @@ categories.
 
 ### Frames to revise after Phase 0
 
-Phase 0 (V2-00, 2026-10-09) kept every decision as drawn except the ones below. These frames are revised on the canvas
-and in [mockups/](mockups/) together; until then, this brief, the ADRs and [asset-classes.md](asset-classes.md) win.
+Phase 0 (V2-00, 2026-10-09) kept every decision as drawn except the ones below. These frames were revised on the
+canvas and in [mockups/](mockups/) together on 2026-10-09 (V2-00.12); where a frame and this brief, an ADR or
+[asset-classes.md](asset-classes.md) still disagree, the written decision wins.
 
-| Frame                           | Change                                                                                                                                                | Decision                         |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| 00 Foundations V2               | Node tree: `Switch` is `turn X ±35°`, not `flip`. `extras` list: drop `partRole` (the node name is the role); `axis` and `range` only on moving parts | V2-00.10 (ADR-0020)              |
-| 13 Heat overlay                 | Every building has a reading: indoor climate sensors where there is no air handler. Only a building whose sensor is silent is faded                   | V2-00.5 (`indoor_climate` class) |
-| 02, 03, 05, 08, 12, 15 (Assets) | The Assets list holds the 22 equipment assets (BAT-01, CRAC-01 and CRAC-02 too, not only in frame 12) and the indoor climate sensors                  | V2-00.5                          |
+| Frame                               | Change                                                                                                                                                | Decision                         |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| 00 Foundations V2                   | Node tree: `Switch` is `turn X ±35°`, not `flip`. `extras` list: drop `partRole` (the node name is the role); `axis` and `range` only on moving parts | V2-00.10 (ADR-0020)              |
+| 13 Heat overlay                     | Every building has a reading: indoor climate sensors where there is no air handler. Only a building whose sensor is silent is faded                   | V2-00.5 (`indoor_climate` class) |
+| 02, 03, 05, 08, 12, 15, 17 (Assets) | The Assets list holds the 22 equipment assets (BAT-01, CRAC-01 and CRAC-02 too, not only in frame 12) and the indoor climate sensors                  | V2-00.5                          |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).

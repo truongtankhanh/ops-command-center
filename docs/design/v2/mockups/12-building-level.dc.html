@@ -79,11 +79,11 @@
 <aside class="feed" aria-label="Incidents and assets">
 <div class="panel-switch" role="tablist" aria-label="Side panel">
 <button type="button" role="tab" aria-selected="false" tabindex="-1">Incidents <span class="count">8</span></button>
-<button type="button" role="tab" aria-selected="true">Assets <span class="count">19</span></button>
+<button type="button" role="tab" aria-selected="true">Assets <span class="count">31</span></button>
 </div>
 <span class="zone-chip">Zone: Data Center<button type="button" aria-label="Show all zones"><svg class="ic ic-s" aria-hidden="true"><use href="#i-x"></use></svg></button></span>
 <div class="tabs" role="tablist" aria-label="Filter assets">
-<button class="tab" role="tab" type="button" aria-selected="true">All <span class="count">7</span></button>
+<button class="tab" role="tab" type="button" aria-selected="true">All <span class="count">8</span></button>
 <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Faults <span class="count">0</span></button>
 <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">No data <span class="count">0</span></button>
 </div>
@@ -163,6 +163,7 @@ class Component extends DCLogic {
         a({ code: 'BAT-01', name: 'UPS batteries', icon: 'battery', state: 'running', val: '100 %' }),
         a({ code: 'CRAC-01', name: 'Precision cooling 1', icon: 'thermo', state: 'running', val: '18.2 °C' }),
         a({ code: 'CRAC-02', name: 'Precision cooling 2', icon: 'thermo', state: 'running', val: '18.6 °C' }),
+        a({ code: 'ICS-DC', name: 'Indoor climate sensor', icon: 'thermo', state: 'running', val: '22.1 °C' }),
         a({ group: 'Roof', code: 'CT-01', name: 'Cooling tower 1', icon: 'fan', state: 'running', val: '1,420 rpm' }),
         a({ code: 'CT-02', name: 'Cooling tower 2', icon: 'fan', state: 'standby', val: '0 rpm' }),
         a({ group: 'East yard', code: 'GEN-01', name: 'Standby generator', icon: 'power', state: 'standby', val: '86 % fuel' })

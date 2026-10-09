@@ -190,11 +190,11 @@ body{margin:0}
 ├─ Pipe, Riser             <em>static</em>
 ├─ <b>Valve</b>                   <em>turn X 0–90° · valveOpenPct</em>
 └─ ControlPanel            <em>static</em>
-   └─ <b>Switch</b>               <em>flip X ±35° · switchState</em></pre>
+   └─ <b>Switch</b>               <em>turn X ±35° · switchState</em></pre>
 <ul class="rules">
 <li><b>Name</b> = the part role, English PascalCase, unique per file. Code finds it under each asset's instance root; artists never rename.</li>
 <li><b>Pivot</b> on the part's own axis of motion; +Y up, 1 unit = 1 m, origin at the asset's footprint centre.</li>
-<li><b>extras</b> on every bound node: <code>partRole</code>, <code>bind</code> (telemetry key), <code>range</code> (motion limits).</li>
+<li><b>extras</b> on every bound node: <code>bind</code> (telemetry key), <code>motion</code> (spin, turn, slide or tint); on moving parts also <code>axis</code> and <code>range</code> (motion limits). The node name is the role.</li>
 </ul>
 </section>
 

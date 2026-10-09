@@ -70,7 +70,7 @@
 <aside class="feed" aria-label="Incidents and assets">
 <div class="panel-switch" role="tablist" aria-label="Side panel">
 <button type="button" role="tab" aria-selected="true">Incidents <span class="count">8</span></button>
-<button type="button" role="tab" aria-selected="false" tabindex="-1">Assets <span class="count">19</span></button>
+<button type="button" role="tab" aria-selected="false" tabindex="-1">Assets <span class="count">31</span></button>
 </div>
 <div class="feed-top">
 <label class="search"><span class="sprite">Search incidents</span><svg class="ic" aria-hidden="true"><use href="#i-search"></use></svg><input type="search" placeholder="Search code, title or zone"><span class="kbd">/</span></label>
@@ -102,7 +102,7 @@
 <div class="stage">
 <section class="twin" aria-label="Campus 3D view">
 <div style="position: absolute; left: 0; top: 0">
-<dc-import name="TwinScene" scene="campus" w="1072" h="671" view="{{twin.view}}" states="{{twin.states}}" tip="{{twin.tip}}" tips="{{twin.tips}}" beacons="{{twin.beacons}}" leader="{{twin.leader}}" pin="{{twin.pin}}" pick-on-ground="{{twin.pickOnGround}}" loading="{{twin.loading}}" loaded="{{twin.loaded}}" all-stale="{{twin.allStale}}" inset-right="{{twin.insetRight}}" hint-at="{{twin.hintAt}}" focus="{{twin.focus}}" heat="{{twin.heat}}" heat-labels="{{twin.heatLabels}}" aria="Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer. Drag to rotate." hint-size="1072px,671px"></dc-import>
+<dc-import name="TwinScene" scene="campus" w="1072" h="671" view="{{twin.view}}" states="{{twin.states}}" tip="{{twin.tip}}" tips="{{twin.tips}}" beacons="{{twin.beacons}}" leader="{{twin.leader}}" pin="{{twin.pin}}" pick-on-ground="{{twin.pickOnGround}}" loading="{{twin.loading}}" loaded="{{twin.loaded}}" all-stale="{{twin.allStale}}" inset-right="{{twin.insetRight}}" hint-at="{{twin.hintAt}}" focus="{{twin.focus}}" heat="{{twin.heat}}" heat-labels="{{twin.heatLabels}}" aria="Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer. Security office faded: its sensor is silent. Drag to rotate." hint-size="1072px,671px"></dc-import>
 </div>
 
 <div class="tw-tools">
@@ -115,7 +115,7 @@
 <b>Indoor temperature, by building</b>
 <div class="ramp" aria-hidden="true"><i style="background: #1f2a4d"></i><i style="background: #2b3a72"></i><i style="background: #3d4f99"></i><i style="background: #5868c4"></i><i style="background: #7b8af0"></i><i style="background: #b3bdff"></i></div>
 <div class="scale"><span>19 °C</span><span>23 °C</span><span>27 °C</span></div>
-<span>A reading, not a severity. Faded buildings report none.</span>
+<span>A reading, not a severity. Every building reports one; a faded building's sensor is silent.</span>
 </div>
 </section>
 
@@ -151,7 +151,7 @@ class Component extends DCLogic {
   renderVals() {
     const row = (r) => ({ late: false, ...r, ageCls: r.late ? 'is-late' : '' });
     return {
-      twin: { heat: { InnovationHub: 0.375, Library: 0.300, LectureHallA: 0.575, DataCenter: 0.388, StudentCenter: 0.725, SportsHall: 0.862, AdminBuilding: 0.450, ScienceLab: 0.250, DormitoryA: 0.638, DormitoryB: 0.925, HealthClinic: 0.438, SecurityOffice: 0.625 }, heatLabels: { InnovationHub: '22.0 °C', Library: '21.4 °C', LectureHallA: '23.6 °C', DataCenter: '22.1 °C', StudentCenter: '24.8 °C', SportsHall: '25.9 °C', AdminBuilding: '22.6 °C', ScienceLab: '21.0 °C', DormitoryA: '24.1 °C', DormitoryB: '26.4 °C', HealthClinic: '22.5 °C', SecurityOffice: '24.0 °C' }, beacons: [
+      twin: { heat: { InnovationHub: 0.375, Library: 0.300, LectureHallA: 0.575, DataCenter: 0.388, StudentCenter: 0.725, SportsHall: 0.862, AdminBuilding: 0.450, ScienceLab: 0.250, DormitoryA: 0.638, DormitoryB: 0.925, HealthClinic: 0.438 }, heatLabels: { InnovationHub: '22.0 °C', Library: '21.4 °C', LectureHallA: '23.6 °C', DataCenter: '22.1 °C', StudentCenter: '24.8 °C', SportsHall: '25.9 °C', AdminBuilding: '22.6 °C', ScienceLab: '21.0 °C', DormitoryA: '24.1 °C', DormitoryB: '26.4 °C', HealthClinic: '22.5 °C', SecurityOffice: 'No data' }, beacons: [
         { p: [150, -200, 16], sev: 'high', icon: 'fire_alarm', fill: true },
         { p: [-100, -38, 0], sev: 'high', icon: 'intrusion', fill: true },
         { p: [205, 180, 20], sev: 'medium', icon: 'water_leak' },
