@@ -431,8 +431,11 @@ brief, the ADR wins.
    operations lead), as drawn in frame 01. 2D stays a switch (frame 14) and the fallback (frame 07). The viewer's last
    choice is still remembered per browser in `localStorage` (ADR-0020); with no stored choice, a capable device opens
    in 3D, so the lazy 3D chunk loads on start there.
-4. **Telemetry transport**: API bridge over Socket.IO (recommended) or browser → broker over MQTT-over-WebSocket?
-   The second exposes the broker and adds a second auth model.
+4. ~~**Telemetry transport**: API bridge over Socket.IO (recommended) or browser → broker over MQTT-over-WebSocket?
+   The second exposes the broker and adds a second auth model.~~
+   **Decided 2026-10-09: the API bridge** (tech lead, confirmed with the security lead). The API is the only MQTT
+   subscriber and forwards readings on the `/telemetry` Socket.IO namespace with ADR-0010's tokens; the broker is
+   never exposed to browsers (ADR-0019).
 5. ~~**Read-only twin.** No device control (start / stop / setpoints) from the console in V2. Controlling equipment
    is a safety decision with its own interlocks and audit; confirm it stays out of scope.~~
    **Decided 2026-10-09: V2.0 is read-only** (tech lead, confirmed with the operations lead and the facilities lead).
