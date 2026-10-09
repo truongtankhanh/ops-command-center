@@ -420,16 +420,20 @@ brief, the ADR wins.
 
 ## Open questions for review
 
-1. **Part-name language.** The request's examples are Vietnamese (`CanhQuat`, `CongTac`). This spec proposes English
-   roles (`FanBlade`, `Switch`) because every identifier in the codebase is English and the names become code.
-   Confirm, or keep Vietnamese roles consistently.
-2. **Which equipment classes first.** The mockups use one reference asset: cooling tower CT-01 on the Data Center
+1. ~~**Part-name language.** The request's examples are Vietnamese (`CanhQuat`, `CongTac`). This spec proposes
+   English roles (`FanBlade`, `Switch`) because every identifier in the codebase is English and the names become
+   code. Confirm, or keep Vietnamese roles consistently.~~
+   **Decided 2026-10-09: English roles** (tech lead), as written in § Model contract and ADR-0020. No example
+   changes.
+2. ~~**Which equipment classes first.** The mockups use one reference asset: cooling tower CT-01 on the Data Center
    roof, plus a sample list (UPS, generator, air handlers, lift, barrier arm, pump). Which classes are in V2.0, and
-   who authors the models (in-house 3D artist, vendor BIM export)?
+   who authors the models (in-house 3D artist, vendor BIM export)?~~
    **Classes decided 2026-10-09** (tech lead, confirmed with the operations lead and the facilities lead): 16
    classes, the mockups' catalogue plus an indoor climate sensor for the heat overlay; cooling tower and standby
    generator are modelled, the rest are boxes. Points, ranges and bound parts: [asset-classes.md](asset-classes.md).
-   Model authors: open (V2-00.7).
+   **Model authors decided 2026-10-09** (tech lead): an external 3D vendor, with § Model contract and its budgets in
+   the purchase scope. Delivery order: cooling tower, then standby generator, both before V2-13 starts. The vendor's
+   name and the calendar date are named when the purchase is placed.
 3. ~~**3D by default, or 2D by default with 3D as a mode?** The mockups default to 3D on capable devices.~~
    **Decided 2026-10-09: 3D by default on devices that pass the WebGL 2 check** (tech lead, confirmed with the
    operations lead), as drawn in frame 01. 2D stays a switch (frame 14) and the fallback (frame 07). The viewer's last
