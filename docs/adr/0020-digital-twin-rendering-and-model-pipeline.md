@@ -147,7 +147,11 @@ their author, checked in CI, and served by nginx as immutable files.
 
 - Part-name language: this ADR uses English roles (`FanBlade`, `Switch`), matching every identifier in the codebase;
   the request's examples were Vietnamese (`CanhQuat`, `CongTac`) (brief, open question 1).
-- 3D by default on capable devices, or 2D by default with 3D as a mode (brief, open question 3).
+- ~~3D by default on capable devices, or 2D by default with 3D as a mode (brief, open question 3).~~ Decided
+  2026-10-09 by the tech lead, confirmed with the operations lead: 3D by default on devices that pass the capability
+  check; 2D is the switch and the fallback. The `localStorage` memory of the last choice is unchanged. With 3D as the
+  default, the lazy chunk loads on start for capable devices; the 2D view, the fallback and the sign-in screens still
+  never download it.
 - ~~Video walls: 3D at pixel ratio 1.0, or keep walls on the 2D map (brief, open question 6).~~ Decided: 3D with a
   fixed camera (see Decision).
 - Who authors the first models (brief, open question 2).
