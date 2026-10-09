@@ -426,7 +426,11 @@ brief, the ADR wins.
 2. **Which equipment classes first.** The mockups use one reference asset: cooling tower CT-01 on the Data Center
    roof, plus a sample list (UPS, generator, air handlers, lift, barrier arm, pump). Which classes are in V2.0, and
    who authors the models (in-house 3D artist, vendor BIM export)?
-3. **3D by default, or 2D by default with 3D as a mode?** The mockups default to 3D on capable devices.
+3. ~~**3D by default, or 2D by default with 3D as a mode?** The mockups default to 3D on capable devices.~~
+   **Decided 2026-10-09: 3D by default on devices that pass the WebGL 2 check** (tech lead, confirmed with the
+   operations lead), as drawn in frame 01. 2D stays a switch (frame 14) and the fallback (frame 07). The viewer's last
+   choice is still remembered per browser in `localStorage` (ADR-0020); with no stored choice, a capable device opens
+   in 3D, so the lazy 3D chunk loads on start there.
 4. **Telemetry transport**: API bridge over Socket.IO (recommended) or browser → broker over MQTT-over-WebSocket?
    The second exposes the broker and adds a second auth model.
 5. ~~**Read-only twin.** No device control (start / stop / setpoints) from the console in V2. Controlling equipment
