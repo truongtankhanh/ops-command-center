@@ -1,6 +1,6 @@
 # ADR-0021: Incidents are grouped in categories, zones carry a use, and technicians handle facilities incidents
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md), [ADR-0011](0011-role-based-authorization-and-timeline-actor.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md)
 
@@ -132,14 +132,13 @@ category.
     `water_leak`; an operator can act on both; a viewer on neither.
   - Migration: existing incidents and zones survive; `zone.use` on a parking zone is refused.
 
-## Open before acceptance
+## Decided before acceptance
 
-- ~~Confirm the type list with the campus's security and facilities leads; the list here follows common campus
-  practice, not a specific site's procedures.~~ Decided 2026-10-09 by the tech lead, confirmed with the security lead
-  and the facilities lead: the six categories and 24 types above are final, unchanged, with the default severities
-  now in the table. The technician scope (acknowledge and resolve `facilities` and `environment` only) is confirmed.
-  Telemetry rules stay limited to `facilities` and `environment`: a gas detector's alarm stays with the gas detection
-  panel, and telemetry never raises `gas_leak` or any other `fire_safety` type.
-- ~~Whether `supervisor` gets anything a technician or operator does not (still open since ADR-0011).~~ Decided
-  2026-10-09 by the tech lead: no supervisor-only rights in V2. `supervisor` keeps the same rights as `operator`;
-  supervisor-only actions stay a follow-up of ADR-0011.
+- **Type list.** Decided 2026-10-09 by the tech lead, confirmed with the security lead and the facilities lead: the
+  six categories and 24 types above are final, unchanged, with the default severities in the table. The technician
+  scope (acknowledge and resolve `facilities` and `environment` only) is confirmed. Telemetry rules stay limited to
+  `facilities` and `environment`: a gas detector's alarm stays with the gas detection panel, and telemetry never
+  raises `gas_leak` or any other `fire_safety` type.
+- **Supervisor rights** (open since ADR-0011). Decided 2026-10-09 by the tech lead: no supervisor-only rights in V2.
+  `supervisor` keeps the same rights as `operator`; supervisor-only actions stay a follow-up of ADR-0011.
+- **Reviewed against the code** 2026-10-09 (V2-00.10, PR #32): facts corrected in place; no decision changed.

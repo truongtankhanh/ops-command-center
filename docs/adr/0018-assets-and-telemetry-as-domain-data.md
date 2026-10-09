@@ -1,6 +1,6 @@
 # ADR-0018: Assets, telemetry points and threshold rules are domain data; breaches become incidents
 
-- **Status:** Proposed
+- **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md)
 
@@ -155,16 +155,17 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 - **Revisit** TimescaleDB if retention must grow past a few weeks or the catalogue past a few hundred assets.
   Revisit device-raised alarms if a building management system becomes a source.
 
-## Open before acceptance
+## Decided before acceptance
 
-- ~~Which equipment classes are in V2.0 beyond the cooling tower (brief, open question 2).~~ Decided 2026-10-09 by
-  the tech lead, confirmed with the operations lead and the facilities lead: 16 classes with their `telemetry_point`
-  rows, `footprint_m` and bound parts, in [asset-classes.md](../design/v2/asset-classes.md). Two are modelled
-  (`cooling_tower`, `standby_generator`); the others have `model_key` null.
-- ~~Who owns threshold values: operations per class, with per-asset overrides, is assumed here (brief, open question
-  7).~~ Decided 2026-10-09 by the tech lead, confirmed with the operations lead: operations owns them, per class with
-  per-asset overrides, changed by migration or reviewed database write. The 22 starting rules are in
+- **Equipment classes in V2.0** (brief, open question 2). Decided 2026-10-09 by the tech lead, confirmed with the
+  operations lead and the facilities lead: 16 classes with their `telemetry_point` rows, `footprint_m` and bound
+  parts, in [asset-classes.md](../design/v2/asset-classes.md). Two are modelled (`cooling_tower`,
+  `standby_generator`); the others have `model_key` null.
+- **Owner of threshold values** (brief, open question 7). Decided 2026-10-09 by the tech lead, confirmed with the
+  operations lead: operations owns them, per class with per-asset overrides, changed by migration or reviewed
+  database write. The 22 starting rules are in
   [asset-classes.md § Threshold rules](../design/v2/asset-classes.md#threshold-rules).
-- ~~Confirm the twin stays read-only (brief, open question 5).~~ Decided 2026-10-09 by the tech lead, confirmed with
-  the operations lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and
-  ADR-0019's broker ACL ("may publish nothing") is unchanged.
+- **Read-only twin** (brief, open question 5). Decided 2026-10-09 by the tech lead, confirmed with the operations
+  lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and ADR-0019's broker
+  ACL ("may publish nothing") is unchanged. Commanding equipment would need a new ADR.
+- **Reviewed against the code** 2026-10-09 (V2-00.10, PR #32): facts corrected in place; no decision changed.
