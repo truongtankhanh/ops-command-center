@@ -150,7 +150,10 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 
 ## Open before acceptance
 
-- Which equipment classes are in V2.0 beyond the cooling tower (brief, open question 2).
+- ~~Which equipment classes are in V2.0 beyond the cooling tower (brief, open question 2).~~ Decided 2026-10-09 by
+  the tech lead, confirmed with the operations lead and the facilities lead: 16 classes with their `telemetry_point`
+  rows, `footprint_m` and bound parts, in [asset-classes.md](../design/v2/asset-classes.md). Two are modelled
+  (`cooling_tower`, `standby_generator`); the others have `model_key` null.
 - Who owns threshold values: operations per class, with per-asset overrides, is assumed here (brief, open question 7).
 - ~~Confirm the twin stays read-only (brief, open question 5).~~ Decided 2026-10-09 by the tech lead, confirmed with
   the operations lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and
