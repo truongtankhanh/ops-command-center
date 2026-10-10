@@ -19,6 +19,25 @@
   color: var(--text-secondary);
 }
 
+/* A numbered step (frame 09's `.step-label`): the number's disc, then the legend's text. */
+.legend[data-step] {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.step {
+  display: inline-grid;
+  place-items: center;
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
+  border-radius: 50%;
+  background: var(--surface-3);
+  font-size: var(--type-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+}
+
 .options {
   display: grid;
   grid-auto-flow: column;
@@ -74,6 +93,11 @@
   padding: 0 var(--space-1);
   font-size: var(--type-m);
   text-align: center;
+}
+
+/* Frame 09's `.type-grid.is-compact`: shorter tiles, so six categories fit above the type step. */
+.options[data-compact] .face {
+  height: calc(54px * var(--ui-scale));
 }
 
 /* Frame 03's `.opt.is-checked`: accent border and tint, no bottom bar. */

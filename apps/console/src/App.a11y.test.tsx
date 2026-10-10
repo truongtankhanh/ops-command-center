@@ -295,6 +295,18 @@ describe('the console', () => {
       await checkPage();
     });
 
+    it('the report form, as a technician, with both steps and every hint', async () => {
+      renderConsole({ role: 'technician' });
+
+      act(() => consoleState().startReport());
+      await userEvent.click(screen.getByRole('radio', { name: 'Facilities' }));
+      await userEvent.click(screen.getByRole('radio', { name: 'Lift entrapment' }));
+
+      expect(screen.getByText('Suggested for lift entrapment: High.')).toBeInTheDocument();
+      expect(screen.getByText(/incidents go to the technician queue/)).toBeInTheDocument();
+      await checkPage();
+    });
+
     it('the resolve confirmation', async () => {
       renderConsole();
       act(() => consoleState().select('i1'));

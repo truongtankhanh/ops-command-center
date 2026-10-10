@@ -1,9 +1,16 @@
 import {
+  categoryOf,
   type Incident,
+  INCIDENT_CATEGORIES,
   INCIDENT_EVENT_KINDS,
   INCIDENT_SEVERITIES,
   INCIDENT_TYPES,
   type IncidentType,
+  type Zone,
+  ZONE_KINDS,
+  ZONE_USES,
+  type ZoneKind,
+  type ZoneUse,
 } from '@occ/contracts';
 import {
   acknowledgeDuration,
@@ -30,6 +37,9 @@ import {
   searchTerms,
   severityLabel,
   typeLabel,
+  typeLabelInSentence,
+  typesInCategory,
+  typesLikelyIn,
   upsertIncident,
 } from './incidents';
 
@@ -383,6 +393,111 @@ describe('categoryOfType', () => {
 
   it('gives an unknown type no category', () => {
     expect(categoryOfType(UNKNOWN_TYPE)).toBeNull();
+  });
+});
+
+describe('typeLabelInSentence', () => {
+  it('lower-cases the first letter of a label', () => {
+    expect(typeLabelInSentence('lift_entrapment')).toBe('lift entrapment');
+    expect(typeLabelInSentence('medical')).toBe('medical emergency');
+  });
+
+  it('keeps a label that starts with an acronym', () => {
+    expect(typeLabelInSentence('hvac_fault')).toBe('HVAC fault');
+  });
+
+  it('keeps an unknown type as its raw id', () => {
+    expect(typeLabelInSentence(UNKNOWN_TYPE)).toBe('not_in_contract');
+  });
+});
+
+describe('typesLikelyIn', () => {
+  const building = (use: Zone['use']): Pick<Zone, 'kind' | 'use'> => ({ kind: 'building', use });
+
+  it('reads a building by its use, most typical first', () => {
+    expect(typesLikelyIn(building('laboratory'))).toEqual([
+      'hazmat_spill',
+      'gas_leak',
+      'fire_alarm',
+    ]);
+  });
+
+  it('suggests nothing for a building without a use, or with none sent by an older API', () => {
+    expect(typesLikelyIn(building(null))).toEqual([]);
+    expect(typesLikelyIn({ kind: 'building' })).toEqual([]);
+  });
+
+  it('suggests nothing without a zone', () => {
+    expect(typesLikelyIn(undefined)).toEqual([]);
+  });
+
+  it('reads any other zone by its kind', () => {
+    expect(typesLikelyIn({ kind: 'parking' })).toEqual([
+      'theft',
+      'vandalism',
+      'blocked_access',
+      'traffic_accident',
+    ]);
+  });
+
+  it('suggests nothing for a kind without a row', () => {
+    expect(typesLikelyIn({ kind: 'sports' })).toEqual([]);
+  });
+
+  it('suggests nothing for a use or kind newer than this build', () => {
+    expect(typesLikelyIn(building('not_in_contract' as ZoneUse))).toEqual([]);
+    expect(typesLikelyIn({ kind: 'not_in_contract' as ZoneKind })).toEqual([]);
+  });
+
+  it('lists only known types, each once, for every use and kind', () => {
+    const zones: Pick<Zone, 'kind' | 'use'>[] = [
+      ...ZONE_USES.map((use) => building(use)),
+      ...ZONE_KINDS.filter((kind) => kind !== 'building').map((kind) => ({ kind })),
+    ];
+    for (const zone of zones) {
+      const likely = typesLikelyIn(zone);
+      expect(likely.every(isKnownType)).toBe(true);
+      expect(new Set(likely).size).toBe(likely.length);
+    }
+  });
+});
+
+describe('typesInCategory', () => {
+  it('lists a category in contract order when nothing is likely', () => {
+    expect(typesInCategory('facilities')).toEqual([
+      'equipment_fault',
+      'power_outage',
+      'water_leak',
+      'lift_entrapment',
+      'hvac_fault',
+      'network_outage',
+    ]);
+  });
+
+  it('puts the likely types first, in their order, then the rest in contract order', () => {
+    expect(typesInCategory('fire_safety', ['hazmat_spill', 'gas_leak', 'fire_alarm'])).toEqual([
+      'hazmat_spill',
+      'gas_leak',
+      'fire_alarm',
+      'fire',
+    ]);
+  });
+
+  it('ignores likely types of another category', () => {
+    expect(typesInCategory('traffic', ['theft', 'blocked_access'])).toEqual([
+      'blocked_access',
+      'traffic_accident',
+    ]);
+  });
+
+  it('only reorders: every type of the category, each once, for every category', () => {
+    const likely = typesLikelyIn({ kind: 'building', use: 'academic' });
+    for (const category of INCIDENT_CATEGORIES) {
+      const types = typesInCategory(category, likely);
+      const expected = INCIDENT_TYPES.filter((type) => categoryOf(type) === category);
+      expect(types).toHaveLength(expected.length);
+      expect(new Set(types)).toEqual(new Set(expected));
+    }
   });
 });
 

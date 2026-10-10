@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef, type Ref, useState } from 'react';
 import { expectNoAxeViolations } from '../test-utils';
@@ -32,12 +32,16 @@ function Harness({ onChange }: { onChange?: (value: Level) => void }) {
 /** A choice not made yet, with an icon on every option. */
 function Choice({
   layout,
+  step,
   error,
+  describedBy,
   ref,
   onChange,
 }: {
-  layout?: 'row' | 'grid';
+  layout?: 'row' | 'grid' | 'compact-grid';
+  step?: number;
   error?: string;
+  describedBy?: string;
   ref?: Ref<HTMLFieldSetElement>;
   onChange?: (value: Level) => void;
 }) {
@@ -50,7 +54,9 @@ function Choice({
       options={OPTIONS.map((option) => ({ ...option, icon: Info }))}
       value={value}
       layout={layout}
+      step={step}
       error={error}
+      describedBy={describedBy}
       onChange={(next) => {
         setValue(next);
         onChange?.(next);
@@ -119,6 +125,37 @@ describe('SegmentedControl', () => {
     expect(screen.getByRole('group').querySelector('[data-layout="grid"]')).not.toBeNull();
   });
 
+  it('lays out a compact grid as a grid, marked compact', () => {
+    const { rerender } = render(<Choice layout="grid" />);
+    expect(screen.getByRole('group').querySelector('[data-compact]')).toBeNull();
+
+    rerender(<Choice layout="compact-grid" />);
+    const options = screen.getByRole('group').querySelector('[data-layout="grid"]');
+    expect(options).toHaveAttribute('data-compact');
+  });
+
+  it('shows a step number without making it part of the name', () => {
+    render(<Choice step={2} />);
+
+    const group = screen.getByRole('group', { name: 'Severity' });
+    const legend = group.querySelector('legend')!;
+    expect(legend).toHaveTextContent('2Severity');
+    expect(within(legend).getByText('2')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('is described by its hint and its error together', () => {
+    render(
+      <>
+        <p id="severity-hint">Suggested for lift entrapment: High.</p>
+        <Choice describedBy="severity-hint" error="Choose a severity." />
+      </>,
+    );
+
+    expect(screen.getByRole('group', { name: 'Severity' })).toHaveAccessibleDescription(
+      'Choose a severity. Suggested for lift entrapment: High.',
+    );
+  });
+
   it('describes the group by its error and hands its fieldset to ref', () => {
     const ref = createRef<HTMLFieldSetElement>();
     render(<Choice ref={ref} error="Choose a severity." />);
@@ -136,6 +173,16 @@ describe('SegmentedControl', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'High' }));
 
     expect(screen.getByRole('radio', { name: 'High' })).toBeChecked();
+    await expectNoAxeViolations();
+  });
+
+  it('has no axe violations as a numbered compact grid with a hint', async () => {
+    render(
+      <>
+        <p id="severity-hint">Suggested for lift entrapment: High.</p>
+        <Choice layout="compact-grid" step={1} describedBy="severity-hint" />
+      </>,
+    );
     await expectNoAxeViolations();
   });
 });

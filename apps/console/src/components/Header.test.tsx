@@ -270,6 +270,14 @@ describe('Header', () => {
   });
 
   describe('report shortcut', () => {
+    it('does nothing on N for a viewer', async () => {
+      act(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] }));
+
+      await userEvent.keyboard('n');
+
+      expect(useConsole.getState().reporting).toBe(false);
+    });
+
     it('opens the report form with N', async () => {
       await userEvent.keyboard('n');
 

@@ -2,6 +2,7 @@ import {
   IDEMPOTENCY_KEY_HEADER,
   type IncidentDetail,
   type LngLat,
+  type Role,
   type Zone,
 } from '@occ/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -9,6 +10,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import { useSession } from '../auth/store';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { useToasts } from '../ui/toasts';
@@ -31,6 +33,15 @@ const otherZone: Zone = {
   id: '6f1c2b1e-0000-4000-8000-000000000002',
   code: 'BLD-DC',
   name: 'Data Center',
+};
+
+/** A building with a `use`; `zone` and `otherZone` have none, as from an API before V2-03.3. */
+const labZone: Zone = {
+  ...zone,
+  id: '6f1c2b1e-0000-4000-8000-000000000003',
+  code: 'BLD-LAB',
+  name: 'Science Lab',
+  use: 'laboratory',
 };
 
 /** Pins are placed through the store, as the map does; the form only shows and sends them. */
@@ -101,7 +112,21 @@ type Form = ReturnType<typeof renderForm>['form'];
  */
 const titleBox = (form: Form) => form.getByRole('textbox', { name: 'Title' });
 
+/** The type step's options, in the order shown. */
+const typeNames = (form: Form) =>
+  within(form.getByRole('group', { name: /^Type — / }))
+    .getAllByRole('radio')
+    .map((radio) => radio.closest('label')!.textContent);
+
+/** Signs in with one role, as the session module does from the token. */
+function signIn(role: Role) {
+  useSession.getState().signedIn({ displayName: 'Demo User', roles: [role] });
+}
+
+const QUEUE_HINT = /incidents go to the technician queue/;
+
 async function fillRequired(form: Form) {
+  await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
   await userEvent.click(form.getByRole('radio', { name: 'Medical emergency' }));
   await userEvent.click(form.getByLabelText('High'));
   await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
@@ -119,6 +144,7 @@ describe('ReportIncidentForm', () => {
     resetStore(useConsole);
     useConsole.getState().startReport();
     resetStore(useToasts);
+    resetStore(useSession);
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -127,7 +153,7 @@ describe('ReportIncidentForm', () => {
     fetchMock.mockReturnValue(new Promise<Response>(() => {}));
     const { form } = renderForm();
     const submit = form.getByRole('button', { name: 'Report incident' });
-    const messages = ['Choose a type.', 'Choose a location.', 'Enter a title.'];
+    const messages = ['Choose a category.', 'Choose a location.', 'Enter a title.'];
 
     expect(titleBox(form)).toHaveAttribute('maxLength', '160');
     expect(form.getByLabelText('Details (optional)')).toHaveAttribute('maxLength', '2000');
@@ -392,21 +418,31 @@ describe('ReportIncidentForm', () => {
     expect(useConsole.getState().reporting).toBe(true);
   });
 
+  it('counts a chosen category as input to keep', async () => {
+    const { form } = renderForm();
+    await userEvent.click(form.getByRole('radio', { name: 'Security' }));
+
+    await userEvent.keyboard('{Escape}');
+    expect(useConsole.getState().reporting).toBe(true);
+  });
+
   describe('validation', () => {
-    it('describes each empty field and focuses the type', async () => {
+    it('describes each empty field and focuses the category', async () => {
       const { form } = renderForm();
 
       await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
 
-      expect(form.getByRole('group', { name: 'Type' })).toHaveAccessibleDescription(
-        'Choose a type.',
+      expect(form.getByRole('group', { name: 'Category' })).toHaveAccessibleDescription(
+        'Choose a category.',
       );
+      // The type step only follows a category, so there is no type to ask for yet.
+      expect(form.queryByText('Choose a type.')).toBeNull();
       const location = form.getByRole('combobox', { name: 'Location' });
       expect(location).toHaveAttribute('aria-invalid', 'true');
       expect(location).toHaveAccessibleDescription('Choose a location.');
       expect(titleBox(form)).toHaveAttribute('aria-invalid', 'true');
       expect(titleBox(form)).toHaveAccessibleDescription('Enter a title.');
-      expect(form.getByRole('radio', { name: 'Intrusion' })).toHaveFocus();
+      expect(form.getByRole('radio', { name: 'Security' })).toHaveFocus();
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
@@ -414,9 +450,17 @@ describe('ReportIncidentForm', () => {
       const { form } = renderForm();
       const submit = form.getByRole('button', { name: 'Report incident' });
       // Nothing is reported missing before the operator tries to submit.
-      expect(form.queryByText('Choose a type.')).toBeNull();
+      expect(form.queryByText('Choose a category.')).toBeNull();
       expect(form.queryByText('Choose a location.')).toBeNull();
       expect(form.queryByText('Enter a title.')).toBeNull();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Medical' }));
+      await userEvent.click(submit);
+      expect(form.queryByText('Choose a category.')).toBeNull();
+      expect(form.getByRole('group', { name: 'Type — Medical' })).toHaveAccessibleDescription(
+        'Choose a type.',
+      );
+      expect(form.getByRole('radio', { name: 'Medical emergency' })).toHaveFocus();
 
       await userEvent.click(form.getByRole('radio', { name: 'Medical emergency' }));
       await userEvent.click(submit);
@@ -432,6 +476,181 @@ describe('ReportIncidentForm', () => {
       expect(form.queryByText('Enter a title.')).toBeNull();
       expect(titleBox(form)).not.toHaveAttribute('aria-invalid');
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('category and type', () => {
+    it('opens on the category step, with no type step before a category', () => {
+      const { form } = renderForm();
+
+      expect(form.getByRole('radio', { name: 'Security' })).toHaveFocus();
+      expect(form.queryByRole('group', { name: /^Type/ })).toBeNull();
+    });
+
+    it("offers exactly the chosen category's types, named after it", async () => {
+      const { form } = renderForm();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+
+      expect(form.getByRole('group', { name: 'Type — Facilities' })).toBeInTheDocument();
+      expect(typeNames(form)).toEqual([
+        'Equipment fault',
+        'Power outage',
+        'Water leak',
+        'Lift entrapment',
+        'HVAC fault',
+        'Network outage',
+      ]);
+    });
+
+    it('clears a type that is not in a newly chosen category', async () => {
+      const { form } = renderForm();
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Lift entrapment' }));
+
+      await userEvent.click(form.getByRole('radio', { name: 'Security' }));
+      const types = within(form.getByRole('group', { name: 'Type — Security' }));
+      for (const radio of types.getAllByRole('radio')) expect(radio).not.toBeChecked();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+      expect(form.getByRole('radio', { name: 'Lift entrapment' })).not.toBeChecked();
+    });
+  });
+
+  describe('suggested severity', () => {
+    it("selects the type's severity and says it was suggested", async () => {
+      const { form } = renderForm();
+      expect(form.getByLabelText('Medium')).toBeChecked();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Lift entrapment' }));
+
+      const suggestion = 'Suggested for lift entrapment: High.';
+      expect(form.getByLabelText('High')).toBeChecked();
+      expect(form.getByText(suggestion)).toBeInTheDocument();
+      expect(form.getByRole('group', { name: 'Severity' })).toHaveAccessibleDescription(suggestion);
+    });
+
+    it('keeps a severity changed by hand when the type changes, and still says what was suggested', async () => {
+      const { form } = renderForm();
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Lift entrapment' }));
+      await userEvent.click(form.getByLabelText('Low'));
+
+      await userEvent.click(form.getByRole('radio', { name: 'Water leak' }));
+
+      expect(form.getByLabelText('Low')).toBeChecked();
+      expect(form.getByText('Suggested for water leak: Medium.')).toBeInTheDocument();
+    });
+
+    it('keeps the case of a type that starts with an acronym', async () => {
+      const { form } = renderForm();
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+
+      await userEvent.click(form.getByRole('radio', { name: 'HVAC fault' }));
+
+      expect(form.getByText('Suggested for HVAC fault: Medium.')).toBeInTheDocument();
+    });
+
+    it('keeps the severity when a new category clears the type', async () => {
+      const { form } = renderForm();
+      await userEvent.click(form.getByRole('radio', { name: 'Fire & safety' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Fire' }));
+      expect(form.getByLabelText('Critical')).toBeChecked();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Facilities' }));
+
+      expect(form.getByLabelText('Critical')).toBeChecked();
+      expect(form.queryByText(/^Suggested for/)).toBeNull();
+    });
+  });
+
+  describe('likely types', () => {
+    it('lists the types likely in the chosen zone first', async () => {
+      const { form } = renderForm([zone, labZone]);
+      await userEvent.selectOptions(form.getByLabelText('Location'), labZone.id);
+
+      await userEvent.click(form.getByRole('radio', { name: 'Fire & safety' }));
+
+      expect(typeNames(form)).toEqual(['Hazmat spill', 'Gas leak', 'Fire alarm', 'Fire']);
+    });
+
+    it('keeps the contract order without a zone, or for a building without a use', async () => {
+      const contractOrder = ['Fire alarm', 'Fire', 'Gas leak', 'Hazmat spill'];
+      const { form } = renderForm();
+      await userEvent.click(form.getByRole('radio', { name: 'Fire & safety' }));
+      expect(typeNames(form)).toEqual(contractOrder);
+
+      await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
+
+      expect(typeNames(form)).toEqual(contractOrder);
+    });
+
+    it('reorders when the zone changes, without changing the chosen type', async () => {
+      const { form } = renderForm([zone, labZone]);
+      await userEvent.click(form.getByRole('radio', { name: 'Fire & safety' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Fire' }));
+
+      await userEvent.selectOptions(form.getByLabelText('Location'), labZone.id);
+
+      expect(typeNames(form)).toEqual(['Hazmat spill', 'Gas leak', 'Fire alarm', 'Fire']);
+      expect(form.getByRole('radio', { name: 'Fire' })).toBeChecked();
+    });
+  });
+
+  describe('roles', () => {
+    it.each([
+      { role: 'technician', category: 'Facilities' },
+      { role: 'operator', category: 'Environment' },
+    ] as const)(
+      'tells a $role that $category incidents go to the technicians',
+      async ({ role, category }) => {
+        signIn(role);
+        const { form } = renderForm();
+
+        await userEvent.click(form.getByRole('radio', { name: category }));
+
+        expect(
+          form.getByText(
+            `${category} incidents go to the technician queue; you can acknowledge this one yourself.`,
+          ),
+        ).toBeInTheDocument();
+      },
+    );
+
+    it.each([
+      { role: 'technician', category: 'Security' },
+      { role: 'operator', category: 'Medical' },
+    ] as const)(
+      'says nothing about the queue to a $role reporting $category',
+      async ({ role, category }) => {
+        signIn(role);
+        const { form } = renderForm();
+
+        await userEvent.click(form.getByRole('radio', { name: category }));
+
+        expect(form.queryByText(QUEUE_HINT)).toBeNull();
+      },
+    );
+
+    it('lets a technician report a Security type, with an unchanged request body', async () => {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+      signIn('technician');
+      const { form } = renderForm();
+
+      await userEvent.click(form.getByRole('radio', { name: 'Security' }));
+      await userEvent.click(form.getByRole('radio', { name: 'Intrusion' }));
+      await userEvent.selectOptions(form.getByLabelText('Location'), zone.id);
+      await userEvent.type(titleBox(form), 'Door forced at the back');
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(JSON.parse(fetchMock.mock.calls[0]![1]!.body as string)).toEqual({
+        type: 'intrusion',
+        severity: 'high',
+        zoneId: zone.id,
+        title: 'Door forced at the back',
+      });
     });
   });
 

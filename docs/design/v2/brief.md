@@ -421,7 +421,8 @@ Phase 0 (V2-00, 2026-10-09) kept every decision as drawn except the ones below. 
 canvas and in [mockups/](mockups/) together on 2026-10-09 (V2-00.12); where a frame and this brief, an ADR or
 [asset-classes.md](asset-classes.md) still disagree, the written decision wins. The rows decided in V2-02.2 (glyphs)
 came later and are not redrawn yet; until they are, [icons.md](../icons.md#v2-values-frame-deviations-and-choices-v2-022)
-is the source.
+is the source. The V2-03.6 row (report form copy and fields) is not redrawn either; the console's report form is the
+source.
 
 | Frame                                | Change                                                                                                                                                                | Decision                         |
 | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
@@ -430,6 +431,7 @@ is the source.
 | 02, 03, 05, 08, 12, 15, 17 (Assets)  | The Assets list holds the 22 equipment assets (BAT-01, CRAC-01 and CRAC-02 too, not only in frame 12) and the indoor climate sensors                                  | V2-00.5                          |
 | 00 Foundations V2 (categories card)  | Category glyphs: Security `ShieldUser`, Fire & safety `FireExtinguisher`, Medical `Stethoscope`, Facilities `HardHat` (not `Shield`, `Flame`, `HeartPulse`, `Wrench`) | V2-02.2 (`icons.md`)             |
 | 09 Report by category                | The same four category tiles; the Network outage type tile is `ServerOff`, not `WifiOff`                                                                              | V2-02.2 (`icons.md`)             |
+| 09 Report by category                | The severity hint has no reason sentence; the Title field and the zone select ("Pick on map") stay instead of the free-text location                                  | V2-03.6                          |
 | 11 Technician, out-of-scope incident | The Security category chip is `ShieldUser`, not `Shield`                                                                                                              | V2-02.2 (`icons.md`)             |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
