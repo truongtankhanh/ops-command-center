@@ -92,11 +92,19 @@ function signInAs(role: Role) {
   useSession.getState().signedIn({ displayName: 'Signed-in user', roles: [role] });
 }
 
-/** Everything the panel reads is already cached, so its first render is the detail. */
-function renderDetail(incident = detail(), zones: Zone[] = [zone]) {
+/**
+ * Everything the panel reads is already cached, so its first render is the detail. `incidents` is
+ * the feed's list, which the out-of-scope footer counts its queue from; `null` leaves it uncached.
+ */
+function renderDetail(
+  incident = detail(),
+  zones: Zone[] = [zone],
+  incidents: Detail[] | null = [],
+) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incident(incident.id), incident);
   client.setQueryData(queryKeys.zones, zones);
+  if (incidents) client.setQueryData(queryKeys.incidents, incidents);
   // No camera: CameraTile would request a stream and draw on a canvas jsdom does not have.
   client.setQueryData(queryKeys.cameras, []);
   return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
@@ -474,6 +482,57 @@ describe('IncidentDetail', () => {
       expect(screen.getByRole('note')).toHaveTextContent(
         `${label} incidents are handled by operators`,
       );
+    });
+
+    describe('the queue in Mine to handle', () => {
+      // Active in scope: q1 and q2. A resolved one and one outside the scope are not in the queue.
+      const queue = [
+        detail({ id: 'q1', type: 'water_leak', status: 'open' }),
+        detail({ id: 'q2', type: 'flooding', status: 'acknowledged' }),
+        detail({ id: 'q3', type: 'water_leak', status: 'resolved' }),
+        detail({ id: 'q4', type: 'intrusion', status: 'open' }),
+      ];
+
+      it('points to the tab with the size of the queue', () => {
+        renderDetail(detail({ type: 'intrusion' }), [zone], queue);
+
+        const note = screen.getByRole('note');
+        expect(note).toHaveTextContent(
+          'You can follow this one and report new incidents. Your queue is in Mine to handle (2).',
+        );
+        expect(within(note).getByText('Mine to handle').tagName).toBe('B');
+      });
+
+      it('counts the whole queue, whatever the feed filters', () => {
+        useConsole.setState({ severity: 'low' });
+
+        renderDetail(detail({ type: 'intrusion' }), [zone], queue);
+
+        expect(screen.getByRole('note')).toHaveTextContent('Mine to handle (2).');
+      });
+
+      it('says 0 when the loaded queue is empty', () => {
+        renderDetail(detail({ type: 'intrusion' }), [zone], []);
+
+        expect(screen.getByRole('note')).toHaveTextContent('Your queue is in Mine to handle (0).');
+      });
+
+      it('leaves the sentence out while the list is not loaded', () => {
+        renderDetail(detail({ type: 'intrusion' }), [zone], null);
+
+        const note = screen.getByRole('note');
+        expect(note).toHaveTextContent('You can follow this one and report new incidents.');
+        expect(note).not.toHaveTextContent('Mine to handle');
+      });
+
+      it('shows it on a type this console does not know as well', () => {
+        renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }), [zone], queue);
+
+        expect(screen.getByRole('note')).toHaveTextContent(
+          'Incidents of this type are handled by operators',
+        );
+        expect(screen.getByRole('note')).toHaveTextContent('Mine to handle (2).');
+      });
     });
 
     it('treats a type this console does not know as out of scope', () => {

@@ -12,12 +12,16 @@ import styles from './IncidentRow.module.css';
  * for scanning; each also has text for assistive tech, so none of them rests on colour alone.
  * A click toggles the selection.
  *
+ * `tag` is the category the feed marks for a user who acts on some categories only (frame 09), so
+ * "Mine to handle" can be seen in the other tabs too. It is plain text, read with the row.
+ *
  * The feed owns keyboard navigation across rows: it passes the roving `tabIndex`, a `ref` to move
  * focus with the arrow keys, and `onFocus` to remember which row holds the tab stop.
  */
 export function IncidentRow({
   incident,
   zone,
+  tag,
   now,
   ref,
   tabIndex,
@@ -25,6 +29,7 @@ export function IncidentRow({
 }: {
   incident: Incident;
   zone?: string;
+  tag?: string;
   now: number;
 } & Pick<ComponentProps<'button'>, 'ref' | 'tabIndex' | 'onFocus'>) {
   const selected = useConsole((s) => s.selectedIncidentId === incident.id);
@@ -69,6 +74,7 @@ export function IncidentRow({
             <span className={styles.zone}>{zone}</span>
           </>
         )}
+        {tag && <span className={styles.tag}>{tag}</span>}
         <span className={styles.code}>{incident.code}</span>
       </span>
     </button>

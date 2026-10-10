@@ -1,9 +1,15 @@
 import type { IncidentCategory, IncidentDetail } from '@occ/contracts';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
-import { useTransition } from '../api/queries';
-import { usePermission, usePermissionFor } from '../auth/usePermission';
-import { categoryLabel, categoryOfType } from '../lib/incidents';
+import { useIncidents, useTransition } from '../api/queries';
+import { usePermission, usePermissionFor, useRoles } from '../auth/usePermission';
+import {
+  categoryLabel,
+  categoryOfType,
+  countByFilter,
+  handlingScope,
+  hasLimitedScope,
+} from '../lib/incidents';
 import { useShortcut } from '../lib/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
@@ -72,17 +78,32 @@ function ViewOnlyFooter() {
  * same note, so the sheet never ends in a gap. `A` / `R` are registered by `ResponseForm`, which is
  * not rendered here, so they do nothing. `null` is a type this console does not know, which is out
  * of every limited scope (fail closed), and has no category to name.
+ *
+ * It points to the "Mine to handle" tab with the size of the queue: every active incident in the
+ * user's scope, not the tab's count, which follows the feed's severity filter and search. Without
+ * the list yet, or for a user the tab is not offered to, the sentence is left out.
  */
 function OutOfScopeFooter({ category }: { category: IncidentCategory | null }) {
+  const roles = useRoles();
+  const { data: incidents } = useIncidents();
   const subject =
     category === null ? 'Incidents of this type' : `${categoryLabel(category)} incidents`;
+  const queue =
+    incidents && hasLimitedScope(roles)
+      ? countByFilter(incidents, () => true, handlingScope(roles)).mine
+      : null;
   return (
     <div className={styles.viewOnly} role="note" data-footer="out-of-scope">
       <Icon glyph={Info} size={18} className={styles.viewOnlyIcon} />
       <p className={styles.viewOnlyText}>
-        {/* V2-03.8 adds "Your queue is in Mine to handle ({n})." once the tab exists. */}
         <strong>{subject} are handled by operators</strong> You can follow this one and report new
         incidents.
+        {queue !== null && (
+          <>
+            {' '}
+            Your queue is in <b>Mine to handle</b> ({queue}).
+          </>
+        )}
       </p>
     </div>
   );

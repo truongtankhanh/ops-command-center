@@ -2,13 +2,18 @@ import type { Incident, Zone } from '@occ/contracts';
 import { type KeyboardEvent, useCallback, useRef, useState } from 'react';
 import { isRateLimited } from '../api/client';
 import { useIncidents, useZones } from '../api/queries';
+import { useRoles } from '../auth/usePermission';
 import {
+  categoryTag,
   countByFilter,
-  FEED_FILTERS,
   feedEmptyMessage,
+  feedFiltersFor,
+  handlingScope,
+  hasLimitedScope,
   matchesFilter,
   matchesQuery,
   matchesSeverity,
+  offeredFilter,
   searchTerms,
   severityLabel,
 } from '../lib/incidents';
@@ -35,8 +40,9 @@ const SKELETON_ROWS = 5;
 export function IncidentFeed() {
   const { data: incidents, error, failureReason, isPending, isFetching, refetch } = useIncidents();
   const { data: zones = [] } = useZones();
-  const filter = useConsole((s) => s.filter);
+  const storedFilter = useConsole((s) => s.filter);
   const setFilter = useConsole((s) => s.setFilter);
+  const roles = useRoles();
   const severity = useConsole((s) => s.severity);
   const clearSeverity = useConsole((s) => s.clearSeverity);
   const offlineSince = useConsole((s) => s.offlineSince);
@@ -54,6 +60,14 @@ export function IncidentFeed() {
   }, []);
   useShortcut('/', focusSearch, true);
 
+  // A technician's tabs are Active · Mine to handle · All, everyone else's Active · Resolved · All.
+  // The stored filter may be one the user is not offered (roles change on token renewal): show
+  // Active then, rather than a list under no selected tab.
+  const offered = feedFiltersFor(roles);
+  const filter = offeredFilter(storedFilter, offered);
+  const scope = handlingScope(roles);
+  const tagged = hasLimitedScope(roles);
+
   const zoneName = new Map(zones.map((z: Zone) => [z.id, z.name]));
   const terms = searchTerms(query);
   // Severity and search apply to every tab, so the tab counts use them too: each count is the
@@ -65,12 +79,10 @@ export function IncidentFeed() {
   // never arrived counts as not loaded.
   const loaded = incidents !== undefined;
   const visible = (incidents ?? []).filter(
-    (incident) => matchesFilter(incident, filter) && matches(incident),
+    (incident) => matchesFilter(incident, filter, scope) && matches(incident),
   );
-  const counts = loaded && incidents ? countByFilter(incidents, matches) : null;
-  const tabs = counts
-    ? FEED_FILTERS.map((tab) => ({ ...tab, count: counts[tab.value] }))
-    : FEED_FILTERS;
+  const counts = loaded && incidents ? countByFilter(incidents, matches, scope) : null;
+  const tabs = counts ? offered.map((tab) => ({ ...tab, count: counts[tab.value] })) : offered;
   const matchStatus =
     loaded && terms.length > 0
       ? `${visible.length} ${visible.length === 1 ? 'incident matches' : 'incidents match'}`
@@ -149,7 +161,7 @@ export function IncidentFeed() {
           />
         ) : visible.length === 0 ? (
           <FeedEmpty
-            message={feedEmptyMessage(filter, severity, query)}
+            message={feedEmptyMessage(filter, severity, query, scope)}
             searching={query.trim() !== ''}
             filtered={severity !== null}
             onClearSeverity={onClearSeverity}
@@ -161,6 +173,7 @@ export function IncidentFeed() {
                 <IncidentRow
                   incident={incident}
                   zone={zoneName.get(incident.zoneId)}
+                  tag={tagged ? categoryTag(incident, scope) : undefined}
                   now={now}
                   ref={(element) => {
                     rowRefs.current[index] = element;

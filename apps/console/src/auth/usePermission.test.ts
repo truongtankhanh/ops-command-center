@@ -2,7 +2,7 @@ import { INCIDENT_CATEGORIES, type IncidentCategory, type Role } from '@occ/cont
 import { act, renderHook } from '@testing-library/react';
 import { resetStore } from '../test-utils';
 import { useSession } from './store';
-import { usePermission, usePermissionFor, useReadOnly } from './usePermission';
+import { usePermission, usePermissionFor, useReadOnly, useRoles } from './usePermission';
 
 function signInAs(...roles: Role[]) {
   act(() => useSession.getState().signedIn({ displayName: 'Signed-in user', roles }));
@@ -138,5 +138,43 @@ describe('usePermission and useReadOnly for a technician', () => {
     const { result } = renderHook(() => useReadOnly());
 
     expect(result.current).toBe(true);
+  });
+});
+
+describe('useRoles', () => {
+  beforeEach(() => resetStore(useSession));
+
+  it("gives the signed-in user's roles", () => {
+    signInAs('technician', 'viewer');
+
+    const { result } = renderHook(() => useRoles());
+
+    expect(result.current).toEqual(['technician', 'viewer']);
+  });
+
+  it('gives no roles while nobody is signed in', () => {
+    const { result } = renderHook(() => useRoles());
+
+    expect(result.current).toEqual([]);
+  });
+
+  it('returns the same empty list on every render, so the selector settles', () => {
+    const { result, rerender } = renderHook(() => useRoles());
+    const first = result.current;
+
+    rerender();
+
+    expect(result.current).toBe(first);
+  });
+
+  it('follows the signed-in roles as they change', () => {
+    const { result } = renderHook(() => useRoles());
+    expect(result.current).toEqual([]);
+
+    signInAs('operator');
+    expect(result.current).toEqual(['operator']);
+
+    signInAs('technician');
+    expect(result.current).toEqual(['technician']);
   });
 });

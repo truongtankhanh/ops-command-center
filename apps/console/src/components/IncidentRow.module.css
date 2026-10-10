@@ -135,6 +135,24 @@
 }
 
 /*
+ * The category of an incident in the user's scope (frame 09 `.role-tag`). It keeps its own surface,
+ * so a row's tint does not change its contrast (`--text-secondary` on `--surface-3`, a pair
+ * `scripts/contrast.ts` checks). `flex: none`: the zone gives way first on a narrow feed.
+ */
+.tag {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: calc(20px * var(--ui-scale));
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-s);
+  background: var(--surface-3);
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  color: var(--text-secondary);
+}
+
+/*
  * `--text-secondary`, not the mockup's `--text-tertiary`: on a fresh medium row's tint that falls to
  * 4.48:1 (UI-07 batch 2). The UI font keeps the code apart from the zone.
  */
