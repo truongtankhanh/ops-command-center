@@ -1,5 +1,7 @@
 import {
   categoryOf,
+  hasPermissionFor,
+  INCIDENT_CATEGORIES,
   INCIDENT_TYPES,
   type Incident,
   type IncidentCategory,
@@ -7,6 +9,8 @@ import {
   type IncidentSeverity,
   type IncidentStatus,
   type IncidentType,
+  type Permission,
+  type Role,
   severityRank,
   type Zone,
   type ZoneKind,
@@ -314,6 +318,26 @@ const CATEGORY_LABELS: Record<IncidentCategory, string> = {
 };
 
 export const categoryLabel = (category: IncidentCategory) => CATEGORY_LABELS[category];
+
+/**
+ * The categories, in contract order, in which one of `roles` holds `permission`. It asks the same
+ * `ROLE_PERMISSIONS` and `ROLE_CATEGORY_SCOPE` the API enforces (ADR-0011, ADR-0021), so a
+ * permission that is not scoped by category (report) gives every category, and one no role holds
+ * gives none. For describing or filtering what a user may do; the API's 403 is the control.
+ */
+export const categoriesInScope = (
+  roles: readonly Role[],
+  permission: Permission,
+): IncidentCategory[] =>
+  INCIDENT_CATEGORIES.filter((category) => hasPermissionFor(roles, permission, category));
+
+/** Category labels as a sentence list: "Facilities", "Facilities and Environment", "A, B and C". */
+export function categoriesLabel(categories: readonly IncidentCategory[]): string {
+  const labels = categories.map(categoryLabel);
+  const last = labels.pop();
+  if (last === undefined) return '';
+  return labels.length === 0 ? last : `${labels.join(', ')} and ${last}`;
+}
 
 /**
  * `typeLabel` inside a sentence ("Suggested for lift entrapment"): the first letter lower-cased,

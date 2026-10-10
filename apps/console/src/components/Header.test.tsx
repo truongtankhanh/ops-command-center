@@ -83,6 +83,15 @@ describe('Header', () => {
     expect(screen.getByText('Demo Viewer')).toBeInTheDocument();
   });
 
+  it('shows a technician by role and does not mark them as view only', () => {
+    act(() =>
+      useSession.getState().signedIn({ displayName: 'Demo Technician', roles: ['technician'] }),
+    );
+
+    expect(screen.getByText('Technician')).toBeInTheDocument();
+    expect(screen.queryByText('View only')).toBeNull();
+  });
+
   it('signs out and clears the cached data in one click', async () => {
     const clear = vi.spyOn(client, 'clear');
 
@@ -229,6 +238,18 @@ describe('Header', () => {
 
       const menu = screen.getByRole('group', { name: 'Account' });
       expect(within(menu).getByText('Role: Operator')).toBeInTheDocument();
+      expect(within(menu).queryByText(/need the operator or supervisor role/)).toBeNull();
+    });
+
+    it("shows a technician's role without the view-only note", async () => {
+      act(() =>
+        useSession.getState().signedIn({ displayName: 'Demo Technician', roles: ['technician'] }),
+      );
+
+      await userEvent.click(screen.getByRole('button', { name: /Demo Technician/ }));
+
+      const menu = screen.getByRole('group', { name: 'Account' });
+      expect(within(menu).getByText('Role: Technician')).toBeInTheDocument();
       expect(within(menu).queryByText(/need the operator or supervisor role/)).toBeNull();
     });
 

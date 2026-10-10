@@ -165,8 +165,46 @@ describe('IncidentDetail', () => {
       expect(screen.queryByText('Being handled')).toBeNull();
     });
 
+    it('shows the incident category on a chip between the type and the zone', () => {
+      renderDetail();
+
+      const follows = (before: HTMLElement, after: HTMLElement) =>
+        Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const type = screen.getByText('Intrusion');
+      const category = screen.getByText('Security');
+      const zoneChip = screen.getByText('Library');
+      expect(follows(type, category)).toBe(true);
+      expect(follows(category, zoneChip)).toBe(true);
+    });
+
+    it("shows the category of the incident's own type", () => {
+      renderDetail(detail({ type: 'water_leak' }));
+
+      expect(screen.getByText('Water leak')).toBeInTheDocument();
+      expect(screen.getByText('Facilities')).toBeInTheDocument();
+      expect(screen.queryByText('Security')).toBeNull();
+    });
+
     // A newer API can send a type or zone kind this build's contract lacks (ADR-0021, rolling
     // deploys); the type system cannot model them, hence the casts.
+    it('shows no category chip for a type this console does not know', () => {
+      renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }));
+
+      for (const label of [
+        'Security',
+        'Fire & safety',
+        'Medical',
+        'Facilities',
+        'Environment',
+        'Traffic',
+      ]) {
+        expect(screen.queryByText(label)).toBeNull();
+      }
+      // The raw id still names the type, and the zone chip is still there.
+      expect(screen.getByText('not_in_contract')).toBeInTheDocument();
+      expect(screen.getByText('Library')).toBeInTheDocument();
+    });
+
     it('names a type this console does not know by its raw id', () => {
       renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }));
 
@@ -354,6 +392,17 @@ describe('IncidentDetail', () => {
       expect(screen.getByText('Demo Operator')).toBeInTheDocument();
     });
 
+    it('offers an operator both actions on a type this console does not know', () => {
+      signInAs('operator');
+
+      renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }));
+
+      expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Acknowledge' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+      expect(screen.queryByRole('note')).toBeNull();
+    });
+
     it('offers no response on a resolved incident', () => {
       signInAs('operator');
 
@@ -363,6 +412,95 @@ describe('IncidentDetail', () => {
       expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Resolve' })).toBeNull();
       // The operator may act, there is just nothing left to do: no view-only footer either.
+      expect(screen.queryByRole('note')).toBeNull();
+    });
+  });
+
+  // ADR-0021: a technician acts on Facilities and Environment incidents only; the API answers 403
+  // for the rest, so the sheet says why there is no response instead of offering one.
+  describe('technician scope', () => {
+    beforeEach(() => signInAs('technician'));
+
+    it.each<Detail['type']>(['water_leak', 'flooding'])(
+      'offers Acknowledge and Resolve on %s, as to an operator',
+      (type) => {
+        renderDetail(detail({ type }));
+
+        expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Acknowledge' })).toHaveAttribute(
+          'data-variant',
+          'primary',
+        );
+        expect(screen.getByRole('button', { name: 'Resolve' })).toHaveAttribute(
+          'data-variant',
+          'ghost',
+        );
+        expect(screen.queryByRole('note')).toBeNull();
+      },
+    );
+
+    it('offers only Resolve once an in-scope incident is acknowledged', () => {
+      renderDetail(detail({ type: 'water_leak', status: 'acknowledged' }));
+
+      expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
+    });
+
+    it('ends an out-of-scope incident in a note, not in the response form', () => {
+      renderDetail(detail({ type: 'intrusion' }));
+
+      expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Resolve' })).toBeNull();
+      expect(screen.queryByLabelText(NOTE_LABEL)).toBeNull();
+      const note = screen.getByRole('note');
+      expect(note).toHaveAttribute('data-footer', 'out-of-scope');
+      expect(note).toHaveTextContent('Security incidents are handled by operators');
+      expect(note).toHaveTextContent('You can follow this one and report new incidents.');
+      // The viewer's footer says something else, and is not this one.
+      expect(note).not.toHaveTextContent('View only');
+      // Reading is still allowed.
+      expect(screen.getByRole('heading', { name: 'Timeline' })).toBeInTheDocument();
+    });
+
+    it.each<[Detail['type'], string]>([
+      ['intrusion', 'Security'],
+      ['fire_alarm', 'Fire & safety'],
+      ['medical', 'Medical'],
+      ['traffic_accident', 'Traffic'],
+    ])('names the category of %s in the note', (type, label) => {
+      renderDetail(detail({ type }));
+
+      expect(screen.getByRole('note')).toHaveTextContent(
+        `${label} incidents are handled by operators`,
+      );
+    });
+
+    it('treats a type this console does not know as out of scope', () => {
+      renderDetail(detail({ type: 'not_in_contract' as Detail['type'] }));
+
+      expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Resolve' })).toBeNull();
+      expect(screen.getByRole('note')).toHaveTextContent(
+        'Incidents of this type are handled by operators',
+      );
+    });
+
+    it.each<Detail['status']>(['open', 'acknowledged', 'resolved'])(
+      'keeps the note on an out-of-scope incident that is %s',
+      (status) => {
+        renderDetail(detail({ type: 'intrusion', status }));
+
+        expect(screen.getByRole('note')).toHaveAttribute('data-footer', 'out-of-scope');
+        expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+      },
+    );
+
+    it('shows nothing at the foot of a resolved in-scope incident', () => {
+      renderDetail(detail({ type: 'water_leak', status: 'resolved' }));
+
+      expect(screen.queryByRole('form', RESPONSE)).toBeNull();
       expect(screen.queryByRole('note')).toBeNull();
     });
   });
@@ -410,6 +548,35 @@ describe('IncidentDetail', () => {
       await waitFor(() => expect(postCalls()).toHaveLength(1));
       expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/resolve');
       expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    it('does nothing on A or R for a technician out of scope', async () => {
+      signInAs('technician');
+      renderDetail(detail({ type: 'intrusion' }));
+
+      await userEvent.keyboard('a');
+      await userEvent.keyboard('r');
+
+      expect(postCalls()).toHaveLength(0);
+    });
+
+    it('acknowledges on A for a technician in scope', async () => {
+      signInAs('technician');
+      postResponse = () =>
+        json(
+          detail({
+            type: 'water_leak',
+            status: 'acknowledged',
+            acknowledgedAt: minutesAgo(0),
+            version: 2,
+          }),
+        );
+      renderDetail(detail({ type: 'water_leak' }));
+
+      await userEvent.keyboard('a');
+
+      await waitFor(() => expect(postCalls()).toHaveLength(1));
+      expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/acknowledge');
     });
 
     it('offers no shortcut without the action', async () => {

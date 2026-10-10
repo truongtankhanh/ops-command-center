@@ -1,9 +1,11 @@
 import {
   hasPermission,
   hasPermissionFor,
+  INCIDENT_CATEGORIES,
   type IncidentCategory,
   type Permission,
   PERMISSIONS,
+  type Role,
 } from '@occ/contracts';
 import { useSession } from './store';
 
@@ -15,17 +17,30 @@ export const usePermission = (permission: Permission): boolean =>
   useSession((s) => hasPermission(s.user?.roles ?? [], permission));
 
 /**
+ * Whether `roles` grant `permission` on an incident of `category`. `null` is a type this console
+ * does not know (`categoryOfType`), so its category is unknown: it is allowed only where the
+ * permission holds for every category (a role with scope `'all'`, or a permission not limited by
+ * category), and a limited scope such as a technician's fails closed (ADR-0021).
+ */
+const mayOn = (
+  roles: readonly Role[],
+  permission: Permission,
+  category: IncidentCategory | null,
+): boolean =>
+  category === null
+    ? INCIDENT_CATEGORIES.every((known) => hasPermissionFor(roles, permission, known))
+    : hasPermissionFor(roles, permission, category);
+
+/**
  * `usePermission` on an incident of `category`, read from the same `ROLE_CATEGORY_SCOPE` the API
- * enforces (ADR-0021). `null`, a type this console does not know (`categoryOfType`), is out of
- * every scope. For hiding actions only: the API's 403 is the control.
+ * enforces (ADR-0021). `null`, a type this console does not know, is allowed only to a role that
+ * may act on every category: an operator still acts on a type newer than this build, a technician
+ * only views it. For hiding actions only: the API's 403 is the control.
  */
 export const usePermissionFor = (
   permission: Permission,
   category: IncidentCategory | null,
-): boolean =>
-  useSession(
-    (s) => category !== null && hasPermissionFor(s.user?.roles ?? [], permission, category),
-  );
+): boolean => useSession((s) => mayOn(s.user?.roles ?? [], permission, category));
 
 /** The user may read but take no action, whichever role made it so. */
 export const useReadOnly = (): boolean =>

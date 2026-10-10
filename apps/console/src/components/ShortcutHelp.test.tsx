@@ -129,6 +129,48 @@ describe('ShortcutHelp', () => {
     expect(within(help()!).getByRole('heading', { name: 'Incident panel' })).toBeInTheDocument();
   });
 
+  it('describes A and R plainly to an operator, who may act on every category', async () => {
+    renderHelp();
+
+    await userEvent.keyboard('?');
+
+    const dialog = within(help()!);
+    expect(dialog.getByText('Acknowledge')).toBeInTheDocument();
+    expect(dialog.getByText('Resolve')).toBeInTheDocument();
+    expect(dialog.queryByText(/Facilities and Environment/)).toBeNull();
+  });
+
+  it('shows a technician A and R for Facilities and Environment incidents', async () => {
+    act(() =>
+      useSession.getState().signedIn({ displayName: 'Demo Technician', roles: ['technician'] }),
+    );
+    renderHelp();
+
+    await userEvent.keyboard('?');
+
+    const dialog = within(help()!);
+    expect(
+      dialog.getByText('Acknowledge — Facilities and Environment incidents'),
+    ).toBeInTheDocument();
+    expect(dialog.getByText('Resolve — Facilities and Environment incidents')).toBeInTheDocument();
+    // Reporting is not limited by category: its row is the plain one.
+    expect(dialog.getByText('Report an incident')).toBeInTheDocument();
+    for (const key of ['N', 'A', 'R']) expect(keys(key)).toHaveLength(1);
+  });
+
+  it('lists no A or R for a technician while single-key shortcuts are off', async () => {
+    act(() => {
+      useSession.getState().signedIn({ displayName: 'Demo Technician', roles: ['technician'] });
+      useConsole.setState({ keyboardShortcuts: false });
+    });
+    renderHelp();
+
+    openFromMenu();
+
+    for (const key of ['N', 'A', 'R']) expect(keys(key)).toHaveLength(0);
+    expect(within(help()!).queryByText(/Facilities and Environment/)).toBeNull();
+  });
+
   it('stays one dialog when ? is pressed again', async () => {
     renderHelp();
 
