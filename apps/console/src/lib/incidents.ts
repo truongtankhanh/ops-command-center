@@ -17,21 +17,45 @@ import {
   type ZoneUse,
 } from '@occ/contracts';
 
-export type FeedFilter = 'active' | 'resolved' | 'all';
+export type FeedFilter = 'active' | 'mine' | 'resolved' | 'all';
 
+/** Every filter, in tab order. A user is offered a subset of it: see `feedFiltersFor`. */
 export const FEED_FILTERS: { value: FeedFilter; label: string }[] = [
   { value: 'active', label: 'Active' },
+  { value: 'mine', label: 'Mine to handle' },
   { value: 'resolved', label: 'Resolved' },
   { value: 'all', label: 'All' },
 ];
 
 const ACTIVE: IncidentStatus[] = ['open', 'acknowledged'];
 
+/** No categories: the default scope, under which "Mine to handle" matches nothing. */
+const NO_SCOPE: readonly IncidentCategory[] = [];
+
 export const isActive = (incident: Incident) => ACTIVE.includes(incident.status);
 
-export function matchesFilter(incident: Incident, filter: FeedFilter): boolean {
-  if (filter === 'all') return true;
-  return filter === 'active' ? isActive(incident) : incident.status === 'resolved';
+/**
+ * Whether `incident` belongs in the tab. `scope` is the user's categories (`handlingScope`) and
+ * only "Mine to handle" reads it: an active incident in one of them. A type this console does not
+ * know has no category, so it is never in a scope (fail closed, like the sheet's footer).
+ */
+export function matchesFilter(
+  incident: Incident,
+  filter: FeedFilter,
+  scope: readonly IncidentCategory[] = NO_SCOPE,
+): boolean {
+  switch (filter) {
+    case 'all':
+      return true;
+    case 'active':
+      return isActive(incident);
+    case 'resolved':
+      return incident.status === 'resolved';
+    case 'mine': {
+      const category = categoryOfType(incident.type);
+      return isActive(incident) && category !== null && scope.includes(category);
+    }
+  }
 }
 
 /** `null` is no severity filter: every incident matches. */
@@ -59,46 +83,63 @@ export function matchesQuery(incident: Incident, terms: readonly string[], zoneN
   return terms.every((term) => text.includes(term));
 }
 
-/** How many incidents each tab would list, given the filters that apply to every tab. */
+/**
+ * How many incidents each tab would list, given the filters that apply to every tab. Every filter
+ * has a count, whether or not the user is offered its tab; `mine` is 0 without a `scope`.
+ */
 export function countByFilter(
   incidents: readonly Incident[],
   matches: (incident: Incident) => boolean,
+  scope: readonly IncidentCategory[] = NO_SCOPE,
 ): Record<FeedFilter, number> {
-  const counts: Record<FeedFilter, number> = { active: 0, resolved: 0, all: 0 };
+  const counts: Record<FeedFilter, number> = { active: 0, mine: 0, resolved: 0, all: 0 };
   for (const incident of incidents) {
     if (!matches(incident)) continue;
-    for (const { value } of FEED_FILTERS) if (matchesFilter(incident, value)) counts[value]++;
+    for (const { value } of FEED_FILTERS) {
+      if (matchesFilter(incident, value, scope)) counts[value]++;
+    }
   }
   return counts;
 }
 
-const EMPTY_MESSAGES: Record<FeedFilter, string> = {
+/** "Mine to handle" is not here: its message names the user's categories, so it is built below. */
+const EMPTY_MESSAGES: Record<Exclude<FeedFilter, 'mine'>, string> = {
   active: 'No active incidents. New reports appear here as they come in.',
   resolved: 'Nothing resolved yet this shift.',
   all: 'No incidents recorded yet.',
 };
 
-/** What the feed says when nothing matches its tab, severity filter and search. */
+/**
+ * What the feed says when nothing matches its tab, severity filter and search. `scope` is the
+ * user's categories, named by "Mine to handle" ("Nothing to handle in Facilities or Environment
+ * right now."); without one the message names none.
+ */
 export function feedEmptyMessage(
   filter: FeedFilter,
   severity: IncidentSeverity | null,
   query = '',
+  scope: readonly IncidentCategory[] = NO_SCOPE,
 ): string {
+  const level = severity ? `${severityLabel(severity).toLowerCase()} ` : '';
+  const where = scope.length > 0 ? ` in ${categoriesLabel(scope, 'or')}` : '';
   const search = query.trim();
   if (search !== '') {
+    if (filter === 'mine') return `No ${level}incidents to handle match "${search}".`;
     const tab = filter === 'all' ? '' : `${filter} `;
-    const level = severity ? `${severityLabel(severity).toLowerCase()} ` : '';
     return `No ${tab}${level}incidents match "${search}".`;
   }
-  if (severity === null) return EMPTY_MESSAGES[filter];
-  const label = severityLabel(severity).toLowerCase();
+  if (severity === null) {
+    return filter === 'mine' ? `Nothing to handle${where} right now.` : EMPTY_MESSAGES[filter];
+  }
   switch (filter) {
     case 'active':
-      return `No active ${label} incidents.`;
+      return `No active ${level}incidents.`;
+    case 'mine':
+      return `No ${level}incidents to handle${where}.`;
     case 'resolved':
-      return `No resolved ${label} incidents.`;
+      return `No resolved ${level}incidents.`;
     case 'all':
-      return `No ${label} incidents recorded yet.`;
+      return `No ${level}incidents recorded yet.`;
   }
 }
 
@@ -331,12 +372,69 @@ export const categoriesInScope = (
 ): IncidentCategory[] =>
   INCIDENT_CATEGORIES.filter((category) => hasPermissionFor(roles, permission, category));
 
-/** Category labels as a sentence list: "Facilities", "Facilities and Environment", "A, B and C". */
-export function categoriesLabel(categories: readonly IncidentCategory[]): string {
+/**
+ * Category labels as a sentence list: "Facilities", "Facilities and Environment", "A, B and C".
+ * `'or'` joins the last one with "or" instead, for a sentence about what is not there.
+ */
+export function categoriesLabel(
+  categories: readonly IncidentCategory[],
+  conjunction: 'and' | 'or' = 'and',
+): string {
   const labels = categories.map(categoryLabel);
   const last = labels.pop();
   if (last === undefined) return '';
-  return labels.length === 0 ? last : `${labels.join(', ')} and ${last}`;
+  return labels.length === 0 ? last : `${labels.join(', ')} ${conjunction} ${last}`;
+}
+
+/**
+ * The categories in which the user may acknowledge or resolve, in contract order: the queue
+ * "Mine to handle" lists. Read from the same maps the API enforces (ADR-0011, ADR-0021). For
+ * presentation only: the API's 403 is the control.
+ */
+export function handlingScope(roles: readonly Role[]): IncidentCategory[] {
+  const acknowledge = categoriesInScope(roles, 'incident:acknowledge');
+  const resolve = categoriesInScope(roles, 'incident:resolve');
+  return INCIDENT_CATEGORIES.filter(
+    (category) => acknowledge.includes(category) || resolve.includes(category),
+  );
+}
+
+/**
+ * Some categories but not all (a technician). A role that acts on every category (operator) has
+ * no queue narrower than the feed, and one that acts on none (viewer) has no queue at all, so
+ * neither is offered "Mine to handle" nor gets tags.
+ */
+export function hasLimitedScope(roles: readonly Role[]): boolean {
+  const { length } = handlingScope(roles);
+  return length > 0 && length < INCIDENT_CATEGORIES.length;
+}
+
+/** The tabs the user is offered: "Mine to handle" in place of "Resolved" for a limited scope. */
+export function feedFiltersFor(roles: readonly Role[]): { value: FeedFilter; label: string }[] {
+  const left: FeedFilter = hasLimitedScope(roles) ? 'resolved' : 'mine';
+  return FEED_FILTERS.filter((tab) => tab.value !== left);
+}
+
+/**
+ * `filter` when the user is offered its tab, else Active. The filter lives in a store that does
+ * not know the roles, which can change under a live session (token renewal), so what is shown is
+ * resolved here, when the feed reads it, and never leaves the tabs with none selected.
+ */
+export const offeredFilter = (
+  filter: FeedFilter,
+  offered: readonly { value: FeedFilter }[],
+): FeedFilter => (offered.some((tab) => tab.value === filter) ? filter : 'active');
+
+/**
+ * The incident's category label when it is in `scope`, for the feed row's tag; `undefined` out of
+ * scope and for a type this console does not know.
+ */
+export function categoryTag(
+  incident: Incident,
+  scope: readonly IncidentCategory[],
+): string | undefined {
+  const category = categoryOfType(incident.type);
+  return category !== null && scope.includes(category) ? categoryLabel(category) : undefined;
 }
 
 /**

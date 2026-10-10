@@ -19,15 +19,19 @@ import {
   categoriesInScope,
   categoriesLabel,
   categoryOfType,
+  categoryTag,
   compareIncidents,
   countActiveBySeverity,
   countByFilter,
   eventLabel,
   feedEmptyMessage,
+  feedFiltersFor,
   formatAge,
   formatAgo,
   formatClock,
   formatDuration,
+  handlingScope,
+  hasLimitedScope,
   isKnownType,
   isPastAttention,
   lifecycleSteps,
@@ -36,6 +40,7 @@ import {
   matchesSeverity,
   mergeIncidentLists,
   newerIncident,
+  offeredFilter,
   openDuration,
   searchTerms,
   severityLabel,
@@ -209,6 +214,48 @@ describe('matchesFilter', () => {
     expect(matchesFilter(incident({ status: 'resolved' }), 'active')).toBe(false);
     expect(matchesFilter(incident({ status: 'resolved' }), 'resolved')).toBe(true);
   });
+
+  describe('mine', () => {
+    const SCOPE = ['facilities', 'environment'] as const;
+    // A type a newer API sent that this build does not know.
+    const UNKNOWN_TYPE = 'teleporter_fault' as IncidentType;
+
+    it.each(['open', 'acknowledged'] as const)(
+      'lists an %s incident in the scope, in every category of it',
+      (status) => {
+        expect(matchesFilter(incident({ type: 'water_leak', status }), 'mine', SCOPE)).toBe(true);
+        expect(matchesFilter(incident({ type: 'flooding', status }), 'mine', SCOPE)).toBe(true);
+      },
+    );
+
+    it('leaves out a resolved incident, even in the scope', () => {
+      const resolved = incident({ type: 'water_leak', status: 'resolved' });
+
+      expect(matchesFilter(resolved, 'mine', SCOPE)).toBe(false);
+    });
+
+    it('leaves out an active incident outside the scope', () => {
+      expect(matchesFilter(incident({ type: 'intrusion' }), 'mine', SCOPE)).toBe(false);
+      expect(matchesFilter(incident({ type: 'fire_alarm' }), 'mine', SCOPE)).toBe(false);
+    });
+
+    it('leaves out a type this console does not know (fail closed)', () => {
+      expect(matchesFilter(incident({ type: UNKNOWN_TYPE }), 'mine', SCOPE)).toBe(false);
+    });
+
+    it('matches nothing without a scope', () => {
+      expect(matchesFilter(incident({ type: 'water_leak' }), 'mine')).toBe(false);
+      expect(matchesFilter(incident({ type: 'water_leak' }), 'mine', [])).toBe(false);
+    });
+
+    it('does not change the other filters', () => {
+      const outside = incident({ type: 'intrusion', status: 'open' });
+
+      expect(matchesFilter(outside, 'active', SCOPE)).toBe(true);
+      expect(matchesFilter(outside, 'all', SCOPE)).toBe(true);
+      expect(matchesFilter(outside, 'resolved', SCOPE)).toBe(false);
+    });
+  });
 });
 
 describe('matchesSeverity', () => {
@@ -252,6 +299,47 @@ describe('feedEmptyMessage', () => {
 
   it('ignores a blank search', () => {
     expect(feedEmptyMessage('active', null, '   ')).toBe(feedEmptyMessage('active', null));
+  });
+
+  describe('mine', () => {
+    const SCOPE = ['facilities', 'environment'] as const;
+
+    it('names the user\'s categories, joined with "or"', () => {
+      expect(feedEmptyMessage('mine', null, '', SCOPE)).toBe(
+        'Nothing to handle in Facilities or Environment right now.',
+      );
+    });
+
+    it('names no category without a scope', () => {
+      expect(feedEmptyMessage('mine', null)).toBe('Nothing to handle right now.');
+    });
+
+    it('names the severity, then the categories', () => {
+      expect(feedEmptyMessage('mine', 'high', '', SCOPE)).toBe(
+        'No high incidents to handle in Facilities or Environment.',
+      );
+      expect(feedEmptyMessage('mine', 'low')).toBe('No low incidents to handle.');
+    });
+
+    it('names the search without the tab name', () => {
+      expect(feedEmptyMessage('mine', null, ' xyz ', SCOPE)).toBe(
+        'No incidents to handle match "xyz".',
+      );
+      expect(feedEmptyMessage('mine', 'critical', 'xyz', SCOPE)).toBe(
+        'No critical incidents to handle match "xyz".',
+      );
+    });
+
+    it('ignores a blank search', () => {
+      expect(feedEmptyMessage('mine', null, '   ', SCOPE)).toBe(
+        feedEmptyMessage('mine', null, '', SCOPE),
+      );
+    });
+
+    it('leaves the other tabs alone when given a scope', () => {
+      expect(feedEmptyMessage('active', null, '', SCOPE)).toBe(feedEmptyMessage('active', null));
+      expect(feedEmptyMessage('all', 'low', '', SCOPE)).toBe(feedEmptyMessage('all', 'low'));
+    });
   });
 });
 
@@ -302,14 +390,44 @@ describe('countByFilter', () => {
   ];
 
   it('counts what each tab would list', () => {
-    expect(countByFilter(list, () => true)).toEqual({ active: 2, resolved: 1, all: 3 });
+    expect(countByFilter(list, () => true)).toEqual({ active: 2, mine: 0, resolved: 1, all: 3 });
   });
 
   it('counts only the incidents that match', () => {
     expect(countByFilter(list, (i) => i.status !== 'acknowledged')).toEqual({
       active: 1,
+      mine: 0,
       resolved: 1,
       all: 2,
+    });
+  });
+
+  describe('mine', () => {
+    const SCOPE = ['facilities', 'environment'] as const;
+    const mixed = [
+      incident({ id: 'w', type: 'water_leak', status: 'open' }),
+      incident({ id: 'f', type: 'flooding', status: 'acknowledged' }),
+      incident({ id: 'wr', type: 'water_leak', status: 'resolved' }),
+      incident({ id: 'i', type: 'intrusion', status: 'open' }),
+    ];
+
+    it('counts the active incidents in the scope, beside the other tabs', () => {
+      expect(countByFilter(mixed, () => true, SCOPE)).toEqual({
+        active: 3,
+        mine: 2,
+        resolved: 1,
+        all: 4,
+      });
+    });
+
+    it('applies the shared filters to it as to every tab', () => {
+      const onlyOpen = (i: Incident) => i.status === 'open';
+
+      expect(countByFilter(mixed, onlyOpen, SCOPE).mine).toBe(1);
+    });
+
+    it('is 0 without a scope', () => {
+      expect(countByFilter(mixed, () => true).mine).toBe(0);
     });
   });
 });
@@ -473,6 +591,130 @@ describe('categoriesLabel', () => {
     categoriesLabel(categories);
 
     expect(categories).toEqual(['facilities', 'environment']);
+  });
+
+  describe('with "or"', () => {
+    it('names one category as it is', () => {
+      expect(categoriesLabel(['facilities'], 'or')).toBe('Facilities');
+    });
+
+    it('joins two with "or"', () => {
+      expect(categoriesLabel(['facilities', 'environment'], 'or')).toBe(
+        'Facilities or Environment',
+      );
+    });
+
+    it('separates three or more with commas and a last "or"', () => {
+      expect(categoriesLabel(['security', 'medical', 'traffic'], 'or')).toBe(
+        'Security, Medical or Traffic',
+      );
+    });
+
+    it('is empty for no category', () => {
+      expect(categoriesLabel([], 'or')).toBe('');
+    });
+  });
+});
+
+describe('handlingScope', () => {
+  it('gives an operator and a supervisor every category, in contract order', () => {
+    expect(handlingScope(['operator'])).toEqual(INCIDENT_CATEGORIES);
+    expect(handlingScope(['supervisor'])).toEqual(INCIDENT_CATEGORIES);
+  });
+
+  it('gives a technician Facilities and Environment', () => {
+    expect(handlingScope(['technician'])).toEqual(['facilities', 'environment']);
+  });
+
+  it('gives a viewer and no roles nothing', () => {
+    expect(handlingScope(['viewer'])).toEqual([]);
+    expect(handlingScope([])).toEqual([]);
+  });
+
+  it('takes the widest scope over several roles', () => {
+    expect(handlingScope(['technician', 'operator'])).toEqual(INCIDENT_CATEGORIES);
+    expect(handlingScope(['technician', 'viewer'])).toEqual(['facilities', 'environment']);
+  });
+});
+
+describe('hasLimitedScope', () => {
+  it('is true for a technician, who acts on some categories only', () => {
+    expect(hasLimitedScope(['technician'])).toBe(true);
+    expect(hasLimitedScope(['technician', 'viewer'])).toBe(true);
+  });
+
+  it('is false for a role that acts on every category', () => {
+    expect(hasLimitedScope(['operator'])).toBe(false);
+    expect(hasLimitedScope(['supervisor'])).toBe(false);
+    expect(hasLimitedScope(['technician', 'operator'])).toBe(false);
+  });
+
+  it('is false for a user who acts on none', () => {
+    expect(hasLimitedScope(['viewer'])).toBe(false);
+    expect(hasLimitedScope([])).toBe(false);
+  });
+});
+
+describe('feedFiltersFor', () => {
+  const values = (roles: Parameters<typeof feedFiltersFor>[0]) =>
+    feedFiltersFor(roles).map((tab) => tab.value);
+
+  it('offers a technician Active · Mine to handle · All', () => {
+    expect(values(['technician'])).toEqual(['active', 'mine', 'all']);
+    expect(feedFiltersFor(['technician']).map((tab) => tab.label)).toEqual([
+      'Active',
+      'Mine to handle',
+      'All',
+    ]);
+  });
+
+  it.each([
+    [['operator']],
+    [['supervisor']],
+    [['viewer']],
+    [[]],
+    [['technician', 'operator']],
+  ] as const)('offers %j Active · Resolved · All', (roles) => {
+    expect(values(roles)).toEqual(['active', 'resolved', 'all']);
+  });
+});
+
+describe('offeredFilter', () => {
+  const technicianTabs = feedFiltersFor(['technician']);
+  const operatorTabs = feedFiltersFor(['operator']);
+
+  it('keeps a filter the user is offered', () => {
+    expect(offeredFilter('mine', technicianTabs)).toBe('mine');
+    expect(offeredFilter('all', technicianTabs)).toBe('all');
+    expect(offeredFilter('resolved', operatorTabs)).toBe('resolved');
+  });
+
+  it('falls back to Active for a stored filter the user is not offered', () => {
+    expect(offeredFilter('resolved', technicianTabs)).toBe('active');
+    expect(offeredFilter('mine', operatorTabs)).toBe('active');
+  });
+});
+
+describe('categoryTag', () => {
+  const SCOPE = ['facilities', 'environment'] as const;
+
+  it("names the category of an incident in the user's scope", () => {
+    expect(categoryTag(incident({ type: 'water_leak' }), SCOPE)).toBe('Facilities');
+    expect(categoryTag(incident({ type: 'flooding' }), SCOPE)).toBe('Environment');
+  });
+
+  it('gives no tag out of the scope', () => {
+    expect(categoryTag(incident({ type: 'intrusion' }), SCOPE)).toBeUndefined();
+  });
+
+  it('gives no tag to a type this console does not know', () => {
+    const unknown = incident({ type: 'teleporter_fault' as IncidentType });
+
+    expect(categoryTag(unknown, SCOPE)).toBeUndefined();
+  });
+
+  it('gives no tag without a scope', () => {
+    expect(categoryTag(incident({ type: 'water_leak' }), [])).toBeUndefined();
   });
 });
 

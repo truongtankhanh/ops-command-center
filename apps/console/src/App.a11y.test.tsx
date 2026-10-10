@@ -154,6 +154,15 @@ const INCIDENTS: Incident[] = [
   }),
 ];
 
+/** An active Facilities incident, the one kind of the list above that a technician may handle. */
+const WATER_LEAK = incident({
+  id: 'i4',
+  code: 'INC-000004',
+  type: 'water_leak',
+  severity: 'medium',
+  title: 'Pipe burst in the library',
+});
+
 const camera = (overrides: Partial<Camera>): Camera => ({
   id: 'c1',
   code: 'CAM-L01',
@@ -297,6 +306,34 @@ describe('the console', () => {
       );
       expect(screen.queryByRole('form', { name: 'Response' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+      await checkPage();
+    });
+
+    it('an incident selected, as a technician, out of their scope, pointing to their queue', async () => {
+      renderConsole({ role: 'technician', incidents: [...INCIDENTS, WATER_LEAK] });
+
+      act(() => consoleState().select('i1'));
+
+      expect(screen.getByRole('note')).toHaveTextContent(
+        'You can follow this one and report new incidents. Your queue is in Mine to handle (1).',
+      );
+      await checkPage();
+    });
+
+    it('the feed as a technician, on Mine to handle', async () => {
+      renderConsole({ role: 'technician', incidents: [...INCIDENTS, WATER_LEAK] });
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+
+      expect(screen.getByRole('tab', { name: /^Mine to handle/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      // No Resolved tab; the tag is text in the row, read with it.
+      expect(screen.queryByRole('tab', { name: /^Resolved/ })).toBeNull();
+      const row = screen.getByRole('button', { name: /Pipe burst in the library/ });
+      expect(within(row).getByText('Facilities')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Smoke in the stairwell/ })).toBeNull();
       await checkPage();
     });
 

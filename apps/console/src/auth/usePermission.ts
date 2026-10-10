@@ -9,6 +9,15 @@ import {
 } from '@occ/contracts';
 import { useSession } from './store';
 
+const NO_ROLES: readonly Role[] = [];
+
+/**
+ * The signed-in user's roles; none while signed out. For what a role list drives beyond a yes or
+ * no (the feed's tabs and tags). It returns the stored array or this one shared empty array: a
+ * fresh `[]` per call would never be equal to the last, and Zustand 5 would re-render in a loop.
+ */
+export const useRoles = (): readonly Role[] => useSession((s) => s.user?.roles ?? NO_ROLES);
+
 /**
  * Whether the signed-in user's roles grant `permission`, read from the same `ROLE_PERMISSIONS`
  * the API enforces. For hiding actions only: the API's 403 is the control (ADR-0011).

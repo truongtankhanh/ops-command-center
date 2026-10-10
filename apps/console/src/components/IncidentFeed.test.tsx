@@ -1,4 +1,4 @@
-import type { Incident, Zone } from '@occ/contracts';
+import type { Incident, Role, Zone } from '@occ/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -438,6 +438,234 @@ describe('IncidentFeed', () => {
       act(() => useConsole.setState({ offlineSince: lostAt }));
 
       expect(screen.getByText('Showing incidents as of 15:02')).toBeInTheDocument();
+    });
+  });
+
+  // ADR-0021: a technician acts on Facilities and Environment only, so their feed trades Resolved
+  // for "Mine to handle" and tags the incidents in that scope.
+  describe('category scope', () => {
+    const scoped: Incident[] = [
+      {
+        ...base,
+        id: 'w',
+        code: 'INC-000010',
+        type: 'water_leak',
+        title: 'Pipe burst',
+        status: 'open',
+        severity: 'medium',
+      },
+      {
+        ...base,
+        id: 'f',
+        code: 'INC-000011',
+        type: 'flooding',
+        title: 'Car park flooded',
+        status: 'acknowledged',
+        severity: 'high',
+      },
+      {
+        ...base,
+        id: 'r',
+        code: 'INC-000012',
+        type: 'lift_entrapment',
+        title: 'Lift stuck',
+        status: 'resolved',
+        severity: 'high',
+      },
+      {
+        ...base,
+        id: 'i',
+        code: 'INC-000013',
+        type: 'intrusion',
+        title: 'Gate forced open',
+        status: 'open',
+        severity: 'high',
+      },
+      {
+        // A type a newer API sent that this build does not know.
+        ...base,
+        id: 'u',
+        code: 'INC-000014',
+        type: 'teleporter_fault' as Incident['type'],
+        title: 'Teleporter jammed',
+        status: 'open',
+        severity: 'low',
+      },
+    ];
+    // Active 4 (w, f, i, u) · Mine to handle 2 (w, f) · Resolved 1 (r) · All 5.
+    const outsideOnly: Incident[] = [scoped[3] as Incident];
+
+    const signInAs = (...roles: Role[]) =>
+      useSession.getState().signedIn({ displayName: 'Signed-in user', roles });
+    const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+    const titles = () => screen.getAllByRole('listitem').map((item) => item.textContent ?? '');
+
+    describe('as a technician', () => {
+      beforeEach(() => signInAs('technician'));
+
+      it('offers Active, Mine to handle and All, with their counts', () => {
+        renderFeed(scoped);
+
+        expect(tabNames()).toEqual(['Active 4', 'Mine to handle 2', 'All 5']);
+        expect(screen.queryByRole('tab', { name: /^Resolved/ })).toBeNull();
+      });
+
+      it('lists the active Facilities and Environment incidents in Mine to handle', async () => {
+        renderFeed(scoped);
+
+        await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+
+        expect(screen.getByRole('tab', { name: /^Mine to handle/ })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        expect(screen.getByText('Pipe burst')).toBeInTheDocument();
+        expect(screen.getByText('Car park flooded')).toBeInTheDocument();
+        // Resolved, outside the scope and of an unknown type: none is theirs to handle.
+        expect(screen.queryByText('Lift stuck')).not.toBeInTheDocument();
+        expect(screen.queryByText('Gate forced open')).not.toBeInTheDocument();
+        expect(screen.queryByText('Teleporter jammed')).not.toBeInTheDocument();
+      });
+
+      it('still reaches a resolved incident under All', async () => {
+        renderFeed(scoped);
+
+        await userEvent.click(screen.getByRole('tab', { name: /^All/ }));
+
+        expect(screen.getByText('Lift stuck')).toBeInTheDocument();
+        expect(titles()).toHaveLength(5);
+      });
+
+      it('tags the incidents in scope with their category, and no other', () => {
+        renderFeed(scoped);
+
+        expect(within(row(/Pipe burst/)).getByText('Facilities')).toBeInTheDocument();
+        expect(within(row(/Car park flooded/)).getByText('Environment')).toBeInTheDocument();
+        for (const name of [/Gate forced open/, /Teleporter jammed/]) {
+          expect(row(name)).not.toHaveTextContent(/Facilities|Environment|Security/);
+        }
+      });
+
+      it('puts the tag after the zone and before the code', () => {
+        renderFeed(scoped);
+
+        const meta = within(row(/Pipe burst/)).getByText('Facilities').parentElement;
+
+        expect(meta).toHaveTextContent(/Library\s*Facilities\s*INC-000010/);
+      });
+
+      it('counts the tabs with the severity filter and the search', async () => {
+        useConsole.setState({ severity: 'high' });
+        renderFeed(scoped);
+
+        expect(tabNames()).toEqual(['Active 2', 'Mine to handle 1', 'All 3']);
+
+        act(() => useConsole.setState({ severity: null }));
+        await userEvent.type(searchbox(), 'pipe');
+
+        expect(tabNames()).toEqual(['Active 1', 'Mine to handle 1', 'All 1']);
+      });
+
+      it('lands on Active when the stored filter was Resolved', () => {
+        useConsole.setState({ filter: 'resolved' });
+
+        renderFeed(scoped);
+
+        expect(screen.getByRole('tab', { name: /^Active/ })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        expect(screen.getByText('Pipe burst')).toBeInTheDocument();
+        expect(screen.queryByText('Lift stuck')).not.toBeInTheDocument();
+      });
+
+      it('follows the arrow keys over the three tabs, wrapping', async () => {
+        renderFeed(scoped);
+        act(() => screen.getByRole('tab', { name: /^Active/ }).focus());
+
+        await userEvent.keyboard('{ArrowRight}');
+        expect(screen.getByRole('tab', { name: /^Mine to handle/ })).toHaveFocus();
+        expect(screen.getByRole('tab', { name: /^Mine to handle/ })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+
+        await userEvent.keyboard('{ArrowRight}');
+        expect(screen.getByRole('tab', { name: /^All/ })).toHaveFocus();
+
+        await userEvent.keyboard('{ArrowRight}');
+        expect(screen.getByRole('tab', { name: /^Active/ })).toHaveFocus();
+      });
+
+      it('says nothing is theirs to handle, naming the categories', async () => {
+        renderFeed(outsideOnly);
+
+        await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+
+        expect(
+          screen.getByText('Nothing to handle in Facilities or Environment right now.'),
+        ).toBeInTheDocument();
+      });
+
+      it('says which severity has nothing to handle, and offers every severity', async () => {
+        useConsole.setState({ severity: 'high' });
+        renderFeed(outsideOnly);
+
+        await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+
+        expect(
+          screen.getByText('No high incidents to handle in Facilities or Environment.'),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Show all severities' })).toBeInTheDocument();
+      });
+
+      it('says what a search found nothing to handle for', async () => {
+        renderFeed(scoped);
+        await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+
+        await userEvent.type(searchbox(), 'zzz');
+
+        expect(screen.getByText('No incidents to handle match "zzz".')).toBeInTheDocument();
+      });
+    });
+
+    describe('as everyone else', () => {
+      it.each<Role>(['operator', 'supervisor', 'viewer'])(
+        'offers a %s Active, Resolved and All, and no tags',
+        (role) => {
+          signInAs(role);
+
+          renderFeed(scoped);
+
+          expect(tabNames()).toEqual(['Active 4', 'Resolved 1', 'All 5']);
+          expect(screen.queryByRole('tab', { name: /^Mine to handle/ })).toBeNull();
+          expect(screen.queryByText('Facilities')).not.toBeInTheDocument();
+          expect(screen.queryByText('Environment')).not.toBeInTheDocument();
+        },
+      );
+
+      it('treats a technician who is also an operator as an operator', () => {
+        signInAs('technician', 'operator');
+
+        renderFeed(scoped);
+
+        expect(tabNames()).toEqual(['Active 4', 'Resolved 1', 'All 5']);
+        expect(screen.queryByText('Facilities')).not.toBeInTheDocument();
+      });
+
+      it('lands on Active when the stored filter was Mine to handle', () => {
+        signInAs('operator');
+        useConsole.setState({ filter: 'mine' });
+
+        renderFeed(scoped);
+
+        expect(screen.getByRole('tab', { name: /^Active/ })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        expect(screen.getByText('Gate forced open')).toBeInTheDocument();
+      });
     });
   });
 
