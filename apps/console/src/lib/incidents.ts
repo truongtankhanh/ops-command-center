@@ -8,6 +8,9 @@ import {
   type IncidentStatus,
   type IncidentType,
   severityRank,
+  type Zone,
+  type ZoneKind,
+  type ZoneUse,
 } from '@occ/contracts';
 
 export type FeedFilter = 'active' | 'resolved' | 'all';
@@ -311,6 +314,81 @@ const CATEGORY_LABELS: Record<IncidentCategory, string> = {
 };
 
 export const categoryLabel = (category: IncidentCategory) => CATEGORY_LABELS[category];
+
+/**
+ * `typeLabel` inside a sentence ("Suggested for lift entrapment"): the first letter lower-cased,
+ * unless the label starts with an acronym ("HVAC fault").
+ */
+export function typeLabelInSentence(type: Incident['type']): string {
+  const label = typeLabel(type);
+  const firstWord = label.split(' ', 1)[0] ?? '';
+  if (firstWord.length > 1 && firstWord === firstWord.toUpperCase()) return label;
+  return label.charAt(0).toLowerCase() + label.slice(1);
+}
+
+const NO_TYPES: readonly IncidentType[] = [];
+const UTILITY_TYPES: readonly IncidentType[] = ['power_outage', 'equipment_fault', 'intrusion'];
+
+/**
+ * The types most likely in a building, by its `use`, most typical first (brief § Zones of the demo
+ * campus). Suggestions only: the report form lists them first and never hides a type (ADR-0021).
+ */
+const TYPES_LIKELY_BY_USE: Readonly<Record<ZoneUse, readonly IncidentType[]>> = {
+  // The brief has two academic buildings with different rows; merged, the lecture hall's first.
+  academic: ['crowding', 'medical', 'fire_alarm', 'intrusion', 'equipment_fault'],
+  library: ['theft', 'fire_alarm'],
+  laboratory: ['hazmat_spill', 'gas_leak', 'fire_alarm'],
+  residential: ['water_leak', 'lift_entrapment', 'fire_alarm', 'theft'],
+  dining: ['suspicious_object', 'crowding', 'injury'],
+  healthcare: ['medical', 'power_outage'],
+  sports_hall: ['injury', 'crowding'],
+  administration: ['intrusion', 'network_outage'],
+  data_center: ['equipment_fault', 'power_outage', 'intrusion'],
+  security_post: NO_TYPES,
+  // The brief has no row for it (its Utility Plant is a `utility` zone): a plant in a building
+  // sees what a utility yard sees.
+  utility_plant: UTILITY_TYPES,
+};
+
+/** The same for zones without a `use`, by `kind`. A `building` is read by its use instead. */
+const TYPES_LIKELY_BY_KIND: Readonly<Partial<Record<ZoneKind, readonly IncidentType[]>>> = {
+  utility: UTILITY_TYPES,
+  outdoor: ['injury', 'severe_weather', 'fallen_tree'],
+  water: ['medical', 'flooding'],
+  parking: ['theft', 'vandalism', 'blocked_access', 'traffic_accident'],
+  gate: ['crowding', 'traffic_accident', 'intrusion'],
+};
+
+/**
+ * The types likely in `zone`, most typical first; none without a zone. A building is read by its
+ * `use`, which an API before the `zone.use` column never sends (read as `null`: none). A `use` or
+ * `kind` newer than this build has no row, so it suggests nothing rather than failing.
+ */
+export function typesLikelyIn(
+  zone: Pick<Zone, 'kind' | 'use'> | undefined,
+): readonly IncidentType[] {
+  if (!zone) return NO_TYPES;
+  if (zone.kind === 'building') {
+    const use = zone.use ?? null;
+    return use === null ? NO_TYPES : (TYPES_LIKELY_BY_USE[use] ?? NO_TYPES);
+  }
+  return TYPES_LIKELY_BY_KIND[zone.kind] ?? NO_TYPES;
+}
+
+/**
+ * The report form's types for `category`: the ones in `likely` first, in its order, then the
+ * others in contract order (`INCIDENT_TYPES`, which otherwise orders the form). It only reorders:
+ * every type of the category is listed once, and a likely type of another category is ignored.
+ */
+export function typesInCategory(
+  category: IncidentCategory,
+  likely: readonly IncidentType[] = NO_TYPES,
+): IncidentType[] {
+  const inCategory = (type: IncidentType) => categoryOf(type) === category;
+  const first = likely.filter(inCategory);
+  const rest = INCIDENT_TYPES.filter((type) => inCategory(type) && !first.includes(type));
+  return [...first, ...rest];
+}
 
 const STATUS_LABELS: Record<IncidentStatus, string> = {
   open: 'Open',

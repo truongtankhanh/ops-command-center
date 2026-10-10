@@ -1,21 +1,34 @@
 import {
+  categoryOf,
+  INCIDENT_CATEGORIES,
   INCIDENT_SEVERITIES,
+  INCIDENT_TYPE_DEFAULT_SEVERITY,
+  type IncidentCategory,
   type IncidentSeverity,
   type IncidentType,
   type LngLat,
+  ROLE_CATEGORY_SCOPE,
   type Zone,
 } from '@occ/contracts';
-import { type FormEvent, useCallback, useId, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
+import { usePermissionFor } from '../auth/usePermission';
 import { formatLatLng } from '../lib/geo';
 import { newIdempotencyKey } from '../lib/idempotency';
-import { severityLabel, typeLabel } from '../lib/incidents';
+import {
+  categoryLabel,
+  severityLabel,
+  typeLabel,
+  typeLabelInSentence,
+  typesInCategory,
+  typesLikelyIn,
+} from '../lib/incidents';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Field, Select, Textarea, TextInput } from '../ui/Field';
 import { Hint, type HintTone } from '../ui/Hint';
-import { incidentTypeIcon, MapPin, severityIcon, X } from '../ui/icons';
+import { categoryIcon, incidentTypeIcon, MapPin, severityIcon, X } from '../ui/icons';
 import { SegmentedControl } from '../ui/SegmentedControl';
 import { Sheet } from '../ui/Sheet';
 import { showToast } from '../ui/toasts';
@@ -23,23 +36,13 @@ import styles from './ReportIncidentForm.module.css';
 
 const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
+/** Until a type suggests its own (`INCIDENT_TYPE_DEFAULT_SEVERITY`). */
 const DEFAULT_SEVERITY: IncidentSeverity = 'medium';
-/**
- * The six V1 types until V2-03.6 adds the category step: a grid of all 24 is too long to scan, and
- * an API before V2-03.3 refuses the others.
- */
-const V1_TYPES: readonly IncidentType[] = [
-  'intrusion',
-  'fire_alarm',
-  'equipment_fault',
-  'medical',
-  'crowding',
-  'suspicious_object',
-];
-const TYPE_OPTIONS = V1_TYPES.map((value) => ({
+/** Step 1 (frame 09): a category first, because a grid of all 24 types is too long to scan. */
+const CATEGORY_OPTIONS = INCIDENT_CATEGORIES.map((value) => ({
   value,
-  label: typeLabel(value),
-  icon: incidentTypeIcon(value),
+  label: categoryLabel(value),
+  icon: categoryIcon(value),
 }));
 const SEVERITY_OPTIONS = INCIDENT_SEVERITIES.map((value) => ({
   value,
@@ -54,6 +57,7 @@ const REPORT_ALREADY_SENT =
   'This report was already sent with different details. Check the incident feed before reporting it again.';
 /** Shown on a required field once a submit found it empty. */
 const MISSING = {
+  category: 'Choose a category.',
   type: 'Choose a type.',
   zone: 'Choose a location.',
   title: 'Enter a title.',
@@ -63,6 +67,27 @@ const MISSING = {
  * API sends no error code, and a failed validation is a 400 too, so the message is matched.
  */
 const OUTSIDE_ZONE_PREFIX = 'position is outside zone';
+
+/** Whether `category` goes to the technicians' queue: read from the scope the API enforces. */
+function inTechnicianQueue(category: IncidentCategory): boolean {
+  const scope = ROLE_CATEGORY_SCOPE.technician;
+  return scope === 'all' || scope.includes(category);
+}
+
+/** The line under the severity, once a type is chosen. No reason sentence (V2-03.6 Q1). */
+function suggestionOf(type: IncidentType): string {
+  const suggested = severityLabel(INCIDENT_TYPE_DEFAULT_SEVERITY[type]);
+  return `Suggested for ${typeLabelInSentence(type)}: ${suggested}.`;
+}
+
+/** The step 2 tiles: the category's types, the ones likely in `zone` first. */
+function typeOptionsOf(category: IncidentCategory, zone: Zone | undefined) {
+  return typesInCategory(category, typesLikelyIn(zone)).map((value) => ({
+    value,
+    label: typeLabel(value),
+    icon: incidentTypeIcon(value),
+  }));
+}
 
 /** The API's message, except for the statuses an operator needs explained in their own terms. */
 function reportErrorMessage(error: Error, zone: Zone | undefined): string {
@@ -95,7 +120,9 @@ function locationHintOf(
 }
 
 /**
- * Operator-reported incident (frame 03). Limits mirror the API's validation rules.
+ * Operator-reported incident (frames 03, 09): a category, then one of its types, then a severity
+ * the type suggests. Limits mirror the API's validation rules; the category is never sent, the API
+ * derives it from the type (ADR-0021).
  *
  * The location (zone, pin, "Pick on map") lives in `useConsole`, because the map places the pin and
  * outlines the zone; everything else is this form's own state.
@@ -113,8 +140,11 @@ export function ReportIncidentForm() {
   const setPicking = useConsole((s) => s.setPicking);
   const clearPin = useConsole((s) => s.clearPin);
 
+  const [category, setCategory] = useState<IncidentCategory | null>(null);
   const [type, setType] = useState<IncidentType | null>(null);
   const [severity, setSeverity] = useState<IncidentSeverity>(DEFAULT_SEVERITY);
+  // Once the user picks a severity themselves, a type no longer overrides it with its suggestion.
+  const [severityByHand, setSeverityByHand] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   // One key per opened form, reused by every retry. Not renewed when a field or the pin changes: if
@@ -123,17 +153,47 @@ export function ReportIncidentForm() {
   // Set by a submit with a required field empty; from then on, empty required fields say so.
   const [attempted, setAttempted] = useState(false);
 
+  const categoryRef = useRef<HTMLFieldSetElement>(null);
   const typeRef = useRef<HTMLFieldSetElement>(null);
   const zoneRef = useRef<HTMLSelectElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const locationHintId = useId();
+  const severityHintId = useId();
+
+  // Opening the form (`N` or the header button) starts at step 1. This runs after `Sheet`'s own
+  // layout effect, which focuses the sheet (child effects run first), so the opener `Sheet`
+  // recorded still gets focus back on close.
+  useLayoutEffect(() => {
+    categoryRef.current?.querySelector('input')?.focus({ preventScroll: true });
+  }, []);
 
   const zone = zones.find((z) => z.id === reportZoneId);
   const locationHint = locationHintOf(zone, reportPosition, pinMissed);
+  const typeOptions = category ? typeOptionsOf(category, zone) : [];
+  const canAcknowledge = usePermissionFor('incident:acknowledge', category);
+  // The foot hint's category (frame 09), when it goes to the technicians and this user may take it.
+  const queueCategory =
+    category !== null && inTechnicianQueue(category) && canAcknowledge ? category : null;
 
+  const chooseCategory = (next: IncidentCategory) => {
+    setCategory(next);
+    // The severity stays: it is on screen, and a category alone suggests none.
+    if (type !== null && categoryOf(type) !== next) setType(null);
+  };
+  const chooseType = (next: IncidentType) => {
+    setType(next);
+    if (!severityByHand) setSeverity(INCIDENT_TYPE_DEFAULT_SEVERITY[next]);
+  };
+  const chooseSeverity = (next: IncidentSeverity) => {
+    setSeverity(next);
+    setSeverityByHand(true);
+  };
+
+  // A severity set only by the suggestion is no draft: the category it came from already is.
   const hasDraft =
+    category !== null ||
     type !== null ||
-    severity !== DEFAULT_SEVERITY ||
+    severityByHand ||
     reportZoneId !== null ||
     reportPosition !== null ||
     title.trim() !== '' ||
@@ -149,6 +209,7 @@ export function ReportIncidentForm() {
   const keepDraft = useCallback(() => setKept(true), []);
 
   const missing = {
+    category: category === null,
     type: type === null,
     zone: reportZoneId === null,
     title: title.trim() === '',
@@ -156,9 +217,13 @@ export function ReportIncidentForm() {
   const errorFor = (field: keyof typeof MISSING) =>
     attempted && missing[field] ? MISSING[field] : undefined;
 
-  /** Moves focus to the first empty required field, in the order the form shows them. */
+  /**
+   * Moves focus to the first empty required field, in the order the form shows them. Step 2 is
+   * only there once a category is chosen, so a missing type never comes before a missing category.
+   */
   const focusFirstMissing = () => {
-    if (missing.type) typeRef.current?.querySelector('input')?.focus();
+    if (missing.category) categoryRef.current?.querySelector('input')?.focus();
+    else if (missing.type) typeRef.current?.querySelector('input')?.focus();
     else if (missing.zone) zoneRef.current?.focus();
     else titleRef.current?.focus();
   };
@@ -166,7 +231,7 @@ export function ReportIncidentForm() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (report.isPending) return;
-    if (type === null || reportZoneId === null || missing.title) {
+    if (category === null || type === null || reportZoneId === null || missing.title) {
       setAttempted(true);
       focusFirstMissing();
       return;
@@ -222,23 +287,42 @@ export function ReportIncidentForm() {
           </div>
 
           <SegmentedControl
-            ref={typeRef}
-            legend="Type"
-            name="type"
-            layout="grid"
-            options={TYPE_OPTIONS}
-            value={type}
-            onChange={setType}
-            error={errorFor('type')}
+            ref={categoryRef}
+            legend="Category"
+            step={1}
+            name="category"
+            layout="compact-grid"
+            options={CATEGORY_OPTIONS}
+            value={category}
+            onChange={chooseCategory}
+            error={errorFor('category')}
           />
 
-          <SegmentedControl
-            legend="Severity"
-            name="severity"
-            options={SEVERITY_OPTIONS}
-            value={severity}
-            onChange={setSeverity}
-          />
+          {category && (
+            <SegmentedControl
+              ref={typeRef}
+              legend={`Type — ${categoryLabel(category)}`}
+              step={2}
+              name="type"
+              layout="compact-grid"
+              options={typeOptions}
+              value={type}
+              onChange={chooseType}
+              error={errorFor('type')}
+            />
+          )}
+
+          <div>
+            <SegmentedControl
+              legend="Severity"
+              name="severity"
+              options={SEVERITY_OPTIONS}
+              value={severity}
+              onChange={chooseSeverity}
+              describedBy={type ? severityHintId : undefined}
+            />
+            {type && <Hint id={severityHintId}>{suggestionOf(type)}</Hint>}
+          </div>
 
           <div>
             <div className={styles.location}>
@@ -314,6 +398,12 @@ export function ReportIncidentForm() {
             <p className={styles.error} role="alert">
               {reportErrorMessage(report.error, zone)}
             </p>
+          )}
+          {queueCategory && (
+            <Hint>
+              {categoryLabel(queueCategory)} incidents go to the technician queue; you can
+              acknowledge this one yourself.
+            </Hint>
           )}
           <div className={styles.actions}>
             <Button
