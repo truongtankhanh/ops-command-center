@@ -6,6 +6,7 @@ import {
   INCIDENT_SEVERITIES,
   INCIDENT_TYPES,
   type IncidentType,
+  PERMISSIONS,
   type Zone,
   ZONE_KINDS,
   ZONE_USES,
@@ -15,6 +16,8 @@ import {
 import {
   acknowledgeDuration,
   ATTENTION_THRESHOLD_MS,
+  categoriesInScope,
+  categoriesLabel,
   categoryOfType,
   compareIncidents,
   countActiveBySeverity,
@@ -393,6 +396,83 @@ describe('categoryOfType', () => {
 
   it('gives an unknown type no category', () => {
     expect(categoryOfType(UNKNOWN_TYPE)).toBeNull();
+  });
+});
+
+describe('categoriesInScope', () => {
+  const FACILITIES_AND_ENVIRONMENT = ['facilities', 'environment'];
+
+  it('gives an operator and a supervisor every category, in contract order', () => {
+    for (const role of ['operator', 'supervisor'] as const) {
+      expect(categoriesInScope([role], 'incident:acknowledge')).toEqual(INCIDENT_CATEGORIES);
+      expect(categoriesInScope([role], 'incident:resolve')).toEqual(INCIDENT_CATEGORIES);
+    }
+  });
+
+  it("limits a technician's acknowledge and resolve to Facilities and Environment", () => {
+    expect(categoriesInScope(['technician'], 'incident:acknowledge')).toEqual(
+      FACILITIES_AND_ENVIRONMENT,
+    );
+    expect(categoriesInScope(['technician'], 'incident:resolve')).toEqual(
+      FACILITIES_AND_ENVIRONMENT,
+    );
+  });
+
+  it('does not limit reporting by category', () => {
+    for (const role of ['operator', 'supervisor', 'technician'] as const) {
+      expect(categoriesInScope([role], 'incident:report')).toEqual(INCIDENT_CATEGORIES);
+    }
+  });
+
+  it('gives a viewer no category for any action', () => {
+    for (const permission of PERMISSIONS) {
+      expect(categoriesInScope(['viewer'], permission)).toEqual([]);
+    }
+  });
+
+  it('gives no category without roles', () => {
+    expect(categoriesInScope([], 'incident:report')).toEqual([]);
+  });
+
+  it('takes the widest scope over several roles', () => {
+    expect(categoriesInScope(['technician', 'operator'], 'incident:resolve')).toEqual(
+      INCIDENT_CATEGORIES,
+    );
+    expect(categoriesInScope(['technician', 'viewer'], 'incident:resolve')).toEqual(
+      FACILITIES_AND_ENVIRONMENT,
+    );
+  });
+});
+
+describe('categoriesLabel', () => {
+  it('is empty for no category', () => {
+    expect(categoriesLabel([])).toBe('');
+  });
+
+  it('names one category', () => {
+    expect(categoriesLabel(['facilities'])).toBe('Facilities');
+  });
+
+  it('joins two with "and"', () => {
+    expect(categoriesLabel(['facilities', 'environment'])).toBe('Facilities and Environment');
+  });
+
+  it('separates three or more with commas and a last "and", in the order given', () => {
+    expect(categoriesLabel(['security', 'medical', 'traffic'])).toBe(
+      'Security, Medical and Traffic',
+    );
+  });
+
+  it('keeps the ampersand of a label as it is', () => {
+    expect(categoriesLabel(['fire_safety', 'medical'])).toBe('Fire & safety and Medical');
+  });
+
+  it('leaves its input as it was', () => {
+    const categories = ['facilities', 'environment'] as const;
+
+    categoriesLabel(categories);
+
+    expect(categories).toEqual(['facilities', 'environment']);
   });
 });
 

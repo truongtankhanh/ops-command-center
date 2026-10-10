@@ -1,8 +1,9 @@
-import type { IncidentDetail } from '@occ/contracts';
+import type { IncidentCategory, IncidentDetail } from '@occ/contracts';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
 import { useTransition } from '../api/queries';
-import { usePermission } from '../auth/usePermission';
+import { usePermission, usePermissionFor } from '../auth/usePermission';
+import { categoryLabel, categoryOfType } from '../lib/incidents';
 import { useShortcut } from '../lib/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
@@ -11,7 +12,7 @@ import { Field, Textarea } from '../ui/Field';
 import { focusLost } from '../ui/focus';
 import { Hint } from '../ui/Hint';
 import { Icon } from '../ui/Icon';
-import { Eye } from '../ui/icons';
+import { Eye, Info } from '../ui/icons';
 import styles from './IncidentResponse.module.css';
 
 /** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
@@ -26,17 +27,24 @@ function transitionErrorMessage(error: Error): string {
 }
 
 /**
- * The foot of the incident sheet (frames 02 / 06). Only the actions the user's roles grant are
- * shown; the API refuses the rest anyway (ADR-0011). A user who may take neither action gets the
- * view-only footer instead of a gap, on every status; an operator on a resolved incident gets none.
+ * The foot of the incident sheet (frames 02 / 06 / 11). Only the actions the user's roles grant,
+ * for this incident's category, are shown; the API refuses the rest anyway (ADR-0011, ADR-0021). A
+ * user who may take neither action gets a footer saying why instead of a gap, on every status: the
+ * view-only one for a role without the permissions, the out-of-scope one for a role whose
+ * category scope does not cover this incident (a technician on a security incident, or on a type
+ * this console does not know). A user who may act on it gets none once it is resolved.
  */
 export function IncidentResponse({ incident, kept }: { incident: IncidentDetail; kept: boolean }) {
   const canAcknowledge = usePermission('incident:acknowledge');
   const canResolve = usePermission('incident:resolve');
+  const category = categoryOfType(incident.type);
+  const mayAcknowledge = usePermissionFor('incident:acknowledge', category);
+  const mayResolve = usePermissionFor('incident:resolve', category);
   if (!canAcknowledge && !canResolve) return <ViewOnlyFooter />;
+  if (!mayAcknowledge && !mayResolve) return <OutOfScopeFooter category={category} />;
 
-  const showAcknowledge = incident.status === 'open' && canAcknowledge;
-  const showResolve = incident.status !== 'resolved' && canResolve;
+  const showAcknowledge = incident.status === 'open' && mayAcknowledge;
+  const showResolve = incident.status !== 'resolved' && mayResolve;
   if (!showAcknowledge && !showResolve) return null;
   return (
     <ResponseForm
@@ -54,6 +62,27 @@ function ViewOnlyFooter() {
       <Icon glyph={Eye} size={18} className={styles.viewOnlyIcon} />
       <p className={styles.viewOnlyText}>
         <strong>View only</strong> Acknowledging and resolving need the operator or supervisor role.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The view-only footer's twin for a user who may act, but not on this category (frame 11): the
+ * same note, so the sheet never ends in a gap. `A` / `R` are registered by `ResponseForm`, which is
+ * not rendered here, so they do nothing. `null` is a type this console does not know, which is out
+ * of every limited scope (fail closed), and has no category to name.
+ */
+function OutOfScopeFooter({ category }: { category: IncidentCategory | null }) {
+  const subject =
+    category === null ? 'Incidents of this type' : `${categoryLabel(category)} incidents`;
+  return (
+    <div className={styles.viewOnly} role="note" data-footer="out-of-scope">
+      <Icon glyph={Info} size={18} className={styles.viewOnlyIcon} />
+      <p className={styles.viewOnlyText}>
+        {/* V2-03.8 adds "Your queue is in Mine to handle ({n})." once the tab exists. */}
+        <strong>{subject} are handled by operators</strong> You can follow this one and report new
+        incidents.
       </p>
     </div>
   );

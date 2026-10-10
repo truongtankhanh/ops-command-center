@@ -39,7 +39,11 @@ export interface ShortcutRow {
   description: string;
   /** A single character key, turned off with the others (WCAG 2.1.4). */
   character?: boolean;
-  /** Shown only to a user whose roles grant this; the key does nothing for anyone else. */
+  /**
+   * Shown only to a user whose roles grant this; the key does nothing for anyone else. Acknowledge
+   * and resolve are also limited by incident category: the help then adds the user's categories to
+   * the description (ADR-0021), so nothing is marked here.
+   */
   permission?: Permission;
 }
 

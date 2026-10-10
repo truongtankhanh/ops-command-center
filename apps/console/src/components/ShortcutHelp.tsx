@@ -1,7 +1,8 @@
-import { hasPermission } from '@occ/contracts';
+import { INCIDENT_CATEGORIES, type Role } from '@occ/contracts';
 import { useId } from 'react';
 import { useSession } from '../auth/store';
-import { SHORTCUTS } from '../lib/shortcuts';
+import { categoriesInScope, categoriesLabel } from '../lib/incidents';
+import { SHORTCUTS, type ShortcutRow } from '../lib/shortcuts';
 import { useShortcut } from '../lib/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
@@ -23,9 +24,25 @@ export function ShortcutHelp() {
 }
 
 /**
+ * What `row` reads as for a user holding `roles`, or `null` when it is not for them: a single-key
+ * shortcut while they are off, or an action no role of theirs grants. An action limited to some
+ * categories names them (a technician's `A` and `R`: "Acknowledge — Facilities and Environment
+ * incidents", brief § Keyboard); the scope comes from the same maps the API enforces (ADR-0021).
+ */
+function describeRow(row: ShortcutRow, roles: readonly Role[], keysOn: boolean): string | null {
+  if (row.character && !keysOn) return null;
+  if (!row.permission) return row.description;
+  const scope = categoriesInScope(roles, row.permission);
+  if (scope.length === 0) return null;
+  if (scope.length === INCIDENT_CATEGORIES.length) return row.description;
+  return `${row.description} — ${categoriesLabel(scope)} incidents`;
+}
+
+/**
  * Only the keys this user can use: single-key shortcuts while they are on, and actions their roles
- * grant (a viewer sees no `N`, `A` or `R`). The short intro, not the whole list, is the dialog's
- * description, so opening it does not read every row.
+ * grant (a viewer sees no `N`, `A` or `R`; a technician sees `A` and `R` for their categories). The
+ * short intro, not the whole list, is the dialog's description, so opening it does not read every
+ * row.
  */
 function ShortcutHelpDialog() {
   const close = useConsole((s) => s.closeShortcutHelp);
@@ -34,12 +51,11 @@ function ShortcutHelpDialog() {
   const introId = useId();
 
   const groups = SHORTCUTS.map((group) => ({
-    ...group,
-    rows: group.rows.filter(
-      (row) =>
-        (keysOn || !row.character) &&
-        (!row.permission || hasPermission(roles ?? [], row.permission)),
-    ),
+    title: group.title,
+    rows: group.rows.flatMap((row) => {
+      const description = describeRow(row, roles ?? [], keysOn);
+      return description === null ? [] : [{ row, description }];
+    }),
   })).filter((group) => group.rows.length > 0);
 
   return (
@@ -64,7 +80,7 @@ function ShortcutHelpDialog() {
           <div key={group.title}>
             <h3 className={styles.groupTitle}>{group.title}</h3>
             <dl className={styles.rows}>
-              {group.rows.map((row) => (
+              {group.rows.map(({ row, description }) => (
                 <div key={row.description} className={styles.row}>
                   <dt className={styles.keys}>
                     {row.keys.map((key) => (
@@ -73,7 +89,7 @@ function ShortcutHelpDialog() {
                       </Kbd>
                     ))}
                   </dt>
-                  <dd className={styles.description}>{row.description}</dd>
+                  <dd className={styles.description}>{description}</dd>
                 </div>
               ))}
             </dl>

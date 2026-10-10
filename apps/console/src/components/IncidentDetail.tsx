@@ -2,14 +2,14 @@ import type { IncidentDetail as Detail } from '@occ/contracts';
 import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, isRateLimited } from '../api/client';
 import { useCameras, useIncident, useZones } from '../api/queries';
-import { typeLabel } from '../lib/incidents';
+import { categoryLabel, categoryOfType, typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
 import { focusLost } from '../ui/focus';
 import { Icon } from '../ui/Icon';
-import { actorKindIcon, incidentTypeIcon, zoneKindIcon } from '../ui/icons';
+import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../ui/icons';
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { Sheet } from '../ui/Sheet';
 import { Skeleton } from '../ui/Skeleton';
@@ -129,6 +129,8 @@ function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
       </p>
       <TopRow code={<Skeleton className={styles.skeletonCode} />} closeButton={closeButton} />
       <div className={styles.badges}>
+        {/* Severity, type, category and zone: the common loaded head. */}
+        <Skeleton className={styles.skeletonBadge} />
         <Skeleton className={styles.skeletonBadge} />
         <Skeleton className={styles.skeletonBadge} />
         <Skeleton className={styles.skeletonBadge} />
@@ -165,6 +167,8 @@ function DetailBody({
   const zone = zones.find((z) => z.id === incident.zoneId);
   const zoneCameras = (cameras ?? []).filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
   const reporter = incident.source === 'simulator' ? 'system' : 'user';
+  // A type this console does not know has no category to show (ADR-0021, rolling deploys).
+  const category = categoryOfType(incident.type);
 
   return (
     <>
@@ -176,6 +180,12 @@ function DetailBody({
             <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
             {typeLabel(incident.type)}
           </span>
+          {category !== null && (
+            <span className={styles.chip}>
+              <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
+              {categoryLabel(category)}
+            </span>
+          )}
           {zone && (
             <span className={styles.chip}>
               <Icon glyph={zoneKindIcon(zone.kind)} size={16} className={styles.chipIcon} />

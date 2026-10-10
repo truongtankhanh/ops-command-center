@@ -286,6 +286,20 @@ describe('the console', () => {
       await checkPage();
     });
 
+    it('an incident selected, as a technician, out of their scope', async () => {
+      renderConsole({ role: 'technician' });
+
+      // `i1` is a fire alarm: Fire & safety, not one of a technician's categories (ADR-0021).
+      act(() => consoleState().select('i1'));
+
+      expect(screen.getByRole('note')).toHaveTextContent(
+        'Fire & safety incidents are handled by operators',
+      );
+      expect(screen.queryByRole('form', { name: 'Response' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+      await checkPage();
+    });
+
     it('the report form', async () => {
       renderConsole();
 
