@@ -80,10 +80,13 @@ the server, and a sustained breach is an ordinary incident linked to its asset.
     (nullable, the valid range: a reading outside it is dropped, not clamped), `enum_values` (for `enum`),
     `expected_interval_s` (how often a device sends it), `headline` (nullable rank 1–2: shown in the tooltip and the
     Assets list).
-  - `asset`: `code` (unique, `^[A-Z]{2,4}-[0-9]{2,4}$`, e.g. `CT-01`), `name`, `asset_class_id`, `zone_id`,
-    `lng` / `lat` (`double precision NOT NULL`, as `camera` and `incident` store a position; `position: LngLat` in
-    the contract), `elevation_m` (base above ground, e.g. 14 for a roof), `heading_deg` (`0 ≤ heading < 360`,
-    clockwise from true north, as `camera.fov_heading_deg` / `CameraFieldOfView.heading`).
+  - `asset`: `code` (unique, `^[A-Z]{2,4}-[A-Z0-9]{2,6}$`, e.g. `CT-01`, `AHU-C1`, `ICS-DC`; widened in V2-05.1,
+    because the first pattern, `^[A-Z]{2,4}-[0-9]{2,4}$`, refused 19 of the 31 codes the frames draw), `name`,
+    `asset_class_id`, `zone_id`, `lng` / `lat` (`double precision NOT NULL`, as `camera` and `incident` store a
+    position; `position: LngLat` in the contract), `elevation_m` (base above ground, e.g. 14 for a roof),
+    `heading_deg` (`0 ≤ heading < 360`, clockwise from true north, as `camera.fov_heading_deg` /
+    `CameraFieldOfView.heading`; for a model, the direction its front faces, see
+    [asset-classes.md § Demo assets](../design/v2/asset-classes.md#demo-assets)).
   - `zone.height_m` (nullable): the extrusion height of a building shell in 3D. `null` draws the client's default.
     Added by migration `ZoneHeight` in V2-04.1, not by `AssetCatalogue`, because the demo seed needs it first
     (V2-04.2); `AssetCatalogue` must not add it again.
@@ -171,3 +174,8 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
   lead and the facilities lead: V2.0 is read-only. "No write routes" in the Decision stands, and ADR-0019's broker
   ACL ("may publish nothing") is unchanged. Commanding equipment would need a new ADR.
 - **Reviewed against the code** 2026-10-09 (V2-00.10, PR #32): facts corrected in place; no decision changed.
+- **Asset code pattern** (V2-05.1). Decided 2026-10-12 by the tech lead: `asset.code` is
+  `^[A-Z]{2,4}-[A-Z0-9]{2,6}$`, widened from `^[A-Z]{2,4}-[0-9]{2,4}$`. 19 of the 31 codes of the demo frames
+  (`AHU-C1`, `LKS-B3`, `ICS-DC`, …) did not match the first pattern, and the codes are the operators' own tags, so
+  they are kept rather than renamed. No other decision changed; the pattern is a `CHECK` in `AssetCatalogue`, which is
+  why it is settled before that migration exists.
