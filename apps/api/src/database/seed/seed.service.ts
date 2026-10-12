@@ -17,17 +17,38 @@ import {
   CAMERAS,
   CAMPUS_CENTER,
   INCIDENTS,
+  REFERENCE_ZONE_CODES,
   SITE,
   siteFeatures,
   ZONES,
   zoneCenter,
   zonePolygon,
+  type ZoneSeed,
 } from './campus';
 
 const MINUTE = 60_000;
 
 const SEED_ZONE_CODES = ZONES.map((zone) => zone.code);
 const SEED_CAMERA_CODES = CAMERAS.map((camera) => camera.code);
+// The seed zones whose use and height the seed owns. They are buildings (`campus.spec.ts` pins it).
+const USE_SEED_CODES = ZONES.filter((zone) => zone.use !== undefined).map((zone) => zone.code);
+const HEIGHT_SEED_CODES = ZONES.filter((zone) => zone.heightM !== undefined).map(
+  (zone) => zone.code,
+);
+
+const zoneColumns = (seed: ZoneSeed) => {
+  const [centerLng, centerLat] = zoneCenter(seed);
+  return {
+    code: seed.code,
+    name: seed.name,
+    kind: seed.kind,
+    use: seed.use ?? null,
+    heightM: seed.heightM ?? null,
+    polygon: zonePolygon(seed),
+    centerLng,
+    centerLat,
+  };
+};
 
 const fieldOfViewColumns = ({ heading, angle, range }: CameraFieldOfView) => ({
   fovHeadingDeg: heading,
@@ -37,15 +58,19 @@ const fieldOfViewColumns = ({ heading, angle, range }: CameraFieldOfView) => ({
 
 /** What a top-up added to an already seeded demo campus. */
 interface TopUp {
+  zones: number;
+  zoneUses: number;
+  zoneHeights: number;
   siteFeatures: number;
   fieldsOfView: number;
 }
 
 /**
  * Seeds the reference campus when `SEED_ON_BOOT` is on: all of it into an empty database, or the
- * parts added since (the site plan, camera fields of view) into a database seeded before them, so a
- * demo volume upgrades by restarting (ADR-0017). A top-up only fills what is missing — it never
- * changes a value already there — and only on the reference campus.
+ * parts added since (the site plan, camera fields of view, the zones of the expanded campus and the
+ * use and height of their buildings) into a database seeded before them, so a demo volume upgrades
+ * by restarting (ADR-0017). A top-up only fills what is missing — it never changes a value already
+ * there — and only on the reference campus.
  */
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -77,9 +102,10 @@ export class SeedService implements OnApplicationBootstrap {
         `Seeded ${ZONES.length} zones, ${CAMERAS.length} cameras, ${INCIDENTS.length} incidents ` +
           `and the site plan`,
       );
-    } else if (outcome && (outcome.siteFeatures > 0 || outcome.fieldsOfView > 0)) {
+    } else if (outcome && Object.values(outcome).some((count) => count > 0)) {
       this.logger.log(
-        `Topped up the seeded campus: ${outcome.siteFeatures} site plan features, ` +
+        `Topped up the seeded campus: ${outcome.zones} zones, ${outcome.zoneUses} zone uses, ` +
+          `${outcome.zoneHeights} zone heights, ${outcome.siteFeatures} site plan features, ` +
           `${outcome.fieldsOfView} camera fields of view`,
       );
     }
@@ -88,17 +114,7 @@ export class SeedService implements OnApplicationBootstrap {
   async seed(manager: EntityManager, now: Date): Promise<void> {
     const zones = new Map<string, ZoneEntity>();
     for (const seed of ZONES) {
-      const [lng, lat] = zoneCenter(seed);
-      const zone = await manager.save(
-        manager.create(ZoneEntity, {
-          code: seed.code,
-          name: seed.name,
-          kind: seed.kind,
-          polygon: zonePolygon(seed),
-          centerLng: lng,
-          centerLat: lat,
-        }),
-      );
+      const zone = await manager.save(manager.create(ZoneEntity, zoneColumns(seed)));
       zones.set(seed.code, zone);
     }
 
@@ -162,12 +178,23 @@ export class SeedService implements OnApplicationBootstrap {
 
   /**
    * Lock-free check that a boot has nothing to seed, so an up-to-date demo boot never queues on the
-   * seed lock. A database that is not the reference campus has no site plan from the seed, so it
-   * fails this check and takes the lock, then `topUp` finds nothing to do.
+   * seed lock. A database that is not the reference campus lacks some seed zone, so it fails this
+   * check and takes the lock, then `topUp` finds nothing to do.
    */
   private async isComplete(manager: EntityManager): Promise<boolean> {
     if ((await manager.count(ZoneEntity)) === 0) return false;
     if ((await manager.count(SiteEntity)) === 0) return false;
+    const seedZones = await manager.count(ZoneEntity, { where: { code: In(SEED_ZONE_CODES) } });
+    if (seedZones < SEED_ZONE_CODES.length) return false;
+    // `kind` as in `topUpZones`: a seed zone an operator re-typed is never filled in, so it must
+    // not keep the campus "incomplete" and send every boot to the lock.
+    const zonesWithoutValues = await manager.count(ZoneEntity, {
+      where: [
+        { code: In(USE_SEED_CODES), kind: 'building', use: IsNull() },
+        { code: In(HEIGHT_SEED_CODES), kind: 'building', heightM: IsNull() },
+      ],
+    });
+    if (zonesWithoutValues > 0) return false;
     const camerasWithoutFov = await manager.count(CameraEntity, {
       where: { code: In(SEED_CAMERA_CODES), fovHeadingDeg: IsNull() },
     });
@@ -175,13 +202,18 @@ export class SeedService implements OnApplicationBootstrap {
   }
 
   /**
-   * Adds what a campus seeded before the site plan and camera fields of view lacks. `null` when the
-   * database is not the reference campus: the seed's data would not belong there.
+   * Adds what a campus seeded before the expanded zones, the site plan and camera fields of view
+   * lacks. `null` when the database is not the reference campus: the seed's data would not belong
+   * there. That is the nine zones of the first campus, not every zone seeded since (a volume
+   * seeded before the expanded zones has only those nine).
    */
   private async topUp(manager: EntityManager): Promise<TopUp | null> {
-    const seedZones = await manager.count(ZoneEntity, { where: { code: In(SEED_ZONE_CODES) } });
-    if (seedZones < SEED_ZONE_CODES.length) return null;
+    const referenceZones = await manager.count(ZoneEntity, {
+      where: { code: In([...REFERENCE_ZONE_CODES]) },
+    });
+    if (referenceZones < REFERENCE_ZONE_CODES.length) return null;
 
+    const zones = await this.topUpZones(manager);
     const hasSite = (await manager.count(SiteEntity)) > 0;
     const featureCount = hasSite ? 0 : await this.seedSitePlan(manager);
 
@@ -195,7 +227,54 @@ export class SeedService implements OnApplicationBootstrap {
       );
       fieldsOfView += result.affected ?? 0;
     }
-    return { siteFeatures: featureCount, fieldsOfView };
+    return { ...zones, siteFeatures: featureCount, fieldsOfView };
+  }
+
+  /**
+   * Inserts the seed zones that are absent and fills the use and height still unknown on those that
+   * exist. A zone that exists is never rewritten otherwise. Only absent codes are inserted, so a
+   * custom zone holding a seed code is left alone and nothing collides with the unique `code`.
+   */
+  private async topUpZones(
+    manager: EntityManager,
+  ): Promise<Pick<TopUp, 'zones' | 'zoneUses' | 'zoneHeights'>> {
+    const present = new Set(
+      (
+        await manager.find(ZoneEntity, {
+          select: { code: true },
+          where: { code: In(SEED_ZONE_CODES) },
+        })
+      ).map((zone) => zone.code),
+    );
+    const missing = ZONES.filter((seed) => !present.has(seed.code));
+    if (missing.length > 0) {
+      await manager.save(missing.map((seed) => manager.create(ZoneEntity, zoneColumns(seed))));
+    }
+
+    let zoneUses = 0;
+    let zoneHeights = 0;
+    for (const seed of ZONES.filter((zone) => present.has(zone.code))) {
+      // Only a value still unknown, and only on the kind the seed gave it: a value set since is
+      // kept, and a zone re-typed since must not get a use, which `zone_use_check` would refuse and
+      // so fail the boot of every replica.
+      if (seed.use !== undefined) {
+        const result = await manager.update(
+          ZoneEntity,
+          { code: seed.code, kind: seed.kind, use: IsNull() },
+          { use: seed.use },
+        );
+        zoneUses += result.affected ?? 0;
+      }
+      if (seed.heightM !== undefined) {
+        const result = await manager.update(
+          ZoneEntity,
+          { code: seed.code, kind: seed.kind, heightM: IsNull() },
+          { heightM: seed.heightM },
+        );
+        zoneHeights += result.affected ?? 0;
+      }
+    }
+    return { zones: missing.length, zoneUses, zoneHeights };
   }
 
   /** Inserts `SITE` with its features; returns how many features. */
