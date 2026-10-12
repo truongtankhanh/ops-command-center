@@ -81,7 +81,9 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
     });
     if (active >= MAX_ACTIVE) return;
 
-    const zones = await this.zones.find();
+    // A zone kind no scenario covers (`utility`, `water` until V2-04.4) is skipped, not drawn:
+    // `pickWeighted` has nothing to return for it, and a draw would cost the tick.
+    const zones = (await this.zones.find()).filter((zone) => scenariosFor(zone.kind).length > 0);
     if (zones.length === 0) return;
     const zone = zones[Math.floor(random() * zones.length)]!;
     const scenario = pickWeighted(scenariosFor(zone.kind), random);

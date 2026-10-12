@@ -79,7 +79,10 @@ Constraints:
   were authored in metres from `CAMPUS_CENTER`; the plan was moved there verbatim from the console. With
   `SEED_ON_BOOT`:
   - an empty database gets everything;
-  - a database seeded before this change gets only what is missing, when every seed zone code exists;
+  - a database seeded before this change gets only what is missing, when every **V1** zone code exists. Since
+    V2-04.2 that is the nine zones of the first campus, frozen as `REFERENCE_ZONE_CODES`, not every zone the seed
+    holds now: the seed also owns the zones of the expanded campus and the `use` and `height_m` of its buildings
+    (ADR-0021, ADR-0018), and tops them up the same way;
   - a boot with nothing to add skips the lock.
 - **Migrations** `SitePlan` (two new tables) and `CameraFieldOfView` (three nullable columns, no default:
   catalog-only) are additive, and their `down` drops what they added.
@@ -97,8 +100,8 @@ Constraints:
     The 404 is also what an older replica answers, because the route does not exist there.
   - Older replicas keep working against the migrated schema.
 - **The demo seed is no longer "once, on an empty database"**: on the reference campus, it fills in what later
-  versions add. A seed camera whose field of view is set back to NULL is filled in again at the next boot. That is
-  acceptable for demo data only.
+  versions add. A seed camera whose field of view is set back to NULL is filled in again at the next boot, and so is
+  a seed building's `use` or `height_m` (V2-04.2). That is acceptable for demo data only.
 - **Reverses UI-09 D1 and D4.** The console's `lib/sitePlan.ts` keeps only the footprint and parking-row rules once the
   console half of IMP-24 lands.
 - **A camera synced from a VMS (OCC-28)** can arrive without an orientation; it simply has no cone.

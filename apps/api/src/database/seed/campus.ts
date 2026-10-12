@@ -5,6 +5,7 @@ import type {
   LngLat,
   SiteFeature,
   ZoneKind,
+  ZoneUse,
 } from '@occ/contracts';
 import { circle, offset, rectangle, roundedRectangle } from '../../common/geo';
 
@@ -14,25 +15,161 @@ import { circle, offset, rectangle, roundedRectangle } from '../../common/geo';
  */
 export const CAMPUS_CENTER: LngLat = [108.4415, 11.953];
 
-interface ZoneSeed {
+export interface ZoneSeed {
   code: string;
   name: string;
   kind: ZoneKind;
+  /** Buildings only (`zone_use_check`). */
+  use?: ZoneUse;
+  /**
+   * Metres above ground of a building's shell, `> 0`. Buildings only by convention: the
+   * `zone_height_check` constraint does not look at the kind.
+   */
+  heightM?: number;
   /** [east, north] metres from the campus centre. */
   at: [number, number];
   size: [number, number];
 }
 
+/**
+ * Append only, and keep the nine zones of the first campus where they are: a top-up never rewrites
+ * the geometry of a zone that exists, so a change to one of them would split fresh and upgraded
+ * volumes. Positions follow `TwinScene.dc.html` (its y axis is south-positive: north = −y).
+ */
 export const ZONES: ZoneSeed[] = [
   { code: 'GATE-MAIN', name: 'Main Gate', kind: 'gate', at: [0, -250], size: [44, 22] },
-  { code: 'BLD-HUB', name: 'Innovation Hub', kind: 'building', at: [-120, 60], size: [90, 60] },
-  { code: 'BLD-LIB', name: 'Library', kind: 'building', at: [40, 120], size: [70, 50] },
-  { code: 'BLD-DC', name: 'Data Center', kind: 'building', at: [175, 40], size: [60, 46] },
-  { code: 'BLD-LHA', name: 'Lecture Hall A', kind: 'building', at: [-60, -110], size: [80, 40] },
-  { code: 'BLD-STU', name: 'Student Center', kind: 'building', at: [110, -95], size: [72, 50] },
+  {
+    code: 'BLD-HUB',
+    name: 'Innovation Hub',
+    kind: 'building',
+    use: 'academic',
+    heightM: 24,
+    at: [-120, 60],
+    size: [90, 60],
+  },
+  {
+    code: 'BLD-LIB',
+    name: 'Library',
+    kind: 'building',
+    use: 'library',
+    heightM: 18,
+    at: [40, 120],
+    size: [70, 50],
+  },
+  {
+    code: 'BLD-DC',
+    name: 'Data Center',
+    kind: 'building',
+    use: 'data_center',
+    heightM: 14,
+    at: [175, 40],
+    size: [60, 46],
+  },
+  {
+    code: 'BLD-LHA',
+    name: 'Lecture Hall A',
+    kind: 'building',
+    use: 'academic',
+    heightM: 16,
+    at: [-60, -110],
+    size: [80, 40],
+  },
+  {
+    code: 'BLD-STU',
+    name: 'Student Center',
+    kind: 'building',
+    use: 'dining',
+    heightM: 12,
+    at: [110, -95],
+    size: [72, 50],
+  },
   { code: 'PRK-WEST', name: 'West Parking', kind: 'parking', at: [-215, -175], size: [90, 70] },
   { code: 'OUT-LAWN', name: 'Central Lawn', kind: 'outdoor', at: [20, 0], size: [110, 70] },
   { code: 'OUT-FIELD', name: 'Sports Field', kind: 'outdoor', at: [-150, 190], size: [120, 70] },
+  {
+    code: 'BLD-LAB',
+    name: 'Science Lab',
+    kind: 'building',
+    use: 'laboratory',
+    heightM: 16,
+    at: [170, 212],
+    size: [90, 64],
+  },
+  {
+    code: 'BLD-DORA',
+    name: 'Dormitory A',
+    kind: 'building',
+    use: 'residential',
+    heightM: 20,
+    at: [80, -181.5],
+    size: [90, 47],
+  },
+  {
+    code: 'BLD-DORB',
+    name: 'Dormitory B',
+    kind: 'building',
+    use: 'residential',
+    heightM: 20,
+    at: [178.5, -181.5],
+    size: [87, 47],
+  },
+  {
+    code: 'BLD-CLINIC',
+    name: 'Health Clinic',
+    kind: 'building',
+    use: 'healthcare',
+    heightM: 10,
+    at: [183.5, -240],
+    size: [77, 56],
+  },
+  {
+    code: 'BLD-SPORTS',
+    name: 'Sports Hall',
+    kind: 'building',
+    use: 'sports_hall',
+    heightM: 14,
+    at: [-40, 207],
+    size: [80, 74],
+  },
+  {
+    code: 'BLD-ADMIN',
+    name: 'Admin Building',
+    kind: 'building',
+    use: 'administration',
+    heightM: 14,
+    at: [-226, -14],
+    size: [92, 68],
+  },
+  {
+    code: 'BLD-SEC',
+    name: 'Security office',
+    kind: 'building',
+    use: 'security_post',
+    heightM: 6,
+    at: [42, -251.5],
+    size: [32, 27],
+  },
+  { code: 'UTL-PLANT', name: 'Utility Plant', kind: 'utility', at: [65, 207], size: [110, 74] },
+  { code: 'WTR-LAKE', name: 'Lake', kind: 'water', at: [-95, -196.5], size: [110, 63] },
+  { code: 'PRK-EAST', name: 'East Parking', kind: 'parking', at: [185, -116], size: [60, 48] },
+  { code: 'GATE-EAST', name: 'East Gate', kind: 'gate', at: [216.5, -55], size: [23, 34] },
+];
+
+/**
+ * The zones of the first demo campus. A database that holds all of them is "the reference campus":
+ * the only kind of database a top-up may add the seed's data to. Frozen on purpose — a code added
+ * to `ZONES` must never be added here, or every volume seeded before it stops being topped up.
+ */
+export const REFERENCE_ZONE_CODES: readonly string[] = [
+  'GATE-MAIN',
+  'BLD-HUB',
+  'BLD-LIB',
+  'BLD-DC',
+  'BLD-LHA',
+  'BLD-STU',
+  'PRK-WEST',
+  'OUT-LAWN',
+  'OUT-FIELD',
 ];
 
 /** [west, east] and [south, north] edges in metres from the campus centre. */

@@ -28,7 +28,7 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
-import { CAMERAS } from '../src/database/seed/campus';
+import { CAMERAS, REFERENCE_ZONE_CODES, ZONES } from '../src/database/seed/campus';
 import { SeedService } from '../src/database/seed/seed.service';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
@@ -57,6 +57,12 @@ describe('Incidents (e2e)', () => {
   let baseUrl: string;
   let socket: Socket<ServerToClientEvents, ClientToServerEvents>;
   let zone: Zone;
+
+  const zonesByCode = async () => {
+    const res = await api(app).get('/api/zones').expect(200);
+    return new Map((res.body as Zone[]).map((z) => [z.code, z]));
+  };
+  const seededZone = (code: string) => ZONES.find((z) => z.code === code)!;
 
   beforeAll(async () => {
     // Start from an empty schema so migrations and seed run exactly as on a fresh install.
@@ -104,15 +110,31 @@ describe('Incidents (e2e)', () => {
     const cameras = await api(app).get('/api/cameras').expect(200);
     const incidents = await api(app).get('/api/incidents').expect(200);
 
-    expect(zones.body).toHaveLength(9);
+    expect(zones.body).toHaveLength(20);
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
 
-    // No zone has a use or a height until the seed sets them (V2-04.2); `null`, not missing, so
+    // Twelve buildings carry a use and a height, the other eight neither; `null`, not missing, so
     // the keys are sent.
-    for (const z of zones.body as Zone[]) {
-      expect([z.code, z.use, z.heightM]).toEqual([z.code, null, null]);
+    const byCode = new Map((zones.body as Zone[]).map((z) => [z.code, z]));
+    for (const seeded of ZONES) {
+      const z = byCode.get(seeded.code);
+      expect([seeded.code, z?.use, z?.heightM]).toEqual([
+        seeded.code,
+        seeded.use ?? null,
+        seeded.heightM ?? null,
+      ]);
     }
+    // Literals as well, so the checks above cannot drift along with the seed.
+    expect(byCode.get('BLD-LAB')).toMatchObject({
+      kind: 'building',
+      use: 'laboratory',
+      heightM: 16,
+    });
+    expect(byCode.get('WTR-LAKE')).toMatchObject({ kind: 'water', use: null, heightM: null });
+    const buildings = (zones.body as Zone[]).filter((z) => z.kind === 'building');
+    expect(buildings).toHaveLength(12);
+    for (const z of buildings) expect([z.code, z.use, z.heightM]).not.toContain(null);
 
     // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
     const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -333,12 +355,12 @@ describe('Incidents (e2e)', () => {
       await expect(setUse('PRK-WEST', 'library')).rejects.toMatchObject(refused);
       await expect(setUse('BLD-LIB', 'garage')).rejects.toMatchObject(refused);
 
-      await setUse('BLD-LIB', 'library');
-      const zones = (await api(app).get('/api/zones').expect(200)).body as Zone[];
-      expect(zones.find((z) => z.code === 'BLD-LIB')?.use).toBe('library');
+      // Not the seeded use, so the assertion shows the write.
+      await setUse('BLD-LIB', 'academic');
+      expect((await zonesByCode()).get('BLD-LIB')?.use).toBe('academic');
     } finally {
       // Later cases and a re-run of the seed expect the campus as seeded.
-      await setUse('BLD-LIB', null);
+      await setUse('BLD-LIB', seededZone('BLD-LIB').use!);
     }
   });
 
@@ -352,12 +374,12 @@ describe('Incidents (e2e)', () => {
       await expect(setHeight('BLD-LIB', 0)).rejects.toMatchObject(refused);
       await expect(setHeight('BLD-LIB', -1)).rejects.toMatchObject(refused);
 
-      await setHeight('BLD-LIB', 18);
-      const zones = (await api(app).get('/api/zones').expect(200)).body as Zone[];
-      expect(zones.find((z) => z.code === 'BLD-LIB')?.heightM).toBe(18);
+      // Not the seeded height, so the assertion shows the write.
+      await setHeight('BLD-LIB', 19);
+      expect((await zonesByCode()).get('BLD-LIB')?.heightM).toBe(19);
     } finally {
       // Later cases and a re-run of the seed expect the campus as seeded.
-      await setHeight('BLD-LIB', null);
+      await setHeight('BLD-LIB', seededZone('BLD-LIB').heightM!);
     }
   });
 
@@ -402,11 +424,15 @@ describe('Incidents (e2e)', () => {
     expect(stream.body).toMatchObject({ kind: 'mock', label: 'CAM-L01 · Library entrance' });
   });
 
-  it('tops up a campus seeded before the site plan and camera fields of view', async () => {
+  it('tops up a campus seeded before the expanded zones and the site plan', async () => {
     const db = app.get(DataSource);
     const seed = app.get(SeedService);
     const custom: CameraFieldOfView = { heading: 45, angle: 30, range: 10 };
     const libraryFov = CAMERAS.find((camera) => camera.code === 'CAM-L01')!.fov;
+    const hub = seededZone('BLD-HUB');
+    const expandedCodes = ZONES.map((z) => z.code).filter(
+      (code) => !REFERENCE_ZONE_CODES.includes(code),
+    );
     const setFov = (code: string, { heading, angle, range }: CameraFieldOfView) =>
       db.query(
         `UPDATE "camera" SET "fov_heading_deg" = $2, "fov_angle_deg" = $3, "fov_range_m" = $4
@@ -419,12 +445,19 @@ describe('Incidents (e2e)', () => {
     };
 
     try {
-      // As seeded before ADR-0017: no site plan, no fields of view, except one an operator set since.
+      // As seeded before V2-04.2 and ADR-0017: the nine first zones without a use or a height, no
+      // site plan, no fields of view. Except what an operator set since: one field of view, and the
+      // hub's use and height, which a top-up must keep.
       await db.query(`DELETE FROM "site"`);
       await db.query(
         `UPDATE "camera" SET "fov_heading_deg" = NULL, "fov_angle_deg" = NULL, "fov_range_m" = NULL`,
       );
       await setFov('CAM-L01', custom);
+      await db.query(`DELETE FROM "zone" WHERE "code" = ANY($1)`, [expandedCodes]);
+      await db.query(`UPDATE "zone" SET "use" = NULL, "height_m" = NULL`);
+      await db.query(
+        `UPDATE "zone" SET "use" = 'administration', "height_m" = 30 WHERE "code" = 'BLD-HUB'`,
+      );
       const missing = await api(app).get('/api/site-plan').expect(404);
       expect(missing.body.message).toBe('Site plan was not found');
 
@@ -435,8 +468,14 @@ describe('Incidents (e2e)', () => {
       for (const [code, fov] of await fieldsOfView()) {
         expect([code, fov]).toEqual([code, code === 'CAM-L01' ? custom : null]);
       }
+      const untouched = await zonesByCode();
+      expect(untouched.size).toBe(REFERENCE_ZONE_CODES.length);
+      for (const z of untouched.values()) {
+        const expected = z.code === 'BLD-HUB' ? ['administration', 30] : [null, null];
+        expect([z.code, z.use, z.heightM]).toEqual([z.code, ...expected]);
+      }
 
-      // The reference campus: the plan comes back, and only unknown fields of view are filled in.
+      // The reference campus: the plan and the zones come back, and only what is unknown is filled.
       await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
       await seed.onApplicationBootstrap();
       const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -446,10 +485,57 @@ describe('Incidents (e2e)', () => {
         const expected = camera.code === 'CAM-L01' ? custom : camera.fov;
         expect([camera.code, filled.get(camera.code)]).toEqual([camera.code, expected]);
       }
+
+      const topped = await zonesByCode();
+      expect(topped.size).toBe(ZONES.length);
+      for (const seeded of ZONES) {
+        const kept = seeded.code === hub.code;
+        const z = topped.get(seeded.code);
+        expect([seeded.code, z?.use, z?.heightM]).toEqual([
+          seeded.code,
+          kept ? 'administration' : (seeded.use ?? null),
+          kept ? 30 : (seeded.heightM ?? null),
+        ]);
+      }
+
+      // Nothing is left to add, so a further boot changes nothing.
+      await seed.onApplicationBootstrap();
+      expect([...(await zonesByCode()).entries()]).toEqual([...topped.entries()]);
     } finally {
-      // Leave a complete campus for later cases, even if an assertion above failed.
+      // Leave a complete campus for later cases, even if an assertion above failed. The hub's use
+      // and height are put back by hand: a top-up keeps a value that is set.
       await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+      await db.query(`UPDATE "zone" SET "use" = $2, "height_m" = $3 WHERE "code" = $1`, [
+        hub.code,
+        hub.use,
+        hub.heightM,
+      ]);
       await setFov('CAM-L01', libraryFov);
+      await seed.onApplicationBootstrap();
+    }
+  });
+
+  it('leaves a seed zone that was re-typed alone', async () => {
+    const db = app.get(DataSource);
+    const seed = app.get(SeedService);
+
+    try {
+      // An operator made the lab an outdoor zone: not a building, so no use. The hub's missing use
+      // makes the boot run a top-up, which must fill the hub and leave the lab as it is
+      // (`zone_use_check` would refuse a use on it and fail the boot).
+      await db.query(
+        `UPDATE "zone" SET "kind" = 'outdoor', "use" = NULL, "height_m" = NULL
+         WHERE "code" = 'BLD-LAB'`,
+      );
+      await db.query(`UPDATE "zone" SET "use" = NULL WHERE "code" = 'BLD-HUB'`);
+
+      await seed.onApplicationBootstrap();
+
+      const zones = await zonesByCode();
+      expect(zones.get('BLD-LAB')).toMatchObject({ kind: 'outdoor', use: null, heightM: null });
+      expect(zones.get('BLD-HUB')?.use).toBe(seededZone('BLD-HUB').use);
+    } finally {
+      await db.query(`UPDATE "zone" SET "kind" = 'building' WHERE "code" = 'BLD-LAB'`);
       await seed.onApplicationBootstrap();
     }
   });
