@@ -1,4 +1,10 @@
-import type { IncidentSeverity, IncidentStatus, IncidentType, LngLat } from './domain';
+import type {
+  IncidentSeverity,
+  IncidentStatus,
+  IncidentType,
+  LngLat,
+  TelemetryValue,
+} from './domain';
 
 /** Request bodies and query shapes of the REST API (`/api`). */
 
@@ -33,6 +39,26 @@ export type StreamDescriptor =
   | { kind: 'mock'; cameraId: string; label: string; seed: number }
   | { kind: 'hls'; cameraId: string; label: string; url: string }
   | { kind: 'webrtc'; cameraId: string; label: string; url: string };
+
+/** One time bucket of an asset's reading history: the last value of each key seen in it. */
+export interface AssetTelemetrySample {
+  /** ISO time of the bucket. */
+  at: string;
+  /** A key with no reading in the bucket is absent, not `null`. */
+  values: Record<string, TelemetryValue>;
+}
+
+/** An asset's reading history over `from`–`to`, from `GET /assets/:code/telemetry`. */
+export interface AssetTelemetry {
+  assetCode: string;
+  /** ISO time: the range actually served, which can differ from the one asked for. */
+  from: string;
+  to: string;
+  /** Width of one bucket, in seconds. */
+  bucketS: number;
+  /** In ascending time. Empty, not an error, for an asset with no readings in the range. */
+  samples: AssetTelemetrySample[];
+}
 
 export interface ApiError {
   statusCode: number;

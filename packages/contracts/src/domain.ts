@@ -225,6 +225,115 @@ export interface SitePlan {
   features: SiteFeature[];
 }
 
+/**
+ * What a telemetry point carries (ADR-0018): a `number` in the point's `unit`, an on/off
+ * `boolean`, or one of the point's `enumValues`.
+ */
+export const TELEMETRY_POINT_KINDS = ['number', 'boolean', 'enum'] as const;
+export type TelemetryPointKind = (typeof TELEMETRY_POINT_KINDS)[number];
+
+/** Which side of a rule's `limit` is a breach: a reading `above` it or `below` it. */
+export const TELEMETRY_COMPARATORS = ['above', 'below'] as const;
+export type TelemetryComparator = (typeof TELEMETRY_COMPARATORS)[number];
+
+/** One reading of one point: a number, a boolean, or one of an `enum` point's values. */
+export type TelemetryValue = number | boolean | string;
+
+/** One thing an asset class measures or reports, as described by the class, not by one asset. */
+export interface TelemetryPoint {
+  /** camelCase and unique within the asset class: `motorTempC`. */
+  key: string;
+  label: string;
+  /** `null` for a point with no unit (a boolean or an enum). */
+  unit: string | null;
+  kind: TelemetryPointKind;
+  /**
+   * Lowest valid value of a `number` point. `null` when there is no lower bound, and for booleans
+   * and enums. A reading outside `min`/`max` is dropped by the API, never clamped.
+   */
+  min: number | null;
+  /** Highest valid value of a `number` point. `null` when there is no upper bound, and as `min`. */
+  max: number | null;
+  /** The values an `enum` point can take. `null` for every other kind. */
+  enumValues: string[] | null;
+  /** How often a device sends this point, in seconds: > 0. A client judges freshness against it. */
+  expectedIntervalS: number;
+  /**
+   * Rank among the class's headline points: 1 or 2. `null` when the point is not a headline, so
+   * it appears in neither the tooltip nor the Assets list.
+   */
+  headline: 1 | 2 | null;
+}
+
+/** The box a neutral placeholder is drawn from, in metres: all three are > 0. */
+export interface AssetFootprint {
+  width: number;
+  depth: number;
+  height: number;
+}
+
+export interface AssetClass {
+  id: string;
+  /** Lower snake case: `cooling_tower`. */
+  code: string;
+  name: string;
+  /**
+   * `/models/<model_key>` of the class's 3D model file (ADR-0020). `null` when the class has no
+   * model: clients draw a neutral box from `footprintM`.
+   */
+  modelUrl: string | null;
+  footprintM: AssetFootprint;
+}
+
+/** A piece of equipment or a sensor at a fixed place on the site. Its readings are not here. */
+export interface Asset {
+  id: string;
+  /** The operators' tag: `CT-01`, `AHU-C1`, `ICS-DC`. */
+  code: string;
+  name: string;
+  class: AssetClass;
+  zoneId: string;
+  position: LngLat;
+  /** Metres of the asset's base above ground: ≥ 0. A roof is the building's `heightM`. */
+  elevationM: number;
+  /**
+   * Degrees clockwise from true north, 0 ≤ heading < 360, as `CameraFieldOfView.heading`. For a
+   * model, the direction its front faces.
+   */
+  headingDeg: number;
+  /** The class's headline points, ordered by `headline` rank: at most two. */
+  headline: TelemetryPoint[];
+}
+
+/**
+ * A threshold rule as one asset sees it: only enabled rules, with an asset's own override
+ * already replacing the class rule of the same `name`.
+ */
+export interface TelemetryRule {
+  name: string;
+  /** The `key` of one of the asset's `number` or `boolean` points. */
+  key: string;
+  comparator: TelemetryComparator;
+  /** The reading that is a breach once passed. A boolean point uses 0.5. */
+  limit: number;
+  /**
+   * The level a reading must pass back before the rule can raise again, on the safe side of
+   * `limit`: `clear ≤ limit` for `above`, `clear ≥ limit` for `below`.
+   */
+  clear: number;
+  /** Seconds a breach must last before it raises an incident: ≥ 0. */
+  forS: number;
+  severity: IncidentSeverity;
+  /** A `facilities` or `environment` type (ADR-0021). The type does not enforce it. */
+  incidentType: IncidentType;
+}
+
+export interface AssetDetail extends Asset {
+  /** Every point of the class, headline or not. */
+  points: TelemetryPoint[];
+  rules: TelemetryRule[];
+}
+
 /** Who caused a timeline entry. */
 export interface Actor {
   kind: ActorKind;
