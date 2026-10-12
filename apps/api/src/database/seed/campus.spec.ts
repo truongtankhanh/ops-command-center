@@ -93,4 +93,44 @@ describe('demo campus seed', () => {
       expect([title, codes.includes(zone)]).toEqual([title, true]);
     }
   });
+
+  it('has twenty cameras with unique codes, the twelve of the first campus first', () => {
+    const cameraCodes = CAMERAS.map((camera) => camera.code);
+    expect(CAMERAS).toHaveLength(20);
+    expect(new Set(cameraCodes).size).toBe(cameraCodes.length);
+    // Appending keeps insertion order, and the e2e top-up case tells the new cameras by position.
+    expect(cameraCodes.slice(0, 12)).toEqual([
+      'CAM-G01',
+      'CAM-G02',
+      'CAM-H01',
+      'CAM-H02',
+      'CAM-L01',
+      'CAM-D01',
+      'CAM-D02',
+      'CAM-A01',
+      'CAM-S01',
+      'CAM-P01',
+      'CAM-P02',
+      'CAM-F01',
+    ]);
+  });
+
+  it('gives every camera a field of view the camera table accepts', () => {
+    for (const { code, name, fov } of CAMERAS) {
+      // `camera.code` is varchar(32), `name` varchar(120), and `camera_field_of_view_check`.
+      expect([code, code.length <= 32, name.length <= 120]).toEqual([code, true, true]);
+      expect([code, fov.heading >= 0 && fov.heading < 360]).toEqual([code, true]);
+      expect([code, fov.heading % 5]).toEqual([code, 0]);
+      expect([code, fov.angle > 0 && fov.angle <= 360]).toEqual([code, true]);
+      expect([code, fov.range > 0]).toEqual([code, true]);
+    }
+  });
+
+  it('covers every building with a camera but three the design draws none for', () => {
+    const covered = new Set(CAMERAS.map((camera) => camera.zone));
+    const uncovered = ZONES.filter(
+      (zone) => zone.kind === 'building' && !covered.has(zone.code),
+    ).map((zone) => zone.code);
+    expect(uncovered.sort()).toEqual(['BLD-ADMIN', 'BLD-SEC', 'BLD-SPORTS']);
+  });
 });

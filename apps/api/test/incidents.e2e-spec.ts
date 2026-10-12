@@ -111,7 +111,7 @@ describe('Incidents (e2e)', () => {
     const incidents = await api(app).get('/api/incidents').expect(200);
 
     expect(zones.body).toHaveLength(20);
-    expect(cameras.body).toHaveLength(12);
+    expect(cameras.body).toHaveLength(20);
     expect(incidents.body).toHaveLength(5);
 
     // Twelve buildings carry a use and a height, the other eight neither; `null`, not missing, so
@@ -156,6 +156,22 @@ describe('Incidents (e2e)', () => {
     for (const camera of cameras.body as Camera[]) expect(camera.fieldOfView).not.toBeNull();
     const loadingBay = (cameras.body as Camera[]).find((camera) => camera.code === 'CAM-D02');
     expect(loadingBay?.fieldOfView).toEqual({ heading: 290, angle: 90, range: 40 });
+    // Literals for the cameras of the expanded campus, as for its zones above.
+    const byCamera = new Map((cameras.body as Camera[]).map((camera) => [camera.code, camera]));
+    expect(byCamera.get('CAM-L03')).toMatchObject({
+      name: 'Science Lab, level 2',
+      zoneId: byCode.get('BLD-LAB')?.id,
+      online: true,
+      fieldOfView: { heading: 55, angle: 90, range: 50 },
+    });
+    expect(byCamera.get('CAM-R06')).toMatchObject({
+      zoneId: byCode.get('BLD-DORB')?.id,
+      online: false,
+    });
+    // Every building has a camera but three the design draws none for.
+    const watched = new Set((cameras.body as Camera[]).map((camera) => camera.zoneId));
+    const unwatched = buildings.filter((z) => !watched.has(z.id)).map((z) => z.code);
+    expect(unwatched.sort()).toEqual(['BLD-ADMIN', 'BLD-SEC', 'BLD-SPORTS']);
     // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
     expect(await app.get(DataSource).getRepository(OutboxEntity).count()).toBe(0);
 
@@ -433,6 +449,8 @@ describe('Incidents (e2e)', () => {
     const expandedCodes = ZONES.map((z) => z.code).filter(
       (code) => !REFERENCE_ZONE_CODES.includes(code),
     );
+    // The twelve cameras of the first campus come first (`campus.spec.ts` pins the order).
+    const newCameraCodes = CAMERAS.slice(12).map((camera) => camera.code);
     const setFov = (code: string, { heading, angle, range }: CameraFieldOfView) =>
       db.query(
         `UPDATE "camera" SET "fov_heading_deg" = $2, "fov_angle_deg" = $3, "fov_range_m" = $4
@@ -446,13 +464,15 @@ describe('Incidents (e2e)', () => {
 
     try {
       // As seeded before V2-04.2 and ADR-0017: the nine first zones without a use or a height, no
-      // site plan, no fields of view. Except what an operator set since: one field of view, and the
-      // hub's use and height, which a top-up must keep.
+      // site plan, the twelve first cameras without a field of view. Except what an operator set
+      // since: one field of view, and the hub's use and height, which a top-up must keep.
       await db.query(`DELETE FROM "site"`);
       await db.query(
         `UPDATE "camera" SET "fov_heading_deg" = NULL, "fov_angle_deg" = NULL, "fov_range_m" = NULL`,
       );
       await setFov('CAM-L01', custom);
+      // The new cameras go first: `camera.zone_id` restricts the deletion of the zones they sit on.
+      await db.query(`DELETE FROM "camera" WHERE "code" = ANY($1)`, [newCameraCodes]);
       await db.query(`DELETE FROM "zone" WHERE "code" = ANY($1)`, [expandedCodes]);
       await db.query(`UPDATE "zone" SET "use" = NULL, "height_m" = NULL`);
       await db.query(
@@ -481,6 +501,7 @@ describe('Incidents (e2e)', () => {
       const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
       expect(plan.features).toHaveLength(7);
       const filled = await fieldsOfView();
+      expect(filled.size).toBe(CAMERAS.length);
       for (const camera of CAMERAS) {
         const expected = camera.code === 'CAM-L01' ? custom : camera.fov;
         expect([camera.code, filled.get(camera.code)]).toEqual([camera.code, expected]);
@@ -501,6 +522,7 @@ describe('Incidents (e2e)', () => {
       // Nothing is left to add, so a further boot changes nothing.
       await seed.onApplicationBootstrap();
       expect([...(await zonesByCode()).entries()]).toEqual([...topped.entries()]);
+      expect([...(await fieldsOfView()).entries()]).toEqual([...filled.entries()]);
     } finally {
       // Leave a complete campus for later cases, even if an assertion above failed. The hub's use
       // and height are put back by hand: a top-up keeps a value that is set.
@@ -509,6 +531,70 @@ describe('Incidents (e2e)', () => {
         hub.code,
         hub.use,
         hub.heightM,
+      ]);
+      await setFov('CAM-L01', libraryFov);
+      await seed.onApplicationBootstrap();
+    }
+  });
+
+  it('adds the seed cameras a campus that otherwise looks complete lacks', async () => {
+    const db = app.get(DataSource);
+    const seed = app.get(SeedService);
+    const custom: CameraFieldOfView = { heading: 45, angle: 30, range: 10 };
+    const libraryFov = CAMERAS.find((camera) => camera.code === 'CAM-L01')!.fov;
+    // The twelve cameras of the first campus come first (`campus.spec.ts` pins the order).
+    const added = CAMERAS.slice(12);
+    const kept = added.find((camera) => camera.code === 'CAM-R02')!;
+    const setFov = (code: string, { heading, angle, range }: CameraFieldOfView) =>
+      db.query(
+        `UPDATE "camera" SET "fov_heading_deg" = $2, "fov_angle_deg" = $3, "fov_range_m" = $4
+         WHERE "code" = $1`,
+        [code, heading, angle, range],
+      );
+    const camerasByCode = async () => {
+      const res = await api(app).get('/api/cameras').expect(200);
+      return new Map((res.body as Camera[]).map((camera) => [camera.code, camera]));
+    };
+
+    try {
+      // The site plan, every field of view and the zones are in place, so only cameras are missing:
+      // the state of a volume seeded by V2-04.2. The previous case cannot prove the boot notices
+      // that, as it also deletes the site plan and clears the fields of view. One new camera stays
+      // and an operator changed it; a camera of the first campus has a view of its own.
+      await db.query(`DELETE FROM "camera" WHERE "code" = ANY($1)`, [
+        added.filter((camera) => camera !== kept).map((camera) => camera.code),
+      ]);
+      await db.query(
+        `UPDATE "camera" SET "name" = 'Renamed by operator', "online" = false WHERE "code" = $1`,
+        [kept.code],
+      );
+      await setFov('CAM-L01', custom);
+
+      await seed.onApplicationBootstrap();
+
+      const cameras = await camerasByCode();
+      expect(cameras.size).toBe(CAMERAS.length);
+      for (const camera of added) {
+        const row = cameras.get(camera.code);
+        const changed = camera === kept;
+        expect([camera.code, row?.name, row?.online, row?.fieldOfView]).toEqual([
+          camera.code,
+          changed ? 'Renamed by operator' : camera.name,
+          changed ? false : (camera.online ?? true),
+          camera.fov,
+        ]);
+      }
+      expect(cameras.get('CAM-L01')?.fieldOfView).toEqual(custom);
+
+      // Nothing is left to add, so a further boot changes nothing.
+      await seed.onApplicationBootstrap();
+      expect([...(await camerasByCode()).entries()]).toEqual([...cameras.entries()]);
+    } finally {
+      // A top-up keeps a value that is set, so the operator's changes are put back by hand.
+      await db.query(`UPDATE "camera" SET "name" = $2, "online" = $3 WHERE "code" = $1`, [
+        kept.code,
+        kept.name,
+        kept.online ?? true,
       ]);
       await setFov('CAM-L01', libraryFov);
       await seed.onApplicationBootstrap();
