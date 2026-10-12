@@ -21,6 +21,7 @@ import { OutboxRequestId1791185060000 } from './migrations/1791185060000-outbox-
 import { SitePlan1791280100000 } from './migrations/1791280100000-site-plan';
 import { CameraFieldOfView1791280160000 } from './migrations/1791280160000-camera-field-of-view';
 import { IncidentCategoriesAndZoneUse1791531000000 } from './migrations/1791531000000-incident-categories-and-zone-use';
+import { ZoneHeight1791790200000 } from './migrations/1791790200000-zone-height';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -76,6 +77,7 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
     SitePlan1791280100000,
     CameraFieldOfView1791280160000,
     IncidentCategoriesAndZoneUse1791531000000,
+    ZoneHeight1791790200000,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,

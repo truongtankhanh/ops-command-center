@@ -85,6 +85,8 @@ the server, and a sustained breach is an ordinary incident linked to its asset.
     the contract), `elevation_m` (base above ground, e.g. 14 for a roof), `heading_deg` (`0 ≤ heading < 360`,
     clockwise from true north, as `camera.fov_heading_deg` / `CameraFieldOfView.heading`).
   - `zone.height_m` (nullable): the extrusion height of a building shell in 3D. `null` draws the client's default.
+    Added by migration `ZoneHeight` in V2-04.1, not by `AssetCatalogue`, because the demo seed needs it first
+    (V2-04.2); `AssetCatalogue` must not add it again.
 - **Threshold rules** (`telemetry_rule`): `asset_class_id`, `asset_id` (nullable: set, it overrides the class rule
   with the same `name` for that asset only), `name` (e.g. `Motor over-temperature`), `key`, `comparator` (`above` |
   `below`), `limit`, `clear` (the hysteresis level: the rule re-arms only after the reading passes it back),

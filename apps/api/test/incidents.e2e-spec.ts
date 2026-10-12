@@ -100,8 +100,11 @@ describe('Incidents (e2e)', () => {
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
 
-    // No zone has a use until the seed sets them (V2-04.2); `null`, not missing, so the key is sent.
-    for (const z of zones.body as Zone[]) expect([z.code, z.use]).toEqual([z.code, null]);
+    // No zone has a use or a height until the seed sets them (V2-04.2); `null`, not missing, so
+    // the keys are sent.
+    for (const z of zones.body as Zone[]) {
+      expect([z.code, z.use, z.heightM]).toEqual([z.code, null, null]);
+    }
 
     // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
     const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -328,6 +331,25 @@ describe('Incidents (e2e)', () => {
     } finally {
       // Later cases and a re-run of the seed expect the campus as seeded.
       await setUse('BLD-LIB', null);
+    }
+  });
+
+  it('refuses a height that is not positive', async () => {
+    const db = app.get(DataSource);
+    const setHeight = (code: string, heightM: number | null) =>
+      db.query(`UPDATE "zone" SET "height_m" = $2 WHERE "code" = $1`, [code, heightM]);
+    const refused = { code: '23514', constraint: 'zone_height_check' };
+
+    try {
+      await expect(setHeight('BLD-LIB', 0)).rejects.toMatchObject(refused);
+      await expect(setHeight('BLD-LIB', -1)).rejects.toMatchObject(refused);
+
+      await setHeight('BLD-LIB', 18);
+      const zones = (await api(app).get('/api/zones').expect(200)).body as Zone[];
+      expect(zones.find((z) => z.code === 'BLD-LIB')?.heightM).toBe(18);
+    } finally {
+      // Later cases and a re-run of the seed expect the campus as seeded.
+      await setHeight('BLD-LIB', null);
     }
   });
 
