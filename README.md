@@ -129,13 +129,13 @@ Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service fro
 
 ```bash
 pnpm install
-cp apps/api/.env.example apps/api/.env      # point DATABASE_URL at your database
+cp apps/api/.env.example apps/api/.env      # set the DB_* values for your database
 docker compose up -d postgres keycloak      # database on 127.0.0.1:15432, sign-in on 127.0.0.1:18081
 
 pnpm dev                                     # API on :13000 (metrics on :9464), console on :15173
 ```
 
-The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DATABASE_URL`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
+The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DB_PORT`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
 
 The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
@@ -152,7 +152,12 @@ API configuration (`apps/api/.env`):
 | `DEPLOYMENT_ENV`                           | `local`, none in production   | Environment label (`env`) on every log line and metric; staging and production must set it      |
 | `TRUST_PROXY_HOPS`                         | `1`                           | Proxy hops trusted for the client address (nginx); `0` if the API port is exposed (ADR-0012)    |
 | `RATE_LIMIT_ENABLED`                       | `true`                        | Per-user rate limits; may be `false` in development and test, never in production (ADR-0012)    |
-| `DATABASE_URL`                             | —                             | PostgreSQL connection string (`postgres://` or `postgresql://`)                                 |
+| `DB_HOST`                                  | — (required)                  | PostgreSQL host: `localhost` for `pnpm dev`, the service name in Compose                        |
+| `DB_PORT`                                  | `5432`                        | PostgreSQL port (`.env.example` sets `15432`, the Compose loopback port)                        |
+| `DB_NAME`                                  | — (required)                  | Database name; the e2e suites refuse one that does not end in `_test`                           |
+| `DB_USER`                                  | — (required)                  | Database user                                                                                   |
+| `DB_PASSWORD`                              | — (required)                  | Database password, the API's only secret; used as is, no URL-encoding (ADR-0006)                |
+| `DB_SSL`                                   | `false`                       | TLS to the database, with the server certificate verified                                       |
 | `API_DOCS_ENABLED`                         | on, off in production         | Serve Swagger UI and the raw spec at `/api/docs` (ADR-0005)                                     |
 | `SEED_ON_BOOT`                             | `true`, `false` in production | Seed the reference campus when the database is empty; production needs `DEMO_MODE` to enable it |
 | `SIMULATOR_ENABLED`                        | `false`                       | Generate demo incident traffic (`.env.example` and Compose turn it on)                          |
@@ -167,7 +172,7 @@ API configuration (`apps/api/.env`):
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `DEPLOYMENT_ENV` (`demo`), `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (URL-safe, applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND`, `OCC_PUBLIC_URL`, `GRAFANA_PORT` and `GRAFANA_ADMIN_PASSWORD` (demo only) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `DEPLOYMENT_ENV` (`demo`), `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (also the API's `DB_PASSWORD`; applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND`, `OCC_PUBLIC_URL`, `GRAFANA_PORT` and `GRAFANA_ADMIN_PASSWORD` (demo only) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API.
 
 The console listens on `127.0.0.1:18080` only, like Postgres and Keycloak: the demo users' passwords are their usernames, so a console reachable from the network lets anyone on it sign in. To open it from another machine, set both `CONSOLE_BIND=0.0.0.0` and `OCC_PUBLIC_URL` (the address that machine uses, e.g. `http://192.168.1.20:18080`), and only on a network you trust.
 

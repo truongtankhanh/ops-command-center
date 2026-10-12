@@ -78,7 +78,7 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     produces the same readings with no coordination. The default outside production; in production it needs
     `DEMO_MODE=true`, like `CAMERA_SOURCE=mock`.
   - `mqtt`: `MqttTelemetrySource` on MQTT.js, configured by `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` (a second
-    secret beside `DATABASE_URL`, today the only one the API reads; injected per ADR-0006) and `MQTT_CA_FILE`. In
+    secret beside `DB_PASSWORD`, today the only one the API reads; injected per ADR-0006) and `MQTT_CA_FILE`. In
     production `MQTT_URL` must be `mqtts://`, unless `DEMO_MODE`.
   - `off`: no telemetry; the twin shows assets with no readings.
 - **Topics and payload.**

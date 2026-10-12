@@ -909,6 +909,13 @@
             ],
             "type": "string"
           },
+          "heightM": {
+            "type": "number",
+            "nullable": true,
+            "description": "Metres above ground of a building's 3D shell (> 0). `null` when not set: clients draw their\ndefault.",
+            "minimum": 0,
+            "example": 18
+          },
           "polygon": {
             "type": "array",
             "description": "Closed ring of [lng, lat] points",
@@ -931,7 +938,7 @@
             }
           }
         },
-        "required": ["id", "code", "name", "kind", "use", "polygon", "center"]
+        "required": ["id", "code", "name", "kind", "use", "heightM", "polygon", "center"]
       },
       "SitePolygonDto": {
         "type": "object",

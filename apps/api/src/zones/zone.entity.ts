@@ -18,6 +18,9 @@ export class ZoneEntity {
   @Column({ type: 'varchar', length: 16, nullable: true })
   use: ZoneUse | null;
 
+  @Column({ name: 'height_m', type: 'double precision', nullable: true })
+  heightM: number | null;
+
   @Column({ type: 'jsonb' })
   polygon: LngLat[];
 
@@ -41,6 +44,7 @@ export class ZoneEntity {
       name: this.name,
       kind: this.kind,
       use: this.use,
+      heightM: this.heightM,
       polygon: this.polygon,
       center: this.center,
     };

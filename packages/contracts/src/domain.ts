@@ -169,6 +169,11 @@ export interface Zone {
    * `use` as `null`: an API before the `zone.use` column never sends it.
    */
   use?: ZoneUse | null;
+  /**
+   * Metres above ground of a building's shell; `null` is the client's default. A client reads a
+   * missing `heightM` as `null`: an API before the `zone.height_m` column never sends it.
+   */
+  heightM?: number | null;
   /** Closed ring of [lng, lat] points. */
   polygon: LngLat[];
   center: LngLat;

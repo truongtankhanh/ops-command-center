@@ -1,5 +1,6 @@
 import type { DataSourceOptions } from 'typeorm';
 import { CameraEntity } from '../cameras/camera.entity';
+import type { Env } from '../config/env.validation';
 import { IdempotencyKeyEntity } from '../incidents/idempotency-key.entity';
 import { IncidentEventEntity } from '../incidents/incident-event.entity';
 import { IncidentEntity } from '../incidents/incident.entity';
@@ -21,6 +22,7 @@ import { OutboxRequestId1791185060000 } from './migrations/1791185060000-outbox-
 import { SitePlan1791280100000 } from './migrations/1791280100000-site-plan';
 import { CameraFieldOfView1791280160000 } from './migrations/1791280160000-camera-field-of-view';
 import { IncidentCategoriesAndZoneUse1791531000000 } from './migrations/1791531000000-incident-categories-and-zone-use';
+import { ZoneHeight1791790200000 } from './migrations/1791790200000-zone-height';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -55,10 +57,21 @@ export const entities = [
   SiteFeatureEntity,
 ];
 
+/** The part of the validated environment that says where the database is and who connects. */
+export type DatabaseEnv = Pick<
+  Env,
+  'DB_HOST' | 'DB_PORT' | 'DB_NAME' | 'DB_USER' | 'DB_PASSWORD' | 'DB_SSL'
+>;
+
 /** Shared by the Nest app and the TypeORM CLI, so both see the same schema. */
-export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
+export const typeormOptions = (db: DatabaseEnv): DataSourceOptions => ({
   type: 'postgres',
-  url: databaseUrl,
+  host: db.DB_HOST,
+  port: db.DB_PORT,
+  database: db.DB_NAME,
+  username: db.DB_USER,
+  password: db.DB_PASSWORD,
+  ssl: db.DB_SSL,
   poolSize: POOL_SIZE,
   connectTimeoutMS: POOL_WAIT_MS,
   extra: SESSION_TIMEOUTS,
@@ -76,6 +89,7 @@ export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
     SitePlan1791280100000,
     CameraFieldOfView1791280160000,
     IncidentCategoriesAndZoneUse1791531000000,
+    ZoneHeight1791790200000,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,

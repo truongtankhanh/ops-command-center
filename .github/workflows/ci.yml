@@ -27,7 +27,11 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/ops_test
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: ops_test
+      DB_USER: postgres
+      DB_PASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

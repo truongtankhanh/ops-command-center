@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-02
-- **Amended by:** [ADR-0014](0014-structured-logging-and-correlation.md) (`DEPLOYMENT_ENV`; runtime log level)
+- **Amended by:** [ADR-0014](0014-structured-logging-and-correlation.md) (`DEPLOYMENT_ENV`; runtime log level); ticket V2-04.1 (the database connection is `DB_*`, not `DATABASE_URL`)
 
 ## Context
 
@@ -12,9 +12,15 @@ The API validates its environment once, at boot, through the `Env` class (`apps/
 - **The e2e suite read the developer's `.env`.** `AppModule` loads and validates config when it is imported, before `beforeAll` runs, so the suite's own `DATABASE_URL` fallback never applied. The suite then dropped the `public` schema of whatever database `.env` pointed at, which is normally the local development database. Its `SEED_ON_BOOT` / `SIMULATOR_ENABLED` overrides were ignored for the same reason.
 - **The TypeORM CLI bypassed validation.** `data-source.ts` read `DATABASE_URL` raw and silently fell back to a hardcoded local connection string.
 - **Production defaults were demo defaults.** Unset `CAMERA_SOURCE` meant `mock` and unset `SEED_ON_BOOT` meant `true`, even under `NODE_ENV=production`. A deploy that forgot one variable would boot with synthetic cameras and seed the fictional campus into a real database, and nothing would report it.
-- **Nothing said where secrets come from** outside a laptop, or what staging is. The only secret today is the password inside `DATABASE_URL`.
+- **Nothing said where secrets come from** outside a laptop, or what staging is. The only secret today is the database password: `DB_PASSWORD`, which was inside `DATABASE_URL` until V2-04.1.
 
 ## Decision
+
+**Amendment (V2-04.1).** The API connects with `DB_HOST`, `DB_PORT` (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSL` (default `false`, server certificate verified). `DATABASE_URL` is no longer read. A password used as is needs no URL-encoding, and the `_test` guard of the e2e suites compares `DB_NAME` instead of parsing a URL. Host, name, user and password have no default, for the reason in section 2: a deploy that forgot one fails at boot naming it, instead of reaching for a local database. `DB_PASSWORD` is the only secret, and log redaction masks it by key.
+
+Considered: keeping `DATABASE_URL` as a fallback (two ways to configure one thing, with a precedence rule to define and later remove; nothing outside this repository depends on it, because there is no deploy target yet), and `POSTGRES_*` names (they belong to the Postgres image and stay on the `postgres` service; the app's settings stay separate from the image's). Dropping the URL also dropped its query options, such as `?sslmode=require`; `DB_SSL` keeps TLS to the database possible, and any other driver option would need a setting of its own.
+
+**This is breaking** for any environment that sets `DATABASE_URL`: it must set the `DB_*` variables before the new image rolls out, or the API refuses to boot, naming the missing key.
 
 ### 1. One env file per mode, anchored to the API, and real env always wins
 
@@ -24,16 +30,16 @@ Considered: the `@nestjs/config` default (depends on cwd, which was the bug), an
 
 ### 2. One validation path
 
-The TypeORM CLI loads the same file with Node's built-in `process.loadEnvFile` (which never overwrites a variable that is already set) and runs the same `validateEnv` as the app. There is no fallback: a missing or malformed `DATABASE_URL` stops the migration with the same key-naming error. `DATABASE_URL` must be a `postgres://` or `postgresql://` URL.
+The TypeORM CLI loads the same file with Node's built-in `process.loadEnvFile` (which never overwrites a variable that is already set) and runs the same `validateEnv` as the app. There is no fallback: a missing or malformed `DB_*` setting stops the migration with the same key-naming error.
 
-Considered: requiring developers to export `DATABASE_URL` before every migration command (no file loading). It is simpler code, but every developer pays for it on every run.
+Considered: requiring developers to export the database settings before every migration command (no file loading). It is simpler code, but every developer pays for it on every run.
 
 ### 3. Tests never touch a non-test database
 
 - Under Jest, `NODE_ENV=test` selects `.env.test`, copied from the tracked `.env.test.example`.
 - `test/setup-env.ts` runs as Jest `setupFiles`, before the spec imports `AppModule`, so its overrides actually reach `ConfigService`.
 - Before dropping the schema, the suite refuses any database whose name does not end in `_test`.
-- CI keeps injecting a throwaway `…/ops_test` URL and never sees a staging or production secret.
+- CI keeps injecting throwaway `DB_*` values for an `ops_test` database and never sees a staging or production secret.
 
 Considered: `ignoreEnvFile` under test (every developer must export variables by hand, and a stale shell export is easy to miss), and a mocked `ConfigService` (not viable, because the e2e suite needs a real database).
 
@@ -64,7 +70,7 @@ Considered: environment-aware defaults without the opt-in (`CAMERA_SOURCE=mock` 
 
 **Amendment (ADR-0014).** `DEPLOYMENT_ENV` is a label, not a second behaviour axis: it is stamped on every log line as `env` and changes nothing else, so the `APP_ENV` rejection below still stands. It has no default in production, so a staging deploy cannot be tagged `production` by omission.
 
-The image reads environment variables only and contains no `.env`. Whatever runs it (orchestrator, PaaS, secret manager integration) injects `DATABASE_URL` and owns its rotation. The specific secret manager stays open until there is a deploy target; choosing one is a separate decision.
+The image reads environment variables only and contains no `.env`. Whatever runs it (orchestrator, PaaS, secret manager integration) injects the `DB_*` settings (`DB_PASSWORD` is the secret) and owns its rotation. The specific secret manager stays open until there is a deploy target; choosing one is a separate decision.
 
 Considered: an `APP_ENV` variable next to `NODE_ENV` (a second environment axis, and ADR-0005 would have to pick one), adding `staging` to `NODE_ENV` (Express and other libraries treat any value other than `production` as development mode), and choosing a vendor now (no platform to choose for).
 
@@ -78,5 +84,5 @@ Configuration is resolved once at boot (`ConfigModule` with `cache: true`) and i
 
 - A production deploy that forgets a variable fails at boot with the key's name, instead of running with demo behaviour. **This is breaking** for any production deploy that relied on the old defaults: it must set `CAMERA_SOURCE`, and also `DEMO_MODE=true` if it really wants `mock` or seeding.
 - `pnpm test:e2e` needs a one-off local setup (`.env.test` and an `ops_test` database). It can no longer wipe the development database, even if `.env.test` is misconfigured.
-- Migrations fail loudly instead of targeting `localhost` when `DATABASE_URL` is missing.
+- Migrations fail loudly instead of targeting `localhost` when a `DB_*` setting is missing.
 - Revisit when a deploy target exists (choose the secret manager and write it down here), or when a value needs to change without a restart (that would need a lifecycle section with the mechanism and its risk window).

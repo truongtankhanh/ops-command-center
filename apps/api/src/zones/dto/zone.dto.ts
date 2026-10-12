@@ -34,6 +34,15 @@ export class ZoneDto implements Zone {
   @ApiProperty({ enum: ZONE_USES, nullable: true })
   use: ZoneUse | null;
 
+  // The strict bound is in the description, not `exclusiveMinimum`: @nestjs/swagger types it as an
+  // OpenAPI 3.0 boolean, which 3.1 replaced with a number (as in `CameraFieldOfViewDto`).
+  /**
+   * Metres above ground of a building's 3D shell (> 0). `null` when not set: clients draw their
+   * default.
+   */
+  @ApiProperty({ type: Number, nullable: true, minimum: 0, example: 18 })
+  heightM: number | null;
+
   @ApiProperty({
     description: 'Closed ring of [lng, lat] points',
     type: 'array',

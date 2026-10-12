@@ -12,7 +12,7 @@ Constraints:
 - **Runs anywhere, on-prem.** One `docker compose up` must still bring up the whole stack with no cloud dependency, and the demo must work out of the box.
 - **One origin, no CORS.** The console's nginx (and the Vite dev server) serve the console, the REST API and the socket from one origin (ADR-0008).
 - **Several API replicas** behind round-robin (ADR-0008), so the API cannot hold session state.
-- **The only secret is in `DATABASE_URL`** (ADR-0006), and production refuses demo behaviour unless `DEMO_MODE` opts in.
+- **The only secret is `DB_PASSWORD`** (ADR-0006), and production refuses demo behaviour unless `DEMO_MODE` opts in.
 
 ## Options
 

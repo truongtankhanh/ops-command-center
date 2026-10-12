@@ -4,7 +4,10 @@ import { validateEnv } from './env.validation';
 describe('validateEnv', () => {
   const valid = {
     NODE_ENV: 'development',
-    DATABASE_URL: 'postgres://app:placeholder@localhost:5432/ops',
+    DB_HOST: 'localhost',
+    DB_NAME: 'ops',
+    DB_USER: 'app',
+    DB_PASSWORD: 'placeholder',
     OIDC_ISSUER: 'http://localhost:15173/auth/realms/occ',
     OIDC_JWKS_URL: 'http://localhost:18081/auth/realms/occ/protocol/openid-connect/certs',
     OIDC_AUDIENCE: 'occ-api',
@@ -17,34 +20,61 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...valid, NODE_ENV: nodeEnv })).toThrow(/NODE_ENV/);
   });
 
-  describe('DATABASE_URL', () => {
-    it.each([
-      ['a local URL', 'postgres://app:placeholder@localhost:15432/ops'],
-      ['the Compose service host', 'postgres://app:placeholder@postgres:5432/ops'],
-      ['postgresql with options', 'postgresql://app@db.internal:5432/ops?sslmode=require'],
-    ])('accepts %s', (_, url) => {
-      expect(validateEnv({ ...valid, DATABASE_URL: url }).DATABASE_URL).toBe(url);
+  describe('database', () => {
+    it('reads the connection settings, and defaults the port and TLS', () => {
+      expect(validateEnv(valid)).toMatchObject({
+        DB_HOST: 'localhost',
+        DB_PORT: 5432,
+        DB_NAME: 'ops',
+        DB_USER: 'app',
+        DB_PASSWORD: 'placeholder',
+        DB_SSL: false,
+      });
     });
 
-    it.each([
-      ['missing', undefined],
-      ['empty', ''],
-      ['without a scheme', 'localhost:5432/ops'],
-      ['another database scheme', 'mysql://app:placeholder@localhost:3306/ops'],
-      ['an http URL', 'http://localhost:5432/ops'],
-    ])('rejects a value that is %s, naming the key', (_, url) => {
-      expect(() => validateEnv({ ...valid, DATABASE_URL: url })).toThrow(/DATABASE_URL/);
+    it('accepts another port, TLS, and a password with URL-reserved characters', () => {
+      const password = 'p@ss:w/rd%23?';
+
+      expect(
+        validateEnv({ ...valid, DB_PORT: '15432', DB_SSL: 'true', DB_PASSWORD: password }),
+      ).toMatchObject({ DB_PORT: 15432, DB_SSL: true, DB_PASSWORD: password });
     });
 
-    it('never echoes the rejected value', () => {
+    it.each(['DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'])(
+      'requires %s, missing or empty: there is no default database',
+      (name) => {
+        expect(() => validateEnv({ ...valid, [name]: undefined })).toThrow(new RegExp(name));
+        expect(() => validateEnv({ ...valid, [name]: '' })).toThrow(new RegExp(name));
+      },
+    );
+
+    it.each([
+      ['not a number', 'abc'],
+      ['zero', '0'],
+      ['above the range', '65536'],
+    ])('rejects a DB_PORT that is %s, naming the key', (_, port) => {
+      expect(() => validateEnv({ ...valid, DB_PORT: port })).toThrow(/DB_PORT/);
+    });
+
+    it('does not read DATABASE_URL in place of the DB_* settings', () => {
+      expect(() =>
+        validateEnv({
+          ...valid,
+          DB_HOST: undefined,
+          DATABASE_URL: 'postgres://app:placeholder@localhost:5432/ops',
+        }),
+      ).toThrow(/DB_HOST/);
+    });
+
+    it('never echoes the password when another setting is rejected', () => {
       let message = '';
       try {
-        validateEnv({ ...valid, DATABASE_URL: 'mysql://app:value-must-not-leak@localhost/ops' });
+        validateEnv({ ...valid, DB_PASSWORD: 'value-must-not-leak', DB_PORT: 'abc' });
       } catch (error) {
         message = (error as Error).message;
       }
 
-      expect(message).toMatch(/DATABASE_URL/);
+      expect(message).toMatch(/DB_PORT/);
       expect(message).not.toContain('value-must-not-leak');
     });
   });

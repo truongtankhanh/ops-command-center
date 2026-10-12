@@ -21,6 +21,7 @@ const SENSITIVE_KEYS = [
   'id_token',
   'databaseUrl',
   'DATABASE_URL',
+  'DB_PASSWORD',
   'connectionString',
   // Personal data (ADR-0011): the IdP `sub`, logged as `userId`, is the only user identifier.
   'email',
@@ -43,7 +44,7 @@ export const REDACTED = '[REDACTED]';
  * boundary or an escape, and the line stays valid JSON.
  */
 const SECRET_PATTERNS: ReadonlyArray<[RegExp, string]> = [
-  // Credentials in a URL, as in a pg error carrying DATABASE_URL: keep the scheme only.
+  // Credentials in a URL (a connection string, an MQTT URL) in an error: keep the scheme only.
   [/\b([a-z][a-z0-9+.-]*:\/\/)[^\s:@/"\\]+:[^\s@/"\\]+@/gi, `$1${REDACTED}@`],
   [/\bBearer\s+[A-Za-z0-9._~+/=-]+/g, `Bearer ${REDACTED}`],
   // A JWT anywhere, with or without the scheme: header and payload are base64url `eyJ…`.

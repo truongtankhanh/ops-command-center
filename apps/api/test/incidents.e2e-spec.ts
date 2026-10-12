@@ -48,7 +48,7 @@ let token: string;
 const OPERATOR_ACTOR = { kind: 'user', subject: 'e2e-operator', displayName: 'E2E Operator' };
 
 /**
- * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
+ * Runs the real application against a real PostgreSQL database (`DB_*` from `.env.test`
  * or the shell; its name must end in `_test`). The schema is dropped and rebuilt through
  * migrations, then the reference campus is seeded.
  */
@@ -60,9 +60,17 @@ describe('Incidents (e2e)', () => {
 
   beforeAll(async () => {
     // Start from an empty schema so migrations and seed run exactly as on a fresh install.
-    const { DATABASE_URL } = validateEnv(process.env);
-    assertTestDatabase(DATABASE_URL);
-    const admin = await new DataSource({ type: 'postgres', url: DATABASE_URL }).initialize();
+    const db = validateEnv(process.env);
+    assertTestDatabase(db.DB_NAME);
+    const admin = await new DataSource({
+      type: 'postgres',
+      host: db.DB_HOST,
+      port: db.DB_PORT,
+      database: db.DB_NAME,
+      username: db.DB_USER,
+      password: db.DB_PASSWORD,
+      ssl: db.DB_SSL,
+    }).initialize();
     await admin.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
     await admin.destroy();
     token = await signToken();
@@ -100,8 +108,11 @@ describe('Incidents (e2e)', () => {
     expect(cameras.body).toHaveLength(12);
     expect(incidents.body).toHaveLength(5);
 
-    // No zone has a use until the seed sets them (V2-04.2); `null`, not missing, so the key is sent.
-    for (const z of zones.body as Zone[]) expect([z.code, z.use]).toEqual([z.code, null]);
+    // No zone has a use or a height until the seed sets them (V2-04.2); `null`, not missing, so
+    // the keys are sent.
+    for (const z of zones.body as Zone[]) {
+      expect([z.code, z.use, z.heightM]).toEqual([z.code, null, null]);
+    }
 
     // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
     const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -328,6 +339,25 @@ describe('Incidents (e2e)', () => {
     } finally {
       // Later cases and a re-run of the seed expect the campus as seeded.
       await setUse('BLD-LIB', null);
+    }
+  });
+
+  it('refuses a height that is not positive', async () => {
+    const db = app.get(DataSource);
+    const setHeight = (code: string, heightM: number | null) =>
+      db.query(`UPDATE "zone" SET "height_m" = $2 WHERE "code" = $1`, [code, heightM]);
+    const refused = { code: '23514', constraint: 'zone_height_check' };
+
+    try {
+      await expect(setHeight('BLD-LIB', 0)).rejects.toMatchObject(refused);
+      await expect(setHeight('BLD-LIB', -1)).rejects.toMatchObject(refused);
+
+      await setHeight('BLD-LIB', 18);
+      const zones = (await api(app).get('/api/zones').expect(200)).body as Zone[];
+      expect(zones.find((z) => z.code === 'BLD-LIB')?.heightM).toBe(18);
+    } finally {
+      // Later cases and a re-run of the seed expect the campus as seeded.
+      await setHeight('BLD-LIB', null);
     }
   });
 
@@ -1053,8 +1083,7 @@ describe('Incidents (e2e)', () => {
 });
 
 /** The suite drops the whole schema: refuse any database whose name does not end in `_test`. */
-function assertTestDatabase(databaseUrl: string): void {
-  const name = decodeURIComponent(new URL(databaseUrl).pathname.slice(1));
+function assertTestDatabase(name: string): void {
   if (!name.endsWith('_test')) {
     throw new Error(
       `Refusing to drop schema "public" in database "${name}": e2e needs a *_test database.`,
