@@ -403,7 +403,10 @@ interface IncidentSeed {
   resolution?: string;
 }
 
-/** A small history so the console is meaningful before the simulator produces anything. */
+/**
+ * A small history so the console is meaningful before the simulator produces anything. Seeded on an
+ * empty database only: a demo volume seeded earlier sees the newer types through the simulator.
+ */
 export const INCIDENTS: IncidentSeed[] = [
   {
     type: 'equipment_fault',
@@ -451,6 +454,53 @@ export const INCIDENTS: IncidentSeed[] = [
     acknowledgedAfter: 1,
     resolvedAfter: 18,
     resolution: 'First aid given; student collected by family.',
+  },
+  // From V2-04.4, on the expanded zones, so the history shows every category. The first four are
+  // rows of the V2 frames' sample feed; the fallen tree is in none of them (`unverified`).
+  {
+    type: 'fire_alarm',
+    severity: 'high',
+    title: 'Smoke detector — Science Lab, room 204',
+    description: 'Detector triggered on level 2; no flame reported.',
+    zone: 'BLD-LAB',
+    minutesAgo: 5,
+  },
+  {
+    type: 'water_leak',
+    severity: 'medium',
+    title: 'Water leak — Dormitory B, level 3',
+    description: 'Resident reported water coming under a corridor door on level 3.',
+    zone: 'BLD-DORB',
+    minutesAgo: 27,
+    acknowledgedAfter: 3,
+  },
+  {
+    type: 'injury',
+    severity: 'medium',
+    title: 'Student fell — Sports Hall, court 2',
+    description: 'Student fell during a game; conscious and able to speak.',
+    zone: 'BLD-SPORTS',
+    minutesAgo: 11,
+    acknowledgedAfter: 2,
+  },
+  {
+    type: 'blocked_access',
+    severity: 'low',
+    title: 'Fire lane blocked by a delivery van',
+    description: 'Van stopped in the fire lane beside the east parking.',
+    zone: 'PRK-EAST',
+    minutesAgo: 6,
+  },
+  {
+    type: 'fallen_tree',
+    severity: 'medium',
+    title: 'Tree fallen across the field path',
+    description: 'Reported by grounds staff; path closed until the tree is cut away.',
+    zone: 'OUT-FIELD',
+    minutesAgo: 55,
+    acknowledgedAfter: 4,
+    resolvedAfter: 25,
+    resolution: 'Cleared by the grounds crew.',
   },
 ];
 

@@ -7,11 +7,13 @@ import { Test } from '@nestjs/testing';
 import {
   type Camera,
   type CameraFieldOfView,
+  categoryOf,
   type ClientToServerEvents,
   EVENTS_NAMESPACE,
   EventsConnectErrors,
   type EventsHandshakeAuth,
   IDEMPOTENCY_KEY_HEADER,
+  INCIDENT_CATEGORIES,
   INCIDENT_TYPES,
   type Incident,
   IncidentEvents,
@@ -28,7 +30,7 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
-import { CAMERAS, REFERENCE_ZONE_CODES, ZONES } from '../src/database/seed/campus';
+import { CAMERAS, INCIDENTS, REFERENCE_ZONE_CODES, ZONES } from '../src/database/seed/campus';
 import { SeedService } from '../src/database/seed/seed.service';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentEntity } from '../src/incidents/incident.entity';
@@ -112,7 +114,7 @@ describe('Incidents (e2e)', () => {
 
     expect(zones.body).toHaveLength(20);
     expect(cameras.body).toHaveLength(20);
-    expect(incidents.body).toHaveLength(5);
+    expect(incidents.body).toHaveLength(10);
 
     // Twelve buildings carry a use and a height, the other eight neither; `null`, not missing, so
     // the keys are sent.
@@ -135,6 +137,15 @@ describe('Incidents (e2e)', () => {
     const buildings = (zones.body as Zone[]).filter((z) => z.kind === 'building');
     expect(buildings).toHaveLength(12);
     for (const z of buildings) expect([z.code, z.use, z.heightM]).not.toContain(null);
+
+    // The history spans every category (V2-04.4); the frames' water leak is a literal, so the
+    // check cannot drift along with `INCIDENTS`.
+    const history = incidents.body as Incident[];
+    const categories = new Set(history.map((incident) => categoryOf(incident.type)));
+    expect([...categories].sort()).toEqual([...INCIDENT_CATEGORIES].sort());
+    const leak = history.find((incident) => incident.type === 'water_leak');
+    expect(leak).toMatchObject({ severity: 'medium', status: 'acknowledged' });
+    expect(leak?.zoneId).toBe(byCode.get('BLD-DORB')?.id);
 
     // The site plan and every camera's field of view are seeded with the campus (ADR-0017).
     const plan = (await api(app).get('/api/site-plan').expect(200)).body as SitePlan;
@@ -212,7 +223,8 @@ describe('Incidents (e2e)', () => {
       .expect(201);
 
     expect(report.body).toMatchObject({
-      code: 'INC-000006',
+      // The first code after the seeded history (a database sequence).
+      code: `INC-${String(INCIDENTS.length + 1).padStart(6, '0')}`,
       status: 'open',
       source: 'operator',
       position: zone.center,
@@ -473,6 +485,13 @@ describe('Incidents (e2e)', () => {
       await setFov('CAM-L01', custom);
       // The new cameras go first: `camera.zone_id` restricts the deletion of the zones they sit on.
       await db.query(`DELETE FROM "camera" WHERE "code" = ANY($1)`, [newCameraCodes]);
+      // So do the incidents: the history of V2-04.4 sits on the expanded zones, and `incident.zone_id`
+      // restricts their deletion. A campus seeded before them had none; the timeline goes with them
+      // (cascade). The history is seeded on an empty database only, so they do not come back.
+      await db.query(
+        `DELETE FROM "incident" WHERE "zone_id" IN (SELECT "id" FROM "zone" WHERE "code" = ANY($1))`,
+        [expandedCodes],
+      );
       await db.query(`DELETE FROM "zone" WHERE "code" = ANY($1)`, [expandedCodes]);
       await db.query(`UPDATE "zone" SET "use" = NULL, "height_m" = NULL`);
       await db.query(
