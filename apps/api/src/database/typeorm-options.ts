@@ -1,5 +1,6 @@
 import type { DataSourceOptions } from 'typeorm';
 import { CameraEntity } from '../cameras/camera.entity';
+import type { Env } from '../config/env.validation';
 import { IdempotencyKeyEntity } from '../incidents/idempotency-key.entity';
 import { IncidentEventEntity } from '../incidents/incident-event.entity';
 import { IncidentEntity } from '../incidents/incident.entity';
@@ -56,10 +57,21 @@ export const entities = [
   SiteFeatureEntity,
 ];
 
+/** The part of the validated environment that says where the database is and who connects. */
+export type DatabaseEnv = Pick<
+  Env,
+  'DB_HOST' | 'DB_PORT' | 'DB_NAME' | 'DB_USER' | 'DB_PASSWORD' | 'DB_SSL'
+>;
+
 /** Shared by the Nest app and the TypeORM CLI, so both see the same schema. */
-export const typeormOptions = (databaseUrl: string): DataSourceOptions => ({
+export const typeormOptions = (db: DatabaseEnv): DataSourceOptions => ({
   type: 'postgres',
-  url: databaseUrl,
+  host: db.DB_HOST,
+  port: db.DB_PORT,
+  database: db.DB_NAME,
+  username: db.DB_USER,
+  password: db.DB_PASSWORD,
+  ssl: db.DB_SSL,
   poolSize: POOL_SIZE,
   connectTimeoutMS: POOL_WAIT_MS,
   extra: SESSION_TIMEOUTS,

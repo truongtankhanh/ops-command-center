@@ -76,9 +76,42 @@ export class Env {
   @IsBoolean()
   RATE_LIMIT_ENABLED = true;
 
-  /** PostgreSQL connection string; the only secret the API reads. */
-  @IsUrl({ protocols: ['postgres', 'postgresql'], require_protocol: true, require_tld: false })
-  DATABASE_URL: string;
+  /**
+   * PostgreSQL server: `localhost` for `pnpm dev`, the service name in Compose. The database
+   * settings have no defaults, so a deploy that forgot one fails boot instead of reaching for a
+   * local database (ADR-0006). `DB_PORT` is the only exception: PostgreSQL's well-known port.
+   */
+  @IsString()
+  @IsNotEmpty()
+  DB_HOST: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(65535)
+  DB_PORT = 5432;
+
+  /** The database to connect to. The e2e suites refuse a name that does not end in `_test`. */
+  @IsString()
+  @IsNotEmpty()
+  DB_NAME: string;
+
+  @IsString()
+  @IsNotEmpty()
+  DB_USER: string;
+
+  /** The only secret the API reads. Used as is: no URL-encoding, any character is fine. */
+  @IsString()
+  @IsNotEmpty()
+  DB_PASSWORD: string;
+
+  /**
+   * TLS to the database, with the server certificate verified. Off by default: the Compose and
+   * CI databases are plain TCP on a private network; a managed database usually requires it.
+   */
+  @Transform(toBoolean)
+  @IsBoolean()
+  DB_SSL = false;
 
   /**
    * The `iss` every access token must carry: the issuer URL as the browser reaches it. Required in

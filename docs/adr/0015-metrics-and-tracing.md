@@ -46,7 +46,7 @@ Every series carries `service="occ-api"` and `env=<DEPLOYMENT_ENV>`: the same na
 Considered:
 
 - **A route on the main app, `@Public()`, blocked in nginx.** One proxy edit, or a deployment without this nginx, makes it public.
-- **A route protected by a static token.** A second secret next to `DATABASE_URL`, which ADR-0006 keeps as the only one.
+- **A route protected by a static token.** A second secret next to `DB_PASSWORD`, which ADR-0006 keeps as the only one.
 
 ### 4. HTTP RED metrics
 

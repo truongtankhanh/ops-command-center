@@ -5,7 +5,7 @@ import { validateEnv } from '../config/env.validation';
 import { typeormOptions } from './typeorm-options';
 
 // No Nest container here: load the same env file and run the same validation as the app,
-// so a missing or malformed DATABASE_URL fails the same way. A real env var still wins.
+// so a missing or malformed DB_* setting fails the same way. A real env var still wins.
 try {
   process.loadEnvFile(envFilePath());
 } catch (error) {
@@ -13,4 +13,4 @@ try {
 }
 
 /** Entry point for the TypeORM CLI (`pnpm migration:generate`, `pnpm migration:run`). */
-export default new DataSource(typeormOptions(validateEnv(process.env).DATABASE_URL));
+export default new DataSource(typeormOptions(validateEnv(process.env)));

@@ -20,7 +20,7 @@ describe('Metrics (e2e)', () => {
   let token: string;
 
   beforeAll(async () => {
-    assertTestDatabase(validateEnv(process.env).DATABASE_URL);
+    assertTestDatabase(validateEnv(process.env).DB_NAME);
     token = await signToken();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = configureApp(moduleRef.createNestApplication());
@@ -97,8 +97,7 @@ async function requests(target: INestApplication, labels: Labels): Promise<numbe
 }
 
 /** Like the incidents suite: never write to a database whose name does not end in `_test`. */
-function assertTestDatabase(databaseUrl: string): void {
-  const name = decodeURIComponent(new URL(databaseUrl).pathname.slice(1));
+function assertTestDatabase(name: string): void {
   if (!name.endsWith('_test')) {
     throw new Error(`Refusing to run against database "${name}": e2e needs a *_test database.`);
   }

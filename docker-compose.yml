@@ -5,8 +5,8 @@ services:
   postgres:
     image: postgres:17-alpine
     # Demo credentials, not a template for any other environment (ADR-0006). POSTGRES_PASSWORD only
-    # takes effect when the pgdata volume is first created; it must be URL-safe (it is reused in
-    # the api's DATABASE_URL).
+    # takes effect when the pgdata volume is first created; the api reads the same value as its
+    # DB_PASSWORD.
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -28,7 +28,11 @@ services:
       dockerfile: apps/api/Dockerfile
     environment:
       # Demo credentials, same as the postgres service (ADR-0006).
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/ops
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_NAME: ops
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       SEED_ON_BOOT: ${SEED_ON_BOOT:-true}
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}

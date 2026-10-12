@@ -33,7 +33,14 @@ import { ZonesModule } from './zones/zones.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) =>
-        typeormOptions(config.get('DATABASE_URL', { infer: true })),
+        typeormOptions({
+          DB_HOST: config.get('DB_HOST', { infer: true }),
+          DB_PORT: config.get('DB_PORT', { infer: true }),
+          DB_NAME: config.get('DB_NAME', { infer: true }),
+          DB_USER: config.get('DB_USER', { infer: true }),
+          DB_PASSWORD: config.get('DB_PASSWORD', { infer: true }),
+          DB_SSL: config.get('DB_SSL', { infer: true }),
+        }),
       dataSourceFactory: async (options) => {
         const dataSource = await new DataSource(options!).initialize();
         try {

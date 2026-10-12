@@ -48,7 +48,7 @@ let token: string;
 const OPERATOR_ACTOR = { kind: 'user', subject: 'e2e-operator', displayName: 'E2E Operator' };
 
 /**
- * Runs the real application against a real PostgreSQL database (`DATABASE_URL` from `.env.test`
+ * Runs the real application against a real PostgreSQL database (`DB_*` from `.env.test`
  * or the shell; its name must end in `_test`). The schema is dropped and rebuilt through
  * migrations, then the reference campus is seeded.
  */
@@ -60,9 +60,17 @@ describe('Incidents (e2e)', () => {
 
   beforeAll(async () => {
     // Start from an empty schema so migrations and seed run exactly as on a fresh install.
-    const { DATABASE_URL } = validateEnv(process.env);
-    assertTestDatabase(DATABASE_URL);
-    const admin = await new DataSource({ type: 'postgres', url: DATABASE_URL }).initialize();
+    const db = validateEnv(process.env);
+    assertTestDatabase(db.DB_NAME);
+    const admin = await new DataSource({
+      type: 'postgres',
+      host: db.DB_HOST,
+      port: db.DB_PORT,
+      database: db.DB_NAME,
+      username: db.DB_USER,
+      password: db.DB_PASSWORD,
+      ssl: db.DB_SSL,
+    }).initialize();
     await admin.query(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
     await admin.destroy();
     token = await signToken();
@@ -1075,8 +1083,7 @@ describe('Incidents (e2e)', () => {
 });
 
 /** The suite drops the whole schema: refuse any database whose name does not end in `_test`. */
-function assertTestDatabase(databaseUrl: string): void {
-  const name = decodeURIComponent(new URL(databaseUrl).pathname.slice(1));
+function assertTestDatabase(name: string): void {
   if (!name.endsWith('_test')) {
     throw new Error(
       `Refusing to drop schema "public" in database "${name}": e2e needs a *_test database.`,
