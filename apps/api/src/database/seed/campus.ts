@@ -221,7 +221,7 @@ export const SITE: SiteSeed = {
 const CORNER_SEGMENTS = 6;
 const CIRCLE_SEGMENTS = 24;
 
-interface CameraSeed {
+export interface CameraSeed {
   code: string;
   name: string;
   zone: string;
@@ -235,6 +235,10 @@ interface CameraSeed {
   fov: CameraFieldOfView;
 }
 
+/**
+ * Append only, and keep the twelve cameras of the first campus where they are: a top-up never
+ * rewrites a camera that exists, so a change to one of them would split fresh and upgraded volumes.
+ */
 export const CAMERAS: CameraSeed[] = [
   {
     code: 'CAM-G01',
@@ -320,6 +324,69 @@ export const CAMERAS: CameraSeed[] = [
     zone: 'OUT-FIELD',
     at: [-62, 0],
     fov: { heading: 90, angle: 110, range: 70 },
+  },
+  // The cameras of the expanded campus. Where `TwinScene.dc.html` (`S.cams`) places one, `at` is
+  // that position converted as for `ZONES`; the others are placed by the frame that shows them.
+  {
+    code: 'CAM-R01',
+    name: 'Dormitory A lobby',
+    zone: 'BLD-DORA',
+    at: [0, -22.5],
+    fov: { heading: 0, angle: 90, range: 30 },
+  },
+  {
+    code: 'CAM-R02',
+    name: 'Dormitory B lobby',
+    zone: 'BLD-DORB',
+    at: [1.5, -22.5],
+    fov: { heading: 355, angle: 90, range: 30 },
+  },
+  {
+    // Frame 15 ("On this asset"): looks along the corridor at the level 3 leak sensor.
+    code: 'CAM-R05',
+    name: 'Level 3 corridor',
+    zone: 'BLD-DORB',
+    at: [-5, -11.5],
+    fov: { heading: 90, angle: 60, range: 40 },
+  },
+  {
+    // Frame 15 shows it with "No signal"; placed by the lift.
+    code: 'CAM-R06',
+    name: 'Dormitory B stairwell',
+    zone: 'BLD-DORB',
+    at: [-20, 14],
+    online: false,
+    fov: { heading: 125, angle: 90, range: 30 },
+  },
+  {
+    code: 'CAM-L03',
+    name: 'Science Lab, level 2',
+    zone: 'BLD-LAB',
+    at: [-38, -26],
+    fov: { heading: 55, angle: 90, range: 50 },
+  },
+  {
+    // Frame 08 ("On this asset"): the east yard, pointed at the standby generator.
+    code: 'CAM-D03',
+    name: 'Data center east yard',
+    zone: 'BLD-DC',
+    at: [24, 18],
+    fov: { heading: 140, angle: 90, range: 40 },
+  },
+  {
+    code: 'CAM-C01',
+    name: 'Health Clinic exterior',
+    zone: 'BLD-CLINIC',
+    at: [-33.5, -26],
+    fov: { heading: 50, angle: 90, range: 50 },
+  },
+  {
+    // On the zone's south edge, where TwinScene draws it beside the "Utility yard" label.
+    code: 'CAM-U01',
+    name: 'Utility yard',
+    zone: 'UTL-PLANT',
+    at: [1, -37],
+    fov: { heading: 0, angle: 90, range: 40 },
   },
 ];
 

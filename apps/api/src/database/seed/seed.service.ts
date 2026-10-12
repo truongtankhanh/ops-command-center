@@ -23,6 +23,7 @@ import {
   ZONES,
   zoneCenter,
   zonePolygon,
+  type CameraSeed,
   type ZoneSeed,
 } from './campus';
 
@@ -56,21 +57,37 @@ const fieldOfViewColumns = ({ heading, angle, range }: CameraFieldOfView) => ({
   fovRangeM: range,
 });
 
+/** A seed camera's row in `zone`: one definition for a fresh seed and a top-up, so they agree. */
+const cameraColumns = (seed: CameraSeed, zone: ZoneEntity) => {
+  const [lng, lat] = offset(zone.center, ...seed.at);
+  return {
+    code: seed.code,
+    name: seed.name,
+    zoneId: zone.id,
+    lng,
+    lat,
+    streamPath: `campus/${seed.code.toLowerCase()}`,
+    online: seed.online ?? true,
+    ...fieldOfViewColumns(seed.fov),
+  };
+};
+
 /** What a top-up added to an already seeded demo campus. */
 interface TopUp {
   zones: number;
   zoneUses: number;
   zoneHeights: number;
+  cameras: number;
   siteFeatures: number;
   fieldsOfView: number;
 }
 
 /**
  * Seeds the reference campus when `SEED_ON_BOOT` is on: all of it into an empty database, or the
- * parts added since (the site plan, camera fields of view, the zones of the expanded campus and the
- * use and height of their buildings) into a database seeded before them, so a demo volume upgrades
- * by restarting (ADR-0017). A top-up only fills what is missing — it never changes a value already
- * there — and only on the reference campus.
+ * parts added since (the site plan, camera fields of view, the zones of the expanded campus, the
+ * use and height of their buildings and their cameras) into a database seeded before them, so a
+ * demo volume upgrades by restarting (ADR-0017). A top-up only fills what is missing — it never
+ * changes a value already there — and only on the reference campus.
  */
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -105,7 +122,8 @@ export class SeedService implements OnApplicationBootstrap {
     } else if (outcome && Object.values(outcome).some((count) => count > 0)) {
       this.logger.log(
         `Topped up the seeded campus: ${outcome.zones} zones, ${outcome.zoneUses} zone uses, ` +
-          `${outcome.zoneHeights} zone heights, ${outcome.siteFeatures} site plan features, ` +
+          `${outcome.zoneHeights} zone heights, ${outcome.cameras} cameras, ` +
+          `${outcome.siteFeatures} site plan features, ` +
           `${outcome.fieldsOfView} camera fields of view`,
       );
     }
@@ -120,19 +138,7 @@ export class SeedService implements OnApplicationBootstrap {
 
     for (const seed of CAMERAS) {
       const zone = zones.get(seed.zone)!;
-      const [lng, lat] = offset(zone.center, ...seed.at);
-      await manager.save(
-        manager.create(CameraEntity, {
-          code: seed.code,
-          name: seed.name,
-          zoneId: zone.id,
-          lng,
-          lat,
-          streamPath: `campus/${seed.code.toLowerCase()}`,
-          online: seed.online ?? true,
-          ...fieldOfViewColumns(seed.fov),
-        }),
-      );
+      await manager.save(manager.create(CameraEntity, cameraColumns(seed, zone)));
     }
 
     await this.seedSitePlan(manager);
@@ -178,8 +184,8 @@ export class SeedService implements OnApplicationBootstrap {
 
   /**
    * Lock-free check that a boot has nothing to seed, so an up-to-date demo boot never queues on the
-   * seed lock. A database that is not the reference campus lacks some seed zone, so it fails this
-   * check and takes the lock, then `topUp` finds nothing to do.
+   * seed lock. A database that is not the reference campus lacks some seed zone or camera, so it
+   * fails this check and takes the lock, then `topUp` finds nothing to do.
    */
   private async isComplete(manager: EntityManager): Promise<boolean> {
     if ((await manager.count(ZoneEntity)) === 0) return false;
@@ -195,6 +201,11 @@ export class SeedService implements OnApplicationBootstrap {
       ],
     });
     if (zonesWithoutValues > 0) return false;
+    // The check below only sees cameras that exist, so a missing seed camera needs its own count.
+    const seedCameras = await manager.count(CameraEntity, {
+      where: { code: In(SEED_CAMERA_CODES) },
+    });
+    if (seedCameras < SEED_CAMERA_CODES.length) return false;
     const camerasWithoutFov = await manager.count(CameraEntity, {
       where: { code: In(SEED_CAMERA_CODES), fovHeadingDeg: IsNull() },
     });
@@ -202,10 +213,10 @@ export class SeedService implements OnApplicationBootstrap {
   }
 
   /**
-   * Adds what a campus seeded before the expanded zones, the site plan and camera fields of view
-   * lacks. `null` when the database is not the reference campus: the seed's data would not belong
-   * there. That is the nine zones of the first campus, not every zone seeded since (a volume
-   * seeded before the expanded zones has only those nine).
+   * Adds what a campus seeded before the expanded zones and cameras, the site plan and camera
+   * fields of view lacks. `null` when the database is not the reference campus: the seed's data
+   * would not belong there. That is the nine zones of the first campus, not every zone seeded since
+   * (a volume seeded before the expanded zones has only those nine).
    */
   private async topUp(manager: EntityManager): Promise<TopUp | null> {
     const referenceZones = await manager.count(ZoneEntity, {
@@ -214,6 +225,9 @@ export class SeedService implements OnApplicationBootstrap {
     if (referenceZones < REFERENCE_ZONE_CODES.length) return null;
 
     const zones = await this.topUpZones(manager);
+    // After the zones, so every seed camera's zone exists; before the loop below, which then finds
+    // the inserted cameras with their field of view already set.
+    const cameras = await this.topUpCameras(manager);
     const hasSite = (await manager.count(SiteEntity)) > 0;
     const featureCount = hasSite ? 0 : await this.seedSitePlan(manager);
 
@@ -227,7 +241,41 @@ export class SeedService implements OnApplicationBootstrap {
       );
       fieldsOfView += result.affected ?? 0;
     }
-    return { ...zones, siteFeatures: featureCount, fieldsOfView };
+    return { ...zones, cameras, siteFeatures: featureCount, fieldsOfView };
+  }
+
+  /**
+   * Inserts the seed cameras that are absent, with their field of view. A camera that exists is
+   * never rewritten, and only absent codes are inserted, so a custom camera holding a seed code is
+   * left alone and nothing collides with the unique `code`.
+   */
+  private async topUpCameras(manager: EntityManager): Promise<number> {
+    const present = new Set(
+      (
+        await manager.find(CameraEntity, {
+          select: { code: true },
+          where: { code: In(SEED_CAMERA_CODES) },
+        })
+      ).map((camera) => camera.code),
+    );
+    const missing = CAMERAS.filter((seed) => !present.has(seed.code));
+    if (missing.length === 0) return 0;
+
+    // Every seed zone exists here (`topUpZones` inserted the absent ones), as in `seed()`.
+    const zones = new Map(
+      (
+        await manager.find(ZoneEntity, {
+          select: { id: true, code: true, centerLng: true, centerLat: true },
+          where: { code: In(missing.map((seed) => seed.zone)) },
+        })
+      ).map((zone) => [zone.code, zone]),
+    );
+    await manager.save(
+      missing.map((seed) =>
+        manager.create(CameraEntity, cameraColumns(seed, zones.get(seed.zone)!)),
+      ),
+    );
+    return missing.length;
   }
 
   /**

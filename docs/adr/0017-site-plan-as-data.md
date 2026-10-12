@@ -75,14 +75,15 @@ Constraints:
   (`0 ≤ heading < 360`), angle in degrees (`0 < angle ≤ 360`), range in metres (`> 0`). It is stored as
   `fov_heading_deg`, `fov_angle_deg` and `fov_range_m`, with `camera_field_of_view_check`. `null` means unknown, and
   clients draw no cone.
-- **Seed.** The demo campus's plan and the twelve cameras' fields of view live in `database/seed/campus.ts`. They
-  were authored in metres from `CAMPUS_CENTER`; the plan was moved there verbatim from the console. With
-  `SEED_ON_BOOT`:
+- **Seed.** The demo campus's plan and its cameras' fields of view live in `database/seed/campus.ts`: the twelve
+  cameras of the first campus, then those of the expanded campus (V2-04.3). They were authored in metres from
+  `CAMPUS_CENTER`; the plan was moved there verbatim from the console. With `SEED_ON_BOOT`:
   - an empty database gets everything;
   - a database seeded before this change gets only what is missing, when every **V1** zone code exists. Since
     V2-04.2 that is the nine zones of the first campus, frozen as `REFERENCE_ZONE_CODES`, not every zone the seed
     holds now: the seed also owns the zones of the expanded campus and the `use` and `height_m` of its buildings
-    (ADR-0021, ADR-0018), and tops them up the same way;
+    (ADR-0021, ADR-0018), and tops them up the same way. Since V2-04.3 it also inserts the cameras of the expanded
+    campus that are absent, by `code`, with their field of view, and never rewrites a camera that exists;
   - a boot with nothing to add skips the lock.
 - **Migrations** `SitePlan` (two new tables) and `CameraFieldOfView` (three nullable columns, no default:
   catalog-only) are additive, and their `down` drops what they added.
@@ -101,7 +102,9 @@ Constraints:
   - Older replicas keep working against the migrated schema.
 - **The demo seed is no longer "once, on an empty database"**: on the reference campus, it fills in what later
   versions add. A seed camera whose field of view is set back to NULL is filled in again at the next boot, and so is
-  a seed building's `use` or `height_m` (V2-04.2). That is acceptable for demo data only.
+  a seed building's `use` or `height_m` (V2-04.2). A seed camera deleted by hand (SQL; there is no delete route)
+  comes back at the next boot with the seed's name, position and `online` (V2-04.3), while a camera that exists is
+  never rewritten. That is acceptable for demo data only.
 - **Reverses UI-09 D1 and D4.** The console's `lib/sitePlan.ts` keeps only the footprint and parking-row rules once the
   console half of IMP-24 lands.
 - **A camera synced from a VMS (OCC-28)** can arrive without an orientation; it simply has no cone.
