@@ -9,6 +9,12 @@ import { SimulatorService } from './simulator.service';
 const zone = (id: string, kind: ZoneKind) =>
   ({ id, kind, polygon: rectangle([108.4415, 11.953], 40, 40) }) as ZoneEntity;
 
+/**
+ * A kind this build does not know, as an older leader meets after a newer API widened `zone.kind`.
+ * A cast, because every value of `ZONE_KINDS` has a scenario now (`scenarios.spec.ts` keeps it so).
+ */
+const unknownKind = 'heliport' as ZoneKind;
+
 /** A service over fakes: only what `tick` reads. The config and the leader are not used by it. */
 function simulatorOver(zones: ZoneEntity[]) {
   const report = jest.fn().mockResolvedValue(undefined);
@@ -24,18 +30,18 @@ function simulatorOver(zones: ZoneEntity[]) {
     {} as never,
   );
   const warn = jest.spyOn(service['logger'], 'warn').mockImplementation(() => undefined);
-  return { service, report, warn };
+  const debug = jest.spyOn(service['logger'], 'debug').mockImplementation(() => undefined);
+  return { service, report, warn, debug };
 }
 
 describe('SimulatorService.tick', () => {
   it('reports in a zone a scenario covers when `random` points at one none does', async () => {
     const { service, report, warn } = simulatorOver([
-      zone('lake', 'water'),
-      zone('plant', 'utility'),
+      zone('pad', unknownKind),
       zone('hall', 'building'),
     ]);
 
-    // `() => 0` picks the first zone it is offered: the lake, before the guard.
+    // `() => 0` picks the first zone it is offered: the pad, before the guard.
     await service.tick(() => 0);
 
     expect(warn).not.toHaveBeenCalled();
@@ -45,13 +51,49 @@ describe('SimulatorService.tick', () => {
 
   it('reports nothing, and does not warn, when no zone has a scenario', async () => {
     const { service, report, warn } = simulatorOver([
-      zone('lake', 'water'),
-      zone('plant', 'utility'),
+      zone('pad', unknownKind),
+      zone('annex', unknownKind),
     ]);
 
     await service.tick(() => 0);
 
     expect(report).not.toHaveBeenCalled();
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('says once at debug that a kind has no scenario, however many ticks pass', async () => {
+    const { service, debug } = simulatorOver([
+      zone('pad', unknownKind),
+      zone('annex', unknownKind),
+      zone('hall', 'building'),
+    ]);
+
+    await service.tick(() => 0);
+    await service.tick(() => 0);
+
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug.mock.calls[0]![0]).toContain(unknownKind);
+  });
+
+  it('does not mention a kind that has scenarios', async () => {
+    const { service, debug } = simulatorOver([zone('hall', 'building')]);
+
+    await service.tick(() => 0);
+
+    expect(debug).not.toHaveBeenCalled();
+  });
+
+  it('reports in a lake and a plant, which have scenarios since V2-04.4', async () => {
+    for (const [id, kind] of [
+      ['lake', 'water'],
+      ['plant', 'utility'],
+    ] as const) {
+      const { service, report } = simulatorOver([zone(id, kind)]);
+
+      await service.tick(() => 0);
+
+      expect(report).toHaveBeenCalledTimes(1);
+      expect(report.mock.calls[0]![0]).toMatchObject({ zoneId: id });
+    }
   });
 });

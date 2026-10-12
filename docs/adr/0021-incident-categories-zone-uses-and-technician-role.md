@@ -103,9 +103,11 @@ category.
 - **Seed.** The demo campus gains the zones drawn in the brief (dormitories, Science Lab, Health Clinic, Sports
   Hall, Admin Building, Utility Plant, East Gate, East Parking, Lake, Security office) and the simulator draws from
   the full type list, weighted towards the common ones. The simulator picks a zone first and then a scenario allowed
-  for that zone's kind, and fails when none is (`pickWeighted([])` in `scenarios.ts`), so `SCENARIOS` gains a
-  weighted scenario per new type and covers every zone kind in use, including `utility` and `water`. No demo zone
-  uses `sports` yet (the Sports Field stays `outdoor`).
+  for that zone's kind; a zone whose kind has no scenario is skipped and logged once at debug instead of failing,
+  and `SCENARIOS` gains a weighted scenario per new type and covers every `ZONE_KINDS` value, including `utility`,
+  `water` and `sports`. Each scenario takes its type's default severity, so the simulated `fire_alarm` is `high` and
+  the demo's critical incidents come from `fire` and `gas_leak`. No demo zone uses `sports` yet (the Sports Field
+  stays `outdoor`).
 
 ## Consequences
 

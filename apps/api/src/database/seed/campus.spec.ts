@@ -1,3 +1,4 @@
+import { categoryOf, INCIDENT_CATEGORIES } from '@occ/contracts';
 import { CAMERAS, INCIDENTS, REFERENCE_ZONE_CODES, SITE, ZONES, type ZoneSeed } from './campus';
 
 /** A zone's rectangle in metres from the campus centre, as `rectangle()` draws it. */
@@ -92,6 +93,13 @@ describe('demo campus seed', () => {
     for (const { title, zone } of INCIDENTS) {
       expect([title, codes.includes(zone)]).toEqual([title, true]);
     }
+  });
+
+  it('seeds a history of ten incidents that covers every category', () => {
+    // The count is a literal, so a change is a conscious edit (the e2e seed case counts it too).
+    expect(INCIDENTS).toHaveLength(10);
+    const covered = new Set(INCIDENTS.map((incident) => categoryOf(incident.type)));
+    expect([...covered].sort()).toEqual([...INCIDENT_CATEGORIES].sort());
   });
 
   it('has twenty cameras with unique codes, the twelve of the first campus first', () => {

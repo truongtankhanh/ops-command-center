@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { ZoneKind } from '@occ/contracts';
 import { In, LessThan, Repository } from 'typeorm';
 import { randomPointIn } from '../common/geo';
 import type { Env } from '../config/env.validation';
@@ -33,6 +34,7 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
   private readonly logger = new Logger(SimulatorService.name);
   private timer?: NodeJS.Timeout;
   private running = false;
+  private readonly kindsWithoutScenario = new Set<ZoneKind>();
 
   constructor(
     private readonly config: ConfigService<Env, true>,
@@ -81,9 +83,14 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
     });
     if (active >= MAX_ACTIVE) return;
 
-    // A zone kind no scenario covers (`utility`, `water` until V2-04.4) is skipped, not drawn:
-    // `pickWeighted` has nothing to return for it, and a draw would cost the tick.
-    const zones = (await this.zones.find()).filter((zone) => scenariosFor(zone.kind).length > 0);
+    // A zone whose kind no scenario covers is skipped, not drawn: `pickWeighted` has nothing to
+    // return for it, and a draw would cost the tick. Every kind this build knows is covered (a
+    // spec keeps it so), so this is for a kind a newer API wrote and an older leader does not know.
+    const zones: ZoneEntity[] = [];
+    for (const zone of await this.zones.find()) {
+      if (scenariosFor(zone.kind).length > 0) zones.push(zone);
+      else this.noteUncovered(zone.kind);
+    }
     if (zones.length === 0) return;
     const zone = zones[Math.floor(random() * zones.length)]!;
     const scenario = pickWeighted(scenariosFor(zone.kind), random);
@@ -100,6 +107,13 @@ export class SimulatorService implements OnApplicationBootstrap, BeforeApplicati
       'simulator',
       SystemActors.simulator,
     );
+  }
+
+  /** Once per kind: a tick every few seconds would otherwise repeat the line indefinitely. */
+  private noteUncovered(kind: ZoneKind): void {
+    if (this.kindsWithoutScenario.has(kind)) return;
+    this.kindsWithoutScenario.add(kind);
+    this.logger.debug(`No simulator scenario for zone kind "${kind}"; its zones are skipped`);
   }
 
   private async progressExisting(random: () => number, now: Date): Promise<void> {
