@@ -15,24 +15,24 @@ Two classes are modelled in V2.0, as drawn in frames 03 and 08. Every other clas
 as a neutral box from `footprint_m` (frame 15) until it gets a model; its readings, states and incidents work the
 same.
 
-| Class                 | `code`              | Model                   | `footprint_m` (W × D × H) | Demo assets                | Headline 1 · 2                        |
-| --------------------- | ------------------- | ----------------------- | ------------------------- | -------------------------- | ------------------------------------- |
-| Cooling tower         | `cooling_tower`     | `cooling_tower.glb`     | 4.0 × 4.0 × 5.0           | CT-01, CT-02               | `fanSpeedRpm` · `motorTempC`          |
-| Standby generator     | `standby_generator` | `standby_generator.glb` | 6.0 × 2.5 × 3.0           | GEN-01                     | `fuelLevelPct` · `starterBatteryV`    |
-| UPS                   | `ups`               | box                     | 2.0 × 1.0 × 2.0           | UPS-01                     | `loadPct` · `autonomyMin`             |
-| UPS battery bank      | `ups_battery`       | box                     | 3.0 × 0.8 × 2.0           | BAT-01                     | `chargePct` · `roomTempC`             |
-| Precision cooling     | `precision_cooling` | box                     | 1.8 × 0.9 × 2.0           | CRAC-01, CRAC-02           | `supplyAirTempC` · `returnAirTempC`   |
-| Transformer           | `transformer`       | box                     | 2.5 × 2.0 × 2.5           | TR-01                      | `loadPct` · `windingTempC`            |
-| Switchgear            | `switchgear`        | box                     | 6.0 × 1.0 × 2.3           | SWG-01                     | `busVoltageKv` · `currentA`           |
-| Chiller               | `chiller`           | box                     | 6.0 × 2.0 × 2.5           | CH-01                      | `chilledWaterSupplyTempC` · `running` |
-| Air handler           | `air_handler`       | box                     | 4.0 × 2.0 × 2.0           | AHU-C1, AHU-L1, AHU-H1     | `indoorTempC` · `supplyAirTempC`      |
-| Booster pump          | `booster_pump`      | box                     | 1.2 × 0.8 × 1.2           | PMP-S1                     | `dischargePressureBar` · `running`    |
-| Lift                  | `lift`              | box                     | 2.0 × 2.0 × 3.0           | LFT-A2, LFT-B1, LFT-H1     | `carFloor` · `inService`              |
-| Barrier arm           | `barrier_arm`       | box                     | 4.0 × 0.4 × 1.2           | BAR-01, BAR-02             | `armPosition`                         |
-| Fume hood             | `fume_hood`         | box                     | 1.8 × 0.9 × 2.4           | FH-L1                      | `faceVelocityMs` · `sashOpenPct`      |
-| Gas detector          | `gas_detector`      | box                     | 1.4 × 1.4 × 1.4           | GAS-L1                     | `gasPpm`                              |
-| Leak sensor           | `leak_sensor`       | box                     | 1.4 × 1.4 × 1.4           | LKS-B3                     | `leakDetected` · `batteryPct`         |
-| Indoor climate sensor | `indoor_climate`    | box                     | 1.4 × 1.4 × 1.4           | one per building, see note | `indoorTempC` · `humidityPct`         |
+| Class                 | `code`              | Model                   | `footprint_m` (W × D × H) | Demo assets            | Headline 1 · 2                        |
+| --------------------- | ------------------- | ----------------------- | ------------------------- | ---------------------- | ------------------------------------- |
+| Cooling tower         | `cooling_tower`     | `cooling_tower.glb`     | 4.0 × 4.0 × 5.0           | CT-01, CT-02           | `fanSpeedRpm` · `motorTempC`          |
+| Standby generator     | `standby_generator` | `standby_generator.glb` | 6.0 × 2.5 × 3.0           | GEN-01                 | `fuelLevelPct` · `starterBatteryV`    |
+| UPS                   | `ups`               | box                     | 2.0 × 1.0 × 2.0           | UPS-01                 | `loadPct` · `autonomyMin`             |
+| UPS battery bank      | `ups_battery`       | box                     | 3.0 × 0.8 × 2.0           | BAT-01                 | `chargePct` · `roomTempC`             |
+| Precision cooling     | `precision_cooling` | box                     | 1.8 × 0.9 × 2.0           | CRAC-01, CRAC-02       | `supplyAirTempC` · `returnAirTempC`   |
+| Transformer           | `transformer`       | box                     | 2.5 × 2.0 × 2.5           | TR-01                  | `loadPct` · `windingTempC`            |
+| Switchgear            | `switchgear`        | box                     | 6.0 × 1.0 × 2.3           | SWG-01                 | `busVoltageKv` · `currentA`           |
+| Chiller               | `chiller`           | box                     | 6.0 × 2.0 × 2.5           | CH-01                  | `chilledWaterSupplyTempC` · `running` |
+| Air handler           | `air_handler`       | box                     | 4.0 × 2.0 × 2.0           | AHU-C1, AHU-L1, AHU-H1 | `indoorTempC` · `supplyAirTempC`      |
+| Booster pump          | `booster_pump`      | box                     | 1.2 × 0.8 × 1.2           | PMP-S1                 | `dischargePressureBar` · `running`    |
+| Lift                  | `lift`              | box                     | 2.0 × 2.0 × 3.0           | LFT-A2, LFT-B1, LFT-H1 | `carFloor` · `inService`              |
+| Barrier arm           | `barrier_arm`       | box                     | 4.0 × 0.4 × 1.2           | BAR-01, BAR-02         | `armPosition`                         |
+| Fume hood             | `fume_hood`         | box                     | 1.8 × 0.9 × 2.4           | FH-L1                  | `faceVelocityMs` · `sashOpenPct`      |
+| Gas detector          | `gas_detector`      | box                     | 1.4 × 1.4 × 1.4           | GAS-L1                 | `gasPpm`                              |
+| Leak sensor           | `leak_sensor`       | box                     | 1.4 × 1.4 × 1.4           | LKS-B3                 | `leakDetected` · `batteryPct`         |
+| Indoor climate sensor | `indoor_climate`    | box                     | 1.4 × 1.4 × 1.4           | nine, see Demo assets  | `indoorTempC` · `humidityPct`         |
 
 - Footprints are typical outside dimensions. Sensors and detectors use a 1.4 m cube, as frame 15 draws the leak
   sensor, so they stay visible at campus scale.
@@ -40,9 +40,69 @@ same.
   every building by indoor temperature, and air handlers exist in only three of its twelve buildings. Air handlers
   and this class share the key `indoorTempC`, so the overlay reads one key.
 - **Demo assets:** 22 equipment assets, plus one indoor climate sensor per building that has no air handler (nine).
-  The Assets lists of the frames show all 31 (BAT-01, CRAC-01 and CRAC-02 under the Data Center). The sensor codes
-  drawn there, `ICS-` plus the building's zone-code suffix (`ICS-DC`, `ICS-LAB`, …), are sample data: confirm them
-  before V2-05 seeds the sensors.
+  The Assets lists of the frames show all 31 (BAT-01, CRAC-01 and CRAC-02 under the Data Center). The nine sensor
+  codes are final (V2-05.1): `ICS-` plus the building's zone-code suffix after `BLD-` (`ICS-DC`, `ICS-LAB`, …), as
+  frame 02 draws them. The table is in [§ Demo assets](#demo-assets).
+- The Model column is the **logical** file name. ADR-0020 stores `model_key` as a content-hashed
+  `<class>.<hash>.glb`, which exists only after V2-13: `model_key` is `null` for every class in V2-05, and V2-13 sets
+  it for the two modelled ones (a seed top-up), so the catalogue never points at a missing file.
+
+## Demo assets
+
+Decided 2026-10-12 (V2-05.1) by the tech lead. Codes and names are frame 02's Assets list; positions are frame 14 (the
+2D plan) and `mockups/TwinScene.dc.html` (3D); a value that is not read off a frame says `unverified`. V2-05.5 seeds
+this table and V2-13 commissions the models against it.
+
+- **Position.** `East` and `North` are metres from the campus centre, east and north positive: the axes of `ZONES`
+  in `apps/api/src/database/seed/campus.ts` (TwinScene's y is south-positive, so north is −y). Where frame 14 and
+  TwinScene differ, the 3D anchor is used; they differ by at most 2 m.
+- **Elevation** is the base of the asset above ground, in metres. The Data Center roof is 14, its building height;
+  floors are 4 m apart, so level _n_ is 4 (_n_ − 1).
+- **Heading.** `heading_deg` is the direction the model's front (+Z in glTF) faces, clockwise from true north; the
+  footprint's width runs east–west at 0. Nothing in the design is rotated, so every demo asset is 0.
+- **Zone.** An asset stands in, or within 5 m of, its zone's rectangle. `GEN-01` is 3 m east of `BLD-DC`: frame 02
+  groups it under Data Center and the east yard belongs to no zone.
+- **Running and standby.** The console derives the state; the API sends none. Standby when the class's `running`
+  point is `false` (`cooling_tower`, `standby_generator`, `precision_cooling`, `chiller`, `air_handler`,
+  `booster_pump`) or `armPosition` is `down` (`barrier_arm`); every other class is always Running. Fault comes from
+  an open incident and No data from freshness.
+
+| Code         | Name                  | Class               | Zone         | East  | North  | `elevation_m` | `heading_deg` | Basis                                  |
+| ------------ | --------------------- | ------------------- | ------------ | ----- | ------ | ------------- | ------------- | -------------------------------------- |
+| `CT-01`      | Cooling tower 1       | `cooling_tower`     | `BLD-DC`     | 161   | 48     | 14            | 0             | frame 14 = TwinScene anchor; roof      |
+| `CT-02`      | Cooling tower 2       | `cooling_tower`     | `BLD-DC`     | 174   | 48     | 14            | 0             | frame 14 = TwinScene anchor; roof      |
+| `GEN-01`     | Standby generator     | `standby_generator` | `BLD-DC`     | 208   | 46.5   | 0             | 0             | TwinScene anchor; 3 m outside the zone |
+| `UPS-01`     | UPS room              | `ups`               | `BLD-DC`     | 164.5 | 29.7   | 0             | 0             | TwinScene anchor                       |
+| `BAT-01`     | UPS batteries         | `ups_battery`       | `BLD-DC`     | 179.5 | 29.7   | 0             | 0             | TwinScene box centre                   |
+| `CRAC-01`    | Precision cooling 1   | `precision_cooling` | `BLD-DC`     | 190   | 50.2   | 0             | 0             | TwinScene anchor                       |
+| `CRAC-02`    | Precision cooling 2   | `precision_cooling` | `BLD-DC`     | 190   | 42.25  | 0             | 0             | TwinScene box centre                   |
+| `TR-01`      | Main transformer      | `transformer`       | `UTL-PLANT`  | 94    | 216    | 0             | 0             | frame 14; elevation `unverified`       |
+| `SWG-01`     | Main switchgear       | `switchgear`        | `UTL-PLANT`  | 46    | 215    | 0             | 0             | frame 14; elevation `unverified`       |
+| `CH-01`      | Chiller 1             | `chiller`           | `UTL-PLANT`  | 30    | 200    | 0             | 0             | frame 14; elevation `unverified`       |
+| `AHU-C1`     | Air handler           | `air_handler`       | `BLD-CLINIC` | 183   | −240   | 0             | 0             | frame 14; elevation `unverified`       |
+| `AHU-L1`     | Air handler, level 1  | `air_handler`       | `BLD-LIB`    | 40    | 120    | 0             | 0             | frame 14; level 1                      |
+| `AHU-H1`     | Air handler, roof     | `air_handler`       | `BLD-HUB`    | −130  | 60     | 24            | 0             | frame 14; roof (Innovation Hub height) |
+| `PMP-S1`     | Booster pump          | `booster_pump`      | `BLD-STU`    | 110   | −95    | 0             | 0             | frame 14; elevation `unverified`       |
+| `LFT-A2`     | Lift 2                | `lift`              | `BLD-DORA`   | 60    | −172   | 0             | 0             | frame 14; shaft base                   |
+| `LFT-B1`     | Lift 1                | `lift`              | `BLD-DORB`   | 152   | −170   | 0             | 0             | TwinScene anchor; shaft 0–20           |
+| `LFT-H1`     | Passenger lift        | `lift`              | `BLD-HUB`    | −100  | 45     | 0             | 0             | frame 14; shaft base                   |
+| `BAR-01`     | Barrier arm, inbound  | `barrier_arm`       | `GATE-MAIN`  | 8     | −252   | 0             | 0             | frame 14                               |
+| `BAR-02`     | Barrier arm, service  | `barrier_arm`       | `GATE-EAST`  | 216   | −55    | 0             | 0             | frame 14                               |
+| `FH-L1`      | Fume hoods, level 2   | `fume_hood`         | `BLD-LAB`    | 150   | 205    | 4             | 0             | frame 14; level 2                      |
+| `GAS-L1`     | Gas detector          | `gas_detector`      | `BLD-LAB`    | 192   | 200    | 0             | 0             | frame 14; elevation `unverified`       |
+| `LKS-B3`     | Leak sensor, level 3  | `leak_sensor`       | `BLD-DORB`   | 204   | −193   | 8             | 0             | TwinScene anchor; level 3              |
+| `ICS-DC`     | Indoor climate sensor | `indoor_climate`    | `BLD-DC`     | 175   | 40     | 0             | 0             | zone centre; `unverified`              |
+| `ICS-LHA`    | Indoor climate sensor | `indoor_climate`    | `BLD-LHA`    | −60   | −110   | 0             | 0             | zone centre; `unverified`              |
+| `ICS-STU`    | Indoor climate sensor | `indoor_climate`    | `BLD-STU`    | 110   | −95    | 0             | 0             | zone centre; `unverified`              |
+| `ICS-LAB`    | Indoor climate sensor | `indoor_climate`    | `BLD-LAB`    | 170   | 212    | 0             | 0             | zone centre; `unverified`              |
+| `ICS-DORA`   | Indoor climate sensor | `indoor_climate`    | `BLD-DORA`   | 80    | −181.5 | 0             | 0             | zone centre; `unverified`              |
+| `ICS-DORB`   | Indoor climate sensor | `indoor_climate`    | `BLD-DORB`   | 178.5 | −181.5 | 0             | 0             | zone centre; `unverified`              |
+| `ICS-SPORTS` | Indoor climate sensor | `indoor_climate`    | `BLD-SPORTS` | −40   | 207    | 0             | 0             | zone centre; `unverified`              |
+| `ICS-ADMIN`  | Indoor climate sensor | `indoor_climate`    | `BLD-ADMIN`  | −226  | −14    | 0             | 0             | zone centre; `unverified`              |
+| `ICS-SEC`    | Indoor climate sensor | `indoor_climate`    | `BLD-SEC`    | 42    | −251.5 | 0             | 0             | zone centre; `unverified`              |
+
+`PMP-S1` (frame 14) and `ICS-STU` (the zone's centre) land on the same point, `(110, −95)`: the pump is a 1.2 m box
+in a 72 × 50 m building, and the sensor's position is a proposal, so neither is moved.
 
 ## Telemetry points
 
@@ -253,11 +313,16 @@ V2-07 evaluates them; no asset has an override at start. Rules raise only `facil
 
 ## Open questions
 
-1. **Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that
+1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that
    state comes from. Proposal: from the class's `running` point where it has one (`armPosition` `down` for barrier
-   arms), otherwise always Running; Fault comes from an open incident and "No data" from freshness. Decide in V2-05.
+   arms), otherwise always Running; Fault comes from an open incident and "No data" from freshness. Decide in V2-05.~~
+   **Decided 2026-10-12 (V2-05.1):** the proposal. The console derives the state and the API sends none; see
+   § Demo assets.
 2. **Gas detector's gas.** `gasPpm` assumes one gas per detector, named on the asset. If a detector reads several
    gases, the class needs one key per gas. Confirm with the lab safety lead before V2-05.
+   **Deferred 2026-10-12 (V2-05.1):** V2-05 seeds one gas per detector, named on the asset ("Gas detector", as frame
+   02). The gas of `GAS-L1` is for the lab safety lead to name; date not set. Nothing in V2-05 – V2-07 reads `gasPpm`
+   (no rule), so this blocks nothing.
 3. ~~**Switch motion.** The brief's model tree draws `Switch` as "flip X ±35°", but ADR-0020's motions are `spin`,
    `turn`, `slide` and `tint`. This list uses `turn` over [-35, 35]; V2-00.10 aligns the brief.~~
    **Closed 2026-10-09 (V2-00.10):** the brief now draws `Switch` as `turn X ±35°`.
