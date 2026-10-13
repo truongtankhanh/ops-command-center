@@ -36,7 +36,7 @@ export function configureApp(app: INestApplication): INestApplication {
       new DocumentBuilder()
         .setTitle('Ops Command Center API')
         .setDescription(
-          'Incidents, zones, the site plan and cameras. ' +
+          'Incidents, zones, the site plan, cameras and assets. ' +
             'Live updates on the `/events` Socket.IO namespace. ' +
             'Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; ' +
             '`/events` takes the same token in the handshake as `auth.token`. ' +

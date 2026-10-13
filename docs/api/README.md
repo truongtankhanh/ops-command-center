@@ -5,7 +5,7 @@ endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) 
 The running API also serves interactive docs at `/api/docs` in development; in production they are off
 unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
-Last reconciled: 2026-10-06
+Last reconciled: 2026-10-13
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
@@ -13,6 +13,7 @@ Last reconciled: 2026-10-06
 | Zones            | 1         | [zones.md](zones.md)         |
 | Site plan        | 1         | [site-plan.md](site-plan.md) |
 | Cameras          | 2         | [cameras.md](cameras.md)     |
+| Assets           | 2         | [assets.md](assets.md)       |
 | Incidents        | 5         | [incidents.md](incidents.md) |
 | Real-time events | 2         | [events.md](events.md)       |
 
@@ -40,12 +41,12 @@ Last reconciled: 2026-10-06
   resolve to the incident categories a role handles
   ([ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)):
 
-  | Action                                                    | `viewer` | `operator` | `supervisor` |          `technician`           |
-  | --------------------------------------------------------- | :------: | :--------: | :----------: | :-----------------------------: |
-  | Read zones, site plan, cameras, stream URLs, incidents    |   yes    |    yes     |     yes      |               yes               |
-  | Subscribe to `/events`                                    |   yes    |    yes     |     yes      |               yes               |
-  | Report (`incident:report`)                                |    no    |    yes     |     yes      |               yes               |
-  | Acknowledge, resolve (`incident:acknowledge`, `:resolve`) |    no    |    yes     |     yes      | Facilities and Environment only |
+  | Action                                                         | `viewer` | `operator` | `supervisor` |          `technician`           |
+  | -------------------------------------------------------------- | :------: | :--------: | :----------: | :-----------------------------: |
+  | Read zones, site plan, cameras, stream URLs, assets, incidents |   yes    |    yes     |     yes      |               yes               |
+  | Subscribe to `/events`                                         |   yes    |    yes     |     yes      |               yes               |
+  | Report (`incident:report`)                                     |    no    |    yes     |     yes      |               yes               |
+  | Acknowledge, resolve (`incident:acknowledge`, `:resolve`)      |    no    |    yes     |     yes      | Facilities and Environment only |
   - **403** — the token has none of these roles (`No role grants access to this API`), its roles
     lack the permission the endpoint needs (`Missing permission: incident:acknowledge`), or the
     incident's category is outside the role's scope (`Not allowed for this category`). Signing in
@@ -73,7 +74,8 @@ Last reconciled: 2026-10-06
   return **500** with the generic message `Internal server error`; details stay in the server log.
 
 - **Positions** are `[longitude, latitude]` (GeoJSON order). Timestamps are ISO 8601 UTC.
-- **Ids** are UUIDs; a malformed id in a path returns **400**.
+- **Ids** are UUIDs; a malformed id in a path returns **400**. An asset is addressed by its code, not its id
+  (`/api/assets/CT-01`); a code that is not an asset tag returns **400** too.
 - **422** means the request is well-formed but cannot be applied, e.g. an `Idempotency-Key`
   reused with a different body.
 - **Retries.** `POST /api/incidents` accepts an optional `Idempotency-Key` header that makes it
