@@ -16,6 +16,11 @@ import {
 const toBoolean = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? ['true', '1', 'yes'].includes(value.toLowerCase()) : value;
 
+/** `KEY=` in a dotenv file or `${KEY:-}` in Compose means "not set", not an empty value. */
+const emptyToUndefined = ({ value }: { value: unknown }) => (value === '' ? undefined : value);
+
+const usesMqtt = (env: Env): boolean => env.TELEMETRY_SOURCE === 'mqtt';
+
 /** pino's levels, lowest last. Nest's `verbose` is `trace` (ADR-0014). */
 export const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];
@@ -162,13 +167,49 @@ export class Env {
   MEDIAMTX_PROTOCOL: 'hls' | 'webrtc' = 'hls';
 
   /**
-   * Where telemetry readings come from (ADR-0019): `mock` generates them in process, `off` has
-   * none. Unset: `mock`, except in production, which has no default.
+   * Where telemetry readings come from (ADR-0019): `mock` generates them in process, `mqtt`
+   * subscribes to a broker, `off` has none. Unset: `mock`, except in production, which has no
+   * default.
    */
-  @IsIn(['mock', 'off'], {
-    message: '$property must be mock or off; production has no default',
+  @IsIn(['mock', 'mqtt', 'off'], {
+    message: '$property must be mock, mqtt or off; production has no default',
   })
-  TELEMETRY_SOURCE: 'mock' | 'off';
+  TELEMETRY_SOURCE: 'mock' | 'mqtt' | 'off';
+
+  /**
+   * The broker, with `TELEMETRY_SOURCE=mqtt`: `mqtt://` or `mqtts://`. Production wants `mqtts://`
+   * unless `DEMO_MODE`. Credentials belong in the two variables below, not in the URL.
+   */
+  @ValidateIf(usesMqtt)
+  @IsUrl({ protocols: ['mqtt', 'mqtts'], require_protocol: true, require_tld: false })
+  MQTT_URL?: string;
+
+  /** Both or neither of this and `MQTT_PASSWORD`; production requires both unless `DEMO_MODE`. */
+  @ValidateIf(usesMqtt)
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  MQTT_USERNAME?: string;
+
+  /**
+   * The API's second secret, beside `DB_PASSWORD` (ADR-0006). Used as is, never logged, never put
+   * in a message: log redaction masks it by key (`logging/redaction.ts`).
+   */
+  @ValidateIf(usesMqtt)
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  MQTT_PASSWORD?: string;
+
+  /** The broker's CA certificate, for a private CA. Unset: the system trust store. */
+  @ValidateIf(usesMqtt)
+  @Transform(emptyToUndefined)
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  MQTT_CA_FILE?: string;
 
   /**
    * Lets production run demo behaviour (mock cameras, mock telemetry, seeding). Only the Compose
@@ -217,6 +258,16 @@ function productionProblems(env: Env): string[] {
   if (env.TELEMETRY_SOURCE === 'mock') {
     problems.push('TELEMETRY_SOURCE: mock needs DEMO_MODE=true in production');
   }
+  if (env.TELEMETRY_SOURCE === 'mqtt') {
+    // A missing or malformed `MQTT_URL` is already reported by its own validator.
+    if (/^mqtt:/i.test(env.MQTT_URL ?? '')) {
+      problems.push('MQTT_URL: mqtt:// needs DEMO_MODE=true in production; use mqtts://');
+    }
+    // One of the two is `mqttProblems`' (half a credential), so this is "neither".
+    if (env.MQTT_USERNAME === undefined && env.MQTT_PASSWORD === undefined) {
+      problems.push('MQTT_USERNAME / MQTT_PASSWORD: required in production');
+    }
+  }
   if (env.SEED_ON_BOOT) problems.push('SEED_ON_BOOT: true needs DEMO_MODE=true in production');
   // Passwords and tokens travel through the issuer's pages; plain HTTP is for the demo only.
   if (/^http:/i.test(env.OIDC_ISSUER ?? '')) {
@@ -229,6 +280,14 @@ function productionProblems(env: Env): string[] {
 function rateLimitProblems(env: Env): string[] {
   if (env.NODE_ENV !== 'production' || env.RATE_LIMIT_ENABLED !== false) return [];
   return ['RATE_LIMIT_ENABLED: false is not allowed in production'];
+}
+
+/** Not demo behaviour: half a credential is a typo in every environment, so `DEMO_MODE` keeps it. */
+function mqttProblems(env: Env): string[] {
+  if (env.TELEMETRY_SOURCE !== 'mqtt') return [];
+  const hasUsername = env.MQTT_USERNAME !== undefined;
+  const hasPassword = env.MQTT_PASSWORD !== undefined;
+  return hasUsername === hasPassword ? [] : ['MQTT_USERNAME / MQTT_PASSWORD: set both or neither'];
 }
 
 /** The scrape endpoint has its own listener; sharing the API's port would fail at boot anyway. */
@@ -245,6 +304,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     ),
     ...productionProblems(env),
     ...rateLimitProblems(env),
+    ...mqttProblems(env),
     ...metricsProblems(env),
   ];
   if (problems.length > 0) {

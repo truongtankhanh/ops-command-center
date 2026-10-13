@@ -10,3 +10,7 @@ coverage
 
 # Steel pipeline run folders (local working state)
 .steel/
+
+# Personal Claude Code overrides
+CLAUDE.local.md
+.claude/settings.local.json

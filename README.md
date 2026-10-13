@@ -156,7 +156,7 @@ API configuration (`apps/api/.env`):
 | `DB_PORT`                                  | `5432`                        | PostgreSQL port (`.env.example` sets `15432`, the Compose loopback port)                        |
 | `DB_NAME`                                  | — (required)                  | Database name; the e2e suites refuse one that does not end in `_test`                           |
 | `DB_USER`                                  | — (required)                  | Database user                                                                                   |
-| `DB_PASSWORD`                              | — (required)                  | Database password, the API's only secret; used as is, no URL-encoding (ADR-0006)                |
+| `DB_PASSWORD`                              | — (required)                  | Database password, a secret (so is `MQTT_PASSWORD`); used as is, no URL-encoding (ADR-0006)     |
 | `DB_SSL`                                   | `false`                       | TLS to the database, with the server certificate verified                                       |
 | `API_DOCS_ENABLED`                         | on, off in production         | Serve Swagger UI and the raw spec at `/api/docs` (ADR-0005)                                     |
 | `SEED_ON_BOOT`                             | `true`, `false` in production | Seed the reference campus when the database is empty; production needs `DEMO_MODE` to enable it |
@@ -165,7 +165,10 @@ API configuration (`apps/api/.env`):
 | `CAMERA_SOURCE`                            | `mock`, none in production    | `mock` or `mediamtx`; production must set it, and `mock` needs `DEMO_MODE`                      |
 | `MEDIAMTX_HLS_URL` / `MEDIAMTX_WEBRTC_URL` | —                             | Media server endpoints when `CAMERA_SOURCE=mediamtx`                                            |
 | `MEDIAMTX_PROTOCOL`                        | `hls`                         | `hls` or `webrtc`                                                                               |
-| `TELEMETRY_SOURCE`                         | `mock`, none in production    | `mock` or `off`; production must set it, and `mock` needs `DEMO_MODE` (ADR-0019)                |
+| `TELEMETRY_SOURCE`                         | `mock`, none in production    | `mock`, `mqtt` or `off`; production must set it, and `mock` needs `DEMO_MODE` (ADR-0019)        |
+| `MQTT_URL`                                 | — (required with `mqtt`)      | The broker, `mqtt://` or `mqtts://`; production needs `mqtts://` unless `DEMO_MODE`             |
+| `MQTT_USERNAME` / `MQTT_PASSWORD`          | —                             | Broker credentials, both or neither; production needs both unless `DEMO_MODE`; a secret         |
+| `MQTT_CA_FILE`                             | —                             | CA certificate file of a private broker CA; unset: the system trust store                       |
 | `DEMO_MODE`                                | `false`                       | Lets a `production` deploy use mock cameras, telemetry and seeding; only Compose sets it        |
 | `OIDC_ISSUER`                              | — (required)                  | Expected token issuer, as the browser reaches it; production needs `https` unless `DEMO_MODE`   |
 | `OIDC_JWKS_URL`                            | — (required)                  | Where the API fetches the issuer's signing keys; may be an internal address                     |
@@ -173,7 +176,7 @@ API configuration (`apps/api/.env`):
 
 The API validates its configuration at startup and refuses to boot with a clear message when something is wrong. It reads `apps/api/.env` whatever the working directory, and a variable set in the environment always wins over the file. Configuration is fixed for the life of the process. How each environment, staging and production included, gets its values: [ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md).
 
-With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `TELEMETRY_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `DEPLOYMENT_ENV` (`demo`), `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (also the API's `DB_PASSWORD`; applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND`, `OCC_PUBLIC_URL`, `GRAFANA_PORT` and `GRAFANA_ADMIN_PASSWORD` (demo only) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API. `TELEMETRY_SOURCE` accepts `mock` or `off` and defaults to `mock` there.
+With `docker compose up`, `SEED_ON_BOOT`, `CAMERA_SOURCE`, `TELEMETRY_SOURCE`, `SIMULATOR_ENABLED`, `SIMULATOR_INTERVAL_MS`, `DEMO_MODE`, `DEPLOYMENT_ENV` (`demo`), `API_DOCS_ENABLED`, `POSTGRES_PORT`, `POSTGRES_PASSWORD` (also the API's `DB_PASSWORD`; applied only when the `pgdata` volume is created), `KEYCLOAK_PORT`, `CONSOLE_BIND`, `OCC_PUBLIC_URL`, `GRAFANA_PORT` and `GRAFANA_ADMIN_PASSWORD` (demo only) can be overridden from the shell or a root `.env` file. There, `CAMERA_SOURCE` accepts only `mock` until the MediaMTX service (OCC-15) lands, because Compose does not pass the `MEDIAMTX_*` URLs to the API. `TELEMETRY_SOURCE` defaults to `mock` there and accepts `mock` or `off`: `mqtt` fails boot naming `MQTT_URL`, because Compose passes no `MQTT_*` until the `telemetry` profile (V2-06.11).
 
 The console listens on `127.0.0.1:18080` only, like Postgres and Keycloak: the demo users' passwords are their usernames, so a console reachable from the network lets anyone on it sign in. To open it from another machine, set both `CONSOLE_BIND=0.0.0.0` and `OCC_PUBLIC_URL` (the address that machine uses, e.g. `http://192.168.1.20:18080`), and only on a network you trust.
 

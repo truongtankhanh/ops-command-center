@@ -22,6 +22,8 @@ const SENSITIVE_KEYS = [
   'databaseUrl',
   'DATABASE_URL',
   'DB_PASSWORD',
+  // The API's second secret (ADR-0006), read only with `TELEMETRY_SOURCE=mqtt`.
+  'MQTT_PASSWORD',
   'connectionString',
   // Personal data (ADR-0011): the IdP `sub`, logged as `userId`, is the only user identifier.
   'email',

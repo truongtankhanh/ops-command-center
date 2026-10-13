@@ -22,4 +22,19 @@ export class SitesService {
     if (!site) throw new EntityNotFoundError('Site plan');
     return site.toContract();
   }
+
+  /**
+   * The code of the site this deployment serves, for a reader that needs nothing else of it (the
+   * MQTT topics, ADR-0019). The same row `getPlan()` picks, so the two never disagree about which
+   * site it is. `null` while there is no row: a fresh database is seeded after most modules start,
+   * and the reader asks again.
+   */
+  async siteCode(): Promise<string | null> {
+    const [site] = await this.sites.find({
+      select: { code: true },
+      order: { code: 'ASC' },
+      take: 1,
+    });
+    return site?.code ?? null;
+  }
 }

@@ -47,6 +47,20 @@ describe('OffTelemetrySource', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
+  it('has no presence to report: an `onStatus` listener is never called', async () => {
+    const source = new OffTelemetrySource();
+    const listener = jest.fn();
+
+    const unsubscribe = source.onStatus(listener);
+    await source.start();
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(() => {
+      unsubscribe();
+      unsubscribe();
+    }).not.toThrow();
+  });
+
   it('hands out an unsubscribe for readings that is safe to call', () => {
     const unsubscribe = new OffTelemetrySource().onReading(jest.fn());
 

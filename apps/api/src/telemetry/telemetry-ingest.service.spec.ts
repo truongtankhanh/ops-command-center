@@ -3,7 +3,13 @@ import type { TelemetryPoint } from '@occ/contracts';
 import type { AssetsService, CatalogueAsset } from '../assets/assets.service';
 import { TelemetryMetrics } from '../metrics/telemetry.metrics';
 import { TelemetryIngestService } from './telemetry-ingest.service';
-import type { RawReading, TelemetrySource, Unsubscribe, UpstreamState } from './telemetry-source';
+import type {
+  AssetStatusReport,
+  RawReading,
+  TelemetrySource,
+  Unsubscribe,
+  UpstreamState,
+} from './telemetry-source';
 
 /** On a minute boundary, so timers and ISO strings in the cases below read plainly. */
 const NOW = Date.parse('2026-10-13T08:00:00.000Z');
@@ -51,11 +57,12 @@ class FakeSource implements TelemetrySource {
   onStop?: () => Promise<void>;
   private readonly readings = new Set<(reading: RawReading) => void>();
   private readonly upstreams = new Set<(state: UpstreamState) => void>();
+  private readonly statuses = new Set<(report: AssetStatusReport) => void>();
 
   constructor(private readonly events: string[]) {}
 
   get listenerCount(): number {
-    return this.readings.size + this.upstreams.size;
+    return this.readings.size + this.upstreams.size + this.statuses.size;
   }
 
   async start(): Promise<void> {
@@ -84,8 +91,20 @@ class FakeSource implements TelemetrySource {
     };
   }
 
+  onStatus(listener: (report: AssetStatusReport) => void): Unsubscribe {
+    this.events.push('onStatus');
+    this.statuses.add(listener);
+    return () => {
+      this.statuses.delete(listener);
+    };
+  }
+
   emit(raw: RawReading): void {
     for (const listener of [...this.readings]) listener(raw);
+  }
+
+  status(report: AssetStatusReport): void {
+    for (const listener of [...this.statuses]) listener(report);
   }
 
   report(state: UpstreamState): void {
@@ -403,6 +422,28 @@ describe('TelemetryIngestService', () => {
       expect(service.latestState()['CT-01'].online).toBe(true);
     });
 
+    it('goes offline when the source reports a last will, and back on the next reading', async () => {
+      const { service, source, boot } = build();
+      await boot();
+      source.emit(reading('CT-01', { temp: 10 }));
+
+      source.status({ assetCode: 'CT-01', online: false });
+      expect(service.latestState()['CT-01'].online).toBe(false);
+
+      source.emit(reading('CT-01', { temp: 11 }));
+      expect(service.latestState()['CT-01'].online).toBe(true);
+    });
+
+    it('ignores a status from the source for an asset it holds no reading of', async () => {
+      const { service, source, boot } = build();
+      await boot();
+
+      source.status({ assetCode: 'CT-01', online: false });
+      source.status({ assetCode: 'XX-99', online: false });
+
+      expect(service.latestState()).toEqual({});
+    });
+
     it('keeps the values of an offline asset: the server invents nothing', async () => {
       const { service, boot } = build();
       await boot();
@@ -478,7 +519,7 @@ describe('TelemetryIngestService', () => {
 
       await service.onApplicationBootstrap();
 
-      expect(events).toEqual(['onReading', 'onUpstream', 'catalogue', 'start']);
+      expect(events).toEqual(['onReading', 'onUpstream', 'onStatus', 'catalogue', 'start']);
     });
 
     it('ingests what the source emits', async () => {

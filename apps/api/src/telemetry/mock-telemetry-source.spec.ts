@@ -280,6 +280,21 @@ describe('MockTelemetrySource', () => {
     });
   });
 
+  it('has no presence to report: an `onStatus` listener is never called', async () => {
+    const { source } = build(async () => [asset('CT-01', [point('a')])]);
+    const listener = jest.fn();
+
+    const unsubscribe = source.onStatus(listener);
+    await source.start();
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(() => {
+      unsubscribe();
+      unsubscribe();
+    }).not.toThrow();
+  });
+
   it('keeps emitting when a listener throws, and tells the log once', async () => {
     const { source, readings, warn } = build(async () => [asset('CT-01', [point('a')])]);
     source.onReading(() => {
