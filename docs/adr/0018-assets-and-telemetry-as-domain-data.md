@@ -90,13 +90,29 @@ the server, and a sustained breach is an ordinary incident linked to its asset.
   - `zone.height_m` (nullable): the extrusion height of a building shell in 3D. `null` draws the client's default.
     Added by migration `ZoneHeight` in V2-04.1, not by `AssetCatalogue`, because the demo seed needs it first
     (V2-04.2); `AssetCatalogue` must not add it again.
+  - **Final shape** (V2-05.3, migration `AssetCatalogue1791793800000`; no decision changed):
+    - Every table has `created_at timestamptz NOT NULL DEFAULT now()`. Lengths: `model_key` `varchar(64)`, `name`
+      and `label` `varchar(120)`, `unit` `varchar(16)`, `key` `varchar(63)`. Every numeric value (`min`, `max`,
+      `limit`, `clear`, the footprint, `elevation_m`, `heading_deg`, `lng`, `lat`) is `double precision`, so the
+      driver returns a number, not a string. `elevation_m` and `heading_deg` are `NOT NULL` with no default.
+    - Beyond the `CHECK`s above: `enum_values` is set exactly when `kind = 'enum'`, and then is a non-empty JSON
+      array; `min <= max` when both are set; `headline` is unique per class where set.
+    - A rule's `key` must be a point of its class, and an override's asset must be of the rule's class: two
+      composite foreign keys, `(asset_class_id, key)` to `telemetry_point` and `(asset_id, asset_class_id)` to
+      `asset` (backed by `UNIQUE (id, asset_class_id)`); the point one is `DEFERRABLE INITIALLY DEFERRED`, so that
+      deleting a class can cascade to its points and its rules, while a point a rule still watches is refused at
+      commit. A rule cascades with its class and its asset, so
+      `incident.telemetry_rule_id` (V2-07.2) must be `RESTRICT` or `SET NULL`, never `CASCADE`.
+    - Rule names are unique per class among class rules and per asset among overrides (two partial unique indexes).
+    - Constraints are named `uq_<table>_<what>`, `fk_<table>_<what>` and `<table>_<what>_check`.
+    - `limit` is a reserved word in PostgreSQL: raw SQL against `telemetry_rule` quotes it (`"limit"`).
 - **Threshold rules** (`telemetry_rule`): `asset_class_id`, `asset_id` (nullable: set, it overrides the class rule
   with the same `name` for that asset only), `name` (e.g. `Motor over-temperature`), `key`, `comparator` (`above` |
   `below`), `limit`, `clear` (the hysteresis level: the rule re-arms only after the reading passes it back),
   `for_s` (how long the breach must last), `severity`, `incident_type` (a `facilities` or `environment` type,
-  [ADR-0021](0021-incident-categories-zone-uses-and-technician-role.md); default `equipment_fault`), `enabled`. Only
-  `equipment_fault` exists today; the other types and their `CHECK` land with ADR-0021's migration (V2-03), before
-  rules are evaluated (V2-07).
+  [ADR-0021](0021-incident-categories-zone-uses-and-technician-role.md); default `equipment_fault`), `enabled`. The
+  other types and their `CHECK` landed with ADR-0021's migration (`IncidentCategoriesAndZoneUse`, V2-03), before rules
+  are evaluated (V2-07); `AssetCatalogue` writes the nine `facilities` and `environment` literals inline.
   Rules are seeded and changed by migration or
   database write until an editing API exists, the same position as ADR-0017's site plan.
 - **Evaluation.** One replica evaluates rules (the telemetry leader, ADR-0019) as readings arrive. When a reading
