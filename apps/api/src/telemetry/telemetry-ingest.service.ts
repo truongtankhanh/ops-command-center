@@ -101,6 +101,8 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    // The gauge reads the state held here, which is `paused` until the source says otherwise.
+    this.metrics.trackUpstream(() => this.upstreamState.upstream === 'live');
     // Before `start()`: the upstream state is reported once there.
     this.unsubscribers.push(
       this.source.onReading((reading) => {

@@ -511,6 +511,19 @@ describe('TelemetryIngestService', () => {
 
       expect(service.upstream().upstream).toBe('paused');
     });
+
+    it('is what `telemetry_upstream_up` reads on scrape: 0 until the source is live', async () => {
+      const { registry, source, boot } = build();
+      const scrape = async () =>
+        (await registry.getSingleMetric('telemetry_upstream_up')!.get()).values[0]?.value;
+      await boot();
+
+      expect(await scrape()).toBe(0);
+      source.report({ upstream: 'live', since: iso(NOW) });
+      expect(await scrape()).toBe(1);
+      source.report({ upstream: 'paused', since: iso(NOW + 1_000) });
+      expect(await scrape()).toBe(0);
+    });
   });
 
   describe('life cycle', () => {
