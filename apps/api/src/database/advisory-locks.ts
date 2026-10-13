@@ -9,6 +9,7 @@ export const AdvisoryLocks = {
   Migrations: 70_001,
   Seed: 70_002,
   Simulator: 70_003,
+  Telemetry: 70_004,
 } as const;
 
 export type AdvisoryLockName = keyof typeof AdvisoryLocks;

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-03
 - **Amends:** [ADR-0007](0007-transactional-outbox.md) (who emits the published events; the outbox and the relay stay)
+- **Amended by:** [ADR-0019](0019-telemetry-transport.md) (a third long-lived pool connection: the telemetry leader)
 
 ## Context
 
@@ -56,7 +57,7 @@ Option 4, with the changes needed for replicas to coexist.
 - **A per-replica gap.** While one replica's LISTEN connection is down, its consoles miss notifications: per replica, delivery is at-most-once during that window. The outbox rows are safe, and the resync refetch repairs the consoles once the connection is back. Consoles on other replicas are unaffected. `GET /api/health/ready` reports the listener's state, so a replica whose connection is down is not ready (ADR-0013).
 - **Cost.**
   - One primary-key read of up to 100 rows per batch on each replica.
-  - Up to two pool connections per replica held for the process's lifetime (listener, simulator leader), out of 10.
+  - Up to three pool connections per replica held for the process's lifetime (listener, simulator leader, telemetry leader), out of 10.
   - Two replicas plus a CLI run and admin stay around 35 of PostgreSQL's default 100 connections.
 - **No long-polling fallback.** A client behind a proxy that blocks WebSocket cannot connect. Both clients in this repo already use WebSocket only.
 - **Boot.**
