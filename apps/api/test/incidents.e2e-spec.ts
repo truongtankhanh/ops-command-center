@@ -30,6 +30,7 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { ASSETS } from '../src/database/seed/assets';
 import { CAMERAS, INCIDENTS, REFERENCE_ZONE_CODES, ZONES } from '../src/database/seed/campus';
 import { SeedService } from '../src/database/seed/seed.service';
 import { SystemActors } from '../src/incidents/actors';
@@ -217,6 +218,36 @@ describe('Incidents (e2e)', () => {
       severity: 'critical',
       incident_type: 'equipment_fault',
     });
+    // The demo assets (V2-05.5): 22 equipment and nine indoor climate sensors, in their zones with
+    // the design's elevations, read from the table for the same reason. Literals, as above.
+    expect(await rows(`SELECT count(*)::int AS n FROM "asset"`)).toEqual({ n: 31 });
+    expect(
+      await rows(
+        `SELECT count(*)::int AS n FROM "asset" a
+           JOIN "asset_class" c ON c."id" = a."asset_class_id" WHERE c."code" = 'indoor_climate'`,
+      ),
+    ).toEqual({ n: 9 });
+    const assetPlace = async (code: string) =>
+      (
+        await db.query(
+          `SELECT z."code" AS zone, c."code" AS class, a."elevation_m", a."heading_deg"
+             FROM "asset" a
+             JOIN "zone" z ON z."id" = a."zone_id"
+             JOIN "asset_class" c ON c."id" = a."asset_class_id"
+            WHERE a."code" = $1`,
+          [code],
+        )
+      )[0] as Record<string, unknown>;
+    // The cooling tower stands on the Data Center's roof (14 m, its building height).
+    expect(await assetPlace('CT-01')).toEqual({
+      zone: 'BLD-DC',
+      class: 'cooling_tower',
+      elevation_m: 14,
+      heading_deg: 0,
+    });
+    // The generator is in the yard 3 m outside the building, grouped under it.
+    expect(await assetPlace('GEN-01')).toMatchObject({ zone: 'BLD-DC', elevation_m: 0 });
+    expect(await assetPlace('AHU-H1')).toMatchObject({ zone: 'BLD-HUB', elevation_m: 24 });
 
     // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
     expect(await db.getRepository(OutboxEntity).count()).toBe(0);
@@ -498,6 +529,14 @@ describe('Incidents (e2e)', () => {
     );
     // The twelve cameras of the first campus come first (`campus.spec.ts` pins the order).
     const newCameraCodes = CAMERAS.slice(12).map((camera) => camera.code);
+    const seedAssetCodes = ASSETS.map((asset) => asset.code);
+    const seedAssetCount = async (): Promise<number> => {
+      const rows: { n: number }[] = await db.query(
+        `SELECT count(*)::int AS n FROM "asset" WHERE "code" = ANY($1)`,
+        [seedAssetCodes],
+      );
+      return rows[0].n;
+    };
     const setFov = (code: string, { heading, angle, range }: CameraFieldOfView) =>
       db.query(
         `UPDATE "camera" SET "fov_heading_deg" = $2, "fov_angle_deg" = $3, "fov_range_m" = $4
@@ -518,6 +557,10 @@ describe('Incidents (e2e)', () => {
         `UPDATE "camera" SET "fov_heading_deg" = NULL, "fov_angle_deg" = NULL, "fov_range_m" = NULL`,
       );
       await setFov('CAM-L01', custom);
+      // The assets go first, all of them: a campus seeded before the zones had none, and 16 stand
+      // on the zones deleted below (`asset.zone_id` restricts, as `camera.zone_id` does).
+      await db.query(`DELETE FROM "asset" WHERE "code" = ANY($1)`, [seedAssetCodes]);
+      expect(await seedAssetCount()).toBe(0);
       // The new cameras go first: `camera.zone_id` restricts the deletion of the zones they sit on.
       await db.query(`DELETE FROM "camera" WHERE "code" = ANY($1)`, [newCameraCodes]);
       // So do the incidents: the history of V2-04.4 sits on the expanded zones, and `incident.zone_id`
@@ -542,6 +585,7 @@ describe('Incidents (e2e)', () => {
       for (const [code, fov] of await fieldsOfView()) {
         expect([code, fov]).toEqual([code, code === 'CAM-L01' ? custom : null]);
       }
+      expect(await seedAssetCount()).toBe(0);
       const untouched = await zonesByCode();
       expect(untouched.size).toBe(REFERENCE_ZONE_CODES.length);
       for (const z of untouched.values()) {
@@ -561,6 +605,8 @@ describe('Incidents (e2e)', () => {
         expect([camera.code, filled.get(camera.code)]).toEqual([camera.code, expected]);
       }
 
+      // The assets come back with their zones: all 31, resolved by zone and class code.
+      expect(await seedAssetCount()).toBe(31);
       const topped = await zonesByCode();
       expect(topped.size).toBe(ZONES.length);
       for (const seeded of ZONES) {

@@ -6,6 +6,7 @@ import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
 import { ASSET_CLASSES } from '../src/database/seed/asset-catalogue';
+import { ASSETS } from '../src/database/seed/assets';
 import { SeedService } from '../src/database/seed/seed.service';
 
 type Row = Record<string, unknown>;
@@ -468,9 +469,14 @@ describe('Asset catalogue (e2e)', () => {
     });
   });
 
-  /** V2-05.4: the seed fills the catalogue on boot and tops up what is missing (ADR-0017). */
+  /**
+   * V2-05.4 and V2-05.5: the seed fills the catalogue and the demo assets on boot and tops up what
+   * is missing (ADR-0017). An asset restricts the deletion of its class and its zone, so a case
+   * that deletes a seed class deletes the assets of that class first.
+   */
   describe('seeded catalogue', () => {
     const SEED_CODES = ASSET_CLASSES.map((assetClass) => assetClass.code);
+    const SEED_ASSET_CODES = ASSETS.map((asset) => asset.code);
     const OF_SEED_CLASSES = `"asset_class_id" IN (SELECT "id" FROM "asset_class" WHERE "code" = ANY($1))`;
 
     /** The seed's rows only: other cases' fixtures never share a code with them. */
@@ -480,14 +486,15 @@ describe('Asset catalogue (e2e)', () => {
       rules: await count('telemetry_rule', `"asset_id" IS NULL AND ${OF_SEED_CLASSES}`, [
         SEED_CODES,
       ]),
+      assets: await count('asset', `"code" = ANY($1)`, [SEED_ASSET_CODES]),
     });
 
     /** Every seed row's id, so "nothing was touched" can be asserted on the rows themselves. */
     const seedRowIds = async () => {
-      const ids = async (table: string, where: string) => {
+      const ids = async (table: string, where: string, codes: string[] = SEED_CODES) => {
         const rows: { id: string }[] = await db.query(
           `SELECT "id" FROM "${table}" WHERE ${where} ORDER BY "id"`,
-          [SEED_CODES],
+          [codes],
         );
         return rows.map((row) => row.id);
       };
@@ -495,6 +502,7 @@ describe('Asset catalogue (e2e)', () => {
         classes: await ids('asset_class', `"code" = ANY($1)`),
         points: await ids('telemetry_point', OF_SEED_CLASSES),
         rules: await ids('telemetry_rule', OF_SEED_CLASSES),
+        assets: await ids('asset', `"code" = ANY($1)`, SEED_ASSET_CODES),
       };
     };
 
@@ -506,30 +514,33 @@ describe('Asset catalogue (e2e)', () => {
       return rows[0].limit;
     };
 
-    it('has the whole catalogue after boot', async () => {
-      expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+    it('has the whole catalogue and the demo assets after boot', async () => {
+      expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22, assets: 31 });
     });
 
     it('fills in what is missing and keeps a limit an operator changed', async () => {
       const seed = app.get(SeedService);
 
       try {
-        // An operator tightened one limit. A whole class is gone (its points and rules cascade),
-        // one point nothing watches is gone, and so is one rule of a class that is otherwise there.
+        // An operator tightened one limit. A whole class is gone (its points and rules cascade, and
+        // its asset goes first: `asset.asset_class_id` restricts), one point nothing watches is
+        // gone, and so is one rule of a class that is otherwise there.
         await db.query(
           `UPDATE "telemetry_rule" SET "limit" = 90 WHERE "name" = 'Motor over-temperature'`,
         );
+        await db.query(`DELETE FROM "asset" WHERE "code" = 'LKS-B3'`);
         await db.query(`DELETE FROM "asset_class" WHERE "code" = 'leak_sensor'`);
         await db.query(
           `DELETE FROM "telemetry_point" WHERE "key" = 'returnAirTempC'
               AND "asset_class_id" = (SELECT "id" FROM "asset_class" WHERE "code" = 'precision_cooling')`,
         );
         await db.query(`DELETE FROM "telemetry_rule" WHERE "name" = 'High vibration'`);
-        expect(await seedCounts()).toEqual({ classes: 15, points: 63, rules: 19 });
+        expect(await seedCounts()).toEqual({ classes: 15, points: 63, rules: 19, assets: 30 });
 
         await seed.onApplicationBootstrap();
 
-        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+        // The class is back first, then the asset that stands in it.
+        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22, assets: 31 });
         // What was missing is back with the seed's values; the changed limit was not rewritten.
         expect(await limitOf('High vibration')).toBe(7.1);
         expect(await limitOf('Water leak')).toBe(0.5);
@@ -552,19 +563,80 @@ describe('Asset catalogue (e2e)', () => {
 
       try {
         // The library is not there under its code, so this is not the reference campus: the
-        // seed's data does not belong here, and a class that is gone stays gone.
+        // seed's data does not belong here, and a class and an asset that are gone stay gone.
+        await db.query(`DELETE FROM "asset" WHERE "code" = 'LKS-B3'`);
         await db.query(`DELETE FROM "asset_class" WHERE "code" = 'leak_sensor'`);
         await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB-RENAMED' WHERE "code" = 'BLD-LIB'`);
 
         await seed.onApplicationBootstrap();
         expect(await count('asset_class', `"code" = 'leak_sensor'`, [])).toBe(0);
+        expect(await count('asset', `"code" = 'LKS-B3'`, [])).toBe(0);
 
         await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
         await seed.onApplicationBootstrap();
         expect(await count('asset_class', `"code" = 'leak_sensor'`, [])).toBe(1);
-        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+        expect(await count('asset', `"code" = 'LKS-B3'`, [])).toBe(1);
+        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22, assets: 31 });
       } finally {
         await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+        await seed.onApplicationBootstrap();
+      }
+    });
+
+    it('adds the seed assets a catalogue that otherwise looks complete lacks', async () => {
+      const seed = app.get(SeedService);
+      // The cooling tower stays and an operator changed it; every other seed asset goes.
+      const kept = ASSETS.find((asset) => asset.code === 'CT-01')!;
+      const removed = SEED_ASSET_CODES.filter((code) => code !== kept.code);
+      const assetRows = async () =>
+        db.query(
+          `SELECT "id", "code", "name", "zone_id", "asset_class_id", "lng", "lat", "elevation_m",
+                  "heading_deg"
+             FROM "asset" WHERE "code" = ANY($1) ORDER BY "code"`,
+          [SEED_ASSET_CODES],
+        );
+
+      try {
+        // The classes, points, rules and zones are all there: only assets are missing, which is
+        // the state of a V2-05.4 volume. Only the asset check can send this boot to the top-up.
+        await db.query(`DELETE FROM "asset" WHERE "code" = ANY($1)`, [removed]);
+        await db.query(
+          `UPDATE "asset" SET "name" = 'Renamed by operator', "heading_deg" = 90 WHERE "code" = $1`,
+          [kept.code],
+        );
+        expect((await seedCounts()).assets).toBe(1);
+
+        await seed.onApplicationBootstrap();
+
+        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22, assets: 31 });
+        // The one that existed was not rewritten.
+        expect(
+          await db.query(`SELECT "name", "heading_deg" FROM "asset" WHERE "code" = $1`, [
+            kept.code,
+          ]),
+        ).toEqual([{ name: 'Renamed by operator', heading_deg: 90 }]);
+        // One that was added back has the seed's values, resolved to its zone and class by code.
+        expect(
+          await db.query(
+            `SELECT z."code" AS zone, c."code" AS class, a."elevation_m"
+               FROM "asset" a
+               JOIN "zone" z ON z."id" = a."zone_id"
+               JOIN "asset_class" c ON c."id" = a."asset_class_id"
+              WHERE a."code" = 'LKS-B3'`,
+          ),
+        ).toEqual([{ zone: 'BLD-DORB', class: 'leak_sensor', elevation_m: 8 }]);
+
+        // Nothing is left to add, so a further boot changes no row.
+        const settled = await assetRows();
+        await seed.onApplicationBootstrap();
+        expect(await assetRows()).toEqual(settled);
+      } finally {
+        // A top-up keeps a value that is set, so the operator's change is put back by hand.
+        await db.query(`UPDATE "asset" SET "name" = $2, "heading_deg" = $3 WHERE "code" = $1`, [
+          kept.code,
+          kept.name,
+          kept.headingDeg,
+        ]);
         await seed.onApplicationBootstrap();
       }
     });
