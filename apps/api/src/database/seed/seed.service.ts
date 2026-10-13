@@ -2,6 +2,9 @@ import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config';
 import type { CameraFieldOfView } from '@occ/contracts';
 import { DataSource, type EntityManager, In, IsNull } from 'typeorm';
+import { AssetClassEntity } from '../../assets/asset-class.entity';
+import { TelemetryPointEntity } from '../../assets/telemetry-point.entity';
+import { TelemetryRuleEntity } from '../../assets/telemetry-rule.entity';
 import { CameraEntity } from '../../cameras/camera.entity';
 import { offset } from '../../common/geo';
 import type { Env } from '../../config/env.validation';
@@ -13,6 +16,16 @@ import { SiteFeatureEntity } from '../../sites/site-feature.entity';
 import { SiteEntity } from '../../sites/site.entity';
 import { ZoneEntity } from '../../zones/zone.entity';
 import { AdvisoryLocks } from '../advisory-locks';
+import {
+  ASSET_CLASSES,
+  missingFromCatalogue,
+  pointRef,
+  ruleRef,
+  type ClassSeed,
+  type PointSeed,
+  type PresentCatalogue,
+  type RuleSeed,
+} from './asset-catalogue';
 import {
   CAMERAS,
   CAMPUS_CENTER,
@@ -31,6 +44,7 @@ const MINUTE = 60_000;
 
 const SEED_ZONE_CODES = ZONES.map((zone) => zone.code);
 const SEED_CAMERA_CODES = CAMERAS.map((camera) => camera.code);
+const SEED_CLASS_CODES = ASSET_CLASSES.map((assetClass) => assetClass.code);
 // The seed zones whose use and height the seed owns. They are buildings (`campus.spec.ts` pins it).
 const USE_SEED_CODES = ZONES.filter((zone) => zone.use !== undefined).map((zone) => zone.code);
 const HEIGHT_SEED_CODES = ZONES.filter((zone) => zone.heightM !== undefined).map(
@@ -72,8 +86,53 @@ const cameraColumns = (seed: CameraSeed, zone: ZoneEntity) => {
   };
 };
 
+/** A catalogue row's columns: one definition for a fresh seed and a top-up, so they agree. */
+const classColumns = (seed: ClassSeed) => ({
+  code: seed.code,
+  name: seed.name,
+  modelKey: seed.modelKey,
+  footprintWM: seed.footprintM.width,
+  footprintDM: seed.footprintM.depth,
+  footprintHM: seed.footprintM.height,
+});
+
+const pointColumns = (seed: PointSeed, assetClassId: string) => ({
+  assetClassId,
+  key: seed.key,
+  label: seed.label,
+  unit: seed.unit,
+  kind: seed.kind,
+  min: seed.min,
+  max: seed.max,
+  enumValues: seed.enumValues,
+  expectedIntervalS: seed.expectedIntervalS,
+  headline: seed.headline,
+});
+
+/** A class rule: `assetId` is `null`, an override is never seeded. */
+const ruleColumns = (seed: RuleSeed, assetClassId: string) => ({
+  assetClassId,
+  assetId: null,
+  name: seed.name,
+  key: seed.key,
+  comparator: seed.comparator,
+  limit: seed.limit,
+  clear: seed.clear,
+  forS: seed.forS,
+  severity: seed.severity,
+  incidentType: seed.incidentType,
+  enabled: true,
+});
+
+/** What the catalogue step inserted. */
+interface CatalogueCounts {
+  assetClasses: number;
+  telemetryPoints: number;
+  telemetryRules: number;
+}
+
 /** What a top-up added to an already seeded demo campus. */
-interface TopUp {
+interface TopUp extends CatalogueCounts {
   zones: number;
   zoneUses: number;
   zoneHeights: number;
@@ -85,9 +144,9 @@ interface TopUp {
 /**
  * Seeds the reference campus when `SEED_ON_BOOT` is on: all of it into an empty database, or the
  * parts added since (the site plan, camera fields of view, the zones of the expanded campus, the
- * use and height of their buildings and their cameras) into a database seeded before them, so a
- * demo volume upgrades by restarting (ADR-0017). A top-up only fills what is missing — it never
- * changes a value already there — and only on the reference campus.
+ * use and height of their buildings and their cameras, the equipment catalogue) into a database
+ * seeded before them, so a demo volume upgrades by restarting (ADR-0017). A top-up only fills what
+ * is missing — it never changes a value already there — and only on the reference campus.
  */
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -108,28 +167,32 @@ export class SeedService implements OnApplicationBootstrap {
       // `lock_timeout`; seeding the campus takes a fraction of that.
       await manager.query('SELECT pg_advisory_xact_lock($1)', [AdvisoryLocks.Seed]);
       if ((await manager.count(ZoneEntity)) === 0) {
-        await this.seed(manager, new Date());
-        return 'seeded' as const;
+        return { seeded: await this.seed(manager, new Date()) };
       }
       return this.topUp(manager);
     });
 
-    if (outcome === 'seeded') {
+    if (outcome && 'seeded' in outcome) {
+      const { assetClasses, telemetryPoints, telemetryRules } = outcome.seeded;
       this.logger.log(
-        `Seeded ${ZONES.length} zones, ${CAMERAS.length} cameras, ${INCIDENTS.length} incidents ` +
-          `and the site plan`,
+        `Seeded ${ZONES.length} zones, ${CAMERAS.length} cameras, ${INCIDENTS.length} incidents, ` +
+          `the site plan, ${assetClasses} asset classes, ${telemetryPoints} points ` +
+          `and ${telemetryRules} rules`,
       );
     } else if (outcome && Object.values(outcome).some((count) => count > 0)) {
       this.logger.log(
         `Topped up the seeded campus: ${outcome.zones} zones, ${outcome.zoneUses} zone uses, ` +
           `${outcome.zoneHeights} zone heights, ${outcome.cameras} cameras, ` +
           `${outcome.siteFeatures} site plan features, ` +
-          `${outcome.fieldsOfView} camera fields of view`,
+          `${outcome.fieldsOfView} camera fields of view, ` +
+          `${outcome.assetClasses} asset classes, ${outcome.telemetryPoints} points, ` +
+          `${outcome.telemetryRules} rules`,
       );
     }
   }
 
-  async seed(manager: EntityManager, now: Date): Promise<void> {
+  /** Seeds an empty database; returns what the catalogue step inserted, for the log. */
+  async seed(manager: EntityManager, now: Date): Promise<CatalogueCounts> {
     const zones = new Map<string, ZoneEntity>();
     for (const seed of ZONES) {
       const zone = await manager.save(manager.create(ZoneEntity, zoneColumns(seed)));
@@ -142,6 +205,9 @@ export class SeedService implements OnApplicationBootstrap {
     }
 
     await this.seedSitePlan(manager);
+    // The routine a top-up uses, so a fresh seed and a top-up cannot disagree; on an empty
+    // database everything is absent.
+    const catalogue = await this.addMissingCatalogue(manager);
 
     // Oldest first, so codes increase with time like they would in production. The people in the
     // seed story are fictional, so their timeline entries name the `seed` system actor.
@@ -180,12 +246,15 @@ export class SeedService implements OnApplicationBootstrap {
       }
       await persistIncident(manager, incident);
     }
+    return catalogue;
   }
 
   /**
    * Lock-free check that a boot has nothing to seed, so an up-to-date demo boot never queues on the
    * seed lock. A database that is not the reference campus lacks some seed zone or camera, so it
-   * fails this check and takes the lock, then `topUp` finds nothing to do.
+   * fails this check and takes the lock, then `topUp` finds nothing to do. A missing catalogue
+   * class, point or rule fails it too, read through the same `missingFromCatalogue` the top-up
+   * inserts from, so the check and the filler cannot disagree.
    */
   private async isComplete(manager: EntityManager): Promise<boolean> {
     if ((await manager.count(ZoneEntity)) === 0) return false;
@@ -209,14 +278,15 @@ export class SeedService implements OnApplicationBootstrap {
     const camerasWithoutFov = await manager.count(CameraEntity, {
       where: { code: In(SEED_CAMERA_CODES), fovHeadingDeg: IsNull() },
     });
-    return camerasWithoutFov === 0;
+    if (camerasWithoutFov > 0) return false;
+    return this.catalogueIsComplete(manager);
   }
 
   /**
-   * Adds what a campus seeded before the expanded zones and cameras, the site plan and camera
-   * fields of view lacks. `null` when the database is not the reference campus: the seed's data
-   * would not belong there. That is the nine zones of the first campus, not every zone seeded since
-   * (a volume seeded before the expanded zones has only those nine).
+   * Adds what a campus seeded before the expanded zones and cameras, the site plan, camera fields
+   * of view and the equipment catalogue lacks. `null` when the database is not the reference
+   * campus: the seed's data would not belong there. That is the nine zones of the first campus,
+   * not every zone seeded since (a volume seeded before the expanded zones has only those nine).
    */
   private async topUp(manager: EntityManager): Promise<TopUp | null> {
     const referenceZones = await manager.count(ZoneEntity, {
@@ -241,7 +311,92 @@ export class SeedService implements OnApplicationBootstrap {
       );
       fieldsOfView += result.affected ?? 0;
     }
-    return { ...zones, cameras, siteFeatures: featureCount, fieldsOfView };
+    const catalogue = await this.addMissingCatalogue(manager);
+    return { ...zones, cameras, siteFeatures: featureCount, fieldsOfView, ...catalogue };
+  }
+
+  /**
+   * What the database holds of the seed classes: the class codes, and the points and class rules
+   * of those classes as `pointRef` / `ruleRef` keys. `classIds` maps a class code to its row.
+   * Narrow reads (a few columns of at most 16 classes, 66 points and 22 rules), no relation joins.
+   */
+  private async readCatalogue(
+    manager: EntityManager,
+  ): Promise<{ present: PresentCatalogue; classIds: Map<string, string> }> {
+    const classes = await manager.find(AssetClassEntity, {
+      select: { id: true, code: true },
+      where: { code: In(SEED_CLASS_CODES) },
+    });
+    const classIds = new Map(classes.map((row) => [row.code, row.id]));
+    const points = new Set<string>();
+    const rules = new Set<string>();
+    const present = { classes: new Set(classIds.keys()), points, rules };
+    // No seed class yet: nothing hangs off one, and `In([])` is best not relied on.
+    if (classes.length === 0) return { present, classIds };
+
+    const codeById = new Map(classes.map((row) => [row.id, row.code]));
+    const ids = classes.map((row) => row.id);
+    const pointRows = await manager.find(TelemetryPointEntity, {
+      select: { assetClassId: true, key: true },
+      where: { assetClassId: In(ids) },
+    });
+    for (const row of pointRows) {
+      points.add(pointRef(codeById.get(row.assetClassId)!, row.key));
+    }
+    // Class rules only: an override (`assetId` set) is not the seed's and never matches a seed name.
+    const ruleRows = await manager.find(TelemetryRuleEntity, {
+      select: { assetClassId: true, name: true },
+      where: { assetClassId: In(ids), assetId: IsNull() },
+    });
+    for (const row of ruleRows) {
+      rules.add(ruleRef(codeById.get(row.assetClassId)!, row.name));
+    }
+    return { present, classIds };
+  }
+
+  private async catalogueIsComplete(manager: EntityManager): Promise<boolean> {
+    const { present } = await this.readCatalogue(manager);
+    const missing = missingFromCatalogue(present);
+    return missing.classes.length + missing.points.length + missing.rules.length === 0;
+  }
+
+  /**
+   * Inserts the seed classes, points and class rules that are absent. A row that exists is never
+   * rewritten, and only absent ones are inserted, so a threshold an operator changed is kept and
+   * nothing collides with a unique key. On an empty database that is all of it.
+   */
+  private async addMissingCatalogue(manager: EntityManager): Promise<CatalogueCounts> {
+    const { present, classIds } = await this.readCatalogue(manager);
+    const missing = missingFromCatalogue(present);
+
+    // Classes first: a point and a rule need their class's id. `fk_telemetry_rule_point` is
+    // deferred, so a rule whose key is no point of its class is refused at commit, not at its
+    // insert, and fails the whole boot transaction; the data spec is what guards it.
+    if (missing.classes.length > 0) {
+      const saved = await manager.save(
+        missing.classes.map((seed) => manager.create(AssetClassEntity, classColumns(seed))),
+      );
+      for (const row of saved) classIds.set(row.code, row.id);
+    }
+    if (missing.points.length > 0) {
+      await manager.save(
+        missing.points.map(({ assetClass, point }) =>
+          manager.create(TelemetryPointEntity, pointColumns(point, classIds.get(assetClass.code)!)),
+        ),
+      );
+    }
+    if (missing.rules.length > 0) {
+      await manager.save(
+        missing.rules.map(({ assetClass, rule }) =>
+          manager.create(TelemetryRuleEntity, ruleColumns(rule, classIds.get(assetClass.code)!)),
+        ),
+      );
+    }
+    return {
+      assetClasses: missing.classes.length,
+      telemetryPoints: missing.points.length,
+      telemetryRules: missing.rules.length,
+    };
   }
 
   /**
