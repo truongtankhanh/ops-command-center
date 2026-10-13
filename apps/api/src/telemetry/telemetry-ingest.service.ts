@@ -165,12 +165,30 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
   /** Every asset with a reading, by code. An asset with no reading is absent. */
   latestState(): Record<string, TelemetryAssetSnapshot> {
     const snapshot: Record<string, TelemetryAssetSnapshot> = {};
-    for (const [assetCode, asset] of this.state) {
-      const values: Record<string, TelemetryValue> = {};
-      for (const [key, entry] of asset.keys) values[key] = entry.value;
-      snapshot[assetCode] = { online: asset.online, receivedAt: asset.receivedAt, values };
+    for (const [assetCode, asset] of this.state) snapshot[assetCode] = snapshotEntry(asset);
+    return snapshot;
+  }
+
+  /**
+   * As `latestState`, for the listed codes only; one that holds no reading is absent. A watch
+   * (V2-06.7) is up to a handful of codes, so this does not build the whole state to pick from it.
+   */
+  snapshotOf(assetCodes: readonly string[]): Record<string, TelemetryAssetSnapshot> {
+    const snapshot: Record<string, TelemetryAssetSnapshot> = {};
+    for (const assetCode of assetCodes) {
+      const asset = this.state.get(assetCode);
+      if (asset) snapshot[assetCode] = snapshotEntry(asset);
     }
     return snapshot;
+  }
+
+  /**
+   * Whether the catalogue this replica last read has this asset. In memory on purpose: it is asked
+   * for every code of every `telemetry.watch`, which must not cost a query. Like everything here
+   * it is empty until the first catalogue read, and a seeded database is seen within one refresh.
+   */
+  knows(assetCode: string): boolean {
+    return this.index.has(assetCode);
   }
 
   /** As `latestState`, with only the headline points that have a value. */
@@ -330,6 +348,13 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
     this.seenUnknown.add(id);
     this.logger.debug(message);
   }
+}
+
+/** A copy: what callers get never aliases the live maps. */
+function snapshotEntry(asset: AssetState): TelemetryAssetSnapshot {
+  const values: Record<string, TelemetryValue> = {};
+  for (const [key, entry] of asset.keys) values[key] = entry.value;
+  return { online: asset.online, receivedAt: asset.receivedAt, values };
 }
 
 function newestReceivedAt(keys: ReadonlyMap<string, KeyState>): string {

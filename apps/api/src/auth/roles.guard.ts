@@ -21,7 +21,8 @@ export class RolesGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const targets = [context.getHandler(), context.getClass()];
     if (this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC_KEY, targets)) return true;
-    // Same rule as `AuthGuard`: `/events` checks roles in its handshake and has no handlers.
+    // Same rule as `AuthGuard`: a socket's roles are checked in its handshake, and a message
+    // handler (`/telemetry`'s `telemetry.watch`) is `@Public()` or refused.
     if (context.getType() !== 'http') return false;
 
     const { user } = context.switchToHttp().getRequest<RequestWithUser>();
