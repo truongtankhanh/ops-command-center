@@ -16,13 +16,14 @@ export type TelemetryMessageResult = (typeof TELEMETRY_MESSAGE_RESULTS)[number];
 
 /**
  * Telemetry metrics (ADR-0015, ADR-0019). The only label is the result of a reading: never an
- * asset code, which comes from a device and is unbounded. The two gauges have no label.
+ * asset code, which comes from a device and is unbounded. The three gauges have no label.
  */
 @Injectable()
 export class TelemetryMetrics {
   private readonly messages: Counter<'result'>;
   private countConsoles?: () => number;
   private isUpstreamLive?: () => boolean;
+  private isLeader?: () => boolean;
 
   constructor(registry: Registry) {
     this.messages = new Counter({
@@ -53,6 +54,14 @@ export class TelemetryMetrics {
       registers: [registry],
       collect: () => upstream.set(this.isUpstreamLive?.() ? 1 : 0),
     });
+    const leader: Gauge = new Gauge({
+      name: 'telemetry_leader',
+      help:
+        '1 when this replica holds the telemetry leader lock, 0 otherwise. 0 also on a replica ' +
+        'with `TELEMETRY_SOURCE=off`, which takes no lock.',
+      registers: [registry],
+      collect: () => leader.set(this.isLeader?.() ? 1 : 0),
+    });
   }
 
   countMessage(result: TelemetryMessageResult): void {
@@ -67,5 +76,10 @@ export class TelemetryMetrics {
   /** Called by `TelemetryIngestService`, which is the one that holds the upstream state. */
   trackUpstream(isLive: () => boolean): void {
     this.isUpstreamLive = isLive;
+  }
+
+  /** Called by `TelemetryLeader`, which holds the lock state. */
+  trackLeader(isLeader: () => boolean): void {
+    this.isLeader = isLeader;
   }
 }

@@ -11,6 +11,8 @@ async function counts(registry: Registry): Promise<Record<string, number>> {
   return Object.fromEntries(values.map((value) => [String(value.labels.result), value.value]));
 }
 
+const GAUGES = ['telemetry_connected_consoles', 'telemetry_upstream_up', 'telemetry_leader'];
+
 describe('TelemetryMetrics', () => {
   let registry: Registry;
   let metrics: TelemetryMetrics;
@@ -75,7 +77,7 @@ describe('TelemetryMetrics', () => {
     }
 
     it('are present from the first scrape, at 0, before anything is tracked', async () => {
-      for (const name of ['telemetry_connected_consoles', 'telemetry_upstream_up']) {
+      for (const name of GAUGES) {
         expect(await gauge(registry, name)).toEqual([
           expect.objectContaining({ labels: {}, value: 0 }),
         ]);
@@ -85,24 +87,30 @@ describe('TelemetryMetrics', () => {
     it('read what is tracked at scrape time, not when it was registered', async () => {
       let consoles = 2;
       let live = false;
+      let leading = false;
       metrics.trackConsoles(() => consoles);
       metrics.trackUpstream(() => live);
+      metrics.trackLeader(() => leading);
 
       expect((await gauge(registry, 'telemetry_connected_consoles'))[0]?.value).toBe(2);
       expect((await gauge(registry, 'telemetry_upstream_up'))[0]?.value).toBe(0);
+      expect((await gauge(registry, 'telemetry_leader'))[0]?.value).toBe(0);
 
       consoles = 5;
       live = true;
+      leading = true;
 
       expect((await gauge(registry, 'telemetry_connected_consoles'))[0]?.value).toBe(5);
       expect((await gauge(registry, 'telemetry_upstream_up'))[0]?.value).toBe(1);
+      expect((await gauge(registry, 'telemetry_leader'))[0]?.value).toBe(1);
     });
 
     it('have no label: never an asset code', async () => {
       metrics.trackConsoles(() => 1);
       metrics.trackUpstream(() => true);
+      metrics.trackLeader(() => true);
 
-      for (const name of ['telemetry_connected_consoles', 'telemetry_upstream_up']) {
+      for (const name of GAUGES) {
         const labels = (await gauge(registry, name)).flatMap((value) => Object.keys(value.labels));
         expect(labels).toEqual([]);
       }

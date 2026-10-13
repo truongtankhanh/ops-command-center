@@ -20,6 +20,7 @@ import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { OffTelemetrySource } from '../src/telemetry/off-telemetry-source';
 import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
+import { LEADER_CHECK_MS, TelemetryLeader } from '../src/telemetry/telemetry-leader.service';
 import type {
   AssetStatusReport,
   RawReading,
@@ -520,6 +521,59 @@ describe('Telemetry namespace (e2e)', () => {
         'a status',
       );
       expect(statuses(received)[0]).toEqual(live);
+    });
+  });
+
+  /**
+   * Two apps on one database, as two API replicas would be (ADR-0008, ADR-0019). Each has its own
+   * ingest state, gateway and leader, so the only thing between them is PostgreSQL. Both run the
+   * `mock` source, so each leader's own timer is on from boot: which one wins is not assumed.
+   */
+  describe('with a second instance', () => {
+    let appA: INestApplication;
+    let appB: INestApplication;
+
+    beforeAll(async () => {
+      appA = await startApp(AppModule);
+      appB = await startApp(AppModule);
+    });
+
+    afterAll(async () => {
+      // Closing releases the lock; a session left behind would keep it for the next suite.
+      await appB?.close();
+      await appA?.close();
+    });
+
+    const leaders = () => [appA.get(TelemetryLeader), appB.get(TelemetryLeader)] as const;
+
+    it('elects exactly one telemetry leader', async () => {
+      await eventually(
+        () => leaders().filter((leader) => leader.isLeading()).length,
+        (leading) => leading === 1,
+        'exactly one telemetry leader',
+      );
+    });
+
+    it('hands the lead to the other instance when the leader lets go of it', async () => {
+      await eventually(
+        () => leaders().filter((leader) => leader.isLeading()).length,
+        (leading) => leading === 1,
+        'exactly one telemetry leader',
+      );
+      const [first, second] = leaders();
+      const [leader, follower] = first.isLeading() ? [first, second] : [second, first];
+
+      // What closing the app does first, so the case does not have to close it.
+      await leader.beforeApplicationShutdown();
+
+      expect(leader.isLeading()).toBe(false);
+      // At the follower's next check: one interval and the time to take the lock.
+      await eventually(
+        () => follower.isLeading(),
+        (leading) => leading,
+        'the other instance to take the lead',
+        LEADER_CHECK_MS * 2 + 2_000,
+      );
     });
   });
 

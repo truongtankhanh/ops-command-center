@@ -32,8 +32,8 @@ import { AssetCatalogue1791793800000 } from './migrations/1791793800000-asset-ca
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
  * of PostgreSQL's default 100 `max_connections`. Re-check against the real ceiling before scaling.
- * Up to 2 slots per replica are held for the process's lifetime (outbox listener, simulator
- * leader), so at least 8 stay free for requests.
+ * Up to 3 slots per replica are held for the process's lifetime (outbox listener, simulator
+ * leader, telemetry leader), so at least 7 stay free for requests.
  */
 const POOL_SIZE = 10;
 /** Waiting longer than this for a pool slot (or a new connection) fails instead of hanging. */
