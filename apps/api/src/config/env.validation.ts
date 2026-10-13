@@ -161,7 +161,19 @@ export class Env {
   @IsIn(['hls', 'webrtc'])
   MEDIAMTX_PROTOCOL: 'hls' | 'webrtc' = 'hls';
 
-  /** Lets production run demo behaviour (mock cameras, seeding). Only the Compose demo sets it. */
+  /**
+   * Where telemetry readings come from (ADR-0019): `mock` generates them in process, `off` has
+   * none. Unset: `mock`, except in production, which has no default.
+   */
+  @IsIn(['mock', 'off'], {
+    message: '$property must be mock or off; production has no default',
+  })
+  TELEMETRY_SOURCE: 'mock' | 'off';
+
+  /**
+   * Lets production run demo behaviour (mock cameras, mock telemetry, seeding). Only the Compose
+   * demo sets it.
+   */
   @Transform(toBoolean)
   @IsBoolean()
   DEMO_MODE = false;
@@ -188,6 +200,7 @@ function applyEnvironmentDefaults(env: Env): void {
   const production = env.NODE_ENV === 'production';
   env.SEED_ON_BOOT ??= !production;
   if (!production) env.CAMERA_SOURCE ??= 'mock';
+  if (!production) env.TELEMETRY_SOURCE ??= 'mock';
   env.LOG_LEVEL ??= DEFAULT_LOG_LEVELS[env.NODE_ENV];
   // Production has none: a staging deploy that forgot it must not be tagged `production`.
   if (!production) env.DEPLOYMENT_ENV ??= env.NODE_ENV === 'test' ? 'test' : 'local';
@@ -199,6 +212,10 @@ function productionProblems(env: Env): string[] {
   const problems: string[] = [];
   if (env.CAMERA_SOURCE === 'mock') {
     problems.push('CAMERA_SOURCE: mock needs DEMO_MODE=true in production');
+  }
+  // `off` is not demo behaviour: a site with no telemetry source yet may run it.
+  if (env.TELEMETRY_SOURCE === 'mock') {
+    problems.push('TELEMETRY_SOURCE: mock needs DEMO_MODE=true in production');
   }
   if (env.SEED_ON_BOOT) problems.push('SEED_ON_BOOT: true needs DEMO_MODE=true in production');
   // Passwords and tokens travel through the issuer's pages; plain HTTP is for the demo only.

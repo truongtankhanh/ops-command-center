@@ -102,6 +102,7 @@ describe('validateEnv', () => {
       SEED_ON_BOOT: true,
       SIMULATOR_ENABLED: false,
       CAMERA_SOURCE: 'mock',
+      TELEMETRY_SOURCE: 'mock',
       DEMO_MODE: false,
       LOG_LEVEL: 'debug',
       DEPLOYMENT_ENV: 'local',
@@ -112,6 +113,19 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...valid, NODE_ENV: 'test' })).toMatchObject({
       LOG_LEVEL: 'warn',
       DEPLOYMENT_ENV: 'test',
+    });
+  });
+
+  describe('telemetry source', () => {
+    it.each(['mock', 'off'])('accepts %s', (source) => {
+      expect(validateEnv({ ...valid, TELEMETRY_SOURCE: source }).TELEMETRY_SOURCE).toBe(source);
+    });
+
+    // `mqtt` is a documented value of ADR-0019 that nothing can honour until its source exists.
+    it.each(['mqtt', 'MOCK', ''])('refuses %j, naming the key', (source) => {
+      expect(() => validateEnv({ ...valid, TELEMETRY_SOURCE: source })).toThrow(
+        /TELEMETRY_SOURCE: TELEMETRY_SOURCE must be mock or off/,
+      );
     });
   });
 
@@ -180,12 +194,14 @@ describe('validateEnv', () => {
   });
 
   describe('in production', () => {
-    // An https issuer, so only the rule a case is about can fail.
+    // An https issuer and `off` telemetry, so only the rule a case is about can fail: production
+    // has no default for the telemetry source, and `off` is the value that needs no `DEMO_MODE`.
     const production = {
       ...valid,
       NODE_ENV: 'production',
       DEPLOYMENT_ENV: 'production',
       OIDC_ISSUER: 'https://sso.example.org/realms/occ',
+      TELEMETRY_SOURCE: 'off',
     };
     const mediamtx = {
       CAMERA_SOURCE: 'mediamtx',
@@ -201,6 +217,30 @@ describe('validateEnv', () => {
       expect(() => validateEnv({ ...production, CAMERA_SOURCE: 'mock' })).toThrow(
         /CAMERA_SOURCE: mock needs DEMO_MODE=true/,
       );
+    });
+
+    it('requires TELEMETRY_SOURCE to be set explicitly', () => {
+      expect(() =>
+        validateEnv({ ...production, ...mediamtx, TELEMETRY_SOURCE: undefined }),
+      ).toThrow(/TELEMETRY_SOURCE: .*production has no default/);
+    });
+
+    it('rejects mock telemetry without DEMO_MODE', () => {
+      expect(() => validateEnv({ ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock' })).toThrow(
+        /TELEMETRY_SOURCE: mock needs DEMO_MODE=true/,
+      );
+    });
+
+    it('lets a site with no telemetry source yet run with it off, without DEMO_MODE', () => {
+      const env = validateEnv({ ...production, ...mediamtx, TELEMETRY_SOURCE: 'off' });
+
+      expect(env).toMatchObject({ TELEMETRY_SOURCE: 'off', DEMO_MODE: false });
+    });
+
+    it('accepts mock telemetry when DEMO_MODE opts in', () => {
+      const env = { ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock', DEMO_MODE: 'true' };
+
+      expect(validateEnv(env)).toMatchObject({ TELEMETRY_SOURCE: 'mock', DEMO_MODE: true });
     });
 
     it('rejects SEED_ON_BOOT=true without DEMO_MODE', () => {

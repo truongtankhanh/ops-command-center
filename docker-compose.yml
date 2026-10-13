@@ -37,8 +37,10 @@ services:
       SIMULATOR_ENABLED: ${SIMULATOR_ENABLED:-true}
       SIMULATOR_INTERVAL_MS: ${SIMULATOR_INTERVAL_MS:-8000}
       CAMERA_SOURCE: ${CAMERA_SOURCE:-mock}
-      # The image runs NODE_ENV=production, which refuses mock cameras and seeding unless the
-      # deploy opts in. This stack is the demo, so it does (ADR-0006).
+      # No default in the API's production mode, so a forgotten value fails boot; the demo has one.
+      TELEMETRY_SOURCE: ${TELEMETRY_SOURCE:-mock}
+      # The image runs NODE_ENV=production, which refuses mock cameras, mock telemetry and seeding
+      # unless the deploy opts in. This stack is the demo, so it does (ADR-0006).
       DEMO_MODE: ${DEMO_MODE:-true}
       # Stamped on every API log line as `env`; production requires it (ADR-0014). This stack is
       # the demo, so its logs never pass for staging's or production's.
