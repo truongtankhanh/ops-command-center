@@ -6,6 +6,7 @@ import { SERVICE } from '../logging/logger-options';
 import { HttpMetrics } from './http-metrics.middleware';
 import { MetricsServer } from './metrics-server';
 import { RealtimeMetrics } from './realtime.metrics';
+import { TelemetryMetrics } from './telemetry.metrics';
 
 /**
  * The app's one metrics registry (ADR-0015). `service` and `env` label every series with the
@@ -34,7 +35,8 @@ function createRegistry(config: ConfigService<Env, true>): Registry {
     MetricsServer,
     HttpMetrics,
     RealtimeMetrics,
+    TelemetryMetrics,
   ],
-  exports: [Registry, RealtimeMetrics],
+  exports: [Registry, RealtimeMetrics, TelemetryMetrics],
 })
 export class MetricsModule {}
