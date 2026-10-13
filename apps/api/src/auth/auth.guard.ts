@@ -38,8 +38,9 @@ export class AuthGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) return true;
-    // `/events` authenticates in its handshake and has no message handlers. Should one ever be
-    // added, it stays closed until it gets its own check.
+    // Sockets authenticate in their handshake, not here. `/events` has no message handlers;
+    // `/telemetry`'s one handler is `@Public()` for that reason (checked above). Any other
+    // handler stays closed until it opts in or gets its own check.
     if (context.getType() !== 'http') return false;
 
     const http = context.switchToHttp();

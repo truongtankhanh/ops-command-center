@@ -5,10 +5,13 @@ import {
   TELEMETRY_NAMESPACE,
   type TelemetryClientToServerEvents,
   TelemetryEvents,
+  type TelemetryFrame,
   type TelemetryOverview,
   type TelemetryServerToClientEvents,
   type TelemetrySnapshot,
   type TelemetryStatus,
+  type TelemetryWatchAck,
+  type TelemetryWatchRequest,
 } from '@occ/contracts';
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 import request from 'supertest';
@@ -210,6 +213,172 @@ describe('Telemetry namespace (e2e)', () => {
           headline: expect.any(Object),
         });
       });
+    });
+
+    describe('telemetry.watch', () => {
+      /** Sends a watch and resolves with its acknowledgement; rejects when none comes in time. */
+      const watch = (socket: TelemetrySocket, assets: unknown): Promise<TelemetryWatchAck> =>
+        socket.timeout(5_000).emitWithAck(TelemetryEvents.Watch, assets as TelemetryWatchRequest);
+
+      const frames = (received: Received[]): TelemetryFrame[] =>
+        received
+          .filter((message) => message.event === TelemetryEvents.Frame)
+          .map((message) => message.payload as TelemetryFrame);
+
+      const snapshots = (received: Received[]): TelemetrySnapshot[] =>
+        received
+          .filter((message) => message.event === TelemetryEvents.Snapshot)
+          .map((message) => message.payload as TelemetrySnapshot);
+
+      it('streams frames of the watched asset, and none of another', async () => {
+        const { socket, received } = await connect(app, await withToken());
+
+        await expect(watch(socket, { assets: ['CT-01'] })).resolves.toEqual({
+          accepted: ['CT-01'],
+        });
+        await eventually(
+          () => frames(received).length,
+          (count) => count >= 2,
+          'two frames',
+          15_000,
+        );
+
+        expect(frames(received).every((frame) => frame.assetCode === 'CT-01')).toBe(true);
+      });
+
+      it("stops the first set's frames when a second set is watched", async () => {
+        const { socket, received } = await connect(app, await withToken());
+        await watch(socket, { assets: ['CT-01'] });
+        await eventually(
+          () => frames(received).filter((frame) => frame.assetCode === 'CT-01').length,
+          (count) => count >= 1,
+          'a frame of CT-01',
+          15_000,
+        );
+
+        await expect(watch(socket, { assets: ['CT-02'] })).resolves.toEqual({
+          accepted: ['CT-02'],
+        });
+        // Frames sent before the rooms changed arrived before the acknowledgement.
+        const afterSwitch = received.length;
+        await eventually(
+          () => frames(received).filter((frame) => frame.assetCode === 'CT-02').length,
+          (count) => count >= 2,
+          'two frames of CT-02',
+          15_000,
+        );
+
+        const later = frames(received.slice(afterSwitch));
+        expect(later.some((frame) => frame.assetCode === 'CT-01')).toBe(false);
+      });
+
+      it('keeps four of five codes, and leaves an unknown one out of the acknowledgement', async () => {
+        const { socket } = await connect(app, await withToken());
+
+        const ack = await watch(socket, {
+          assets: ['XX-99', 'CT-01', 'CT-02', 'GEN-01', 'AHU-H1', 'FH-L1'],
+        });
+
+        expect(ack).toEqual({ accepted: ['CT-01', 'CT-02', 'GEN-01', 'AHU-H1'] });
+      });
+
+      it('sends the newly watched assets as a snapshot, and nothing when the set only shrinks', async () => {
+        const { socket, received } = await connect(app, await withToken());
+
+        await watch(socket, { assets: ['CT-01'] });
+        expect(Object.keys(snapshots(received).at(-1)?.assets ?? {})).toEqual(['CT-01']);
+
+        await watch(socket, { assets: ['CT-01', 'CT-02'] });
+        expect(Object.keys(snapshots(received).at(-1)?.assets ?? {})).toEqual(['CT-02']);
+
+        const before = snapshots(received).length;
+        await watch(socket, { assets: ['CT-02'] });
+        expect(snapshots(received)).toHaveLength(before);
+      });
+
+      it('carries only the keys that changed, and at most ten frames in any second', async () => {
+        const { socket, received } = await connect(app, await withToken());
+        await watch(socket, { assets: ['CT-01'] });
+        // What the socket holds once the watch is answered: the snapshot that preceded the ack.
+        const known: Record<string, unknown> = {
+          ...snapshots(received).at(-1)?.assets['CT-01']?.values,
+        };
+
+        await eventually(
+          () => frames(received).length,
+          (count) => count >= 4,
+          'four frames',
+          20_000,
+        );
+
+        const seen = frames(received);
+        for (const frame of seen) {
+          expect(Object.keys(frame.values).length).toBeGreaterThan(0);
+          for (const [key, value] of Object.entries(frame.values)) {
+            // Present in a frame only because it differs from what the socket already had.
+            expect(known[key]).not.toBe(value);
+            known[key] = value;
+          }
+        }
+        const times = received
+          .filter((message) => message.event === TelemetryEvents.Frame)
+          .map((message) => message.at);
+        for (const t of times) {
+          expect(
+            times.filter((other) => other > t - 1_000 && other <= t).length,
+          ).toBeLessThanOrEqual(10);
+        }
+      });
+
+      it('does not apply a sixth watch within a second, and the first set keeps streaming', async () => {
+        const { socket, received } = await connect(app, await withToken());
+
+        // Back to back, so all six fall inside one second whatever the machine's load.
+        const acks = await Promise.all([
+          ...Array.from({ length: 5 }, () => watch(socket, { assets: ['CT-01'] })),
+          watch(socket, { assets: ['CT-02'] }),
+        ]);
+
+        expect(acks.slice(0, 5)).toEqual(Array(5).fill({ accepted: ['CT-01'] }));
+        expect(acks[5]).toEqual({ accepted: [] });
+        await eventually(
+          () => frames(received).filter((frame) => frame.assetCode === 'CT-01').length,
+          (count) => count >= 2,
+          'two frames of CT-01',
+          15_000,
+        );
+        expect(frames(received).some((frame) => frame.assetCode === 'CT-02')).toBe(false);
+      });
+
+      it('lets a `viewer` watch', async () => {
+        const { socket } = await connect(app, await withToken(['viewer']));
+
+        await expect(watch(socket, { assets: ['CT-01'] })).resolves.toEqual({
+          accepted: ['CT-01'],
+        });
+      });
+
+      it.each([
+        ['null', null],
+        ['a number', 7],
+        ['a string', 'CT-01'],
+        ['an empty object', {}],
+        ['`assets` as a string', { assets: 'CT-01' }],
+        ['`assets` of things that are not codes', { assets: [1, null, {}] }],
+      ])(
+        'answers %s with an empty acknowledgement and keeps the socket',
+        async (_name, payload) => {
+          const { socket } = await connect(app, await withToken());
+
+          await expect(watch(socket, payload)).resolves.toEqual({ accepted: [] });
+
+          expect(socket.connected).toBe(true);
+          // Still served afterwards.
+          await expect(watch(socket, { assets: ['CT-01'] })).resolves.toEqual({
+            accepted: ['CT-01'],
+          });
+        },
+      );
     });
   });
 

@@ -399,6 +399,97 @@ describe('TelemetryIngestService', () => {
     });
   });
 
+  describe('knows', () => {
+    it('is false until the catalogue has been read, and true for what it holds', async () => {
+      const { service, boot } = build([CT_01]);
+      expect(service.knows('CT-01')).toBe(false);
+
+      await boot();
+
+      expect(service.knows('CT-01')).toBe(true);
+      expect(service.knows('CT-02')).toBe(false);
+    });
+
+    it('does not need a reading to be held: a catalogue asset is known before it reports', async () => {
+      const { service, boot } = build([CT_01]);
+      await boot();
+
+      expect(service.latestState()).toEqual({});
+      expect(service.knows('CT-01')).toBe(true);
+    });
+
+    it('follows the catalogue when it is read again', async () => {
+      const { service, catalogue, boot } = build([CT_01]);
+      await boot();
+
+      catalogue.current = [CT_02];
+      await jest.advanceTimersByTimeAsync(60_000);
+
+      expect(service.knows('CT-01')).toBe(false);
+      expect(service.knows('CT-02')).toBe(true);
+    });
+
+    it('is false for a name that only an object would inherit', async () => {
+      const { service, boot } = build([CT_01]);
+      await boot();
+
+      expect(service.knows('constructor')).toBe(false);
+      expect(service.knows('__proto__')).toBe(false);
+      expect(service.knows('toString')).toBe(false);
+    });
+  });
+
+  describe('snapshotOf', () => {
+    it('gives the entry `latestState` gives, for the listed assets only', async () => {
+      const { service, boot } = build([CT_01, CT_02]);
+      await boot();
+      service.ingest(reading('CT-01', { temp: 10, running: true }));
+      service.ingest(reading('CT-02', { temp: 30 }));
+
+      const snapshot = service.snapshotOf(['CT-02']);
+
+      expect(Object.keys(snapshot)).toEqual(['CT-02']);
+      expect(snapshot['CT-02']).toEqual(service.latestState()['CT-02']);
+    });
+
+    it('leaves out a listed asset that holds no reading, and an unknown one', async () => {
+      const { service, boot } = build([CT_01, CT_02]);
+      await boot();
+      service.ingest(reading('CT-01', { temp: 10 }));
+
+      expect(service.snapshotOf(['CT-01', 'CT-02', 'XX-99'])).toEqual({
+        'CT-01': { online: true, receivedAt: iso(NOW), values: { temp: 10 } },
+      });
+    });
+
+    it('is empty for no codes', async () => {
+      const { service, boot } = build();
+      await boot();
+      service.ingest(reading('CT-01', { temp: 10 }));
+
+      expect(service.snapshotOf([])).toEqual({});
+    });
+
+    it('reports an asset that went offline as offline', async () => {
+      const { service, boot } = build();
+      await boot();
+      service.ingest(reading('CT-01', { temp: 10 }));
+      service.markOnline('CT-01', false);
+
+      expect(service.snapshotOf(['CT-01'])['CT-01'].online).toBe(false);
+    });
+
+    it('hands out copies: changing a result changes nothing held', async () => {
+      const { service, boot } = build();
+      await boot();
+      service.ingest(reading('CT-01', { temp: 10 }));
+
+      service.snapshotOf(['CT-01'])['CT-01'].values.temp = 99;
+
+      expect(service.valuesOf('CT-01')).toEqual({ temp: 10 });
+    });
+  });
+
   describe('presence', () => {
     it('is online once an asset has a reading', async () => {
       const { service, boot } = build();

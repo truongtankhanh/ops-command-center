@@ -16,7 +16,7 @@ Last reconciled: 2026-10-13
 | Assets           | 2         | [assets.md](assets.md)       |
 | Incidents        | 5         | [incidents.md](incidents.md) |
 | Real-time events | 2         | [events.md](events.md)       |
-| Telemetry        | 3         | [telemetry.md](telemetry.md) |
+| Telemetry        | 5         | [telemetry.md](telemetry.md) |
 
 ## Conventions that apply to every endpoint
 
@@ -42,12 +42,12 @@ Last reconciled: 2026-10-13
   resolve to the incident categories a role handles
   ([ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md)):
 
-  | Action                                                         | `viewer` | `operator` | `supervisor` |          `technician`           |
-  | -------------------------------------------------------------- | :------: | :--------: | :----------: | :-----------------------------: |
-  | Read zones, site plan, cameras, stream URLs, assets, incidents |   yes    |    yes     |     yes      |               yes               |
-  | Subscribe to `/events` or `/telemetry`                         |   yes    |    yes     |     yes      |               yes               |
-  | Report (`incident:report`)                                     |    no    |    yes     |     yes      |               yes               |
-  | Acknowledge, resolve (`incident:acknowledge`, `:resolve`)      |    no    |    yes     |     yes      | Facilities and Environment only |
+  | Action                                                                   | `viewer` | `operator` | `supervisor` |          `technician`           |
+  | ------------------------------------------------------------------------ | :------: | :--------: | :----------: | :-----------------------------: |
+  | Read zones, site plan, cameras, stream URLs, assets, incidents           |   yes    |    yes     |     yes      |               yes               |
+  | Subscribe to `/events` or `/telemetry`, watch assets (`telemetry.watch`) |   yes    |    yes     |     yes      |               yes               |
+  | Report (`incident:report`)                                               |    no    |    yes     |     yes      |               yes               |
+  | Acknowledge, resolve (`incident:acknowledge`, `:resolve`)                |    no    |    yes     |     yes      | Facilities and Environment only |
   - **403** — the token has none of these roles (`No role grants access to this API`), its roles
     lack the permission the endpoint needs (`Missing permission: incident:acknowledge`), or the
     incident's category is outside the role's scope (`Not allowed for this category`). Signing in
