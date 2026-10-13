@@ -1,4 +1,8 @@
 import type { DataSourceOptions } from 'typeorm';
+import { AssetClassEntity } from '../assets/asset-class.entity';
+import { AssetEntity } from '../assets/asset.entity';
+import { TelemetryPointEntity } from '../assets/telemetry-point.entity';
+import { TelemetryRuleEntity } from '../assets/telemetry-rule.entity';
 import { CameraEntity } from '../cameras/camera.entity';
 import type { Env } from '../config/env.validation';
 import { IdempotencyKeyEntity } from '../incidents/idempotency-key.entity';
@@ -23,6 +27,7 @@ import { SitePlan1791280100000 } from './migrations/1791280100000-site-plan';
 import { CameraFieldOfView1791280160000 } from './migrations/1791280160000-camera-field-of-view';
 import { IncidentCategoriesAndZoneUse1791531000000 } from './migrations/1791531000000-incident-categories-and-zone-use';
 import { ZoneHeight1791790200000 } from './migrations/1791790200000-zone-height';
+import { AssetCatalogue1791793800000 } from './migrations/1791793800000-asset-catalogue';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -55,6 +60,10 @@ export const entities = [
   LogLevelOverrideEntity,
   SiteEntity,
   SiteFeatureEntity,
+  AssetClassEntity,
+  TelemetryPointEntity,
+  AssetEntity,
+  TelemetryRuleEntity,
 ];
 
 /** The part of the validated environment that says where the database is and who connects. */
@@ -90,6 +99,7 @@ export const typeormOptions = (db: DatabaseEnv): DataSourceOptions => ({
     CameraFieldOfView1791280160000,
     IncidentCategoriesAndZoneUse1791531000000,
     ZoneHeight1791790200000,
+    AssetCatalogue1791793800000,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,
