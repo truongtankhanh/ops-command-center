@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-02
-- **Amended by:** [ADR-0014](0014-structured-logging-and-correlation.md) (`DEPLOYMENT_ENV`; runtime log level); ticket V2-04.1 (the database connection is `DB_*`, not `DATABASE_URL`)
+- **Amended by:** [ADR-0014](0014-structured-logging-and-correlation.md) (`DEPLOYMENT_ENV`; runtime log level); ticket V2-04.1 (the database connection is `DB_*`, not `DATABASE_URL`); ticket V2-06.5 (`MQTT_PASSWORD` is a second secret; `TELEMETRY_SOURCE` joins the demo gate)
 
 ## Context
 
@@ -12,15 +12,19 @@ The API validates its environment once, at boot, through the `Env` class (`apps/
 - **The e2e suite read the developer's `.env`.** `AppModule` loads and validates config when it is imported, before `beforeAll` runs, so the suite's own `DATABASE_URL` fallback never applied. The suite then dropped the `public` schema of whatever database `.env` pointed at, which is normally the local development database. Its `SEED_ON_BOOT` / `SIMULATOR_ENABLED` overrides were ignored for the same reason.
 - **The TypeORM CLI bypassed validation.** `data-source.ts` read `DATABASE_URL` raw and silently fell back to a hardcoded local connection string.
 - **Production defaults were demo defaults.** Unset `CAMERA_SOURCE` meant `mock` and unset `SEED_ON_BOOT` meant `true`, even under `NODE_ENV=production`. A deploy that forgot one variable would boot with synthetic cameras and seed the fictional campus into a real database, and nothing would report it.
-- **Nothing said where secrets come from** outside a laptop, or what staging is. The only secret today is the database password: `DB_PASSWORD`, which was inside `DATABASE_URL` until V2-04.1.
+- **Nothing said where secrets come from** outside a laptop, or what staging is. The only secret at the time was the database password: `DB_PASSWORD`, which was inside `DATABASE_URL` until V2-04.1. (V2-06.5 added a second, `MQTT_PASSWORD`; see its amendment in the Decision.)
 
 ## Decision
 
-**Amendment (V2-04.1).** The API connects with `DB_HOST`, `DB_PORT` (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSL` (default `false`, server certificate verified). `DATABASE_URL` is no longer read. A password used as is needs no URL-encoding, and the `_test` guard of the e2e suites compares `DB_NAME` instead of parsing a URL. Host, name, user and password have no default, for the reason in section 2: a deploy that forgot one fails at boot naming it, instead of reaching for a local database. `DB_PASSWORD` is the only secret, and log redaction masks it by key.
+**Amendment (V2-04.1).** The API connects with `DB_HOST`, `DB_PORT` (default `5432`), `DB_NAME`, `DB_USER`, `DB_PASSWORD` and `DB_SSL` (default `false`, server certificate verified). `DATABASE_URL` is no longer read. A password used as is needs no URL-encoding, and the `_test` guard of the e2e suites compares `DB_NAME` instead of parsing a URL. Host, name, user and password have no default, for the reason in section 2: a deploy that forgot one fails at boot naming it, instead of reaching for a local database. `DB_PASSWORD` is the only secret (V2-06.5 added a second, `MQTT_PASSWORD`; see its amendment below), and log redaction masks it by key.
 
 Considered: keeping `DATABASE_URL` as a fallback (two ways to configure one thing, with a precedence rule to define and later remove; nothing outside this repository depends on it, because there is no deploy target yet), and `POSTGRES_*` names (they belong to the Postgres image and stay on the `postgres` service; the app's settings stay separate from the image's). Dropping the URL also dropped its query options, such as `?sslmode=require`; `DB_SSL` keeps TLS to the database possible, and any other driver option would need a setting of its own.
 
 **This is breaking** for any environment that sets `DATABASE_URL`: it must set the `DB_*` variables before the new image rolls out, or the API refuses to boot, naming the missing key.
+
+**Amendment (V2-06.5).** `MQTT_PASSWORD` is a second secret, read only when `TELEMETRY_SOURCE=mqtt` (ADR-0019), together with `MQTT_URL`, `MQTT_USERNAME` and `MQTT_CA_FILE`. It is injected like `DB_PASSWORD`, used as is, and masked in logs by key (`apps/api/src/logging/redaction.ts`). A password inside an `MQTT_URL` is also masked, by the URL-credentials pattern, but the two variables are the intended place for it. Username and password are set together or not at all, in every environment. Production without `DEMO_MODE` requires both, and an `mqtts://` URL (section 4). `TELEMETRY_SOURCE` has no default in production, as `CAMERA_SOURCE` has none. Demo broker credentials, when the Compose profile adds them (V2-06.11), are demo-only values.
+
+Considered: credentials only inside `MQTT_URL` (one variable fewer, but a URL is echoed and logged far more readily than a password, and masking would rest on a pattern instead of a key), and a separate file for the broker's secrets (no deploy target yet to justify a second mechanism beside the environment).
 
 ### 1. One env file per mode, anchored to the API, and real env always wins
 
@@ -45,13 +49,15 @@ Considered: `ignoreEnvFile` under test (every developer must export variables by
 
 ### 4. Production refuses demo behaviour unless the deploy opts in
 
-| `NODE_ENV`                      | `CAMERA_SOURCE` unset | `CAMERA_SOURCE=mock` | `SEED_ON_BOOT` unset | `SEED_ON_BOOT=true` |
-| ------------------------------- | --------------------- | -------------------- | -------------------- | ------------------- |
-| `development`, `test`           | `mock`                | allowed              | `true`               | allowed             |
-| `production`                    | **boot fails**        | **boot fails**       | `false`              | **boot fails**      |
-| `production` + `DEMO_MODE=true` | **boot fails**        | allowed              | `false`              | allowed             |
+| `NODE_ENV`                      | `CAMERA_SOURCE` unset | `CAMERA_SOURCE=mock` | `TELEMETRY_SOURCE` unset | `TELEMETRY_SOURCE=mock` | `SEED_ON_BOOT` unset | `SEED_ON_BOOT=true` |
+| ------------------------------- | --------------------- | -------------------- | ------------------------ | ----------------------- | -------------------- | ------------------- |
+| `development`, `test`           | `mock`                | allowed              | `mock`                   | allowed                 | `true`               | allowed             |
+| `production`                    | **boot fails**        | **boot fails**       | **boot fails**           | **boot fails**          | `false`              | **boot fails**      |
+| `production` + `DEMO_MODE=true` | **boot fails**        | allowed              | **boot fails**           | allowed                 | `false`              | allowed             |
 
 `DEMO_MODE=true` is the explicit opt-in. Only the Docker Compose demo sets it, because the image runs `NODE_ENV=production`. Every failure names the key, never a value.
+
+`TELEMETRY_SOURCE=off` and `mqtt` are not demo behaviour and are allowed in production. With `mqtt`, an `mqtt://` URL (no TLS) and a missing `MQTT_USERNAME` / `MQTT_PASSWORD` need `DEMO_MODE=true`; half a credential fails boot whatever `DEMO_MODE` says.
 
 Considered: environment-aware defaults without the opt-in (`CAMERA_SOURCE=mock` would still boot silently in production), and leaving defaults as they were (the gap stays open).
 
@@ -70,7 +76,7 @@ Considered: environment-aware defaults without the opt-in (`CAMERA_SOURCE=mock` 
 
 **Amendment (ADR-0014).** `DEPLOYMENT_ENV` is a label, not a second behaviour axis: it is stamped on every log line as `env` and changes nothing else, so the `APP_ENV` rejection below still stands. It has no default in production, so a staging deploy cannot be tagged `production` by omission.
 
-The image reads environment variables only and contains no `.env`. Whatever runs it (orchestrator, PaaS, secret manager integration) injects the `DB_*` settings (`DB_PASSWORD` is the secret) and owns its rotation. The specific secret manager stays open until there is a deploy target; choosing one is a separate decision.
+The image reads environment variables only and contains no `.env`. Whatever runs it (orchestrator, PaaS, secret manager integration) injects the `DB_*` settings (`DB_PASSWORD` is a secret; `MQTT_PASSWORD`, with `TELEMETRY_SOURCE=mqtt`, is the other) and owns its rotation. The specific secret manager stays open until there is a deploy target; choosing one is a separate decision.
 
 Considered: an `APP_ENV` variable next to `NODE_ENV` (a second environment axis, and ADR-0005 would have to pick one), adding `staging` to `NODE_ENV` (Express and other libraries treat any value other than `production` as development mode), and choosing a vendor now (no platform to choose for).
 

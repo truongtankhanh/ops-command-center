@@ -9,5 +9,7 @@ import { SitesService } from './sites.service';
   imports: [TypeOrmModule.forFeature([SiteEntity, SiteFeatureEntity])],
   controllers: [SitesController],
   providers: [SitesService],
+  // For the telemetry source, which needs the site code and nothing else of this module.
+  exports: [SitesService],
 })
 export class SitesModule {}

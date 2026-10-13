@@ -117,15 +117,102 @@ describe('validateEnv', () => {
   });
 
   describe('telemetry source', () => {
-    it.each(['mock', 'off'])('accepts %s', (source) => {
-      expect(validateEnv({ ...valid, TELEMETRY_SOURCE: source }).TELEMETRY_SOURCE).toBe(source);
+    it.each(['mock', 'mqtt', 'off'])('accepts %s', (source) => {
+      const env = { ...valid, TELEMETRY_SOURCE: source, MQTT_URL: 'mqtt://localhost:1883' };
+
+      expect(validateEnv(env).TELEMETRY_SOURCE).toBe(source);
     });
 
-    // `mqtt` is a documented value of ADR-0019 that nothing can honour until its source exists.
-    it.each(['mqtt', 'MOCK', ''])('refuses %j, naming the key', (source) => {
+    it.each(['MOCK', ''])('refuses %j, naming the key', (source) => {
       expect(() => validateEnv({ ...valid, TELEMETRY_SOURCE: source })).toThrow(
-        /TELEMETRY_SOURCE: TELEMETRY_SOURCE must be mock or off/,
+        /TELEMETRY_SOURCE: TELEMETRY_SOURCE must be mock, mqtt or off/,
       );
+    });
+  });
+
+  describe('mqtt source', () => {
+    const mqtt = { ...valid, TELEMETRY_SOURCE: 'mqtt', MQTT_URL: 'mqtt://localhost:1883' };
+    const PASSWORD = 'hunter2-not-a-real-secret';
+
+    /** The message of the error `validateEnv` throws for `raw`, or `''` when it does not. */
+    const errorOf = (raw: Record<string, unknown>): string => {
+      try {
+        validateEnv(raw);
+        return '';
+      } catch (error) {
+        return (error as Error).message;
+      }
+    };
+
+    it('reads the broker settings', () => {
+      const env = {
+        ...mqtt,
+        MQTT_URL: 'mqtts://mosquitto:8883',
+        MQTT_USERNAME: 'api',
+        MQTT_PASSWORD: PASSWORD,
+        MQTT_CA_FILE: '/etc/occ/ca.pem',
+      };
+
+      expect(validateEnv(env)).toMatchObject({
+        TELEMETRY_SOURCE: 'mqtt',
+        MQTT_URL: 'mqtts://mosquitto:8883',
+        MQTT_USERNAME: 'api',
+        MQTT_PASSWORD: PASSWORD,
+        MQTT_CA_FILE: '/etc/occ/ca.pem',
+      });
+    });
+
+    it('needs no credentials and no CA file for a plain broker in development', () => {
+      expect(validateEnv(mqtt)).toMatchObject({ MQTT_URL: 'mqtt://localhost:1883' });
+    });
+
+    it('requires MQTT_URL, naming the key', () => {
+      expect(() => validateEnv({ ...mqtt, MQTT_URL: undefined })).toThrow(/MQTT_URL/);
+    });
+
+    it.each(['http://broker:1883', 'ws://broker:9001', 'broker'])(
+      'refuses an MQTT_URL of %j',
+      (url) => {
+        expect(() => validateEnv({ ...mqtt, MQTT_URL: url })).toThrow(/MQTT_URL/);
+      },
+    );
+
+    it.each([
+      ['a username without a password', { MQTT_USERNAME: 'api' }],
+      ['a password without a username', { MQTT_PASSWORD: PASSWORD }],
+    ])('refuses %s: both or neither', (_, partial) => {
+      expect(() => validateEnv({ ...mqtt, ...partial })).toThrow(
+        /MQTT_USERNAME \/ MQTT_PASSWORD: set both or neither/,
+      );
+    });
+
+    it('reads an empty string as not set', () => {
+      const env = validateEnv({ ...mqtt, MQTT_USERNAME: '', MQTT_PASSWORD: '', MQTT_CA_FILE: '' });
+
+      expect(env.MQTT_USERNAME).toBeUndefined();
+      expect(env.MQTT_PASSWORD).toBeUndefined();
+      expect(env.MQTT_CA_FILE).toBeUndefined();
+    });
+
+    it('ignores the MQTT settings when the source is not mqtt', () => {
+      const env = {
+        ...valid,
+        TELEMETRY_SOURCE: 'mock',
+        MQTT_URL: 'nonsense',
+        MQTT_USERNAME: 'api',
+      };
+
+      expect(() => validateEnv(env)).not.toThrow();
+    });
+
+    it('never puts the password, or a URL with credentials, in an error', () => {
+      const half = errorOf({ ...mqtt, MQTT_PASSWORD: PASSWORD });
+      const badUrl = errorOf({ ...mqtt, MQTT_URL: `http://api:${PASSWORD}@broker:1883` });
+
+      expect(half).toContain('MQTT_USERNAME');
+      expect(badUrl).toContain('MQTT_URL');
+      expect(half).not.toContain(PASSWORD);
+      expect(badUrl).not.toContain(PASSWORD);
     });
   });
 
@@ -241,6 +328,53 @@ describe('validateEnv', () => {
       const env = { ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock', DEMO_MODE: 'true' };
 
       expect(validateEnv(env)).toMatchObject({ TELEMETRY_SOURCE: 'mock', DEMO_MODE: true });
+    });
+
+    describe('with the mqtt source', () => {
+      const mqtt = {
+        ...production,
+        ...mediamtx,
+        TELEMETRY_SOURCE: 'mqtt',
+        MQTT_URL: 'mqtts://broker.example.org:8883',
+        MQTT_USERNAME: 'api',
+        MQTT_PASSWORD: 'placeholder',
+      };
+
+      it('boots with TLS and both credentials, without DEMO_MODE', () => {
+        expect(validateEnv(mqtt)).toMatchObject({ TELEMETRY_SOURCE: 'mqtt', DEMO_MODE: false });
+      });
+
+      it('rejects a plain mqtt:// URL without DEMO_MODE, naming the key', () => {
+        expect(() => validateEnv({ ...mqtt, MQTT_URL: 'mqtt://broker:1883' })).toThrow(
+          /MQTT_URL: mqtt:\/\/ needs DEMO_MODE=true/,
+        );
+      });
+
+      it('rejects missing credentials without DEMO_MODE', () => {
+        const env = { ...mqtt, MQTT_USERNAME: undefined, MQTT_PASSWORD: undefined };
+
+        expect(() => validateEnv(env)).toThrow(
+          /MQTT_USERNAME \/ MQTT_PASSWORD: required in production/,
+        );
+      });
+
+      it('lets DEMO_MODE allow a plain URL and no credentials', () => {
+        const env = {
+          ...mqtt,
+          MQTT_URL: 'mqtt://mosquitto:1883',
+          MQTT_USERNAME: undefined,
+          MQTT_PASSWORD: undefined,
+          DEMO_MODE: 'true',
+        };
+
+        expect(validateEnv(env)).toMatchObject({ TELEMETRY_SOURCE: 'mqtt', DEMO_MODE: true });
+      });
+
+      it('does not let DEMO_MODE allow half a credential', () => {
+        const env = { ...mqtt, MQTT_PASSWORD: undefined, DEMO_MODE: 'true' };
+
+        expect(() => validateEnv(env)).toThrow(/set both or neither/);
+      });
     });
 
     it('rejects SEED_ON_BOOT=true without DEMO_MODE', () => {

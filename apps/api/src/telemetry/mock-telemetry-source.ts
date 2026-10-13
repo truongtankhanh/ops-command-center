@@ -3,7 +3,13 @@ import type { TelemetryValue } from '@occ/contracts';
 import type { CatalogueAsset } from '../assets/assets.service';
 import { ListenerSet } from './listener-set';
 import { valueAt } from './mock-waveform';
-import type { RawReading, TelemetrySource, Unsubscribe, UpstreamState } from './telemetry-source';
+import type {
+  AssetStatusReport,
+  RawReading,
+  TelemetrySource,
+  Unsubscribe,
+  UpstreamState,
+} from './telemetry-source';
 
 const DEFAULT_TICK_MS = 1_000;
 // The catalogue changes by migration or reviewed write, never through the API (ADR-0018), so a
@@ -92,6 +98,11 @@ export class MockTelemetrySource implements TelemetrySource {
 
   onUpstream(listener: (state: UpstreamState) => void): Unsubscribe {
     return this.upstream.add(listener);
+  }
+
+  /** Never called back: a generated device never goes away, so it has no presence to report. */
+  onStatus(_listener: (report: AssetStatusReport) => void): Unsubscribe {
+    return () => undefined;
   }
 
   private summary(): string {

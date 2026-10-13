@@ -107,6 +107,7 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
         this.ingest(reading);
       }),
       this.source.onUpstream((state) => this.setUpstream(state)),
+      this.source.onStatus((report) => this.markOnline(report.assetCode, report.online)),
     );
 
     await this.reload();

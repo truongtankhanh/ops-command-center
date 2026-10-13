@@ -1,6 +1,12 @@
 import { Logger } from '@nestjs/common';
 import { ListenerSet } from './listener-set';
-import type { RawReading, TelemetrySource, Unsubscribe, UpstreamState } from './telemetry-source';
+import type {
+  AssetStatusReport,
+  RawReading,
+  TelemetrySource,
+  Unsubscribe,
+  UpstreamState,
+} from './telemetry-source';
 
 /**
  * No telemetry (`TELEMETRY_SOURCE=off`): it emits no reading, so the twin shows assets with no
@@ -26,5 +32,10 @@ export class OffTelemetrySource implements TelemetrySource {
 
   onUpstream(listener: (state: UpstreamState) => void): Unsubscribe {
     return this.upstream.add(listener);
+  }
+
+  /** Never called back: this source has no devices, so it has no presence to report. */
+  onStatus(_listener: (report: AssetStatusReport) => void): Unsubscribe {
+    return () => undefined;
   }
 }
