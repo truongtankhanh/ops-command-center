@@ -14,7 +14,8 @@ type Row = Record<string, unknown>;
 /**
  * The equipment catalogue's constraints, asserted through raw SQL as the zone height case is: the
  * database is the only enforcement (ADR-0018), so the refusals are checked there, by the name
- * Postgres reports. There is no route yet (V2-05.6). The suite boots `AppModule` on the shared
+ * Postgres reports. The routes over the catalogue are `assets-routes.e2e-spec.ts`; this suite
+ * builds its app without `configureApp`. The suite boots `AppModule` on the shared
  * `_test` database, which applies the migrations and seeds the campus, and does not rebuild the
  * schema. Every row it writes uses a `zz_` class code or a `ZZ-` asset code, which the seed never
  * uses, and is deleted after each case (assets first: they restrict the deletion of their class).
