@@ -4,6 +4,7 @@ import { type ApiError, type Asset, type AssetDetail, ROLES, type Zone } from '@
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
+import { AssetsService } from '../src/assets/assets.service';
 import { validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
 import { ASSETS } from '../src/database/seed/assets';
@@ -409,6 +410,79 @@ describe('Assets routes (e2e)', () => {
       // The disabled rule of the asset replaced the class rule, so it does not alarm again.
       expect((await detail('ZZ-T1')).rules).toEqual([]);
       expect(ruleSummary(await detail('ZZ-T2'))).toEqual([['Motor over-temperature', 85]]);
+    });
+  });
+
+  /**
+   * The bulk read the telemetry bridge uses instead of `detail` per asset. It has no route, so the
+   * cases go through the service of the booted app; the rules must come out as `detail` serves them.
+   */
+  describe('AssetsService.catalogue', () => {
+    const catalogue = () => app.get(AssetsService).catalogue();
+    const find = async (code: string) => (await catalogue()).find((asset) => asset.code === code)!;
+    const summary = (rules: { name: string; limit: number }[]) =>
+      rules.map(({ name, limit }) => [name, limit] as const);
+
+    it('serves every seed asset by code, each with all the points of its class and its rules', async () => {
+      const seedCodes = ASSETS.map((asset) => asset.code);
+      const served = (await catalogue()).filter((asset) => seedCodes.includes(asset.code));
+
+      expect(served.map((asset) => asset.code)).toEqual([...seedCodes].sort());
+
+      const tower = served.find((asset) => asset.code === 'CT-01')!;
+      expect(tower.points.map((point) => point.key)).toEqual(CT_01_POINTS);
+      expect(summary(tower.rules)).toEqual([
+        ['High vibration', 7.1],
+        ['Motor over-temperature', 85],
+        ['Motor overcurrent', 24],
+      ]);
+      expect(served.find((asset) => asset.code === 'ICS-DC')!.rules).toEqual([]);
+    });
+
+    it('agrees with the detail route on the rules of an asset', async () => {
+      const fromCatalogue = summary((await find('CT-01')).rules);
+
+      expect(fromCatalogue).toEqual(ruleSummary(await detail('CT-01')));
+    });
+
+    it('keeps the id of a rule and whose it is, which raising an incident needs', async () => {
+      const { rules } = await find('CT-01');
+
+      expect(rules).toHaveLength(3);
+      for (const rule of rules) {
+        expect(typeof rule.id).toBe('string');
+        expect(rule.assetId).toBeNull();
+        expect(rule.enabled).toBe(true);
+      }
+    });
+
+    it('replaces a class rule with the rule of the asset, and only for that asset', async () => {
+      const classId = await addClass();
+      await addPoint(classId, 'motorTempC');
+      await addRule(classId, 'Motor over-temperature');
+      const tunedId = await addAsset(classId, 'ZZ-T1');
+      await addAsset(classId, 'ZZ-T2');
+      await addRule(classId, 'Motor over-temperature', {
+        asset_id: tunedId,
+        limit: 95,
+        clear: 90,
+      });
+
+      expect(summary((await find('ZZ-T1')).rules)).toEqual([['Motor over-temperature', 95]]);
+      expect(summary((await find('ZZ-T2')).rules)).toEqual([['Motor over-temperature', 85]]);
+    });
+
+    it('leaves out a disabled rule, and a disabled override silences its asset alone', async () => {
+      const classId = await addClass();
+      await addPoint(classId, 'motorTempC');
+      await addRule(classId, 'Motor over-temperature');
+      await addRule(classId, 'Switched off', { enabled: false });
+      const silencedId = await addAsset(classId, 'ZZ-T1');
+      await addAsset(classId, 'ZZ-T2');
+      await addRule(classId, 'Motor over-temperature', { asset_id: silencedId, enabled: false });
+
+      expect((await find('ZZ-T1')).rules).toEqual([]);
+      expect(summary((await find('ZZ-T2')).rules)).toEqual([['Motor over-temperature', 85]]);
     });
   });
 });

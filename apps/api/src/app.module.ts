@@ -19,6 +19,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { SimulatorModule } from './simulator/simulator.module';
 import { SitesModule } from './sites/sites.module';
+import { TelemetryModule } from './telemetry/telemetry.module';
 import { ZonesModule } from './zones/zones.module';
 
 @Module({
@@ -61,6 +62,7 @@ import { ZonesModule } from './zones/zones.module';
     SitesModule,
     CamerasModule,
     AssetsModule,
+    TelemetryModule,
     IncidentsModule,
     RealtimeModule,
     SimulatorModule,
