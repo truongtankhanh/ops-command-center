@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import type { CameraFieldOfView } from '@occ/contracts';
 import { DataSource, type EntityManager, In, IsNull } from 'typeorm';
 import { AssetClassEntity } from '../../assets/asset-class.entity';
+import { AssetEntity } from '../../assets/asset.entity';
 import { TelemetryPointEntity } from '../../assets/telemetry-point.entity';
 import { TelemetryRuleEntity } from '../../assets/telemetry-rule.entity';
 import { CameraEntity } from '../../cameras/camera.entity';
@@ -26,6 +27,7 @@ import {
   type PresentCatalogue,
   type RuleSeed,
 } from './asset-catalogue';
+import { ASSETS, type AssetSeed } from './assets';
 import {
   CAMERAS,
   CAMPUS_CENTER,
@@ -45,6 +47,7 @@ const MINUTE = 60_000;
 const SEED_ZONE_CODES = ZONES.map((zone) => zone.code);
 const SEED_CAMERA_CODES = CAMERAS.map((camera) => camera.code);
 const SEED_CLASS_CODES = ASSET_CLASSES.map((assetClass) => assetClass.code);
+const SEED_ASSET_CODES = ASSETS.map((asset) => asset.code);
 // The seed zones whose use and height the seed owns. They are buildings (`campus.spec.ts` pins it).
 const USE_SEED_CODES = ZONES.filter((zone) => zone.use !== undefined).map((zone) => zone.code);
 const HEIGHT_SEED_CODES = ZONES.filter((zone) => zone.heightM !== undefined).map(
@@ -124,6 +127,24 @@ const ruleColumns = (seed: RuleSeed, assetClassId: string) => ({
   enabled: true,
 });
 
+/**
+ * A seed asset's row: one definition for a fresh seed and a top-up, so they agree. `at` is metres
+ * from the campus centre, not from the zone as a camera's is, so the offset starts there.
+ */
+const assetColumns = (seed: AssetSeed, assetClassId: string, zoneId: string) => {
+  const [lng, lat] = offset(CAMPUS_CENTER, ...seed.at);
+  return {
+    code: seed.code,
+    name: seed.name,
+    assetClassId,
+    zoneId,
+    lng,
+    lat,
+    elevationM: seed.elevationM,
+    headingDeg: seed.headingDeg,
+  };
+};
+
 /** What the catalogue step inserted. */
 interface CatalogueCounts {
   assetClasses: number;
@@ -131,8 +152,13 @@ interface CatalogueCounts {
   telemetryRules: number;
 }
 
+/** What a fresh seed inserted of the equipment: the catalogue, then the assets standing in it. */
+interface SeededCounts extends CatalogueCounts {
+  assets: number;
+}
+
 /** What a top-up added to an already seeded demo campus. */
-interface TopUp extends CatalogueCounts {
+interface TopUp extends SeededCounts {
   zones: number;
   zoneUses: number;
   zoneHeights: number;
@@ -144,9 +170,10 @@ interface TopUp extends CatalogueCounts {
 /**
  * Seeds the reference campus when `SEED_ON_BOOT` is on: all of it into an empty database, or the
  * parts added since (the site plan, camera fields of view, the zones of the expanded campus, the
- * use and height of their buildings and their cameras, the equipment catalogue) into a database
- * seeded before them, so a demo volume upgrades by restarting (ADR-0017). A top-up only fills what
- * is missing — it never changes a value already there — and only on the reference campus.
+ * use and height of their buildings and their cameras, the equipment catalogue and the demo
+ * assets) into a database seeded before them, so a demo volume upgrades by restarting (ADR-0017).
+ * A top-up only fills what is missing — it never changes a value already there — and only on the
+ * reference campus.
  */
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -173,11 +200,11 @@ export class SeedService implements OnApplicationBootstrap {
     });
 
     if (outcome && 'seeded' in outcome) {
-      const { assetClasses, telemetryPoints, telemetryRules } = outcome.seeded;
+      const { assetClasses, telemetryPoints, telemetryRules, assets } = outcome.seeded;
       this.logger.log(
         `Seeded ${ZONES.length} zones, ${CAMERAS.length} cameras, ${INCIDENTS.length} incidents, ` +
-          `the site plan, ${assetClasses} asset classes, ${telemetryPoints} points ` +
-          `and ${telemetryRules} rules`,
+          `the site plan, ${assetClasses} asset classes, ${telemetryPoints} points, ` +
+          `${telemetryRules} rules and ${assets} assets`,
       );
     } else if (outcome && Object.values(outcome).some((count) => count > 0)) {
       this.logger.log(
@@ -186,13 +213,13 @@ export class SeedService implements OnApplicationBootstrap {
           `${outcome.siteFeatures} site plan features, ` +
           `${outcome.fieldsOfView} camera fields of view, ` +
           `${outcome.assetClasses} asset classes, ${outcome.telemetryPoints} points, ` +
-          `${outcome.telemetryRules} rules`,
+          `${outcome.telemetryRules} rules, ${outcome.assets} assets`,
       );
     }
   }
 
-  /** Seeds an empty database; returns what the catalogue step inserted, for the log. */
-  async seed(manager: EntityManager, now: Date): Promise<CatalogueCounts> {
+  /** Seeds an empty database; returns what the catalogue and asset steps inserted, for the log. */
+  async seed(manager: EntityManager, now: Date): Promise<SeededCounts> {
     const zones = new Map<string, ZoneEntity>();
     for (const seed of ZONES) {
       const zone = await manager.save(manager.create(ZoneEntity, zoneColumns(seed)));
@@ -205,9 +232,10 @@ export class SeedService implements OnApplicationBootstrap {
     }
 
     await this.seedSitePlan(manager);
-    // The routine a top-up uses, so a fresh seed and a top-up cannot disagree; on an empty
-    // database everything is absent.
+    // The routines a top-up uses, so a fresh seed and a top-up cannot disagree; on an empty
+    // database everything is absent. Assets after the zones and the classes they restrict.
     const catalogue = await this.addMissingCatalogue(manager);
+    const assets = await this.addMissingAssets(manager);
 
     // Oldest first, so codes increase with time like they would in production. The people in the
     // seed story are fictional, so their timeline entries name the `seed` system actor.
@@ -246,7 +274,7 @@ export class SeedService implements OnApplicationBootstrap {
       }
       await persistIncident(manager, incident);
     }
-    return catalogue;
+    return { ...catalogue, assets };
   }
 
   /**
@@ -254,7 +282,8 @@ export class SeedService implements OnApplicationBootstrap {
    * seed lock. A database that is not the reference campus lacks some seed zone or camera, so it
    * fails this check and takes the lock, then `topUp` finds nothing to do. A missing catalogue
    * class, point or rule fails it too, read through the same `missingFromCatalogue` the top-up
-   * inserts from, so the check and the filler cannot disagree.
+   * inserts from, so the check and the filler cannot disagree. So does a missing seed asset, by
+   * code, so an asset added by hand cannot hide one.
    */
   private async isComplete(manager: EntityManager): Promise<boolean> {
     if ((await manager.count(ZoneEntity)) === 0) return false;
@@ -279,14 +308,17 @@ export class SeedService implements OnApplicationBootstrap {
       where: { code: In(SEED_CAMERA_CODES), fovHeadingDeg: IsNull() },
     });
     if (camerasWithoutFov > 0) return false;
+    // Like cameras, a missing seed asset needs its own check: nothing above would notice it.
+    if (!(await this.assetsAreComplete(manager))) return false;
     return this.catalogueIsComplete(manager);
   }
 
   /**
    * Adds what a campus seeded before the expanded zones and cameras, the site plan, camera fields
-   * of view and the equipment catalogue lacks. `null` when the database is not the reference
-   * campus: the seed's data would not belong there. That is the nine zones of the first campus,
-   * not every zone seeded since (a volume seeded before the expanded zones has only those nine).
+   * of view, the equipment catalogue and its assets lacks. `null` when the database is not the
+   * reference campus: the seed's data would not belong there. That is the nine zones of the first
+   * campus, not every zone seeded since (a volume seeded before the expanded zones has only those
+   * nine).
    */
   private async topUp(manager: EntityManager): Promise<TopUp | null> {
     const referenceZones = await manager.count(ZoneEntity, {
@@ -312,7 +344,9 @@ export class SeedService implements OnApplicationBootstrap {
       fieldsOfView += result.affected ?? 0;
     }
     const catalogue = await this.addMissingCatalogue(manager);
-    return { ...zones, cameras, siteFeatures: featureCount, fieldsOfView, ...catalogue };
+    // Last: an asset restricts its zone and its class, and both exist now.
+    const assets = await this.addMissingAssets(manager);
+    return { ...zones, cameras, siteFeatures: featureCount, fieldsOfView, ...catalogue, assets };
   }
 
   /**
@@ -397,6 +431,58 @@ export class SeedService implements OnApplicationBootstrap {
       telemetryPoints: missing.points.length,
       telemetryRules: missing.rules.length,
     };
+  }
+
+  /** The seed asset codes the database holds: the one read the check and the filler share. */
+  private async presentAssetCodes(manager: EntityManager): Promise<Set<string>> {
+    const rows = await manager.find(AssetEntity, {
+      select: { code: true },
+      where: { code: In(SEED_ASSET_CODES) },
+    });
+    return new Set(rows.map((row) => row.code));
+  }
+
+  private async assetsAreComplete(manager: EntityManager): Promise<boolean> {
+    return (await this.presentAssetCodes(manager)).size >= SEED_ASSET_CODES.length;
+  }
+
+  /**
+   * Inserts the seed assets that are absent. An asset that exists is never rewritten, and only
+   * absent codes are inserted, so a custom asset holding a seed code is left alone and nothing
+   * collides with the unique `code`. The asset's zone and class restrict their deletion, so the
+   * caller runs this after the zones and the catalogue.
+   */
+  private async addMissingAssets(manager: EntityManager): Promise<number> {
+    const present = await this.presentAssetCodes(manager);
+    const missing = ASSETS.filter((seed) => !present.has(seed.code));
+    if (missing.length === 0) return 0;
+
+    // Every class and zone exists here: the catalogue and the zone steps ran first.
+    const classes = new Map(
+      (
+        await manager.find(AssetClassEntity, {
+          select: { id: true, code: true },
+          where: { code: In(missing.map((seed) => seed.class)) },
+        })
+      ).map((row) => [row.code, row.id]),
+    );
+    const zones = new Map(
+      (
+        await manager.find(ZoneEntity, {
+          select: { id: true, code: true },
+          where: { code: In(missing.map((seed) => seed.zone)) },
+        })
+      ).map((row) => [row.code, row.id]),
+    );
+    await manager.save(
+      missing.map((seed) =>
+        manager.create(
+          AssetEntity,
+          assetColumns(seed, classes.get(seed.class)!, zones.get(seed.zone)!),
+        ),
+      ),
+    );
+    return missing.length;
   }
 
   /**
