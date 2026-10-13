@@ -22,6 +22,9 @@ already hold.
 Event names and payload types are defined once in `@occ/contracts` (`IncidentEvents`,
 `ServerToClientEvents`).
 
+Asset readings are not on this namespace: they have their own, best-effort `/telemetry`
+namespace with the same handshake — see [telemetry.md](telemetry.md).
+
 **Authentication.** The namespace accepts only connections that carry an OIDC access token, the
 same one the REST API takes ([ADR-0010](../adr/0010-oidc-authentication.md)). Send it in the
 handshake's `auth` payload (`EventsHandshakeAuth`), never in the URL, and pass `auth` as a function
@@ -51,7 +54,7 @@ Sent to every connected client when an incident is reported, by an operator or b
 
 Payload: `Incident` (see [incidents.md](incidents.md)).
 
-Source: `apps/api/src/realtime/events.gateway.ts:93`
+Source: `apps/api/src/realtime/events.gateway.ts:81`
 
 ### Incident updated
 
@@ -64,4 +67,4 @@ diff — replace the cached copy by `id` only if the payload's `version` is high
 
 Payload: `Incident`.
 
-Source: `apps/api/src/realtime/events.gateway.ts:98`
+Source: `apps/api/src/realtime/events.gateway.ts:86`

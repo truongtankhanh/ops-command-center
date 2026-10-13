@@ -37,9 +37,10 @@ export function configureApp(app: INestApplication): INestApplication {
         .setTitle('Ops Command Center API')
         .setDescription(
           'Incidents, zones, the site plan, cameras and assets. ' +
-            'Live updates on the `/events` Socket.IO namespace. ' +
+            'Live updates on the `/events` Socket.IO namespace and telemetry readings on ' +
+            '`/telemetry`. ' +
             'Every endpoint needs an OIDC access token as `Authorization: Bearer <token>`; ' +
-            '`/events` takes the same token in the handshake as `auth.token`. ' +
+            '`/events` and `/telemetry` take the same token in the handshake as `auth.token`. ' +
             'Writes need the `operator`, `supervisor` or `technician` role; a `technician` ' +
             'acknowledges and resolves only Facilities and Environment incidents. A token with ' +
             'none of `operator`, `supervisor`, `technician` and `viewer` gets 403.',

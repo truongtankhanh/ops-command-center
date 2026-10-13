@@ -16,6 +16,7 @@ Last reconciled: 2026-10-13
 | Assets           | 2         | [assets.md](assets.md)       |
 | Incidents        | 5         | [incidents.md](incidents.md) |
 | Real-time events | 2         | [events.md](events.md)       |
+| Telemetry        | 3         | [telemetry.md](telemetry.md) |
 
 ## Conventions that apply to every endpoint
 
@@ -23,8 +24,8 @@ Last reconciled: 2026-10-13
 - **Authentication.** Every endpoint except the health probes (`/api/health/live`, `/api/health/ready`)
   needs an OIDC access token from the
   configured issuer, sent as `Authorization: Bearer <token>`
-  ([ADR-0010](../adr/0010-oidc-authentication.md)). The `/events` namespace takes the same token in
-  its handshake — see [events.md](events.md).
+  ([ADR-0010](../adr/0010-oidc-authentication.md)). The `/events` and `/telemetry` namespaces take the
+  same token in their handshake — see [events.md](events.md) and [telemetry.md](telemetry.md).
   - **401** — the token is missing, malformed, expired, or not issued for this API. The response
     carries `WWW-Authenticate: Bearer realm="occ"` (with `error="invalid_token"` when a token was
     sent but rejected). Sign in again.
@@ -44,7 +45,7 @@ Last reconciled: 2026-10-13
   | Action                                                         | `viewer` | `operator` | `supervisor` |          `technician`           |
   | -------------------------------------------------------------- | :------: | :--------: | :----------: | :-----------------------------: |
   | Read zones, site plan, cameras, stream URLs, assets, incidents |   yes    |    yes     |     yes      |               yes               |
-  | Subscribe to `/events`                                         |   yes    |    yes     |     yes      |               yes               |
+  | Subscribe to `/events` or `/telemetry`                         |   yes    |    yes     |     yes      |               yes               |
   | Report (`incident:report`)                                     |    no    |    yes     |     yes      |               yes               |
   | Acknowledge, resolve (`incident:acknowledge`, `:resolve`)      |    no    |    yes     |     yes      | Facilities and Environment only |
   - **403** — the token has none of these roles (`No role grants access to this API`), its roles
