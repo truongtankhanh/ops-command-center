@@ -183,8 +183,43 @@ describe('Incidents (e2e)', () => {
     const watched = new Set((cameras.body as Camera[]).map((camera) => camera.zoneId));
     const unwatched = buildings.filter((z) => !watched.has(z.id)).map((z) => z.code);
     expect(unwatched.sort()).toEqual(['BLD-ADMIN', 'BLD-SEC', 'BLD-SPORTS']);
+    // The equipment catalogue is seeded with the campus (V2-05.4). No route serves it yet, so it
+    // is read from the tables, and the counts are literals so they cannot drift along with the seed.
+    const db = app.get(DataSource);
+    const rows = async (sql: string) => (await db.query(sql))[0] as Record<string, unknown>;
+    expect(await rows(`SELECT count(*)::int AS n FROM "asset_class"`)).toEqual({ n: 16 });
+    expect(await rows(`SELECT count(*)::int AS n FROM "telemetry_point"`)).toEqual({ n: 66 });
+    expect(await rows(`SELECT count(*)::int AS n FROM "telemetry_rule"`)).toEqual({ n: 22 });
+    expect(
+      await rows(`SELECT count(*)::int AS n FROM "telemetry_rule" WHERE "asset_id" IS NOT NULL`),
+    ).toEqual({ n: 0 });
+    // The cooling tower: 12 points, 3 rules, and no model file yet (V2-13 sets `model_key`).
+    expect(
+      await rows(
+        `SELECT c."model_key",
+                (SELECT count(*)::int FROM "telemetry_point" p WHERE p."asset_class_id" = c."id") AS points,
+                (SELECT count(*)::int FROM "telemetry_rule" r WHERE r."asset_class_id" = c."id") AS rules
+           FROM "asset_class" c WHERE c."code" = 'cooling_tower'`,
+      ),
+    ).toEqual({ model_key: null, points: 12, rules: 3 });
+    // The motor rule of frames 04 and 10, with its limits as the design gives them.
+    expect(
+      await rows(
+        `SELECT "key", "comparator", "limit", "clear", "for_s", "severity", "incident_type"
+           FROM "telemetry_rule" WHERE "name" = 'Motor over-temperature' AND "asset_id" IS NULL`,
+      ),
+    ).toEqual({
+      key: 'motorTempC',
+      comparator: 'above',
+      limit: 85,
+      clear: 80,
+      for_s: 60,
+      severity: 'critical',
+      incident_type: 'equipment_fault',
+    });
+
     // Nobody listens while seeding, so the seed announces nothing (ADR-0007).
-    expect(await app.get(DataSource).getRepository(OutboxEntity).count()).toBe(0);
+    expect(await db.getRepository(OutboxEntity).count()).toBe(0);
 
     // Only seeded incidents exist yet; a resolved one has the longest timeline.
     const [seeded] = (await api(app).get('/api/incidents?status=resolved&limit=1').expect(200))

@@ -5,6 +5,8 @@ import { categoryOf, INCIDENT_TYPES } from '@occ/contracts';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
+import { ASSET_CLASSES } from '../src/database/seed/asset-catalogue';
+import { SeedService } from '../src/database/seed/seed.service';
 
 type Row = Record<string, unknown>;
 
@@ -15,6 +17,8 @@ type Row = Record<string, unknown>;
  * `_test` database, which applies the migrations and seeds the campus, and does not rebuild the
  * schema. Every row it writes uses a `zz_` class code or a `ZZ-` asset code, which the seed never
  * uses, and is deleted after each case (assets first: they restrict the deletion of their class).
+ * The "seeded catalogue" cases are the exception: they take seed rows away or rename a zone, and put
+ * everything back through the seed itself (`SeedService`), in `finally`.
  */
 describe('Asset catalogue (e2e)', () => {
   let app: INestApplication;
@@ -461,6 +465,108 @@ describe('Asset catalogue (e2e)', () => {
 
       expect(await count('telemetry_point', `"asset_class_id" = $1`, [classId])).toBe(0);
       expect(await count('telemetry_rule', `"asset_class_id" = $1`, [classId])).toBe(0);
+    });
+  });
+
+  /** V2-05.4: the seed fills the catalogue on boot and tops up what is missing (ADR-0017). */
+  describe('seeded catalogue', () => {
+    const SEED_CODES = ASSET_CLASSES.map((assetClass) => assetClass.code);
+    const OF_SEED_CLASSES = `"asset_class_id" IN (SELECT "id" FROM "asset_class" WHERE "code" = ANY($1))`;
+
+    /** The seed's rows only: other cases' fixtures never share a code with them. */
+    const seedCounts = async () => ({
+      classes: await count('asset_class', `"code" = ANY($1)`, [SEED_CODES]),
+      points: await count('telemetry_point', OF_SEED_CLASSES, [SEED_CODES]),
+      rules: await count('telemetry_rule', `"asset_id" IS NULL AND ${OF_SEED_CLASSES}`, [
+        SEED_CODES,
+      ]),
+    });
+
+    /** Every seed row's id, so "nothing was touched" can be asserted on the rows themselves. */
+    const seedRowIds = async () => {
+      const ids = async (table: string, where: string) => {
+        const rows: { id: string }[] = await db.query(
+          `SELECT "id" FROM "${table}" WHERE ${where} ORDER BY "id"`,
+          [SEED_CODES],
+        );
+        return rows.map((row) => row.id);
+      };
+      return {
+        classes: await ids('asset_class', `"code" = ANY($1)`),
+        points: await ids('telemetry_point', OF_SEED_CLASSES),
+        rules: await ids('telemetry_rule', OF_SEED_CLASSES),
+      };
+    };
+
+    const limitOf = async (name: string): Promise<number> => {
+      const rows: { limit: number }[] = await db.query(
+        `SELECT "limit" FROM "telemetry_rule" WHERE "name" = $1 AND "asset_id" IS NULL`,
+        [name],
+      );
+      return rows[0].limit;
+    };
+
+    it('has the whole catalogue after boot', async () => {
+      expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+    });
+
+    it('fills in what is missing and keeps a limit an operator changed', async () => {
+      const seed = app.get(SeedService);
+
+      try {
+        // An operator tightened one limit. A whole class is gone (its points and rules cascade),
+        // one point nothing watches is gone, and so is one rule of a class that is otherwise there.
+        await db.query(
+          `UPDATE "telemetry_rule" SET "limit" = 90 WHERE "name" = 'Motor over-temperature'`,
+        );
+        await db.query(`DELETE FROM "asset_class" WHERE "code" = 'leak_sensor'`);
+        await db.query(
+          `DELETE FROM "telemetry_point" WHERE "key" = 'returnAirTempC'
+              AND "asset_class_id" = (SELECT "id" FROM "asset_class" WHERE "code" = 'precision_cooling')`,
+        );
+        await db.query(`DELETE FROM "telemetry_rule" WHERE "name" = 'High vibration'`);
+        expect(await seedCounts()).toEqual({ classes: 15, points: 63, rules: 19 });
+
+        await seed.onApplicationBootstrap();
+
+        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+        // What was missing is back with the seed's values; the changed limit was not rewritten.
+        expect(await limitOf('High vibration')).toBe(7.1);
+        expect(await limitOf('Water leak')).toBe(0.5);
+        expect(await limitOf('Motor over-temperature')).toBe(90);
+
+        // Nothing is left to add, so a further boot changes no row.
+        const settled = await seedRowIds();
+        await seed.onApplicationBootstrap();
+        expect(await seedRowIds()).toEqual(settled);
+      } finally {
+        await db.query(
+          `UPDATE "telemetry_rule" SET "limit" = 85 WHERE "name" = 'Motor over-temperature'`,
+        );
+        await seed.onApplicationBootstrap();
+      }
+    });
+
+    it('adds no catalogue to a database that is not the reference campus', async () => {
+      const seed = app.get(SeedService);
+
+      try {
+        // The library is not there under its code, so this is not the reference campus: the
+        // seed's data does not belong here, and a class that is gone stays gone.
+        await db.query(`DELETE FROM "asset_class" WHERE "code" = 'leak_sensor'`);
+        await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB-RENAMED' WHERE "code" = 'BLD-LIB'`);
+
+        await seed.onApplicationBootstrap();
+        expect(await count('asset_class', `"code" = 'leak_sensor'`, [])).toBe(0);
+
+        await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+        await seed.onApplicationBootstrap();
+        expect(await count('asset_class', `"code" = 'leak_sensor'`, [])).toBe(1);
+        expect(await seedCounts()).toEqual({ classes: 16, points: 66, rules: 22 });
+      } finally {
+        await db.query(`UPDATE "zone" SET "code" = 'BLD-LIB' WHERE "code" = 'BLD-LIB-RENAMED'`);
+        await seed.onApplicationBootstrap();
+      }
     });
   });
 });
