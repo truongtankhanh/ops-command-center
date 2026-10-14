@@ -246,6 +246,12 @@ browser ever does.
   to its device network only, and production needs `mqtts://` unless `DEMO_MODE` is set.
 - **The demo.** `docker compose --profile telemetry up` starts a broker and a simulator that follow exactly this
   contract, with one account per asset (username = asset code). See the README, "Telemetry".
+- **Scripted breaches are the mock source's.** With `TELEMETRY_MOCK_SCENARIO=true` the `mock` source holds
+  `CT-01`'s `motorTempC` past its limit for 80 s every 10 minutes and `LKS-B3`'s `leakDetected` `true` for 620 s
+  every hour, so the demo raises an incident. The `mqtt` demo's simulator does not play it. A source of your own
+  needs nothing like it, but a test breach must outlast the rule's `for_s` in readings the leader sees: a rule
+  raises only after `for_s` of breaching readings, and a gap of more than three of the point's intervals starts
+  the dwell again.
 
 ## Rolling deploys
 

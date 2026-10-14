@@ -39,6 +39,9 @@ services:
       CAMERA_SOURCE: ${CAMERA_SOURCE:-mock}
       # No default in the API's production mode, so a forgotten value fails boot; the demo has one.
       TELEMETRY_SOURCE: ${TELEMETRY_SOURCE:-mock}
+      # The demo shows frame 04's alarm: the mock source scripts a breach of two seeded rules on a
+      # cycle. Off in the API's own default; inert under `mqtt` and `off` (ADR-0019).
+      TELEMETRY_MOCK_SCENARIO: ${TELEMETRY_MOCK_SCENARIO:-true}
       # Passed through so a demo volume can keep less than a week of 5 s samples (ADR-0018).
       TELEMETRY_RETENTION_DAYS: ${TELEMETRY_RETENTION_DAYS:-7}
       # The image runs NODE_ENV=production, which refuses mock cameras, mock telemetry and seeding

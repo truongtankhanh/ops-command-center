@@ -177,6 +177,17 @@ export class Env {
   TELEMETRY_SOURCE: 'mock' | 'mqtt' | 'off';
 
   /**
+   * Lets the `mock` source script a breach of two seeded rules on a repeating cycle, so the alarm
+   * path of frames 04 and 10 shows in the demo (ADR-0018, ADR-0019). Off unless set: the
+   * generator alone is "normal operation" and never raises an incident. Inert under `mqtt` and
+   * `off`, and not a production permission: `mock` itself already needs `DEMO_MODE` there, which
+   * is why this is a variable of its own and not derived from `DEMO_MODE`.
+   */
+  @Transform(toBoolean)
+  @IsBoolean()
+  TELEMETRY_MOCK_SCENARIO = false;
+
+  /**
    * The broker, with `TELEMETRY_SOURCE=mqtt`: `mqtt://` or `mqtts://`. Production wants `mqtts://`
    * unless `DEMO_MODE`. Credentials belong in the two variables below, not in the URL.
    */

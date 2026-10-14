@@ -302,6 +302,43 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('TELEMETRY_MOCK_SCENARIO', () => {
+    it('is off when unset: the generator alone is normal operation', () => {
+      expect(validateEnv(valid).TELEMETRY_MOCK_SCENARIO).toBe(false);
+    });
+
+    it.each(['true', 'TRUE', '1', 'yes'])('reads %s as on', (value) => {
+      expect(
+        validateEnv({ ...valid, TELEMETRY_MOCK_SCENARIO: value }).TELEMETRY_MOCK_SCENARIO,
+      ).toBe(true);
+    });
+
+    it.each(['false', '0', 'no'])('reads %s as off', (value) => {
+      expect(
+        validateEnv({ ...valid, TELEMETRY_MOCK_SCENARIO: value }).TELEMETRY_MOCK_SCENARIO,
+      ).toBe(false);
+    });
+
+    it('rejects a value that is not a boolean, naming the key', () => {
+      expect(() => validateEnv({ ...valid, TELEMETRY_MOCK_SCENARIO: 42 })).toThrow(
+        /TELEMETRY_MOCK_SCENARIO/,
+      );
+    });
+
+    it('is inert under the other sources: it neither fails them nor needs the mock source', () => {
+      const env = {
+        ...valid,
+        TELEMETRY_SOURCE: 'off',
+        TELEMETRY_MOCK_SCENARIO: 'true',
+      };
+
+      expect(validateEnv(env)).toMatchObject({
+        TELEMETRY_SOURCE: 'off',
+        TELEMETRY_MOCK_SCENARIO: true,
+      });
+    });
+  });
+
   it('lets development turn rate limiting off', () => {
     expect(validateEnv({ ...valid, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
   });
@@ -360,6 +397,38 @@ describe('validateEnv', () => {
       const env = { ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock', DEMO_MODE: 'true' };
 
       expect(validateEnv(env)).toMatchObject({ TELEMETRY_SOURCE: 'mock', DEMO_MODE: true });
+    });
+
+    it('does not make the demo scenario a production permission: it stays off by default', () => {
+      const env = { ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock', DEMO_MODE: 'true' };
+
+      expect(validateEnv(env).TELEMETRY_MOCK_SCENARIO).toBe(false);
+    });
+
+    it('still refuses mock telemetry without DEMO_MODE when the scenario is asked for', () => {
+      const env = {
+        ...production,
+        ...mediamtx,
+        TELEMETRY_SOURCE: 'mock',
+        TELEMETRY_MOCK_SCENARIO: 'true',
+      };
+
+      expect(() => validateEnv(env)).toThrow(/TELEMETRY_SOURCE: mock needs DEMO_MODE=true/);
+    });
+
+    it('accepts the scenario with the demo mock source', () => {
+      const env = {
+        ...production,
+        ...mediamtx,
+        TELEMETRY_SOURCE: 'mock',
+        DEMO_MODE: 'true',
+        TELEMETRY_MOCK_SCENARIO: 'true',
+      };
+
+      expect(validateEnv(env)).toMatchObject({
+        TELEMETRY_SOURCE: 'mock',
+        TELEMETRY_MOCK_SCENARIO: true,
+      });
     });
 
     describe('with the mqtt source', () => {

@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import type { TelemetryValue } from '@occ/contracts';
 import type { CatalogueAsset } from '../assets/assets.service';
 import { ListenerSet } from './listener-set';
+import { type DemoScenarioEntry, scenarioSummary, scenarioValueAt } from './mock-scenario';
 import { valueAt } from './mock-waveform';
 import type {
   AssetStatusReport,
@@ -22,6 +23,11 @@ export interface MockTelemetryOptions {
   refreshMs?: number;
   /** Epoch milliseconds. Injectable so a spec can drive time without patching globals. */
   now?: () => number;
+  /**
+   * Breaches to script over the waveform (`DEMO_SCENARIO` in the demo). Absent or empty: the
+   * source is "normal operation" and raises nothing. Injectable so a suite can use a short cycle.
+   */
+  scenario?: readonly DemoScenarioEntry[];
 }
 
 /**
@@ -31,6 +37,10 @@ export interface MockTelemetryOptions {
  * Every value is a pure function of asset, key and time (`valueAt`), and a reading's `at` is the
  * boundary of the point's interval, not the wall clock. Two replicas therefore emit the same
  * `(at, values)` without talking to each other, whatever their timers' offsets.
+ *
+ * The waveform is "normal operation": it never breaches a rule. A breach is a scripted event, the
+ * `scenario` option, which overrides one asset's value for a window of each cycle and is a pure
+ * function of time too (`mock-scenario.ts`).
  */
 export class MockTelemetrySource implements TelemetrySource {
   readonly kind = 'mock';
@@ -41,6 +51,7 @@ export class MockTelemetrySource implements TelemetrySource {
   private readonly tickMs: number;
   private readonly refreshMs: number;
   private readonly now: () => number;
+  private readonly scenario: readonly DemoScenarioEntry[];
 
   private catalogue: readonly CatalogueAsset[] = [];
   /** The last boundary emitted per `asset/key`: bounded by assets times points. */
@@ -59,6 +70,7 @@ export class MockTelemetrySource implements TelemetrySource {
     this.tickMs = options.tickMs ?? DEFAULT_TICK_MS;
     this.refreshMs = options.refreshMs ?? DEFAULT_REFRESH_MS;
     this.now = options.now ?? (() => Date.now());
+    this.scenario = options.scenario ?? [];
   }
 
   async start(): Promise<void> {
@@ -72,6 +84,10 @@ export class MockTelemetrySource implements TelemetrySource {
     this.lastBoundary.clear();
     this.upstream.notify({ upstream: 'live', since: new Date(this.now()).toISOString() });
     this.logger.log(`Mock telemetry source on: ${this.summary()}, a tick every ${this.tickMs} ms`);
+    // Once, so a demo's alarm is never a surprise in the log (ADR-0014).
+    if (this.scenario.length > 0) {
+      this.logger.log(`Demo scenario on: ${scenarioSummary(this.scenario)}`);
+    }
     this.emitDue();
 
     // `unref()`: the generator alone must not keep the process alive, in a spec or at shutdown.
@@ -151,7 +167,10 @@ export class MockTelemetrySource implements TelemetrySource {
         if (last !== undefined && boundary <= last) continue;
 
         this.lastBoundary.set(id, boundary);
-        const value = valueAt(asset.code, point, asset.rules, boundary);
+        // A scripted breach replaces the healthy value by time only, so replicas still agree.
+        const value =
+          scenarioValueAt(this.scenario, asset.code, point, asset.rules, boundary) ??
+          valueAt(asset.code, point, asset.rules, boundary);
         if (value === undefined) continue;
         const values = byBoundary.get(boundary) ?? {};
         values[point.key] = value;

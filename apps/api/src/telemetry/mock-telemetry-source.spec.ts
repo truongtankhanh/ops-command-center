@@ -1,5 +1,6 @@
 import type { TelemetryPoint } from '@occ/contracts';
 import type { CatalogueAsset } from '../assets/assets.service';
+import type { DemoScenarioEntry } from './mock-scenario';
 import { MockTelemetrySource, type MockTelemetryOptions } from './mock-telemetry-source';
 import type { RawReading, UpstreamState } from './telemetry-source';
 
@@ -293,6 +294,109 @@ describe('MockTelemetrySource', () => {
       unsubscribe();
       unsubscribe();
     }).not.toThrow();
+  });
+
+  describe('the demo scenario', () => {
+    // 60 s into every 10 minutes the window opens for for_s 60 + two 5 s intervals + 10 s: 80 s.
+    // `NOW` is a multiple of 600 s, so the cycle opens at `NOW + 60 s`.
+    const SCENARIO: DemoScenarioEntry[] = [
+      { assetCode: 'CT-01', key: 'a', cycleS: 600, offsetS: 60 },
+    ];
+    const OVER_TEMPERATURE = {
+      id: 'rule-1',
+      assetId: null,
+      enabled: true,
+      name: 'Over-temperature',
+      key: 'a',
+      comparator: 'above',
+      limit: 85,
+      clear: 80,
+      forS: 60,
+      severity: 'critical',
+      incidentType: 'equipment_fault',
+    } as unknown as CatalogueAsset['rules'][number];
+
+    const ct01 = (): CatalogueAsset => ({
+      ...asset('CT-01', [point('a', { min: 0, max: 150 }), point('b')]),
+      rules: [OVER_TEMPERATURE],
+    });
+    const ct02 = (): CatalogueAsset => ({
+      ...asset('CT-02', [point('a', { min: 0, max: 150 })]),
+      rules: [OVER_TEMPERATURE],
+    });
+
+    /** The value of `key` of one asset at one boundary, or `undefined` if none was emitted. */
+    const valueOf = (readings: RawReading[], code: string, key: string, atMs: number) =>
+      readings.find((r) => r.assetCode === code && r.at === iso(atMs))?.values[key];
+
+    it('holds the scripted key past its limit for the window, and the waveform outside it', async () => {
+      const { source, readings } = build(async () => [ct01()], { scenario: SCENARIO });
+
+      await source.start();
+      await jest.advanceTimersByTimeAsync(150_000);
+
+      // Before the window and after it: the healthy waveform, on the safe side of `clear`.
+      expect(valueOf(readings, 'CT-01', 'a', NOW + 55_000)).toBeLessThanOrEqual(80);
+      expect(valueOf(readings, 'CT-01', 'a', NOW + 140_000)).toBeLessThanOrEqual(80);
+      // Inside it: 85 + 7, at every boundary of the window and no other.
+      for (let boundary = NOW + 60_000; boundary < NOW + 140_000; boundary += 5_000) {
+        expect(valueOf(readings, 'CT-01', 'a', boundary)).toBe(92);
+      }
+    });
+
+    it('changes nothing else: other keys and other assets read as without a scenario', async () => {
+      const plain = build(async () => [ct01(), ct02()]);
+      const scripted = build(async () => [ct01(), ct02()], { scenario: SCENARIO });
+      await plain.source.start();
+      await scripted.source.start();
+
+      await jest.advanceTimersByTimeAsync(150_000);
+
+      // Everything but the one scripted value is the same reading.
+      const unscripted = (reading: RawReading) => ({
+        ...reading,
+        values: Object.fromEntries(
+          Object.entries(reading.values).filter(
+            ([key]) => !(reading.assetCode === 'CT-01' && key === 'a'),
+          ),
+        ),
+      });
+      expect(scripted.readings.map(unscripted)).toEqual(plain.readings.map(unscripted));
+      expect(valueOf(plain.readings, 'CT-01', 'a', NOW + 60_000)).toBeLessThanOrEqual(80);
+      expect(valueOf(scripted.readings, 'CT-01', 'a', NOW + 60_000)).toBe(92);
+    });
+
+    it('is the same on two replicas whatever the offset of their timers', async () => {
+      let clockA = NOW + 60_100;
+      let clockB = NOW + 60_900;
+      const a = build(async () => [ct01()], { scenario: SCENARIO, now: () => clockA });
+      const b = build(async () => [ct01()], { scenario: SCENARIO, now: () => clockB });
+      await a.source.start();
+      await b.source.start();
+
+      clockA = NOW + 65_300;
+      clockB = NOW + 65_900;
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      expect(a.readings.map((reading) => reading.values.a)).toEqual([92, 92]);
+      expect(b.readings).toEqual(a.readings);
+    });
+
+    it('says so once at start, and not at all without a scenario', async () => {
+      const scripted = build(async () => [ct01()], { scenario: SCENARIO });
+      const plain = build(async () => [ct01()], { scenario: [] });
+      const scriptedLog = jest.spyOn(scripted.source['logger'], 'log');
+      const plainLog = jest.spyOn(plain.source['logger'], 'log');
+
+      await scripted.source.start();
+      await plain.source.start();
+      await jest.advanceTimersByTimeAsync(10_000);
+
+      const scenarioLines = (spy: typeof scriptedLog) =>
+        spy.mock.calls.filter(([message]) => String(message).startsWith('Demo scenario on'));
+      expect(scenarioLines(scriptedLog)).toEqual([['Demo scenario on: CT-01/a every 600 s']]);
+      expect(scenarioLines(plainLog)).toEqual([]);
+    });
   });
 
   it('keeps emitting when a listener throws, and tells the log once', async () => {
