@@ -212,6 +212,16 @@ export class Env {
   MQTT_CA_FILE?: string;
 
   /**
+   * Whole UTC days of 5 s samples kept besides today (ADR-0018, "Reading history"): a daily
+   * partition is dropped as a whole once its day is before today minus this. Only the telemetry
+   * leader acts on it, so it does nothing on a replica with `TELEMETRY_SOURCE=off`.
+   */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  TELEMETRY_RETENTION_DAYS = 7;
+
+  /**
    * Lets production run demo behaviour (mock cameras, mock telemetry, seeding). Only the Compose
    * demo sets it.
    */

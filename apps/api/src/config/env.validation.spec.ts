@@ -276,6 +276,32 @@ describe('validateEnv', () => {
     });
   });
 
+  describe('TELEMETRY_RETENTION_DAYS', () => {
+    it('defaults to 7 days when unset', () => {
+      expect(validateEnv(valid).TELEMETRY_RETENTION_DAYS).toBe(7);
+    });
+
+    it.each([
+      ['the minimum', '1', 1],
+      ['a month', '30', 30],
+    ])('accepts %s', (_, value, expected) => {
+      expect(
+        validateEnv({ ...valid, TELEMETRY_RETENTION_DAYS: value }).TELEMETRY_RETENTION_DAYS,
+      ).toBe(expected);
+    });
+
+    it.each([
+      ['zero', '0'],
+      ['negative', '-1'],
+      ['fractional', '1.5'],
+      ['not a number', 'abc'],
+    ])('rejects a value that is %s, naming the key', (_, value) => {
+      expect(() => validateEnv({ ...valid, TELEMETRY_RETENTION_DAYS: value })).toThrow(
+        /TELEMETRY_RETENTION_DAYS/,
+      );
+    });
+  });
+
   it('lets development turn rate limiting off', () => {
     expect(validateEnv({ ...valid, RATE_LIMIT_ENABLED: 'false' }).RATE_LIMIT_ENABLED).toBe(false);
   });
@@ -316,6 +342,12 @@ describe('validateEnv', () => {
       expect(() => validateEnv({ ...production, ...mediamtx, TELEMETRY_SOURCE: 'mock' })).toThrow(
         /TELEMETRY_SOURCE: mock needs DEMO_MODE=true/,
       );
+    });
+
+    it('keeps the default retention without DEMO_MODE: it is not demo behaviour', () => {
+      const env = validateEnv({ ...production, ...mediamtx });
+
+      expect(env.TELEMETRY_RETENTION_DAYS).toBe(7);
     });
 
     it('lets a site with no telemetry source yet run with it off, without DEMO_MODE', () => {

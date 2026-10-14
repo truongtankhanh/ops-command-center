@@ -124,7 +124,13 @@ function connected(ns: ReturnType<typeof fakeNamespace>, id = 'socket-1') {
 const change = (
   assetCode: string,
   values: Record<string, number | boolean | string>,
-): TelemetryChange => ({ assetCode, values, at: iso(NOW), receivedAt: iso(NOW) });
+): TelemetryChange => ({
+  assetCode,
+  assetId: `id-${assetCode}`,
+  values,
+  at: iso(NOW),
+  receivedAt: iso(NOW),
+});
 
 /** A gateway over fakes, its logger silenced and spied. */
 function build() {

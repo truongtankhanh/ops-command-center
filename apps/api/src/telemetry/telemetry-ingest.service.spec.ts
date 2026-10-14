@@ -236,7 +236,13 @@ describe('TelemetryIngestService', () => {
       expect(await counts(registry)).toMatchObject({ clock_skew: 1, accepted: 0 });
       // The values are good, so they are kept, stamped with the receive time.
       expect(service.changedSince(0).changes).toEqual([
-        { assetCode: 'CT-01', values: { temp: 20 }, at: iso(NOW), receivedAt: iso(NOW) },
+        {
+          assetCode: 'CT-01',
+          assetId: 'id-CT-01',
+          values: { temp: 20 },
+          at: iso(NOW),
+          receivedAt: iso(NOW),
+        },
       ]);
     });
 
@@ -361,6 +367,19 @@ describe('TelemetryIngestService', () => {
       expect(other.changes.map((c) => c.assetCode)).toEqual(['CT-01', 'CT-02']);
     });
 
+    it("carries the asset's id, from the catalogue that validated the reading", async () => {
+      const { service, boot } = build([CT_01, CT_02]);
+      await boot();
+      service.ingest(reading('CT-02', { temp: 30 }));
+      service.ingest(reading('CT-01', { temp: 10 }));
+
+      const { changes } = service.changedSince(0);
+
+      expect(
+        Object.fromEntries(changes.map((change) => [change.assetCode, change.assetId])),
+      ).toEqual({ 'CT-01': 'id-CT-01', 'CT-02': 'id-CT-02' });
+    });
+
     it('is empty, with the same cursor, when nothing arrived since', async () => {
       const { service, boot } = build();
       await boot();
@@ -391,6 +410,7 @@ describe('TelemetryIngestService', () => {
       expect(service.changedSince(0).changes).toEqual([
         {
           assetCode: 'CT-01',
+          assetId: 'id-CT-01',
           values: { temp: 10, pressure: 4 },
           at: iso(NOW + 4_000),
           receivedAt: iso(NOW + 5_000),
