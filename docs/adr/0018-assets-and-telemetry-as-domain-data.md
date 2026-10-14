@@ -174,9 +174,15 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
   an alarm can be late by up to `for_s` once (ADR-0019).
 - **History is coarse.** 5 s buckets are enough for a 15-minute sparkline (180 points) and an after-the-fact look;
   the console's worker keeps the finer live tail. Values within a bucket other than the last are not stored.
-- **Storage.** About 17,000 rows per asset per day: roughly 540,000 rows a day for the demo's 31 assets
-  (asset-classes.md), 1.7 million for 100. That is an estimate to check in V2-06, not a measurement. Dropping a whole
-  partition keeps retention cheap.
+- **Storage.** At most 17,280 rows per asset per day (one per 5 s bucket), reached only by an asset that reports
+  every second or every 5 s. Measured on 2026-10-14 against the demo simulator (31 assets, PostgreSQL 17.11, `main`
+  at `540edd2`, 12,630 rows over 60 minutes) and cross-checked against the simulator's own catalogue: about 301,000
+  rows a day for the 31 assets, 9,700 per asset on average (288 to 17,280), so the earlier figure of 540,000 was an
+  upper bound, not the expected load. A row is about 220 bytes (152 heap, 68 index, with a `values` of 95 bytes on
+  average), so about 66 MB a day for the demo and about 465 MB for 7 days. Both are for this device mix and cadence; a
+  catalogue of faster devices moves them towards the bound. A flush of 17 to 31 rows took 0.8 to 1.1 ms on average
+  (p95 2.2 ms) and `DROP TABLE` of a closed day of 301,000 rows 216 ms, well inside the 5 s `lock_timeout`. Dropping a
+  whole partition keeps retention cheap.
 - **No editing API.** Changing a rule or adding an asset is a migration or a database write, as for the site plan.
   An admin UI is a follow-up, with its own permission (ADR-0011 has none for it yet).
 - **Proving it.** The e2e suite seeds a class with one rule, feeds readings through the mock source (ADR-0019), and
