@@ -146,7 +146,7 @@ export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
 export const INCIDENT_EVENT_KINDS = ['reported', 'acknowledged', 'resolved'] as const;
 export type IncidentEventKind = (typeof INCIDENT_EVENT_KINDS)[number];
 
-export const INCIDENT_SOURCES = ['operator', 'simulator'] as const;
+export const INCIDENT_SOURCES = ['operator', 'simulator', 'telemetry'] as const;
 export type IncidentSource = (typeof INCIDENT_SOURCES)[number];
 
 /**
@@ -362,6 +362,12 @@ export interface Incident {
   zoneId: string;
   position: LngLat;
   source: IncidentSource;
+  /**
+   * The asset whose telemetry rule raised the incident (ADR-0018); `null` for operator and simulator
+   * incidents. A client reads a missing `assetId` as `null`: an API before `incident.asset_id` never
+   * sends it.
+   */
+  assetId?: string | null;
   reportedAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;

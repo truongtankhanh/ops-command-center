@@ -153,6 +153,17 @@ function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
   );
 }
 
+/**
+ * The "Reported by" text. A telemetry rule is not a sensor the demo simulates, so it has its own
+ * word (ADR-0018). A source this console does not know yet reads as a person, which is also what
+ * an older console shows for `telemetry` during a rolling deploy.
+ */
+function reporterLabel(source: Detail['source']): string {
+  if (source === 'telemetry') return 'System';
+  if (source === 'simulator') return 'Sensor (simulated)';
+  return 'Operator';
+}
+
 function DetailBody({
   incident,
   kept,
@@ -166,7 +177,8 @@ function DetailBody({
   const { data: cameras, isPending: camerasPending } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
   const zoneCameras = (cameras ?? []).filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
-  const reporter = incident.source === 'simulator' ? 'system' : 'user';
+  const reporter =
+    incident.source === 'simulator' || incident.source === 'telemetry' ? 'system' : 'user';
   // A type this console does not know has no category to show (ADR-0021, rolling deploys).
   const category = categoryOfType(incident.type);
 
@@ -203,7 +215,7 @@ function DetailBody({
           <dt>Reported by</dt>
           <dd>
             <Icon glyph={actorKindIcon(reporter)} size={14} />
-            {reporter === 'system' ? 'Sensor (simulated)' : 'Operator'}
+            {reporterLabel(incident.source)}
           </dd>
         </dl>
       </div>

@@ -173,6 +173,16 @@ describe('IncidentDetail', () => {
       expect(screen.queryByText('Being handled')).toBeNull();
     });
 
+    it.each([
+      ['operator', 'Operator'],
+      ['simulator', 'Sensor (simulated)'],
+      ['telemetry', 'System'],
+    ] as const)('shows who reported an incident from the %s source as %s', (source, label) => {
+      renderDetail(detail({ source }));
+
+      expect(screen.getByText('Reported by').nextElementSibling).toHaveTextContent(label);
+    });
+
     it('shows the incident category on a chip between the type and the zone', () => {
       renderDetail();
 
