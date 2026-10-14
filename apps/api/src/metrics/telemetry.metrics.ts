@@ -15,12 +15,22 @@ export const TELEMETRY_MESSAGE_RESULTS = [
 export type TelemetryMessageResult = (typeof TELEMETRY_MESSAGE_RESULTS)[number];
 
 /**
- * Telemetry metrics (ADR-0015, ADR-0019). The only label is the result of a reading: never an
- * asset code, which comes from a device and is unbounded. The three gauges have no label.
+ * What became of one sustained breach the rule evaluator asked an incident for (ADR-0018):
+ * `raised` an incident, `already_open` (one is unresolved for the asset and rule, so none was
+ * created), or `error` (the write failed and is retried at the next breaching reading).
+ */
+export const TELEMETRY_INCIDENT_RESULTS = ['raised', 'already_open', 'error'] as const;
+export type TelemetryIncidentOutcome = (typeof TELEMETRY_INCIDENT_RESULTS)[number];
+
+/**
+ * Telemetry metrics (ADR-0015, ADR-0019). The only label is a result, of a reading or of an
+ * incident request: never an asset code, which comes from a device and is unbounded. The three
+ * gauges have no label.
  */
 @Injectable()
 export class TelemetryMetrics {
   private readonly messages: Counter<'result'>;
+  private readonly incidents: Counter<'result'>;
   private countConsoles?: () => number;
   private isUpstreamLive?: () => boolean;
   private isLeader?: () => boolean;
@@ -37,6 +47,18 @@ export class TelemetryMetrics {
     });
     // Present from the first scrape, so `increase()` and alerts see a series before its first drop.
     for (const result of TELEMETRY_MESSAGE_RESULTS) this.messages.inc({ result }, 0);
+
+    this.incidents = new Counter({
+      name: 'telemetry_incidents_raised_total',
+      help:
+        'Incident requests made by the telemetry rule evaluator for a sustained breach, by result: ' +
+        '`raised` (an incident was created), `already_open` (one was already unresolved for the ' +
+        'asset and rule) or `error` (the write failed and is retried at the next breaching ' +
+        'reading). Only the telemetry leader counts.',
+      labelNames: ['result'],
+      registers: [registry],
+    });
+    for (const result of TELEMETRY_INCIDENT_RESULTS) this.incidents.inc({ result }, 0);
 
     // Both gauges are read on each scrape rather than set on every change, so a missed
     // disconnect or a missed state change cannot leave them wrong (as `realtime_connected_consoles`).
@@ -66,6 +88,11 @@ export class TelemetryMetrics {
 
   countMessage(result: TelemetryMessageResult): void {
     this.messages.inc({ result });
+  }
+
+  /** Called by `RuleEvaluator` for each incident it asked for. */
+  countIncident(result: TelemetryIncidentOutcome): void {
+    this.incidents.inc({ result });
   }
 
   /** Called by `TelemetryGateway` once its namespace exists. */

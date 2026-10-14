@@ -26,8 +26,10 @@ Every timeline entry has an `actor`: who caused it
 
 An incident raised by a telemetry rule has `source: telemetry`, the asset in `assetId`, and a `reported`
 entry whose `actor` is `{ kind: system, subject: telemetry, displayName: "Telemetry rule" }` and whose `note`
-holds the evidence, for example `motorTempC 92 > 85 for 60 s`. There is at most one unresolved incident per
-asset and rule; recovery of the reading does not resolve it, a person does.
+holds the evidence, for example `motorTempC 92 > 85 for 60 s`. It is raised by the telemetry leader once a
+reading has stayed past the rule's `limit` for its `for_s`, and the rule can raise again only after a reading has
+passed its `clear` level. There is at most one unresolved incident per asset and rule; recovery of the reading
+does not resolve it, a person does.
 
 Reading needs any role. Reporting needs `operator`, `supervisor` or `technician`. Acknowledging
 and resolving need `operator` or `supervisor`, or `technician` for Facilities and Environment

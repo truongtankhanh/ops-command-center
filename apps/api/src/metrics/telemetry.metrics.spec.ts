@@ -1,8 +1,16 @@
 import { Registry } from '@prometheus-io/client';
-import { TELEMETRY_MESSAGE_RESULTS, TelemetryMetrics } from './telemetry.metrics';
+import {
+  TELEMETRY_INCIDENT_RESULTS,
+  TELEMETRY_MESSAGE_RESULTS,
+  TelemetryMetrics,
+} from './telemetry.metrics';
 
 async function messages(registry: Registry) {
   return (await registry.getSingleMetric('telemetry_messages_total')!.get()).values;
+}
+
+async function incidents(registry: Registry) {
+  return (await registry.getSingleMetric('telemetry_incidents_raised_total')!.get()).values;
 }
 
 /** The count of each result, by name. */
@@ -67,6 +75,55 @@ describe('TelemetryMetrics', () => {
 
     expect((await counts(registry)).accepted).toBe(1);
     expect((await counts(other)).accepted).toBe(0);
+  });
+
+  describe('incident requests', () => {
+    const byResult = async (target: Registry) =>
+      Object.fromEntries(
+        (await incidents(target)).map((value) => [String(value.labels.result), value.value]),
+      );
+
+    it('has every result at 0 before the first breach, so alerts see the series', async () => {
+      expect(await incidents(registry)).toEqual(
+        TELEMETRY_INCIDENT_RESULTS.map((result) => ({ labels: { result }, value: 0 })),
+      );
+    });
+
+    it('counts one request under its result only', async () => {
+      metrics.countIncident('already_open');
+      metrics.countIncident('raised');
+      metrics.countIncident('raised');
+
+      expect(await byResult(registry)).toEqual({ raised: 2, already_open: 1, error: 0 });
+    });
+
+    it('does not mix with the readings counter', async () => {
+      metrics.countIncident('error');
+
+      expect(await counts(registry)).toEqual({
+        accepted: 0,
+        unknown_asset: 0,
+        invalid: 0,
+        clock_skew: 0,
+      });
+    });
+
+    it('labels by result alone: never an asset code', async () => {
+      metrics.countIncident('raised');
+
+      const labelNames = new Set((await incidents(registry)).flatMap((v) => Object.keys(v.labels)));
+      expect([...labelNames]).toEqual(['result']);
+    });
+
+    it('counts per registry, so two apps in one process keep their own', async () => {
+      const other = new Registry();
+      const otherMetrics = new TelemetryMetrics(other);
+      metrics.countIncident('raised');
+      otherMetrics.countIncident('error');
+
+      expect(await byResult(registry)).toEqual({ raised: 1, already_open: 0, error: 0 });
+      expect(await byResult(other)).toEqual({ raised: 0, already_open: 0, error: 1 });
+    });
   });
 
   describe('gauges', () => {

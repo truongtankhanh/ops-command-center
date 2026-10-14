@@ -134,6 +134,9 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   `invalid`, `clock_skew`), `telemetry_upstream_up`, `telemetry_connected_consoles` (as `realtime_connected_consoles`),
   `telemetry_leader`; no `occ_` prefix, as for the existing metrics, which the `service` label identifies; labels
   never carry an asset code. Upstream disconnects and leader changes are logged once per change, never per message.
+  - Settled in V2-07.4, without changing the decision: `telemetry_incidents_raised_total{result}` (`raised`,
+    `already_open`, `error`) counts the incidents the leader's rule evaluator asked for; the label is the result
+    only, never an asset code, and a failing write is logged once per change.
 - **Readiness is unchanged** (ADR-0013). A replica whose broker connection is down still serves incidents, cameras
   and the site plan; consoles see `telemetry.status: paused` instead.
 
