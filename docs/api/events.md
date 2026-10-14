@@ -50,7 +50,8 @@ so every reconnect sends the current token:
 
 `incident.created` · Status: current
 
-Sent to every connected client when an incident is reported, by an operator or by the simulator.
+Sent to every connected client when an incident is reported, by an operator, by the simulator or by a
+telemetry rule (`source: telemetry`, see [incidents.md](incidents.md)).
 
 Payload: `Incident` (see [incidents.md](incidents.md)).
 

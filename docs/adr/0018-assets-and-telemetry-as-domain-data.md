@@ -137,6 +137,14 @@ displayName: 'Telemetry rule' }` in `apps/api/src/incidents/actors.ts`, next to 
     deleted until that incident is. `IncidentsService.reportFromTelemetry` reads the asset and the rule itself, so the
     zone, position, type and severity are the catalogue's, and answers `already_open` after a check made before the
     incident code is drawn; a lost race on the index answers the same, so a retry costs no `INC-…` number.
+  - Settled in V2-07.4, without changing the decision: the telemetry leader's `RuleEvaluator` polls the ingest
+    service (`changedSince`, its own cursor) every 1 s and reads the rules through `AssetsService.catalogue()`
+    every 60 s, only while it leads. It keeps one state per asset and rule (`rules/`, V2-07.3), starts every rule
+    `armed` on gaining the lead and drops them on losing it, and commits a state only after
+    `reportFromTelemetry` has answered: `raised` and `already_open` both leave the rule `raised`, and a failed
+    write leaves it where it was, so the next breaching reading asks again (a 300 s point is retried at its next
+    reading). A rule whose values changed in a refresh starts `armed`. Each request is counted in
+    `telemetry_incidents_raised_total{result}` (`raised`, `already_open`, `error`).
 - **Contracts.** `Asset`, `AssetClass`, `TelemetryPoint`, `TelemetryRule` (read model), `Incident.assetId: string |
 null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetId` as `null`.
 - **History** (`telemetry_sample`): `asset_id`, `bucket_at` (5 s buckets), `values` (`jsonb`, last value of each key
