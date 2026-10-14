@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AssetsService } from '../assets/assets.service';
 import type { Env } from '../config/env.validation';
 import { SitesService } from '../sites/sites.service';
+import { DEMO_SCENARIO } from './mock-scenario';
 import { MockTelemetrySource } from './mock-telemetry-source';
 import { MqttTelemetrySource } from './mqtt-telemetry-source';
 import { OffTelemetrySource } from './off-telemetry-source';
@@ -27,7 +28,12 @@ export const telemetrySourceProvider: Provider<TelemetrySource> = {
     const kind = config.getOrThrow('TELEMETRY_SOURCE', { infer: true });
     switch (kind) {
       case 'mock':
-        return new MockTelemetrySource(() => assets.catalogue());
+        return new MockTelemetrySource(() => assets.catalogue(), {
+          // Off unless the deploy asks: the demo's Compose stack does, nothing else by default.
+          scenario: config.getOrThrow('TELEMETRY_MOCK_SCENARIO', { infer: true })
+            ? DEMO_SCENARIO
+            : undefined,
+        });
       case 'mqtt':
         return new MqttTelemetrySource({
           url: config.getOrThrow('MQTT_URL', { infer: true }),

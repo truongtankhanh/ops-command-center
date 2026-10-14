@@ -76,7 +76,10 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   same shape of decision as `CameraSource` (ADR-0002):
   - `mock`: an in-process generator. Each value is a pure function of asset, key and time, so every replica
     produces the same readings with no coordination. The default outside production; in production it needs
-    `DEMO_MODE=true`, like `CAMERA_SOURCE=mock`.
+    `DEMO_MODE=true`, like `CAMERA_SOURCE=mock`. The generator is "normal operation" and never breaches a rule;
+    with `TELEMETRY_MOCK_SCENARIO=true` (default `false`, on in the Compose stack, inert under `mqtt` and `off`)
+    it also scripts a breach of two seeded rules on a repeating cycle, again as a pure function of time, so the
+    demo shows the alarm path of ADR-0018 (V2-07.5).
   - `mqtt`: `MqttTelemetrySource` on MQTT.js, configured by `MQTT_URL`, `MQTT_USERNAME`, `MQTT_PASSWORD` (a second
     secret beside `DB_PASSWORD`, today the only one the API reads; injected per ADR-0006) and `MQTT_CA_FILE`. In
     production `MQTT_URL` must be `mqtts://`, unless `DEMO_MODE`.

@@ -204,7 +204,9 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 - **Proving it.** The e2e suite seeds a class with one rule, feeds readings through the mock source (ADR-0019), and
   checks that a breach shorter than `for_s` raises nothing, a sustained one raises exactly one incident with source
   `telemetry` and the system actor, a second breach while it is open raises none, and a breach after the reading
-  passed `clear` and the incident was resolved raises a new one.
+  passed `clear` and the incident was resolved raises a new one. Those cases feed the ingest service directly, on
+  purpose: the generator would also emit readings for the fixture asset and interrupt a breach it did not
+  script. One more case runs the mock source's demo scenario (ADR-0019, V2-07.5) through the same chain.
 - **Revisit** TimescaleDB if retention must grow past a few weeks or the catalogue past a few hundred assets.
   Revisit device-raised alarms if a building management system becomes a source.
 

@@ -9,10 +9,12 @@ import {
 import { Registry } from '@prometheus-io/client';
 import { io, type Socket } from 'socket.io-client';
 import { DataSource } from 'typeorm';
+import { AssetsService } from '../src/assets/assets.service';
 import type { AppModule as AppModuleClass } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentsService } from '../src/incidents/incidents.service';
+import { MockTelemetrySource } from '../src/telemetry/mock-telemetry-source';
 import { OffTelemetrySource } from '../src/telemetry/off-telemetry-source';
 import { RuleEvaluator } from '../src/telemetry/rule-evaluator.service';
 import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
@@ -45,6 +47,10 @@ const READING_EVERY_MS = 250;
  * written before the apps under test start, because ingest and the evaluator read the catalogue
  * at start. `AppModule` validates the environment when it is imported, so the source is set to
  * `mock` first (it is what lets the leader run) and the module is loaded afterwards.
+ *
+ * Those cases feed `ingest()` on purpose. One more runs the mock source's demo scenario (V2-07.5)
+ * into the same ingest service, so the whole path from a scripted breach to `/events` is covered
+ * without letting the generator interrupt the others.
  *
  * Real database, real clock, a few seconds per case. Run it on its own, `--runInBand`.
  */
@@ -341,6 +347,63 @@ describe('Threshold rules raise incidents (e2e)', () => {
 
     expect(await incidentCount()).toBe(0);
   }, 20_000);
+
+  describe('with the mock source and its demo scenario', () => {
+    let source: MockTelemetrySource | undefined;
+
+    afterEach(async () => {
+      // Before the suite's own `afterEach`, which settles the rule: nothing may still be emitting.
+      await source?.stop();
+      source = undefined;
+    });
+
+    it('raises one incident from a scripted breach, then none while it is open', async () => {
+      // Two 5 s boundaries must fall in the window for the 2 s dwell: for_s 2 + 2 x 5 s + 1 s.
+      // A 20 s cycle, so a second window follows within the case.
+      const scenario = [
+        { assetCode: ASSET_CODE, key: 'motorTempC', cycleS: 20, offsetS: 0, marginS: 1 },
+      ];
+      const assets = app.get(AssetsService);
+      source = new MockTelemetrySource(
+        async () => (await assets.catalogue()).filter((asset) => asset.code === ASSET_CODE),
+        { tickMs: 250, scenario },
+      );
+      // What `TelemetryIngestService` does with its own source, on the replica that leads.
+      source.onReading((reading) => ingest.ingest(reading));
+      const raisedBefore = await requests('raised');
+      const created = nextCreated();
+
+      await source.start();
+      const delivered = await created;
+
+      const rows = await incidentRows();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        status: 'open',
+        source: 'telemetry',
+        type: 'equipment_fault',
+      });
+      expect(delivered).toMatchObject({ id: rows[0]!.id, assetId, source: 'telemetry' });
+      const detail = await incidents.get(rows[0]!.id as string);
+      const reported = detail.timeline.find((entry) => entry.kind === 'reported');
+      expect(reported).toMatchObject({
+        actor: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
+      });
+      // The value the scenario holds: the rule's limit and the overshoot, 85 + 7.
+      expect(reported?.note).toBe('motorTempC 92 > 85 for 2 s');
+      expect(await requests('raised')).toBe(raisedBefore + 1);
+
+      // The next window breaches again, after the waveform passed `clear`: told it is open, no new row.
+      const skipped = await requests('already_open');
+      await eventually(
+        () => requests('already_open'),
+        (n) => n > skipped,
+        'the second window to be told the incident is open',
+        40_000,
+      );
+      expect(await incidentCount()).toBe(1);
+    }, 70_000);
+  });
 
   describe('with a second instance', () => {
     let second: INestApplication;
