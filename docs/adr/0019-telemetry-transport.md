@@ -139,8 +139,15 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 
 ## Consequences
 
-- **Consoles get one auth model and a bounded stream.** About 15 KB/s of overview for 100 assets plus about 16 KB/s
-  per watched set, whatever the devices send. These are estimates to measure in V2-06.
+- **Consoles get one auth model and a bounded stream.** Measured on 2026-10-14 against the demo simulator (31 assets,
+  `main` at `540edd2`), counting Socket.IO packet payloads, uncompressed, without WebSocket and TCP headers: the
+  overview was 3.7 KB/s for 31 assets (119 bytes per asset per second), so about 12 KB/s for 100 assets against the
+  earlier 15 KB/s. A frame was 183 bytes on average and 328 bytes for the largest (8 to 9 keys); the four busiest
+  assets, watched one at a time, sum to 0.54 KB/s at the simulator's cadence (at most one reading per asset per
+  second). The 10 Hz bound of a watched set is computed, not measured, because the simulator cannot send 10 Hz: 4
+  assets x 10 Hz x 328 bytes is 13 KB/s, against the earlier 16 KB/s. The stream is bounded by the limits whatever the
+  devices send. Telemetry messages: 23,150 accepted, none `unknown_asset`, `invalid` or `clock_skew`, against 6.39
+  messages a second expected from the catalogue (6.25 observed over the API's uptime).
 - **The broker is never public**, and no command reaches a device: the API cannot publish, and devices cannot read
   each other's topics. Commanding equipment would need a new ADR.
 - **Replicas do not coordinate readings.** Each replica's consoles see the same values within network jitter, and
