@@ -1,5 +1,5 @@
 import type { AuthenticatedUser } from '../auth/token-verifier';
-import { userActor } from './actors';
+import { SystemActors, userActor } from './actors';
 
 const user = (overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser => ({
   subject: 'user-1',
@@ -37,5 +37,21 @@ describe('userActor', () => {
     const subject = 's'.repeat(300);
 
     expect(userActor(user({ subject })).subject).toBe(subject);
+  });
+});
+
+describe('SystemActors', () => {
+  it('names the telemetry rule as a system actor (ADR-0018)', () => {
+    expect(SystemActors.telemetry).toEqual({
+      kind: 'system',
+      subject: 'telemetry',
+      displayName: 'Telemetry rule',
+    });
+  });
+
+  it('gives each system actor its own subject', () => {
+    const subjects = Object.values(SystemActors).map((actor) => actor.subject);
+
+    expect(new Set(subjects).size).toBe(subjects.length);
   });
 });

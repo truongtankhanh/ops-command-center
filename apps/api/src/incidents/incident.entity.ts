@@ -67,6 +67,18 @@ export class IncidentEntity {
   @Column({ type: 'varchar', length: 16 })
   source: IncidentSource;
 
+  /**
+   * The asset whose rule raised the incident; `null` for an operator, simulator or seed incident.
+   * A plain column on purpose: it is never loaded as a relation, and the database enforces the key
+   * (`fk_incident_asset`, ADR-0018).
+   */
+  @Column({ name: 'asset_id', type: 'uuid', nullable: true })
+  assetId: string | null;
+
+  /** The rule that raised it. With `assetId`, at most one unresolved incident exists per pair. */
+  @Column({ name: 'telemetry_rule_id', type: 'uuid', nullable: true })
+  telemetryRuleId: string | null;
+
   @Column({ name: 'reported_at', type: 'timestamptz' })
   reportedAt: Date;
 
@@ -93,7 +105,11 @@ export class IncidentEntity {
    */
   pendingEvents: IncidentEventEntity[] = [];
 
-  /** `actor` is not part of `props`: `props` is copied onto the entity as columns. */
+  /**
+   * `actor` is not part of `props`: `props` is copied onto the entity as columns. `note` is the
+   * text of the `reported` timeline entry, for example a telemetry rule's evidence, so it is taken
+   * out before the copy and never becomes a property of the entity.
+   */
   static report(
     props: {
       code: string;
@@ -105,19 +121,25 @@ export class IncidentEntity {
       lng: number;
       lat: number;
       source: IncidentSource;
+      assetId?: string | null;
+      telemetryRuleId?: string | null;
+      note?: string | null;
       at: Date;
     },
     actor: Actor,
   ): IncidentEntity {
+    const { note, ...columns } = props;
     const incident = Object.assign(new IncidentEntity(), {
-      ...props,
+      ...columns,
       description: props.description ?? null,
+      assetId: props.assetId ?? null,
+      telemetryRuleId: props.telemetryRuleId ?? null,
       status: 'open' as const,
       reportedAt: props.at,
       acknowledgedAt: null,
       resolvedAt: null,
     });
-    incident.record('reported', props.at, actor, null);
+    incident.record('reported', props.at, actor, note ?? null);
     return incident;
   }
 
@@ -160,6 +182,7 @@ export class IncidentEntity {
       zoneId: this.zoneId,
       position: [this.lng, this.lat],
       source: this.source,
+      assetId: this.assetId,
       reportedAt: this.reportedAt.toISOString(),
       acknowledgedAt: this.acknowledgedAt?.toISOString() ?? null,
       resolvedAt: this.resolvedAt?.toISOString() ?? null,

@@ -6,8 +6,9 @@ to connected clients — see [events.md](events.md).
 
 `Incident` fields: `id`, `code` (`INC-000042`), `type`, `severity`, `status`, `title`,
 `description` (nullable), `zoneId`, `position: [lng, lat]`, `source` (`operator` |
-`simulator` | `telemetry`), `assetId` (optional, nullable: the API does not send it yet, read a missing
-value as `null`), `reportedAt`, `acknowledgedAt` (nullable), `resolvedAt` (nullable), `version`.
+`simulator` | `telemetry`), `assetId` (nullable: the asset whose telemetry rule raised the incident,
+`null` for `operator` and `simulator`; a client reads a missing value as `null`), `reportedAt`,
+`acknowledgedAt` (nullable), `resolvedAt` (nullable), `version`.
 
 `version` starts at 1 and goes up by one on every change to the incident. Between two copies of
 the same `id`, the one with the higher `version` is newer.
@@ -15,13 +16,18 @@ the same `id`, the one with the higher `version` is newer.
 Every timeline entry has an `actor`: who caused it
 ([ADR-0011](../adr/0011-role-based-authorization-and-timeline-actor.md)).
 
-| `actor` field | Notes                                                                |
-| ------------- | -------------------------------------------------------------------- |
-| `kind`        | `user` (a signed-in person) or `system` (the API itself)             |
-| `subject`     | a user's identity-provider subject; `simulator`, `seed` or `system`¹ |
-| `displayName` | the name to show, as it was when the entry was written               |
+| `actor` field | Notes                                                                             |
+| ------------- | --------------------------------------------------------------------------------- |
+| `kind`        | `user` (a signed-in person) or `system` (the API itself)                          |
+| `subject`     | a user's identity-provider subject; `simulator`, `seed`, `telemetry` or `system`¹ |
+| `displayName` | the name to show, as it was when the entry was written                            |
 
 ¹ `system` marks entries recorded before actors existed.
+
+An incident raised by a telemetry rule has `source: telemetry`, the asset in `assetId`, and a `reported`
+entry whose `actor` is `{ kind: system, subject: telemetry, displayName: "Telemetry rule" }` and whose `note`
+holds the evidence, for example `motorTempC 92 > 85 for 60 s`. There is at most one unresolved incident per
+asset and rule; recovery of the reading does not resolve it, a person does.
 
 Reading needs any role. Reporting needs `operator`, `supervisor` or `technician`. Acknowledging
 and resolving need `operator` or `supervisor`, or `technician` for Facilities and Environment

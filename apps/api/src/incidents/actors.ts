@@ -11,6 +11,8 @@ import type { AuthenticatedUser } from '../auth/token-verifier';
 export const SystemActors = {
   simulator: { kind: 'system', subject: 'simulator', displayName: 'Simulator' },
   seed: { kind: 'system', subject: 'seed', displayName: 'Demo seed' },
+  /** A telemetry rule's breach, raised by the telemetry leader (ADR-0018). */
+  telemetry: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
 } as const satisfies Record<string, Actor>;
 
 /** Length of `incident_event.actor_name`, which Postgres counts in characters. */

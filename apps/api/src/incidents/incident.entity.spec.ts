@@ -94,3 +94,61 @@ describe('IncidentEntity lifecycle', () => {
     });
   });
 });
+
+describe('IncidentEntity.report with a telemetry link', () => {
+  const props = {
+    code: 'INC-000002',
+    type: 'equipment_fault' as const,
+    severity: 'critical' as const,
+    title: 'Motor over-temperature — Cooling tower 01',
+    zoneId: 'zone-1',
+    lng: 108.44,
+    lat: 11.95,
+    source: 'telemetry' as const,
+    at: reportedAt,
+  };
+
+  it('records the evidence as the note of the reported entry', () => {
+    const incident = IncidentEntity.report(
+      { ...props, note: 'motorTempC 92 > 85 for 60 s' },
+      SystemActors.telemetry,
+    );
+
+    expect(incident.pendingEvents).toHaveLength(1);
+    expect(incident.pendingEvents[0]).toMatchObject({
+      kind: 'reported',
+      note: 'motorTempC 92 > 85 for 60 s',
+      actorKind: 'system',
+      actorSubject: 'telemetry',
+      actorName: 'Telemetry rule',
+    });
+  });
+
+  it('keeps the note off the entity: it is not a column', () => {
+    const incident = IncidentEntity.report({ ...props, note: 'evidence' }, SystemActors.telemetry);
+
+    expect(incident).not.toHaveProperty('note');
+  });
+
+  it('keeps the asset and the rule that raised it and exposes the asset', () => {
+    const incident = IncidentEntity.report(
+      { ...props, assetId: 'asset-1', telemetryRuleId: 'rule-1' },
+      SystemActors.telemetry,
+    );
+    incident.id = 'id-2';
+
+    expect(incident.assetId).toBe('asset-1');
+    expect(incident.telemetryRuleId).toBe('rule-1');
+    expect(incident.toContract()).toMatchObject({ source: 'telemetry', assetId: 'asset-1' });
+  });
+
+  it('has no asset, rule or note for an incident that is not from a rule', () => {
+    const incident = newIncident();
+    incident.id = 'id-1';
+
+    expect(incident.assetId).toBeNull();
+    expect(incident.telemetryRuleId).toBeNull();
+    expect(incident.toContract().assetId).toBeNull();
+    expect(incident.pendingEvents[0]?.note).toBeNull();
+  });
+});

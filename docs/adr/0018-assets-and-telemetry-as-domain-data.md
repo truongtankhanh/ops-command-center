@@ -129,6 +129,14 @@ displayName: 'Telemetry rule' }` in `apps/api/src/incidents/actors.ts`, next to 
   - It goes through `IncidentsService` and the outbox (ADR-0007), so feed, toasts, KPI tiles and every replica
     receive it as they receive any incident.
   - Recovery does not resolve it. Resolving stays a person's decision.
+  - Settled in V2-07.2, without changing the decision: the migration is `IncidentAsset1791966600000`. The partial
+    unique index is **`uq_incident_open_asset_rule`**; the keys are `fk_incident_asset` and
+    `fk_incident_telemetry_rule`, both `ON DELETE RESTRICT` (a rule cascades with its class and its asset, so a
+    `CASCADE` here would delete incidents), and two partial indexes on `IS NOT NULL`, `idx_incident_asset` and
+    `idx_incident_telemetry_rule`, serve those keys. An asset or a rule an incident names can therefore not be
+    deleted until that incident is. `IncidentsService.reportFromTelemetry` reads the asset and the rule itself, so the
+    zone, position, type and severity are the catalogue's, and answers `already_open` after a check made before the
+    incident code is drawn; a lost race on the index answers the same, so a retry costs no `INC-…` number.
 - **Contracts.** `Asset`, `AssetClass`, `TelemetryPoint`, `TelemetryRule` (read model), `Incident.assetId: string |
 null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetId` as `null`.
 - **History** (`telemetry_sample`): `asset_id`, `bucket_at` (5 s buckets), `values` (`jsonb`, last value of each key

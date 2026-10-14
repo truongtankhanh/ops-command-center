@@ -66,6 +66,13 @@ export class IncidentDto implements Incident {
   @ApiProperty({ enum: INCIDENT_SOURCES })
   source: IncidentSource;
 
+  /**
+   * The asset whose telemetry rule raised the incident. `null` for `operator` and `simulator`
+   * incidents.
+   */
+  @ApiProperty({ type: String, format: 'uuid', nullable: true })
+  assetId: string | null;
+
   /** When the incident was reported. */
   @ApiProperty({ format: 'date-time' })
   reportedAt: string;
@@ -88,7 +95,10 @@ export class ActorDto implements Actor {
   @ApiProperty({ enum: ACTOR_KINDS })
   kind: ActorKind;
 
-  /** The identity provider's subject for a user; `simulator`, `seed` or `system` otherwise. */
+  /**
+   * The identity provider's subject for a user; `simulator`, `seed`, `telemetry` or `system`
+   * otherwise.
+   */
   @ApiProperty({ example: 'f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d' })
   subject: string;
 
