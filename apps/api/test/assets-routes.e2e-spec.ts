@@ -1,6 +1,13 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { type ApiError, type Asset, type AssetDetail, ROLES, type Zone } from '@occ/contracts';
+import {
+  type ApiError,
+  type Asset,
+  type AssetDetail,
+  type AssetTelemetry,
+  ROLES,
+  type Zone,
+} from '@occ/contracts';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
@@ -417,6 +424,246 @@ describe('Assets routes (e2e)', () => {
    * The bulk read the telemetry bridge uses instead of `detail` per asset. It has no route, so the
    * cases go through the service of the booted app; the rules must come out as `detail` serves them.
    */
+  /**
+   * The reading history (V2-06.10). Rows are inserted straight into a partition of a day in year
+   * 2100, which no leader keeps, so the cases never race the writer; the asset sweep takes the
+   * samples with their assets and the partition is dropped here. The day is not the one
+   * `assets.e2e-spec.ts` uses, so the two files never share a partition name.
+   */
+  describe('GET /api/assets/:code/telemetry', () => {
+    const PARTITION = 'telemetry_sample_21000102';
+    const BASE = Date.parse('2100-01-02T00:00:00.000Z');
+    /** The instant `seconds` after the start of the day, as ISO. */
+    const at = (seconds: number) => new Date(BASE + seconds * 1000).toISOString();
+
+    const addSample = (assetId: string, seconds: number, values: Row) =>
+      db.query(
+        `INSERT INTO "telemetry_sample" ("asset_id", "bucket_at", "values") VALUES ($1, $2, $3)`,
+        [assetId, at(seconds), JSON.stringify(values)],
+      );
+
+    const history = (code: string, query: Record<string, string> = {}, withToken = token) => {
+      const qs = new URLSearchParams(query).toString();
+      return get(`/api/assets/${code}/telemetry${qs ? `?${qs}` : ''}`, withToken);
+    };
+
+    let assetId: string;
+
+    beforeEach(async () => {
+      await db.query(
+        `CREATE TABLE IF NOT EXISTS "${PARTITION}" PARTITION OF "telemetry_sample"
+           FOR VALUES FROM ('2100-01-02T00:00:00Z') TO ('2100-01-03T00:00:00Z')`,
+      );
+      assetId = await addAsset(await addClass(), 'ZZ-HIST');
+    });
+
+    afterEach(async () => {
+      await db.query(`DROP TABLE IF EXISTS "${PARTITION}"`);
+    });
+
+    describe('access', () => {
+      it.each([...ROLES])('lets a %s read the history', async (role) => {
+        const roleToken = await signToken({
+          sub: `e2e-${role}`,
+          name: `E2E ${role}`,
+          roles: [role],
+        });
+
+        await history('ZZ-HIST', { from: at(0), to: at(60) }, roleToken).expect(200);
+      });
+
+      it('answers 401 without a token', async () => {
+        await request(app.getHttpServer()).get('/api/assets/ZZ-HIST/telemetry').expect(401);
+      });
+
+      it('answers 403 to a token with no known role, before any 400 or 404', async () => {
+        const roleless = await signToken({ sub: 'e2e-roleless', roles: [] });
+
+        for (const path of [
+          '/api/assets/ZZ-HIST/telemetry',
+          '/api/assets/XX-99/telemetry',
+          '/api/assets/ct-01/telemetry',
+          '/api/assets/ZZ-HIST/telemetry?from=nope',
+        ]) {
+          const res = await get(path, roleless);
+          expect([path, res.status]).toEqual([path, 403]);
+        }
+      });
+    });
+
+    describe('what it serves', () => {
+      it('gives the buckets of [from, to) in ascending time, in the contract shape and no more', async () => {
+        // Inserted out of order on purpose: the order is the query's, not the table's.
+        for (const seconds of [15, 0, 10, 5]) await addSample(assetId, seconds, { n: seconds });
+
+        const res = await history('ZZ-HIST', { from: at(5), to: at(15) }).expect(200);
+        const body = res.body as AssetTelemetry;
+
+        expect(Object.keys(body).sort()).toEqual(['assetCode', 'bucketS', 'from', 'samples', 'to']);
+        expect(body.assetCode).toBe('ZZ-HIST');
+        expect(body.bucketS).toBe(5);
+        // `from` is inclusive and `to` exclusive: 5 and 10 are in, 0 and 15 are not.
+        expect(body.samples).toEqual([
+          { at: at(5), values: { n: 5 } },
+          { at: at(10), values: { n: 10 } },
+        ]);
+        for (const sample of body.samples)
+          expect(Object.keys(sample).sort()).toEqual(['at', 'values']);
+      });
+
+      it('keeps the type of each value and leaves out a key that was not received', async () => {
+        await addSample(assetId, 0, { motorTempC: 61.5, running: true, switchState: 'auto' });
+        await addSample(assetId, 5, { running: false });
+
+        const { samples } = (await history('ZZ-HIST', { from: at(0), to: at(10) }).expect(200))
+          .body as AssetTelemetry;
+
+        expect(samples[0]?.values).toEqual({
+          motorTempC: 61.5,
+          running: true,
+          switchState: 'auto',
+        });
+        expect(samples[1]?.values).toEqual({ running: false });
+        expect(samples[1]?.values).not.toHaveProperty('motorTempC');
+      });
+
+      it('serves only the samples of the asset asked for', async () => {
+        const otherId = await addAsset(await addClass({ code: 'zz_other' }), 'ZZ-OTHR');
+        await addSample(assetId, 0, { n: 1 });
+        await addSample(otherId, 0, { n: 2 });
+        await addSample(otherId, 5, { n: 3 });
+
+        const { samples } = (await history('ZZ-HIST', { from: at(0), to: at(60) }).expect(200))
+          .body as AssetTelemetry;
+
+        expect(samples).toEqual([{ at: at(0), values: { n: 1 } }]);
+      });
+
+      it('echoes the range it served as instants, with an offset normalised', async () => {
+        const res = await history('ZZ-HIST', {
+          from: '2100-01-02T07:00:00+07:00',
+          to: '2100-01-02T00:01:00Z',
+        }).expect(200);
+
+        expect(res.body).toMatchObject({ from: at(0), to: at(60), samples: [] });
+      });
+
+      it('serves the last 15 minutes ending now when no range is given', async () => {
+        const before = Date.now();
+        const res = await history('ZZ-HIST').expect(200);
+        const after = Date.now();
+        const body = res.body as AssetTelemetry;
+
+        const to = Date.parse(body.to);
+        expect(to).toBeGreaterThanOrEqual(before);
+        expect(to).toBeLessThanOrEqual(after);
+        expect(to - Date.parse(body.from)).toBe(15 * 60_000);
+        expect(body.samples).toEqual([]);
+      });
+    });
+
+    describe('what is empty rather than an error', () => {
+      it('serves an asset with no samples as 200 and an empty list', async () => {
+        const res = await history('ZZ-HIST', { from: at(0), to: at(60) }).expect(200);
+
+        expect((res.body as AssetTelemetry).samples).toEqual([]);
+      });
+
+      it('serves a range outside the kept days as 200 and an empty list', async () => {
+        await addSample(assetId, 0, { n: 1 });
+
+        const res = await history('ZZ-HIST', {
+          from: '1999-01-01T00:00:00Z',
+          to: '1999-01-01T00:10:00Z',
+        }).expect(200);
+
+        expect((res.body as AssetTelemetry).samples).toEqual([]);
+      });
+
+      it('serves a range that ends in the future, and an empty one (from equals to)', async () => {
+        const now = new Date();
+        const later = new Date(now.getTime() + 60 * 60_000);
+
+        const future = await history('ZZ-HIST', {
+          from: now.toISOString(),
+          to: later.toISOString(),
+        }).expect(200);
+        const empty = await history('ZZ-HIST', { from: at(0), to: at(0) }).expect(200);
+
+        expect((future.body as AssetTelemetry).samples).toEqual([]);
+        expect((empty.body as AssetTelemetry).samples).toEqual([]);
+      });
+    });
+
+    describe('what it refuses', () => {
+      it('answers 404 for an asset that does not exist', async () => {
+        const res = await history('ZZ-NONE', { from: at(0), to: at(60) }).expect(404);
+
+        expect(res.body).toMatchObject({
+          statusCode: 404,
+          error: 'NOT_FOUND',
+          message: 'Asset ZZ-NONE was not found',
+        });
+      });
+
+      it('answers 400 for a code that is not an asset tag', async () => {
+        for (const code of ['ct-01', 'CT-1']) {
+          const res = await history(code);
+          expect([code, res.status]).toEqual([code, 400]);
+        }
+      });
+
+      it('answers 400 for a `from` or `to` that is not ISO 8601 with a time and a zone', async () => {
+        const values = [
+          '2100-01-02',
+          '2100-01-02T00:00:00',
+          'yesterday',
+          '1',
+          '2100-02-30T00:00:00Z',
+        ];
+
+        for (const value of values) {
+          for (const field of ['from', 'to'] as const) {
+            const res = await history('ZZ-HIST', { [field]: value });
+            expect([field, value, res.status]).toEqual([field, value, 400]);
+            expect(res.body).toMatchObject({ statusCode: 400, error: 'BAD_REQUEST' });
+            const { message } = res.body as ApiError;
+            expect(Array.isArray(message) && message.length > 0).toBe(true);
+            for (const reason of message as string[])
+              expect(reason).toMatch(new RegExp(`^${field} must`));
+          }
+        }
+      });
+
+      it('answers 400 when `to` is before `from`', async () => {
+        const res = await history('ZZ-HIST', { from: at(60), to: at(0) }).expect(400);
+
+        expect((res.body as ApiError).message).toEqual(['to must not be before from']);
+      });
+
+      it('answers 400 for a range over one hour, naming the limit, and 200 for exactly one hour', async () => {
+        const over = await history('ZZ-HIST', { from: at(0), to: at(3601) }).expect(400);
+        const message = ((over.body as ApiError).message as string[]).join(' ');
+
+        expect(message).toContain('1 hour');
+        expect(message).toContain('720 buckets');
+        await history('ZZ-HIST', { from: at(0), to: at(3600) }).expect(200);
+      });
+
+      it('answers 400 for a parameter it does not know', async () => {
+        const res = await history('ZZ-HIST', { from: at(0), to: at(60), limit: '10' });
+
+        expect(res.status).toBe(400);
+      });
+
+      it('answers 400 before 404: a bad range on an asset that does not exist', async () => {
+        const res = await history('ZZ-NONE', { from: at(60), to: at(0) });
+
+        expect(res.status).toBe(400);
+      });
+    });
+  });
+
   describe('AssetsService.catalogue', () => {
     const catalogue = () => app.get(AssetsService).catalogue();
     const find = async (code: string) => (await catalogue()).find((asset) => asset.code === code)!;

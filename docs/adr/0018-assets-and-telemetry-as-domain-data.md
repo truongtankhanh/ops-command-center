@@ -146,6 +146,10 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
   - `GET /api/assets/:code`: one asset with all its points and the limits of its enabled rules (the inspector's
     "Limit 85 °C");
   - `GET /api/assets/:code/telemetry?from=&to=`: samples, at most 1 h and 720 buckets per call.
+    - Settled in V2-06.10, without changing the decision: the range is half-open, `[from, to)`, so the span (at most
+      1 h) is the whole limit and a call returns at most 720 samples; `from` and `to` are ISO 8601 with a time and
+      a zone, because a value without one would be read in the server's time zone; the response echoes the
+      range it served, defaults applied; and a bad range is `400` before an unknown asset is `404`.
   - No write routes. No command path to any device exists in the API.
 - **Seed.** The demo campus gains its asset classes, assets, points and rules
   ([asset-classes.md](../design/v2/asset-classes.md)) in `database/seed/`. An existing reference campus is topped up

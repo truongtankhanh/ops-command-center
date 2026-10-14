@@ -5,7 +5,7 @@ endpoint's `Source` line. Machine-readable spec: [`openapi.json`](openapi.json) 
 The running API also serves interactive docs at `/api/docs` in development; in production they are off
 unless `API_DOCS_ENABLED=true`, and then read-only ([ADR-0005](../adr/0005-api-docs-exposure-per-environment.md)).
 
-Last reconciled: 2026-10-13
+Last reconciled: 2026-10-14
 
 | Module           | Endpoints | File                         |
 | ---------------- | --------- | ---------------------------- |
@@ -13,7 +13,7 @@ Last reconciled: 2026-10-13
 | Zones            | 1         | [zones.md](zones.md)         |
 | Site plan        | 1         | [site-plan.md](site-plan.md) |
 | Cameras          | 2         | [cameras.md](cameras.md)     |
-| Assets           | 2         | [assets.md](assets.md)       |
+| Assets           | 3         | [assets.md](assets.md)       |
 | Incidents        | 5         | [incidents.md](incidents.md) |
 | Real-time events | 2         | [events.md](events.md)       |
 | Telemetry        | 5         | [telemetry.md](telemetry.md) |

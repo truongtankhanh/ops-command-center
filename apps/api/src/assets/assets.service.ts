@@ -1,14 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Asset, AssetDetail, TelemetryPoint } from '@occ/contracts';
-import { type FindOptionsRelations, IsNull, Repository } from 'typeorm';
+import type {
+  Asset,
+  AssetDetail,
+  AssetTelemetry,
+  TelemetryPoint,
+  TelemetryValue,
+} from '@occ/contracts';
+import { DataSource, type FindOptionsRelations, IsNull, Repository } from 'typeorm';
 import { EntityNotFoundError } from '../common/domain-errors';
+import { SAMPLE_BUCKET_MS, SAMPLE_TABLE } from '../telemetry/sample-partitions';
 import { AssetEntity } from './asset.entity';
 import { orderPoints, type ResolvableRule, resolveAssetRules } from './asset-resolution';
 import { TelemetryRuleEntity } from './telemetry-rule.entity';
 
 /** What `AssetEntity.toContract()` needs: it throws, and a request would `500`, without it. */
 const WITH_CLASS_AND_POINTS: FindOptionsRelations<AssetEntity> = { assetClass: { points: true } };
+
+// The reading history is raw SQL because `telemetry_sample` is a partitioned table with no entity
+// (`TelemetrySample1791880200000`). Both bounds are on the bare column, so the planner prunes to
+// the days touched and the primary key's leading column serves the range. `"values"` is quoted: it
+// is a keyword. Half-open, so a call of at most one hour is at most 720 buckets.
+const HISTORY =
+  `SELECT "bucket_at", "values" FROM "${SAMPLE_TABLE}" ` +
+  `WHERE "asset_id" = $1 AND "bucket_at" >= $2::timestamptz AND "bucket_at" < $3::timestamptz ` +
+  `ORDER BY "bucket_at" ASC`;
+
+interface SampleRow {
+  bucket_at: Date;
+  values: Record<string, TelemetryValue>;
+}
 
 /**
  * An asset as the telemetry bridge and the rule evaluator need it: all the points of its class and
@@ -35,6 +56,7 @@ export class AssetsService {
   constructor(
     @InjectRepository(AssetEntity) private readonly assets: Repository<AssetEntity>,
     @InjectRepository(TelemetryRuleEntity) private readonly rules: Repository<TelemetryRuleEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /** Every asset ordered by code, with its class and headline points, in one statement. */
@@ -75,6 +97,33 @@ export class AssetsService {
       ...summary,
       points: orderPoints(asset.assetClass?.points ?? []).map((point) => point.toContract()),
       rules: resolveAssetRules(asset.id, rules).map((rule) => rule.toContract()),
+    };
+  }
+
+  /**
+   * The readings of one asset in `[from, to)`, one row per 5 s bucket in ascending time
+   * (ADR-0018). The caller has already checked the range (`resolveTelemetryRange`), so this reads
+   * at most 720 rows. `at` is the leader's bucket, not the device's time; a key that was not
+   * received in a bucket is absent from it; there is no default partition, so a range outside the
+   * kept days is an empty list, not an error; and an asset with no samples is `200`, not `404`.
+   */
+  async history(code: string, from: Date, to: Date): Promise<AssetTelemetry> {
+    // A lookup of its own, not a join: the `404` and the empty list must stay distinct answers.
+    const asset = await this.assets.findOne({ where: { code }, select: { id: true } });
+    if (!asset) throw new EntityNotFoundError('Asset', code);
+
+    const rows: SampleRow[] = await this.dataSource.query(HISTORY, [
+      asset.id,
+      from.toISOString(),
+      to.toISOString(),
+    ]);
+
+    return {
+      assetCode: code,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      bucketS: SAMPLE_BUCKET_MS / 1000,
+      samples: rows.map((row) => ({ at: row.bucket_at.toISOString(), values: row.values })),
     };
   }
 
