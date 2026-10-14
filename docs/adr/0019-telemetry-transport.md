@@ -125,6 +125,11 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 - **Broker access.** Anonymous access off. Each device has its own credentials and may publish only under its own
   `occ/{site}/asset/{code}/`. The API's account may subscribe to `occ/+/asset/+/#` and may publish nothing. No
   route through nginx reaches the broker. A real site exposes `8883` (TLS) to its device network only.
+  - Settled in V2-06.11, without changing the decision: the image is `eclipse-mosquitto:2.1-alpine` (what `:2`
+    resolved to); the accounts and the ACL are generated at start from the simulator's catalogue copy, so no
+    password hash is committed; each device has its own account (username = asset code) but the demo gives them one
+    shared password, which departs from "own credentials" in the letter and is demo only; and the ACL is written as
+    one block per user, not a `pattern`, because a pattern also applies to the API's account.
 - **Observability** (ADR-0014, ADR-0015): `telemetry_messages_total{result}` (`accepted`, `unknown_asset`,
   `invalid`, `clock_skew`), `telemetry_upstream_up`, `telemetry_connected_consoles` (as `realtime_connected_consoles`),
   `telemetry_leader`; no `occ_` prefix, as for the existing metrics, which the `service` label identifies; labels

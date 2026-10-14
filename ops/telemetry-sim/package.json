@@ -1,0 +1,27 @@
+{
+  "name": "@occ/telemetry-sim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Demo device simulator: plays the seeded assets over MQTT for the telemetry Compose profile (ADR-0019).",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/main.ts --tsconfig tsconfig.build.json --format esm --clean",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@occ/contracts": "workspace:*",
+    "mqtt": "^5.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsup": "^8.5.1",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

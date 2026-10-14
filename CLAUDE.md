@@ -33,8 +33,9 @@ V2 direction: asset catalogue + MQTT telemetry + three.js twin — ADR-0018 … 
 
 ## Architecture at a Glance
 
-- **Four workspaces.** `apps/api`, `apps/console`, `packages/contracts`, `packages/camera-adapter`. Apps never
-  import other apps; both sides of a contract change land in one PR (ADR-0001).
+- **Five workspaces.** `apps/api`, `apps/console`, `packages/contracts`, `packages/camera-adapter`, and the demo
+  device simulator `ops/telemetry-sim`. Apps never import other apps; both sides of a contract change land in one PR
+  (ADR-0001). The simulator carries a catalogue and a waveform copy that a spec in the API keeps in step.
 - **Contracts first.** Domain types, event names and the role → permission map live in `@occ/contracts`; the API and
   the console both read them.
 - **Ports and adapters.** `CameraSource` (mock | MediaMTX) and `TelemetrySource` (mock | mqtt | off) are chosen once

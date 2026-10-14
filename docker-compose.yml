@@ -57,6 +57,12 @@ services:
       OIDC_ISSUER: ${OCC_PUBLIC_URL:-http://localhost:18080}/auth/realms/occ
       OIDC_JWKS_URL: http://keycloak:8080/auth/realms/occ/protocol/openid-connect/certs
       OIDC_AUDIENCE: occ-api
+      # Used only with TELEMETRY_SOURCE=mqtt; inert under `mock` and `off`. Demo credentials for the
+      # `telemetry` profile's broker, not a template for any other environment (ADR-0006): a real
+      # site sets its own broker and credentials.
+      MQTT_URL: ${MQTT_URL:-mqtt://mosquitto:1883}
+      MQTT_USERNAME: ${MQTT_USERNAME:-occ-api}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-occ-demo-api}
     depends_on:
       postgres:
         condition: service_healthy
@@ -142,6 +148,47 @@ services:
       - '127.0.0.1:${GRAFANA_PORT:-13001}:3000'
     depends_on:
       - prometheus
+
+  # Demo MQTT broker (ADR-0019), opt-in:
+  #   TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up --build
+  # A profile cannot change the `api` environment, hence the variable on the command line. No host
+  # port: the broker is never public and no nginx route reaches it, so `pnpm dev` on the host does
+  # not reach it either. The accounts and the ACL are generated at start from the simulator's
+  # catalogue, so no password hash lives in the repo. No volume: the simulator republishes the
+  # retained `status` messages when it connects. Demo credentials, not a template (ADR-0006).
+  mosquitto:
+    image: eclipse-mosquitto:2.1-alpine
+    profiles: [telemetry]
+    entrypoint: ['/bin/sh', '/mosquitto/entrypoint.sh']
+    environment:
+      MQTT_USERNAME: ${MQTT_USERNAME:-occ-api}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-occ-demo-api}
+      MQTT_DEVICE_PASSWORD: ${MQTT_DEVICE_PASSWORD:-occ-demo-device}
+    volumes:
+      - ./ops/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./ops/mosquitto/entrypoint.sh:/mosquitto/entrypoint.sh:ro
+      - ./ops/telemetry-sim/catalogue.json:/mosquitto/catalogue.json:ro
+    # A TCP probe: a credential in a healthcheck command would show in `docker inspect`, and an
+    # authentication or ACL fault shows in the simulator's and the api's logs.
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 1883']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Plays the demo devices over real MQTT (ADR-0019): the mock source's waveforms, one connection
+  # per asset with its own account and last will. Stop it and the console marks every asset stale.
+  telemetry-sim:
+    build:
+      context: .
+      dockerfile: ops/telemetry-sim/Dockerfile
+    profiles: [telemetry]
+    environment:
+      MQTT_URL: mqtt://mosquitto:1883
+      MQTT_DEVICE_PASSWORD: ${MQTT_DEVICE_PASSWORD:-occ-demo-device}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
 
 volumes:
   pgdata:

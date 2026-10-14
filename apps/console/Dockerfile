@@ -11,6 +11,9 @@ COPY turbo.json tsconfig.base.json ./
 # Whole workspace so the lockfile matches; .dockerignore keeps node_modules and dist out.
 COPY packages ./packages
 COPY apps ./apps
+# `ops/telemetry-sim` is a workspace member, so the frozen lockfile needs its manifest; its source is
+# not part of this image.
+COPY ops/telemetry-sim/package.json ./ops/telemetry-sim/package.json
 RUN --mount=type=cache,id=occ-pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile --offline
 RUN pnpm turbo run build --filter "@occ/console..."
 

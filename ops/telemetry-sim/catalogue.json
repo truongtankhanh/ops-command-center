@@ -1,0 +1,1358 @@
+{
+  "site": "LANGBIANG",
+  "assets": [
+    {
+      "code": "CT-01",
+      "classCode": "cooling_tower",
+      "points": [
+        {
+          "key": "fanSpeedRpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1800,
+          "enumValues": null,
+          "expectedIntervalS": 1
+        },
+        {
+          "key": "motorTempC",
+          "kind": "number",
+          "min": -20,
+          "max": 150,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "motorCurrentA",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "vibrationMms",
+          "kind": "number",
+          "min": 0,
+          "max": 50,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "fanSetpointRpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1800,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "waterInTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "waterOutTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "pumpFlowM3h",
+          "kind": "number",
+          "min": 0,
+          "max": 200,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "valveOpenPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "switchState",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["off", "auto", "hand"],
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "runHoursH",
+          "kind": "number",
+          "min": 0,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 3600
+        }
+      ],
+      "rules": [
+        {
+          "key": "motorTempC",
+          "comparator": "above",
+          "limit": 85,
+          "clear": 80
+        },
+        {
+          "key": "vibrationMms",
+          "comparator": "above",
+          "limit": 7.1,
+          "clear": 5
+        },
+        {
+          "key": "motorCurrentA",
+          "comparator": "above",
+          "limit": 24,
+          "clear": 22
+        }
+      ]
+    },
+    {
+      "code": "CT-02",
+      "classCode": "cooling_tower",
+      "points": [
+        {
+          "key": "fanSpeedRpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1800,
+          "enumValues": null,
+          "expectedIntervalS": 1
+        },
+        {
+          "key": "motorTempC",
+          "kind": "number",
+          "min": -20,
+          "max": 150,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "motorCurrentA",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "vibrationMms",
+          "kind": "number",
+          "min": 0,
+          "max": 50,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "fanSetpointRpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1800,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "waterInTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "waterOutTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "pumpFlowM3h",
+          "kind": "number",
+          "min": 0,
+          "max": 200,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "valveOpenPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "switchState",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["off", "auto", "hand"],
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "runHoursH",
+          "kind": "number",
+          "min": 0,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 3600
+        }
+      ],
+      "rules": [
+        {
+          "key": "motorTempC",
+          "comparator": "above",
+          "limit": 85,
+          "clear": 80
+        },
+        {
+          "key": "vibrationMms",
+          "comparator": "above",
+          "limit": 7.1,
+          "clear": 5
+        },
+        {
+          "key": "motorCurrentA",
+          "comparator": "above",
+          "limit": 24,
+          "clear": 22
+        }
+      ]
+    },
+    {
+      "code": "GEN-01",
+      "classCode": "standby_generator",
+      "points": [
+        {
+          "key": "fuelLevelPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "starterBatteryV",
+          "kind": "number",
+          "min": 0,
+          "max": 32,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "coolantTempC",
+          "kind": "number",
+          "min": -20,
+          "max": 130,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "engineSpeedRpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1800,
+          "enumValues": null,
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "alternatorKw",
+          "kind": "number",
+          "min": 0,
+          "max": 2000,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "mainsVoltageV",
+          "kind": "number",
+          "min": 0,
+          "max": 500,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "transferSource",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["mains", "generator"],
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "breakerClosed",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "controlMode",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["off", "manual", "auto"],
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        }
+      ],
+      "rules": [
+        {
+          "key": "fuelLevelPct",
+          "comparator": "below",
+          "limit": 25,
+          "clear": 30
+        },
+        {
+          "key": "starterBatteryV",
+          "comparator": "below",
+          "limit": 24,
+          "clear": 25
+        },
+        {
+          "key": "coolantTempC",
+          "comparator": "below",
+          "limit": 30,
+          "clear": 35
+        }
+      ]
+    },
+    {
+      "code": "UPS-01",
+      "classCode": "ups",
+      "points": [
+        {
+          "key": "loadPct",
+          "kind": "number",
+          "min": 0,
+          "max": 150,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "autonomyMin",
+          "kind": "number",
+          "min": 0,
+          "max": 600,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "powerSource",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["mains", "battery", "bypass"],
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "inputVoltageV",
+          "kind": "number",
+          "min": 0,
+          "max": 500,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "outputVoltageV",
+          "kind": "number",
+          "min": 0,
+          "max": 500,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "loadPct",
+          "comparator": "above",
+          "limit": 90,
+          "clear": 80
+        },
+        {
+          "key": "autonomyMin",
+          "comparator": "below",
+          "limit": 10,
+          "clear": 15
+        }
+      ]
+    },
+    {
+      "code": "BAT-01",
+      "classCode": "ups_battery",
+      "points": [
+        {
+          "key": "chargePct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "roomTempC",
+          "kind": "number",
+          "min": -10,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "chargeMode",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["float", "boost", "discharging"],
+          "expectedIntervalS": 30
+        }
+      ],
+      "rules": [
+        {
+          "key": "roomTempC",
+          "comparator": "above",
+          "limit": 30,
+          "clear": 27
+        }
+      ]
+    },
+    {
+      "code": "CRAC-01",
+      "classCode": "precision_cooling",
+      "points": [
+        {
+          "key": "supplyAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "returnAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 50,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "supplyAirTempC",
+          "comparator": "above",
+          "limit": 27,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "CRAC-02",
+      "classCode": "precision_cooling",
+      "points": [
+        {
+          "key": "supplyAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "returnAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 50,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "supplyAirTempC",
+          "comparator": "above",
+          "limit": 27,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "TR-01",
+      "classCode": "transformer",
+      "points": [
+        {
+          "key": "loadPct",
+          "kind": "number",
+          "min": 0,
+          "max": 150,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "windingTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 200,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "oilTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 150,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        }
+      ],
+      "rules": [
+        {
+          "key": "loadPct",
+          "comparator": "above",
+          "limit": 100,
+          "clear": 90
+        },
+        {
+          "key": "windingTempC",
+          "comparator": "above",
+          "limit": 120,
+          "clear": 110
+        }
+      ]
+    },
+    {
+      "code": "SWG-01",
+      "classCode": "switchgear",
+      "points": [
+        {
+          "key": "busVoltageKv",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "currentA",
+          "kind": "number",
+          "min": 0,
+          "max": 3000,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "activePowerKw",
+          "kind": "number",
+          "min": 0,
+          "max": 20000,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "incomerClosed",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        }
+      ],
+      "rules": [
+        {
+          "key": "busVoltageKv",
+          "comparator": "below",
+          "limit": 19.8,
+          "clear": 20.9
+        }
+      ]
+    },
+    {
+      "code": "CH-01",
+      "classCode": "chiller",
+      "points": [
+        {
+          "key": "chilledWaterSupplyTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 20,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "chilledWaterReturnTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 25,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "loadPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        }
+      ],
+      "rules": [
+        {
+          "key": "chilledWaterSupplyTempC",
+          "comparator": "above",
+          "limit": 10,
+          "clear": 8
+        }
+      ]
+    },
+    {
+      "code": "AHU-C1",
+      "classCode": "air_handler",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "supplyAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "fanSpeedPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "indoorTempC",
+          "comparator": "above",
+          "limit": 27,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "AHU-L1",
+      "classCode": "air_handler",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "supplyAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "fanSpeedPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "indoorTempC",
+          "comparator": "above",
+          "limit": 27,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "AHU-H1",
+      "classCode": "air_handler",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "supplyAirTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 40,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "fanSpeedPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        }
+      ],
+      "rules": [
+        {
+          "key": "indoorTempC",
+          "comparator": "above",
+          "limit": 27,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "PMP-S1",
+      "classCode": "booster_pump",
+      "points": [
+        {
+          "key": "dischargePressureBar",
+          "kind": "number",
+          "min": 0,
+          "max": 16,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "running",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        }
+      ],
+      "rules": [
+        {
+          "key": "dischargePressureBar",
+          "comparator": "below",
+          "limit": 2,
+          "clear": 2.5
+        }
+      ]
+    },
+    {
+      "code": "LFT-A2",
+      "classCode": "lift",
+      "points": [
+        {
+          "key": "carFloor",
+          "kind": "number",
+          "min": -5,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "inService",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "direction",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["up", "down", "idle"],
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "doorState",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["closed", "opening", "open", "closing"],
+          "expectedIntervalS": 2
+        }
+      ],
+      "rules": [
+        {
+          "key": "inService",
+          "comparator": "below",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "LFT-B1",
+      "classCode": "lift",
+      "points": [
+        {
+          "key": "carFloor",
+          "kind": "number",
+          "min": -5,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "inService",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "direction",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["up", "down", "idle"],
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "doorState",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["closed", "opening", "open", "closing"],
+          "expectedIntervalS": 2
+        }
+      ],
+      "rules": [
+        {
+          "key": "inService",
+          "comparator": "below",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "LFT-H1",
+      "classCode": "lift",
+      "points": [
+        {
+          "key": "carFloor",
+          "kind": "number",
+          "min": -5,
+          "max": 60,
+          "enumValues": null,
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "inService",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        },
+        {
+          "key": "direction",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["up", "down", "idle"],
+          "expectedIntervalS": 2
+        },
+        {
+          "key": "doorState",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["closed", "opening", "open", "closing"],
+          "expectedIntervalS": 2
+        }
+      ],
+      "rules": [
+        {
+          "key": "inService",
+          "comparator": "below",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "BAR-01",
+      "classCode": "barrier_arm",
+      "points": [
+        {
+          "key": "armPosition",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["up", "down", "moving"],
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "faultActive",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        }
+      ],
+      "rules": [
+        {
+          "key": "faultActive",
+          "comparator": "above",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "BAR-02",
+      "classCode": "barrier_arm",
+      "points": [
+        {
+          "key": "armPosition",
+          "kind": "enum",
+          "min": null,
+          "max": null,
+          "enumValues": ["up", "down", "moving"],
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "faultActive",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 30
+        }
+      ],
+      "rules": [
+        {
+          "key": "faultActive",
+          "comparator": "above",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "FH-L1",
+      "classCode": "fume_hood",
+      "points": [
+        {
+          "key": "faceVelocityMs",
+          "kind": "number",
+          "min": 0,
+          "max": 2,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "sashOpenPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 10
+        },
+        {
+          "key": "flowAlarm",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        }
+      ],
+      "rules": [
+        {
+          "key": "faceVelocityMs",
+          "comparator": "below",
+          "limit": 0.4,
+          "clear": 0.45
+        }
+      ]
+    },
+    {
+      "code": "GAS-L1",
+      "classCode": "gas_detector",
+      "points": [
+        {
+          "key": "gasPpm",
+          "kind": "number",
+          "min": 0,
+          "max": 1000,
+          "enumValues": null,
+          "expectedIntervalS": 5
+        },
+        {
+          "key": "sensorFault",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": [
+        {
+          "key": "sensorFault",
+          "comparator": "above",
+          "limit": 0.5,
+          "clear": 0.5
+        }
+      ]
+    },
+    {
+      "code": "LKS-B3",
+      "classCode": "leak_sensor",
+      "points": [
+        {
+          "key": "leakDetected",
+          "kind": "boolean",
+          "min": null,
+          "max": null,
+          "enumValues": null,
+          "expectedIntervalS": 300
+        },
+        {
+          "key": "batteryPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 3600
+        }
+      ],
+      "rules": [
+        {
+          "key": "leakDetected",
+          "comparator": "above",
+          "limit": 0.5,
+          "clear": 0.5
+        },
+        {
+          "key": "batteryPct",
+          "comparator": "below",
+          "limit": 20,
+          "clear": 25
+        }
+      ]
+    },
+    {
+      "code": "ICS-DC",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-LHA",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-STU",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-LAB",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-DORA",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-DORB",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-SPORTS",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-ADMIN",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    },
+    {
+      "code": "ICS-SEC",
+      "classCode": "indoor_climate",
+      "points": [
+        {
+          "key": "indoorTempC",
+          "kind": "number",
+          "min": 0,
+          "max": 45,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        },
+        {
+          "key": "humidityPct",
+          "kind": "number",
+          "min": 0,
+          "max": 100,
+          "enumValues": null,
+          "expectedIntervalS": 60
+        }
+      ],
+      "rules": []
+    }
+  ]
+}

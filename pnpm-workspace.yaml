@@ -1,6 +1,8 @@
 packages:
   - apps/*
   - packages/*
+  # Demo-only tooling that needs the lockfile and CI (ADR-0019), not a deployable.
+  - ops/telemetry-sim
 
 onlyBuiltDependencies:
   - '@nestjs/core'

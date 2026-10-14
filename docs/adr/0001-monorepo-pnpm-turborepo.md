@@ -18,6 +18,8 @@ The system has two deployable apps (API, operator console) that must agree on th
 
 Option 3. `apps/*` for deployables, `packages/*` for shared code. Turborepo pipelines: `build`, `lint`, `typecheck`, `test`, each depending on the upstream `build` of workspace dependencies.
 
+- Amended in V2-06.11: `ops/telemetry-sim`, the demo device simulator of the `telemetry` Compose profile ([ADR-0019](0019-telemetry-transport.md)), is a fifth workspace member. It is tooling, not a deployable of the product, and it lives under `ops/` so it shares the lockfile and CI without being an app; it still imports no app.
+
 ## Consequences
 
 - A contract change and both sides of it land in **one pull request**, reviewed and tested together.

@@ -219,6 +219,34 @@ Acknowledgement: `TelemetryWatchAck`, `{ accepted: string[] }`.
 
 Source: `apps/api/src/telemetry/telemetry.gateway.ts:182`
 
+## Topics and payload for a gateway
+
+What a device, or a gateway in front of devices, publishes for the API to read. This is the `mqtt` telemetry
+source ([ADR-0019](../adr/0019-telemetry-transport.md)); the default `mock` source needs none of it. The broker is
+the site's own: the API connects to it as a client with `MQTT_URL`, `MQTT_USERNAME` and `MQTT_PASSWORD`, and no
+browser ever does.
+
+| Topic                               | QoS | Retained | Payload                                                                                 |
+| ----------------------------------- | --- | -------- | --------------------------------------------------------------------------------------- |
+| `occ/{site}/asset/{code}/telemetry` | 0   | no       | `{ "at": "<ISO time measured>", "values": { "<key>": <number \| boolean \| string> } }` |
+| `occ/{site}/asset/{code}/status`    | 1   | yes      | `{ "online": true }` or `{ "online": false }`                                           |
+
+- `{site}` is the site's `code` (`LANGBIANG` in the demo) and `{code}` is the asset's tag as in
+  [assets.md](assets.md). Any other topic under `occ/+/asset/+/#` is ignored.
+- A `telemetry` payload is at most 4 KB. `values` holds the point `key`s of the asset's class
+  ([assets.md](assets.md)); an `enum` point sends one of its `enumValues` as a string.
+- **What the API drops, and counts:** an unknown asset, an unknown key, a value of the wrong kind, a number outside
+  the point's `min` and `max`. Nothing is clamped. An `at` more than 5 minutes from the API's clock is replaced by
+  the time of receipt and counted. Per asset and key the API keeps only the latest value.
+- **A device sets its last will** on its `status` topic to `{ "online": false }`, retained, so the broker announces
+  a device that died. A device that stops cleanly publishes the same itself, because a clean disconnect does not
+  fire the will.
+- **Access.** The API's account may subscribe to `occ/+/asset/+/#` and may publish nothing. A device's account may
+  publish only under its own `occ/{site}/asset/{code}/`. Anonymous access is off. A real site exposes `8883` (TLS)
+  to its device network only, and production needs `mqtts://` unless `DEMO_MODE` is set.
+- **The demo.** `docker compose --profile telemetry up` starts a broker and a simulator that follow exactly this
+  contract, with one account per asset (username = asset code). See the README, "Telemetry".
+
 ## Rolling deploys
 
 A console built for `/telemetry` that meets a replica without the namespace gets `connect_error` with the message
