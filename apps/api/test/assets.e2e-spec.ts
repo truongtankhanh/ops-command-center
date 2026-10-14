@@ -28,6 +28,12 @@ describe('Asset catalogue (e2e)', () => {
   let zoneId: string;
 
   const sweep = async () => {
+    // First the incidents these cases raised: their foreign keys to the asset and the rule are
+    // RESTRICT (V2-07.2), so the deletes below would be refused while one exists.
+    await db.query(
+      `DELETE FROM "incident" WHERE "code" LIKE 'ZZT-%'
+          OR "asset_id" IN (SELECT "id" FROM "asset" WHERE "code" LIKE 'ZZ-%')`,
+    );
     // An override cascades with its asset; a class rule and the points cascade with their class.
     await db.query(`DELETE FROM "asset" WHERE "code" LIKE 'ZZ-%'`);
     await db.query(`DELETE FROM "asset_class" WHERE "code" LIKE 'zz\\_%'`);
@@ -554,6 +560,161 @@ describe('Asset catalogue (e2e)', () => {
 
       expect(await count('telemetry_point', `"asset_class_id" = $1`, [classId])).toBe(0);
       expect(await count('telemetry_rule', `"asset_class_id" = $1`, [classId])).toBe(0);
+    });
+  });
+
+  /**
+   * V2-07.2: an incident names the asset and the rule that raised it, and the database allows one
+   * unresolved incident per pair. Raw SQL, as above: the service that raises one is in the
+   * incidents suite.
+   */
+  describe('incident link', () => {
+    let serial = 0;
+
+    /** One incident row; `code` carries the sweep's `ZZT-` prefix. */
+    const addIncident = (over: Row = {}) =>
+      insert('incident', {
+        code: `ZZT-${String(++serial).padStart(4, '0')}${randomUUID().slice(0, 4)}`,
+        type: 'equipment_fault',
+        severity: 'high',
+        status: 'open',
+        title: 'Motor over-temperature',
+        zone_id: zoneId,
+        lng: 108.4,
+        lat: 11.95,
+        source: 'telemetry',
+        reported_at: new Date(),
+        ...over,
+      });
+
+    const pair = async () => {
+      const classId = await addClassWithPoints();
+      return { assetId: await addAsset(classId), ruleId: await addRule(classId) };
+    };
+
+    it('creates the two nullable columns, the two keys and the three indexes', async () => {
+      const columns: { column_name: string; is_nullable: string; column_default: string | null }[] =
+        await db.query(
+          `SELECT "column_name", "is_nullable", "column_default" FROM information_schema.columns
+            WHERE "table_name" = 'incident' AND "column_name" IN ('asset_id', 'telemetry_rule_id')
+            ORDER BY "column_name"`,
+        );
+      expect(columns).toEqual([
+        { column_name: 'asset_id', is_nullable: 'YES', column_default: null },
+        { column_name: 'telemetry_rule_id', is_nullable: 'YES', column_default: null },
+      ]);
+
+      const keys: { conname: string; confdeltype: string }[] = await db.query(
+        `SELECT "conname", "confdeltype" FROM pg_constraint
+          WHERE "conrelid" = 'incident'::regclass AND "contype" = 'f'
+            AND "conname" IN ('fk_incident_asset', 'fk_incident_telemetry_rule')
+          ORDER BY "conname"`,
+      );
+      // 'r' is RESTRICT: a rule or an asset leaving the catalogue never takes an incident with it.
+      expect(keys).toEqual([
+        { conname: 'fk_incident_asset', confdeltype: 'r' },
+        { conname: 'fk_incident_telemetry_rule', confdeltype: 'r' },
+      ]);
+
+      const indexes: { indexname: string }[] = await db.query(
+        `SELECT "indexname" FROM pg_indexes
+          WHERE "tablename" = 'incident' AND "indexname" IN
+            ('uq_incident_open_asset_rule', 'idx_incident_asset', 'idx_incident_telemetry_rule')
+          ORDER BY "indexname"`,
+      );
+      expect(indexes.map((index) => index.indexname)).toEqual([
+        'idx_incident_asset',
+        'idx_incident_telemetry_rule',
+        'uq_incident_open_asset_rule',
+      ]);
+    });
+
+    it('refuses a second unresolved incident for the same asset and rule', async () => {
+      const { assetId, ruleId } = await pair();
+      await addIncident({ asset_id: assetId, telemetry_rule_id: ruleId });
+
+      await refused(
+        addIncident({ asset_id: assetId, telemetry_rule_id: ruleId }),
+        '23505',
+        'uq_incident_open_asset_rule',
+      );
+      // Acknowledged is still unresolved.
+      await refused(
+        addIncident({ asset_id: assetId, telemetry_rule_id: ruleId, status: 'acknowledged' }),
+        '23505',
+        'uq_incident_open_asset_rule',
+      );
+    });
+
+    it('accepts a new one once the first is resolved', async () => {
+      const { assetId, ruleId } = await pair();
+      await addIncident({
+        asset_id: assetId,
+        telemetry_rule_id: ruleId,
+        status: 'resolved',
+        resolved_at: new Date(),
+      });
+
+      await addIncident({ asset_id: assetId, telemetry_rule_id: ruleId });
+      // Resolved ones do not count, however many there are.
+      await addIncident({
+        asset_id: assetId,
+        telemetry_rule_id: ruleId,
+        status: 'resolved',
+        resolved_at: new Date(),
+      });
+      expect(await count('incident', `"asset_id" = $1`, [assetId])).toBe(3);
+    });
+
+    it('constrains a pair, not an asset or a rule on its own', async () => {
+      const classId = await addClassWithPoints();
+      const assetA = await addAsset(classId, { code: 'ZZ-A1' });
+      const assetB = await addAsset(classId, { code: 'ZZ-B1' });
+      const rule = await addRule(classId);
+      const other = await addRule(classId, {
+        name: 'Running',
+        key: 'running',
+        limit: 0.5,
+        clear: 0.5,
+      });
+
+      await addIncident({ asset_id: assetA, telemetry_rule_id: rule });
+      await addIncident({ asset_id: assetB, telemetry_rule_id: rule });
+      await addIncident({ asset_id: assetA, telemetry_rule_id: other });
+      expect(await count('incident', `"asset_id" = ANY($1)`, [[assetA, assetB]])).toBe(3);
+    });
+
+    it('never constrains an incident without an asset', async () => {
+      await addIncident({ source: 'operator' });
+      await addIncident({ source: 'operator' });
+      await addIncident({ source: 'operator', telemetry_rule_id: null, asset_id: null });
+
+      expect(await count('incident', `"code" LIKE 'ZZT-%'`, [])).toBe(3);
+    });
+
+    it('refuses to delete an asset or a rule an incident names', async () => {
+      const { assetId, ruleId } = await pair();
+      await addIncident({ asset_id: assetId, telemetry_rule_id: ruleId });
+
+      await refused(
+        db.query(`DELETE FROM "telemetry_rule" WHERE "id" = $1`, [ruleId]),
+        '23503',
+        'fk_incident_telemetry_rule',
+      );
+      await refused(
+        db.query(`DELETE FROM "asset" WHERE "id" = $1`, [assetId]),
+        '23503',
+        'fk_incident_asset',
+      );
+    });
+
+    it('refuses an asset or a rule that does not exist', async () => {
+      await refused(addIncident({ asset_id: randomUUID() }), '23503', 'fk_incident_asset');
+      await refused(
+        addIncident({ telemetry_rule_id: randomUUID() }),
+        '23503',
+        'fk_incident_telemetry_rule',
+      );
     });
   });
 

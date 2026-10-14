@@ -29,6 +29,7 @@ import { IncidentCategoriesAndZoneUse1791531000000 } from './migrations/17915310
 import { ZoneHeight1791790200000 } from './migrations/1791790200000-zone-height';
 import { AssetCatalogue1791793800000 } from './migrations/1791793800000-asset-catalogue';
 import { TelemetrySample1791880200000 } from './migrations/1791880200000-telemetry-sample';
+import { IncidentAsset1791966600000 } from './migrations/1791966600000-incident-asset';
 
 /**
  * Per process, CLI included. Sized for the Compose demo: 2 replicas × 10 + a CLI run + admin ≈ 35
@@ -102,6 +103,7 @@ export const typeormOptions = (db: DatabaseEnv): DataSourceOptions => ({
     ZoneHeight1791790200000,
     AssetCatalogue1791793800000,
     TelemetrySample1791880200000,
+    IncidentAsset1791966600000,
   ],
   // The app applies migrations itself, under a lock shared by every replica (`migrate-on-boot.ts`).
   migrationsRun: false,

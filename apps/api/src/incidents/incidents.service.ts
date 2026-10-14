@@ -13,7 +13,9 @@ import {
   type ReportIncidentRequest,
   type Role,
 } from '@occ/contracts';
-import { DataSource, type EntityManager } from 'typeorm';
+import { DataSource, type EntityManager, Not, QueryFailedError } from 'typeorm';
+import { AssetEntity } from '../assets/asset.entity';
+import { TelemetryRuleEntity } from '../assets/telemetry-rule.entity';
 import {
   CategoryOutOfScopeError,
   EntityNotFoundError,
@@ -22,6 +24,7 @@ import {
 import { isInPolygon } from '../common/geo';
 import { OutboxRelay } from '../outbox/outbox-relay.service';
 import { ZoneEntity } from '../zones/zone.entity';
+import { SystemActors } from './actors';
 import { DEFAULT_INCIDENT_LIMIT } from './dto/incident-requests.dto';
 import {
   claimIdempotencyKey,
@@ -42,6 +45,41 @@ const SEVERITY_ORDER = `ARRAY[${INCIDENT_SEVERITIES.map((s) => `'${s}'`).join(',
  * request.
  */
 export type TransitionScope = readonly Role[] | 'system';
+
+/** The partial unique index that allows one unresolved incident per asset and rule (ADR-0018). */
+const OPEN_INCIDENT_INDEX = 'uq_incident_open_asset_rule';
+/** `incident.title` holds 160 characters; a rule's and an asset's names can be 120 each. */
+const MAX_TITLE_LENGTH = 160;
+
+/** What the telemetry leader knows when a rule's breach has lasted long enough (ADR-0018). */
+export interface TelemetryIncidentInput {
+  assetId: string;
+  telemetryRuleId: string;
+  /** The evidence, e.g. `motorTempC 92 > 85 for 60 s`: the note of the `reported` entry. */
+  note: string;
+}
+
+/**
+ * `already_open` is an expected answer, not a failure: the pair already has an unresolved
+ * incident, so the breach is skipped and the caller counts it.
+ */
+export type TelemetryIncidentResult =
+  { outcome: 'raised'; incident: IncidentDetail } | { outcome: 'already_open' };
+
+/** A lost race on `uq_incident_open_asset_rule`, and no other unique violation (the `code`). */
+function violatesOpenIncidentIndex(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) return false;
+  const { code, constraint } = error.driverError as { code?: string; constraint?: string };
+  return code === '23505' && constraint === OPEN_INCIDENT_INDEX;
+}
+
+/** `<rule name> — <asset name>` (ADR-0018), cut to the column's length by characters. */
+function telemetryTitle(ruleName: string, assetName: string): string {
+  const characters = [...`${ruleName} — ${assetName}`];
+  return characters.length > MAX_TITLE_LENGTH
+    ? `${characters.slice(0, MAX_TITLE_LENGTH - 1).join('')}…`
+    : characters.join('');
+}
 
 /**
  * Application service for incidents. Every write runs in one transaction that also records its
@@ -109,33 +147,80 @@ export class IncidentsService {
       }
       const [lng, lat] = request.position ?? zone.center;
 
-      const incident = await persistIncident(
-        manager,
-        IncidentEntity.report(
-          {
-            code: await nextIncidentCode(manager),
-            type: request.type,
-            severity: request.severity,
-            title: request.title,
-            description: request.description,
-            zoneId: zone.id,
-            lng,
-            lat,
-            source,
-            at: this.now(),
-          },
-          actor,
-        ),
-        IncidentEvents.Created,
-      );
       // Read inside the transaction: the stored response must commit together with the incident.
-      const detail = await this.loadDetail(manager, incident.id);
+      const detail = await this.createIncident(
+        manager,
+        {
+          type: request.type,
+          severity: request.severity,
+          title: request.title,
+          description: request.description,
+          zoneId: zone.id,
+          lng,
+          lat,
+          source,
+        },
+        actor,
+      );
       if (idempotency) await storeIdempotentResponse(manager, idempotency.id, detail);
       return { detail, created: true };
     });
 
     if (created) void this.outbox.drain();
     return detail;
+  }
+
+  /**
+   * Raises the incident of a rule's sustained breach as the `telemetry` system actor (ADR-0018).
+   * The asset and the rule are read here, in the transaction, so the zone, the position, the type
+   * and the severity are always the catalogue's and never a caller's copy; a missing one throws
+   * `EntityNotFoundError`. It goes through the same write and outbox row as `report()`.
+   *
+   * An unresolved incident for the pair answers `already_open` without a change. The check runs
+   * before the incident code is drawn, so a repeat burns no `INC-…` number; the unique index is
+   * the backstop for two writers racing, and that loser answers `already_open` too.
+   */
+  async reportFromTelemetry(input: TelemetryIncidentInput): Promise<TelemetryIncidentResult> {
+    let result: TelemetryIncidentResult;
+    try {
+      result = await this.dataSource.transaction(async (manager) => {
+        const asset = await manager.findOneBy(AssetEntity, { id: input.assetId });
+        if (!asset) throw new EntityNotFoundError('Asset', input.assetId);
+        const rule = await manager.findOneBy(TelemetryRuleEntity, { id: input.telemetryRuleId });
+        if (!rule) throw new EntityNotFoundError('Telemetry rule', input.telemetryRuleId);
+
+        const open = await manager.existsBy(IncidentEntity, {
+          assetId: asset.id,
+          telemetryRuleId: rule.id,
+          status: Not('resolved'),
+        });
+        if (open) return { outcome: 'already_open' } as const;
+
+        const incident = await this.createIncident(
+          manager,
+          {
+            type: rule.incidentType,
+            severity: rule.severity,
+            title: telemetryTitle(rule.name, asset.name),
+            zoneId: asset.zoneId,
+            lng: asset.lng,
+            lat: asset.lat,
+            source: 'telemetry',
+            assetId: asset.id,
+            telemetryRuleId: rule.id,
+            note: input.note,
+          },
+          SystemActors.telemetry,
+        );
+        return { outcome: 'raised', incident } as const;
+      });
+    } catch (error) {
+      if (violatesOpenIncidentIndex(error)) return { outcome: 'already_open' };
+      throw error;
+    }
+
+    if (result.outcome === 'raised') void this.outbox.drain();
+    return result;
   }
 
   acknowledge(
@@ -184,6 +269,27 @@ export class IncidentsService {
 
     void this.outbox.drain();
     return this.get(id);
+  }
+
+  /**
+   * Draws the code, saves the incident with its `reported` entry and the outbox row, and reads it
+   * back, all on the caller's transaction. Shared by `report()` and `reportFromTelemetry()` so a
+   * system-raised incident is written exactly like an operator's.
+   */
+  private async createIncident(
+    manager: EntityManager,
+    props: Omit<Parameters<typeof IncidentEntity.report>[0], 'code' | 'at'>,
+    actor: Actor,
+  ): Promise<IncidentDetail> {
+    const incident = await persistIncident(
+      manager,
+      IncidentEntity.report(
+        { ...props, code: await nextIncidentCode(manager), at: this.now() },
+        actor,
+      ),
+      IncidentEvents.Created,
+    );
+    return this.loadDetail(manager, incident.id);
   }
 
   private async loadDetail(manager: EntityManager, id: string): Promise<IncidentDetail> {

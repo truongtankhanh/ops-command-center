@@ -856,6 +856,96 @@ describe('Incidents (e2e)', () => {
         OPERATOR_ACTOR,
       ]);
     });
+
+    /** V2-07.2: a rule's breach becomes an incident through the service, like any other. */
+    it('raises one incident per asset and rule as the telemetry actor', async () => {
+      const db = app.get(DataSource);
+      const [pair]: { asset_id: string; rule_id: string; zone_id: string }[] = await db.query(
+        `SELECT a."id" AS asset_id, r."id" AS rule_id, a."zone_id" AS zone_id
+           FROM "asset" a JOIN "telemetry_rule" r ON r."asset_class_id" = a."asset_class_id"
+          WHERE r."asset_id" IS NULL AND r."enabled" ORDER BY a."code", r."name" LIMIT 1`,
+      );
+      const input = {
+        assetId: pair!.asset_id,
+        telemetryRuleId: pair!.rule_id,
+        note: 'motorTempC 92 > 85 for 60 s',
+      };
+      const incidents = app.get(IncidentsService);
+
+      // Awaiting the broadcast keeps it from reaching a later `waitFor`. It names the asset: an
+      // earlier case may not have awaited the broadcast of its own incident.
+      const created = waitFor(
+        socket,
+        IncidentEvents.Created,
+        (incident) => incident.assetId === pair!.asset_id,
+      );
+      const first = await incidents.reportFromTelemetry(input);
+      expect(first.outcome).toBe('raised');
+      if (first.outcome !== 'raised') return;
+      const broadcast = await created;
+      expect(broadcast).toMatchObject({ id: first.incident.id, assetId: pair!.asset_id });
+
+      expect(first.incident).toMatchObject({
+        source: 'telemetry',
+        status: 'open',
+        assetId: pair!.asset_id,
+        zoneId: pair!.zone_id,
+      });
+      expect(first.incident.timeline).toEqual([
+        expect.objectContaining({
+          kind: 'reported',
+          note: input.note,
+          actor: SystemActors.telemetry,
+        }),
+      ]);
+      const stored = await api(app).get(`/api/incidents/${first.incident.id}`).expect(200);
+      expect(stored.body).toMatchObject({ source: 'telemetry', assetId: pair!.asset_id });
+      const outbox = await db
+        .getRepository(OutboxEntity)
+        .find({ where: { aggregateId: first.incident.id } });
+      expect(outbox.map((row) => row.event)).toEqual([IncidentEvents.Created]);
+
+      // The pair already has an unresolved incident: nothing is created, nothing is broadcast.
+      const before = await db.query(`SELECT count(*)::int AS n FROM "incident"`);
+      expect(await incidents.reportFromTelemetry(input)).toEqual({ outcome: 'already_open' });
+      expect(await db.query(`SELECT count(*)::int AS n FROM "incident"`)).toEqual(before);
+
+      // Acknowledged is still unresolved; resolving it, by a person, re-arms the pair.
+      const respond = async (id: string, action: 'acknowledge' | 'resolve') => {
+        const updated = waitFor(socket, IncidentEvents.Updated, (incident) => incident.id === id);
+        await api(app).post(`/api/incidents/${id}/${action}`).send({}).expect(200);
+        await updated;
+      };
+      await respond(first.incident.id, 'acknowledge');
+      expect(await incidents.reportFromTelemetry(input)).toEqual({ outcome: 'already_open' });
+      await respond(first.incident.id, 'resolve');
+
+      const again = waitFor(
+        socket,
+        IncidentEvents.Created,
+        (incident) => incident.assetId === pair!.asset_id,
+      );
+      const second = await incidents.reportFromTelemetry(input);
+      expect(second.outcome).toBe('raised');
+      await again;
+      if (second.outcome !== 'raised') return;
+      expect(second.incident.id).not.toBe(first.incident.id);
+      expect(second.incident.assetId).toBe(pair!.asset_id);
+      // Leaves no unresolved telemetry incident for the cases that follow.
+      await respond(second.incident.id, 'resolve');
+    });
+
+    it('treats an unknown asset or rule as an error, not as an open incident', async () => {
+      const incidents = app.get(IncidentsService);
+
+      await expect(
+        incidents.reportFromTelemetry({
+          assetId: randomUUID(),
+          telemetryRuleId: randomUUID(),
+          note: 'n/a',
+        }),
+      ).rejects.toThrow('Asset');
+    });
   });
 
   /**
@@ -1412,18 +1502,27 @@ async function connectEvents(
   });
 }
 
+/**
+ * The next `event` for which `matches` holds. A case that does not await its own broadcast leaves
+ * it for the next listener, so a case that must see one incident's event names it instead of
+ * taking whichever arrives first.
+ */
 function waitFor<E extends keyof ServerToClientEvents>(
   socket: Socket<ServerToClientEvents, ClientToServerEvents>,
   event: E,
+  matches: (incident: Incident) => boolean = () => true,
 ): Promise<Incident> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${event}`)), 5000);
-    socket.once(
-      event as never,
-      ((incident: Incident) => {
-        clearTimeout(timer);
-        resolve(incident);
-      }) as never,
-    );
+    const listener = (incident: Incident) => {
+      if (!matches(incident)) return;
+      clearTimeout(timer);
+      socket.off(event as never, listener as never);
+      resolve(incident);
+    };
+    const timer = setTimeout(() => {
+      socket.off(event as never, listener as never);
+      reject(new Error(`Timed out waiting for ${event}`));
+    }, 5000);
+    socket.on(event as never, listener as never);
   });
 }

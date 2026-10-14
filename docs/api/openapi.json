@@ -1952,6 +1952,12 @@
             "enum": ["operator", "simulator", "telemetry"],
             "type": "string"
           },
+          "assetId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The asset whose telemetry rule raised the incident. `null` for `operator` and `simulator`\nincidents.",
+            "format": "uuid"
+          },
           "reportedAt": {
             "type": "string",
             "description": "When the incident was reported.",
@@ -1987,6 +1993,7 @@
           "zoneId",
           "position",
           "source",
+          "assetId",
           "reportedAt",
           "acknowledgedAt",
           "resolvedAt",
@@ -2003,7 +2010,7 @@
           },
           "subject": {
             "type": "string",
-            "description": "The identity provider's subject for a user; `simulator`, `seed` or `system` otherwise.",
+            "description": "The identity provider's subject for a user; `simulator`, `seed`, `telemetry` or `system`\notherwise.",
             "example": "f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d"
           },
           "displayName": {
@@ -2124,6 +2131,12 @@
             "enum": ["operator", "simulator", "telemetry"],
             "type": "string"
           },
+          "assetId": {
+            "type": "string",
+            "nullable": true,
+            "description": "The asset whose telemetry rule raised the incident. `null` for `operator` and `simulator`\nincidents.",
+            "format": "uuid"
+          },
           "reportedAt": {
             "type": "string",
             "description": "When the incident was reported.",
@@ -2166,6 +2179,7 @@
           "zoneId",
           "position",
           "source",
+          "assetId",
           "reportedAt",
           "acknowledgedAt",
           "resolvedAt",
