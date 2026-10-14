@@ -163,6 +163,93 @@ describe('Asset catalogue (e2e)', () => {
     expect(heights).toHaveLength(1);
   });
 
+  /**
+   * The reading history (V2-06.9). A day in year 2100 holds the rows these cases write, so no
+   * partition a leader keeps is touched; assets are swept by the outer `afterEach`, which takes
+   * their samples with them, and the partition is dropped here.
+   */
+  describe('telemetry sample', () => {
+    const DAY = 'telemetry_sample_21000101';
+    const BUCKET = '2100-01-01T00:00:00.000Z';
+
+    const addPartition = () =>
+      db.query(
+        `CREATE TABLE IF NOT EXISTS "${DAY}" PARTITION OF "telemetry_sample"
+           FOR VALUES FROM ('2100-01-01T00:00:00Z') TO ('2100-01-02T00:00:00Z')`,
+      );
+
+    const addSample = (assetId: string, values = `{"motorTempC": 40}`) =>
+      db.query(
+        `INSERT INTO "telemetry_sample" ("asset_id", "bucket_at", "values") VALUES ($1, $2, $3)`,
+        [assetId, BUCKET, values],
+      );
+
+    afterEach(async () => {
+      await db.query(`DROP TABLE IF EXISTS "${DAY}"`);
+    });
+
+    it('is partitioned by range on bucket_at, and has its first partitions', async () => {
+      const parent = await db.query(
+        `SELECT pt."partstrat" AS strategy, a."attname" AS key
+           FROM pg_partitioned_table pt
+           JOIN pg_class c ON c."oid" = pt."partrelid"
+           JOIN pg_attribute a ON a."attrelid" = pt."partrelid" AND a."attnum" = pt."partattrs"[0]
+          WHERE c."relname" = 'telemetry_sample'`,
+      );
+      expect(parent).toEqual([{ strategy: 'r', key: 'bucket_at' }]);
+
+      const partitions: { name: string }[] = await db.query(
+        `SELECT c."relname" AS name FROM pg_inherits i JOIN pg_class c ON c."oid" = i."inhrelid"
+          WHERE i."inhparent" = 'telemetry_sample'::regclass`,
+      );
+      expect(partitions.length).toBeGreaterThanOrEqual(1);
+      for (const { name } of partitions) expect(name).toMatch(/^telemetry_sample_\d{8}$/);
+    });
+
+    it('names its primary key and its foreign key', async () => {
+      const constraints = await db.query(
+        `SELECT "conname", "contype" FROM pg_constraint
+          WHERE "conrelid" = 'telemetry_sample'::regclass AND "contype" IN ('p', 'f')
+          ORDER BY "conname"`,
+      );
+      expect(constraints).toEqual([
+        { conname: 'fk_telemetry_sample_asset', contype: 'f' },
+        { conname: 'pk_telemetry_sample', contype: 'p' },
+      ]);
+    });
+
+    it('refuses a sample for an asset that does not exist', async () => {
+      await addPartition();
+
+      await expect(addSample(randomUUID())).rejects.toMatchObject({ code: '23503' });
+    });
+
+    it('keeps one row per asset and bucket', async () => {
+      await addPartition();
+      const assetId = await addAsset(await addClassWithPoints());
+      await addSample(assetId);
+
+      await expect(addSample(assetId)).rejects.toMatchObject({ code: '23505' });
+    });
+
+    it('refuses a bucket no partition covers', async () => {
+      const assetId = await addAsset(await addClassWithPoints());
+
+      await expect(addSample(assetId)).rejects.toMatchObject({ code: '23514' });
+    });
+
+    it('removes the samples of an asset that is deleted', async () => {
+      await addPartition();
+      const assetId = await addAsset(await addClassWithPoints());
+      await addSample(assetId);
+      expect(await count('telemetry_sample', `"asset_id" = $1`, [assetId])).toBe(1);
+
+      await db.query(`DELETE FROM "asset" WHERE "id" = $1`, [assetId]);
+
+      expect(await count('telemetry_sample', `"asset_id" = $1`, [assetId])).toBe(0);
+    });
+  });
+
   describe('asset class', () => {
     it('refuses a second class with the same code', async () => {
       await addClass();

@@ -11,6 +11,8 @@ const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T/;
 
 /** What validation needs of one asset: its class's points by key, and which are headlines. */
 export interface AssetIndex {
+  /** The asset's id, for the sample writer (V2-06.9); validation does not read it. */
+  readonly id: string;
   /** A `Map`, never an object: a device may send `__proto__` or `constructor` as a key. */
   readonly points: ReadonlyMap<string, TelemetryPoint>;
   /** Keys of the headline points, rank 1 then 2. */
@@ -27,6 +29,7 @@ export function indexCatalogue(assets: readonly CatalogueAsset[]): CatalogueInde
       if (point.headline !== null) headlines.push({ key: point.key, rank: point.headline });
     }
     index.set(asset.code, {
+      id: asset.id,
       points: new Map(asset.points.map((point) => [point.key, point])),
       headlineKeys: headlines.sort((a, b) => a.rank - b.rank).map((headline) => headline.key),
     });

@@ -15,12 +15,21 @@ import {
 } from '@occ/contracts';
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 import request from 'supertest';
+import { DataSource } from 'typeorm';
 import type { AppModule as AppModuleClass } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { OffTelemetrySource } from '../src/telemetry/off-telemetry-source';
+import {
+  bucketOf,
+  partitionName,
+  partitionRange,
+  partitionsToEnsure,
+} from '../src/telemetry/sample-partitions';
 import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
 import { LEADER_CHECK_MS, TelemetryLeader } from '../src/telemetry/telemetry-leader.service';
+import { TelemetrySamplePartitions } from '../src/telemetry/telemetry-sample-partitions.service';
+import { TelemetrySampleWriter } from '../src/telemetry/telemetry-sample-writer.service';
 import type {
   AssetStatusReport,
   RawReading,
@@ -60,6 +69,9 @@ describe('Telemetry namespace (e2e)', () => {
 
   beforeAll(async () => {
     process.env.TELEMETRY_SOURCE = 'mock';
+    // The shortest retention the variable allows, read once when `AppModule` loads, so the
+    // retention case below has a partition that is expired without waiting a week.
+    process.env.TELEMETRY_RETENTION_DAYS = '1';
 
     // A `require`, not a static import: loading the module loads `.env.test` into `process.env`
     // and validates it, which must already say `mock`. Under `module: nodenext` an `import()`
@@ -575,6 +587,264 @@ describe('Telemetry namespace (e2e)', () => {
         LEADER_CHECK_MS * 2 + 2_000,
       );
     });
+  });
+
+  const DAY_MS = 86_400_000;
+
+  /**
+   * The reading history (ADR-0018, V2-06.9) through the whole app: the partitions, the rows the
+   * leader's own timer writes, what retention drops, and one row per asset and bucket however the
+   * flushes fall. The app runs the `mock` source, so its leader and writer timers are on.
+   */
+  describe('with sample history', () => {
+    let app: INestApplication;
+    let db: DataSource;
+    let startedAt: Date;
+
+    const partitionNames = async (): Promise<string[]> => {
+      const rows: { name: string }[] = await db.query(
+        `SELECT c.relname AS name FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid
+          WHERE i.inhparent = 'telemetry_sample'::regclass ORDER BY c.relname`,
+      );
+      return rows.map((row) => row.name);
+    };
+
+    const assetId = async (code: string): Promise<string> => {
+      const rows: { id: string }[] = await db.query(`SELECT "id" FROM "asset" WHERE "code" = $1`, [
+        code,
+      ]);
+      return rows[0]!.id;
+    };
+
+    beforeAll(async () => {
+      startedAt = new Date();
+      app = await startApp(AppModule);
+      db = app.get(DataSource);
+    });
+
+    afterAll(async () => {
+      await app?.close();
+    });
+
+    it('has the partitions of today and the next two days, and takes a row in each', async () => {
+      // The migration made them on a fresh database, and the leader's first flush keeps them on a
+      // long-lived one: either way they exist soon after boot.
+      const days = partitionsToEnsure(new Date());
+      await eventually(
+        partitionNames,
+        (names) => days.every((day) => names.includes(partitionName(day))),
+        'the partitions of today and two days ahead',
+        15_000,
+      );
+
+      const id = await assetId('CT-01');
+      for (const day of days) {
+        const { from } = partitionRange(day);
+        // A bucket in the far part of the day, so it never meets a row the writer made.
+        const bucket = new Date(Date.parse(from) + 23 * 3_600_000 + 59 * 60_000 + 55_000);
+        await db.query(
+          `INSERT INTO "telemetry_sample" ("asset_id", "bucket_at", "values") VALUES ($1, $2, '{}')`,
+          [id, bucket.toISOString()],
+        );
+        await db.query(
+          `DELETE FROM "telemetry_sample" WHERE "asset_id" = $1 AND "bucket_at" = $2`,
+          [id, bucket.toISOString()],
+        );
+      }
+    });
+
+    it('writes rows for assets, on 5 s buckets, with keys of the asset class', async () => {
+      const rows = await eventually(
+        () =>
+          db.query(
+            `SELECT s."bucket_at", s."values", a."code",
+                      ARRAY(SELECT p."key" FROM "telemetry_point" p
+                             WHERE p."asset_class_id" = a."asset_class_id") AS "pointKeys"
+                 FROM "telemetry_sample" s JOIN "asset" a ON a."id" = s."asset_id"
+                WHERE s."bucket_at" >= $1 ORDER BY s."bucket_at" DESC LIMIT 50`,
+            [startedAt.toISOString()],
+          ) as Promise<
+            Array<{
+              bucket_at: Date;
+              values: Record<string, unknown>;
+              code: string;
+              pointKeys: string[];
+            }>
+          >,
+        (found) => found.length > 0,
+        'sample rows written by the leader',
+        25_000,
+      );
+
+      for (const row of rows) {
+        expect(row.bucket_at.getTime() % 5_000).toBe(0);
+        const keys = Object.keys(row.values);
+        expect(keys.length).toBeGreaterThan(0);
+        expect(row.pointKeys).toEqual(expect.arrayContaining(keys));
+      }
+    }, 35_000);
+
+    it('drops a partition past the retention and keeps the ones within it', async () => {
+      const now = new Date();
+      const expired = new Date(now.getTime() - 3 * DAY_MS);
+      const yesterday = new Date(now.getTime() - DAY_MS);
+      // Only what this case makes is dropped by it: on a database a leader has kept, yesterday's
+      // partition may be a real one with rows.
+      const made: string[] = [];
+      const create = async (day: Date) => {
+        const name = partitionName(day);
+        if ((await partitionNames()).includes(name)) return;
+        const { from, to } = partitionRange(day);
+        await db.query(
+          `CREATE TABLE "${name}" PARTITION OF "telemetry_sample"
+             FOR VALUES FROM ('${from}') TO ('${to}')`,
+        );
+        made.push(name);
+      };
+      await create(expired);
+      await create(yesterday);
+
+      try {
+        // Retention is 1 day here: yesterday and today are kept, the day before it is not.
+        await app.get(TelemetrySamplePartitions).maintain(now);
+
+        const names = await partitionNames();
+        expect(names).not.toContain(partitionName(expired));
+        expect(names).toContain(partitionName(yesterday));
+        expect(names).toContain(partitionName(now));
+      } finally {
+        for (const name of made) await db.query(`DROP TABLE IF EXISTS "${name}"`);
+      }
+    });
+  });
+
+  /**
+   * The writer driven by hand: its timer is stopped, so the only flushes are the ones the case
+   * makes, and which bucket they fall in is the case's choice.
+   */
+  describe('with the writer driven by hand', () => {
+    let app: INestApplication;
+    let db: DataSource;
+
+    beforeAll(async () => {
+      app = await startApp(AppModule);
+      db = app.get(DataSource);
+      await eventually(
+        () => app.get(TelemetryLeader).isLeading(),
+        (leading) => leading,
+        'the telemetry leader',
+      );
+      // Stops the timer and waits for a flush in flight: nothing else writes from here on.
+      await app.get(TelemetrySampleWriter).beforeApplicationShutdown();
+    });
+
+    afterAll(async () => {
+      await app?.close();
+    });
+
+    it('merges two flushes of one bucket into one row that holds the keys of both', async () => {
+      const writer = app.get(TelemetrySampleWriter);
+      const ingest = app.get(TelemetryIngestService);
+      const points: { key: string; min: number | null }[] = await db.query(
+        `SELECT p."key", p."min" FROM "asset" a
+           JOIN "telemetry_point" p ON p."asset_class_id" = a."asset_class_id"
+          WHERE a."code" = 'CT-01' AND p."kind" = 'number' ORDER BY p."key" LIMIT 2`,
+      );
+      expect(points).toHaveLength(2);
+      const [first, second] = points as [(typeof points)[number], (typeof points)[number]];
+
+      // The first leading flush keeps the partitions and starts the cursor; it writes nothing.
+      const boundary = bucketOf(new Date());
+      await writer.flush(new Date(boundary.getTime() + 1_000));
+
+      ingest.ingest({ assetCode: 'CT-01', values: { [first.key]: first.min ?? 0 } });
+      await writer.flush(new Date(boundary.getTime() + 1_500));
+      ingest.ingest({ assetCode: 'CT-01', values: { [second.key]: second.min ?? 0 } });
+      await writer.flush(new Date(boundary.getTime() + 3_500));
+
+      const rows: { values: Record<string, unknown> }[] = await db.query(
+        `SELECT s."values" FROM "telemetry_sample" s JOIN "asset" a ON a."id" = s."asset_id"
+          WHERE a."code" = 'CT-01' AND s."bucket_at" = $1`,
+        [boundary.toISOString()],
+      );
+      expect(rows).toHaveLength(1);
+      expect(Object.keys(rows[0]!.values)).toEqual(expect.arrayContaining([first.key, second.key]));
+    });
+  });
+
+  /**
+   * Two replicas on one database: the lock decides who writes, and the primary key makes a second
+   * row for one asset and bucket impossible, so a failover cannot duplicate (ADR-0019).
+   */
+  describe('with a second instance writing', () => {
+    let apps: INestApplication[];
+    let inserts: Map<INestApplication, jest.SpyInstance>;
+
+    const insertsOf = (target: INestApplication) =>
+      inserts
+        .get(target)!
+        .mock.calls.filter(
+          ([sql]) => typeof sql === 'string' && sql.startsWith('INSERT INTO "telemetry_sample"'),
+        ).length;
+
+    const leading = () => apps.filter((target) => target.get(TelemetryLeader).isLeading());
+
+    beforeAll(async () => {
+      apps = [await startApp(AppModule), await startApp(AppModule)];
+      inserts = new Map(
+        apps.map((target) => [target, jest.spyOn(target.get(DataSource), 'query')] as const),
+      );
+    });
+
+    afterAll(async () => {
+      jest.restoreAllMocks();
+      for (const target of apps.reverse()) await target?.close();
+    });
+
+    it('writes from the leader only', async () => {
+      await eventually(
+        () => leading().length,
+        (count) => count === 1,
+        'exactly one telemetry leader',
+      );
+      const [leader] = leading() as [INestApplication];
+      const follower = apps.find((target) => target !== leader)!;
+
+      await eventually(
+        () => insertsOf(leader),
+        (count) => count > 0,
+        'the leader to write',
+        30_000,
+      );
+
+      expect(insertsOf(follower)).toBe(0);
+    }, 45_000);
+
+    it('continues from the other instance after the leader lets go, with no row twice', async () => {
+      const [leader] = leading() as [INestApplication];
+      const follower = apps.find((target) => target !== leader)!;
+
+      // What closing the app does first, so the case does not have to close it.
+      await leader.get(TelemetryLeader).beforeApplicationShutdown();
+
+      await eventually(
+        () => insertsOf(follower),
+        (count) => count > 0,
+        'the other instance to write',
+        45_000,
+      );
+
+      // The released replica no longer writes, whatever its timer does.
+      const stopped = insertsOf(leader);
+      await new Promise((resolve) => setTimeout(resolve, 6_000));
+      expect(insertsOf(leader)).toBe(stopped);
+
+      const duplicates = await follower.get(DataSource).query(
+        `SELECT "asset_id", "bucket_at" FROM "telemetry_sample"
+              GROUP BY "asset_id", "bucket_at" HAVING count(*) > 1`,
+      );
+      expect(duplicates).toEqual([]);
+    }, 75_000);
   });
 
   describe('with the identity provider unreachable', () => {

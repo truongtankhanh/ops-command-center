@@ -56,6 +56,8 @@ interface AssetState {
 /** The keys of one asset received since a cursor (`changedSince`). */
 export interface TelemetryChange {
   assetCode: string;
+  /** The asset's id, from the index that validated its readings (the sample writer keys on it). */
+  assetId: string;
   values: Record<string, TelemetryValue>;
   /** The newest `at` among these keys. */
   at: string;
@@ -222,10 +224,14 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
   changedSince(version: number): { version: number; changes: TelemetryChange[] } {
     const changes: TelemetryChange[] = [];
     for (const [assetCode, asset] of this.state) {
+      // State only holds assets the index knows (`prune` drops the rest in the step that replaces
+      // it), so this does not miss; an id is never invented if it somehow did.
+      const assetId = this.index.get(assetCode)?.id;
+      if (assetId === undefined) continue;
       let change: TelemetryChange | undefined;
       for (const [key, entry] of asset.keys) {
         if (entry.version <= version) continue;
-        change ??= { assetCode, values: {}, at: entry.at, receivedAt: entry.receivedAt };
+        change ??= { assetCode, assetId, values: {}, at: entry.at, receivedAt: entry.receivedAt };
         change.values[key] = entry.value;
         if (entry.at > change.at) change.at = entry.at;
         if (entry.receivedAt > change.receivedAt) change.receivedAt = entry.receivedAt;

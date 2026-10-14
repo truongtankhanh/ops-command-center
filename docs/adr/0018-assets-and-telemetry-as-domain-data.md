@@ -135,6 +135,12 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
   in the bucket), primary key `(asset_id, bucket_at)`, `PARTITION BY RANGE (bucket_at)`, one partition per day. The
   telemetry leader writes one row per asset per bucket and keeps the next two days' partitions created; partitions
   older than `TELEMETRY_RETENTION_DAYS` (default 7) are dropped, never deleted row by row.
+  - Settled in V2-06.9, without changing the decision: a day is a **UTC** day (`telemetry_sample_YYYYMMDD` is
+    `[00:00Z, 24:00Z)`), so the server's time zone moves nothing; a partition is dropped when its day is before
+    today minus `TELEMETRY_RETENTION_DAYS`, so the last N whole days and today are kept; a row is stamped with the
+    bucket in which the leader's writer saw the reading arrive, not the device's `at`, so a skewed device clock
+    cannot reach another day's partition; and `asset_id` is `ON DELETE CASCADE`, so removing an asset removes its
+    history.
 - **Read API**, any known role (ADR-0011), default rate limits (ADR-0012):
   - `GET /api/assets`: the catalogue with class, position, headline points and model URL;
   - `GET /api/assets/:code`: one asset with all its points and the limits of its enabled rules (the inspector's
