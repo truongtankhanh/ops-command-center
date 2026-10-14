@@ -334,5 +334,29 @@ V2-07 evaluates them; no asset has an override at start. Rules raise only `facil
 5. **Booleans and enums in bindings.** The worker posts one `Float32Array` of targets (ADR-0020), but `switchState`
    (`enum`) and `breakerClosed` (`boolean`) drive `turn` parts. Neither ADR says how such a value becomes a number
    (for example 0 / 1, and an enum's index in `enum_values`, mapped onto `range`). Decide in V2-14.
-6. **When an asset looks stale.** Freshness is decided per point (ADR-0019), but the twin greys a whole asset
-   (brief § Freshness). Which points make the asset stale (any, all, or its headline points) is open; decide in V2-08.
+6. ~~**When an asset looks stale.** Freshness is decided per point (ADR-0019), but the twin greys a whole asset
+   (brief § Freshness). Which points make the asset stale (any, all, or its headline points) is open; decide in V2-08.~~
+   **Decided 2026-10-14 (V2-08.1)** by the tech lead:
+   - **An asset is stale** when the age of its latest reading is at least **3 × the shortest `expectedIntervalS`
+     among its headline points** (rank 1 and 2), with a **floor of 5 s**. The overview carries one `receivedAt` per
+     asset and headline values only, so that is the only freshness an unwatched asset has; the headline points are the
+     ones a device sends most often. A watched asset also gets a per-point age from its frames, shown beside each
+     reading.
+   - **Age is measured on the server's clock** (`overview.at` plus the monotonic time since that overview arrived),
+     never on the browser's, so a skewed laptop cannot grey the campus.
+   - **`online: false`** (the device's last will) is `Offline`, same look as stale, labelled "Offline since HH:MM"
+     where stale says "No data since HH:MM".
+   - Worked examples, from the points above:
+
+     | Asset                      | Headline intervals (s) | 3 × shortest | Threshold |
+     | -------------------------- | ---------------------- | ------------ | --------- |
+     | Cooling tower (CT-01)      | 1, 5                   | 3 s          | **5 s**   |
+     | Lift (LFT-B1)              | 2, 30                  | 6 s          | 6 s       |
+     | UPS (UPS-01)               | 5, 30                  | 15 s         | 15 s      |
+     | Gas detector (GAS-L1)      | 5                      | 15 s         | 15 s      |
+     | Indoor climate (ICS-DC)    | 60, 60                 | 180 s        | 180 s     |
+     | Standby generator (GEN-01) | 60, 60                 | 180 s        | 180 s     |
+     | Leak sensor (LKS-B3)       | 300, 3600              | 900 s        | 900 s     |
+
+     The leak sensor is why the slowest headline is not used: `batteryPct` reports hourly and would keep a dead sensor
+     "live" for three hours.

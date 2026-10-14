@@ -335,7 +335,9 @@ interface TelemetryFrame {
 | Device reports offline                   | `Offline` state; same look as stale                                                     |
 
 Stale is decided in the worker per point, from `receivedAt` and its `expected_interval_s` (ADR-0019), so one silent
-device does not grey the whole campus.
+device does not grey the whole campus. An asset nobody is watching has one `receivedAt` and headline values only, so
+it is judged by its shortest headline interval, on the server's clock (V2-08.1;
+[asset-classes.md](asset-classes.md#open-questions), question 6).
 
 ## Performance
 
@@ -433,6 +435,7 @@ source.
 | 09 Report by category                | The same four category tiles; the Network outage type tile is `ServerOff`, not `WifiOff`                                                                              | V2-02.2 (`icons.md`)             |
 | 09 Report by category                | The severity hint has no reason sentence; the Title field and the zone select ("Pick on map") stay instead of the free-text location                                  | V2-03.6                          |
 | 11 Technician, out-of-scope incident | The Security category chip is `ShieldUser`, not `Shield`                                                                                                              | V2-02.2 (`icons.md`)             |
+| 05 Telemetry paused                  | Two pill states it does not draw: "Telemetry reconnecting…", "Telemetry unavailable"; the banner button reads "Reconnect"                                             | V2-08.1                          |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).

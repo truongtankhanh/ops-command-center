@@ -119,6 +119,16 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     them. Snapshot and status are always delivered.
 - **Freshness** is decided by the console's worker from `receivedAt` and each point's `expected_interval_s`
   (stale after three intervals), and from `online`. The server never invents a value.
+  - Settled in V2-08.1, without changing the decision: the overview and the snapshot carry one `receivedAt` per
+    asset, so an asset is stale when its latest reading is at least three times the **shortest `expected_interval_s`
+    of its headline points** old, with a floor of 5 s (the overview is 1 Hz and `volatile`); a watched asset also
+    shows a per-point age from its frames. Age is measured on the **server's clock** (`overview.at` plus the monotonic
+    time since it arrived), never the browser's. `online: false` reads as `Offline`, with the stale look.
+  - The console's `Telemetry` pill has five states: connecting (first connect, no reading yet), live, `paused`
+    (`telemetry.status`), reconnecting (the console's own socket is down) and unavailable (the namespace is missing
+    on a replica, `Invalid namespace`). Only `paused` and reconnecting raise the banner. "Retry now" reconnects the
+    console's socket and sends the watch set again; it cannot restart the API's broker connection.
+  - The telemetry worker delivers state to React at most 4 times a second; the per-frame target buffer is V2-14's.
 - **Compose.**
   - Default: `TELEMETRY_SOURCE=mock`, so `docker compose up` shows a live twin with no broker.
   - Profile `telemetry` (beside the existing `observability`): `eclipse-mosquitto:2` (pinned minor) on the Compose
