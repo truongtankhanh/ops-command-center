@@ -824,6 +824,15 @@ describe('Incidents (e2e)', () => {
 
   /** Every timeline entry records who caused it, and only the server decides who that is (ADR-0011). */
   describe('actors', () => {
+    /**
+     * The suites share one database and only this one rebuilds the schema. An incident that names a
+     * seeded asset would restrict deleting that asset (`fk_incident_asset`), which the catalogue
+     * suite does when it simulates a volume without assets, so what these cases raise is removed.
+     */
+    afterEach(async () => {
+      await app.get(DataSource).query(`DELETE FROM "incident" WHERE "source" = 'telemetry'`);
+    });
+
     it('records the simulator as the actor of its changes', async () => {
       // Awaiting the broadcast keeps it from reaching a later `waitFor`.
       const created = waitFor(socket, IncidentEvents.Created);
