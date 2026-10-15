@@ -363,10 +363,16 @@ describe('Threshold rules raise incidents (e2e)', () => {
       const scenario = [
         { assetCode: ASSET_CODE, key: 'motorTempC', cycleS: 20, offsetS: 0, marginS: 1 },
       ];
+      // The windows are anchored to the epoch, so a case that began late in one would wait for
+      // the next window longer than its own timeout (about 20 % of starts). The source's clock is
+      // shifted instead, so the case always starts at the opening of a window: the first
+      // incident is raised about 5 s in, the second window's `already_open` about 25 s in.
+      const cycleMs = 20_000;
+      const shiftMs = cycleMs - (Date.now() % cycleMs);
       const assets = app.get(AssetsService);
       source = new MockTelemetrySource(
         async () => (await assets.catalogue()).filter((asset) => asset.code === ASSET_CODE),
-        { tickMs: 250, scenario },
+        { tickMs: 250, scenario, now: () => Date.now() + shiftMs },
       );
       // What `TelemetryIngestService` does with its own source, on the replica that leads.
       source.onReading((reading) => ingest.ingest(reading));
