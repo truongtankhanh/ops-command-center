@@ -107,6 +107,12 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     `/events`, so each console makes two.
   - Server → client (types in `@occ/contracts`):
     - `telemetry.overview`, every second: `{ at, assets: { [assetCode]: { online, receivedAt, headline } } }`;
+      - Settled in V2-09.2, without changing the decision: `headline` also carries the class's state point
+        (`running`, or `armPosition` for barrier arms; `ASSET_STATE_POINT_KEYS`) when the class has one and the
+        asset has a value for it, whatever its headline rank. Only `chiller` and `booster_pump` have `running` as a
+        headline, so for four other classes an unwatched asset's Running or Standby was not on the wire after the
+        connect snapshot. Additive: an older replica sends no such key and an older console ignores it; the API
+        deploys before the console that reads it.
     - `telemetry.frames`, at most 10 Hz per watched asset: `{ frames: [{ assetCode, at, receivedAt, values }] }`,
       one entry per watched asset that changed, changed keys only;
     - `telemetry.snapshot`, after connect and after each watch change: the full latest state in scope;
@@ -178,6 +184,12 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
   assets x 10 Hz x 328 bytes is 13 KB/s, against the earlier 16 KB/s. The stream is bounded by the limits whatever the
   devices send. Telemetry messages: 23,150 accepted, none `unknown_asset`, `invalid` or `clock_skew`, against 6.39
   messages a second expected from the catalogue (6.25 observed over the API's uptime).
+  - Settled in V2-09.2, without changing the decision: carrying the class's state point in the overview adds one
+    boolean to each of eight demo assets. Computed on 2026-10-15 from the seed catalogue and the mock waveform,
+    counting the Socket.IO event packet as above and averaged over 18 instants ten minutes apart, the overview went
+    from 3,694 to 3,815 bytes for 31 assets (119.2 to 123.1 bytes per asset, +3.3 %), so about 12.3 KB/s for 100
+    assets against 11.9. The method reproduces the earlier 119 bytes per asset, but it is a computation from the
+    catalogue and not a capture of a running stack.
 - **The broker is never public**, and no command reaches a device: the API cannot publish, and devices cannot read
   each other's topics. Commanding equipment would need a new ADR.
 - **Replicas do not coordinate readings.** Each replica's consoles see the same values within network jitter, and

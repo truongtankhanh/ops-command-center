@@ -98,7 +98,13 @@ Payload: `TelemetryOverview`.
 | ------------ | --------------------------------------------- | ------------------------------------------------------ |
 | `online`     | `boolean`                                     | as in the snapshot                                     |
 | `receivedAt` | ISO 8601 string                               | when the API received the asset's latest reading       |
-| `headline`   | `Record<string, number \| boolean \| string>` | the current values of the asset's headline points only |
+| `headline`   | `Record<string, number \| boolean \| string>` | the current values of its headline and its state point |
+
+`headline` also holds the class's **state point** when the class has one and the asset has a value for it, whatever
+the point's headline rank: `running`, or `armPosition` for barrier arms (`ASSET_STATE_POINT_KEYS` in
+`@occ/contracts`). A key with no reading yet is absent, and a state point that is already a headline appears once.
+It is what lets a console say Running or Standby for an asset it does not watch. A replica from before V2-09.2 never
+sends it, and a console then draws no state word.
 
 The overview keeps coming while the upstream is `paused`: what is held is still the latest known, and `receivedAt`
 says how old it is.
@@ -178,8 +184,8 @@ from each point's expected interval.
 
 ## Watching assets
 
-The overview carries only each asset's headline values. A console that is inspecting an asset asks for every
-reading of it with `telemetry.watch`.
+The overview carries only each asset's headline values and its class's state point. A console that is inspecting an
+asset asks for every reading of it with `telemetry.watch`.
 
 ### Watch
 

@@ -265,6 +265,16 @@ export interface TelemetryPoint {
   headline: 1 | 2 | null;
 }
 
+/**
+ * The point that says whether a piece of equipment is running: `running` for most classes,
+ * `armPosition` for barrier arms. A class has at most one of them. The telemetry overview carries
+ * it for every asset whatever its headline rank, so a list can draw Running / Standby for an asset
+ * the console does not watch (asset-classes.md § Console presentation; the class's other points
+ * are not on the wire until it is watched).
+ */
+export const ASSET_STATE_POINT_KEYS = ['running', 'armPosition'] as const;
+export type AssetStatePointKey = (typeof ASSET_STATE_POINT_KEYS)[number];
+
 /** The box a neutral placeholder is drawn from, in metres: all three are > 0. */
 export interface AssetFootprint {
   width: number;
