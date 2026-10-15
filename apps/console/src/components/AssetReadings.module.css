@@ -1,0 +1,137 @@
+/*
+ * The inspector's readings (frames 03, 05, 08; the mockups' `twin.css` `.telem`, `.freshness`).
+ * State is an attribute: `data-stale` on a row and on the freshness text, `data-severity` on a row
+ * that is over its rule (read through the global `--sev`, base.css).
+ */
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* The eyebrow of every sheet section (frame 02 `.eyebrow`). */
+.head h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Shape and word say it; the dot only adds the colour (success live, warning stale). */
+.dot {
+  width: calc(7px * var(--ui-scale));
+  height: calc(7px * var(--ui-scale));
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.freshness[data-stale='true'] .dot {
+  background: var(--warning);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-0-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(96px * var(--ui-scale)) minmax(0, auto);
+  align-items: center;
+  column-gap: var(--space-3);
+  padding: var(--space-1-5) 0;
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
+}
+
+.list > .row:last-child {
+  box-shadow: none;
+}
+
+.label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-m);
+}
+
+.rule {
+  font-size: var(--type-s);
+  color: var(--text-tertiary);
+}
+
+/* A fixed cell, so the values line up whether or not a row has a chart. */
+.chart {
+  display: block;
+  height: calc(28px * var(--ui-scale));
+}
+
+.value {
+  justify-self: end;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-xl);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.row[data-severity] .value {
+  color: var(--sev);
+}
+
+/* After the severity rule on purpose: a stale value is dimmed whatever it was (frame 05). */
+.row[data-stale='true'] .value {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+.more summary {
+  cursor: pointer;
+  padding: var(--space-1-5) 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+/* Read by assistive tech, not drawn: that a value is over its limit is not left to its colour. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

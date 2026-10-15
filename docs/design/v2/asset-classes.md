@@ -482,6 +482,32 @@ is in `lib/assetList.ts`.
 - **Empty tabs** say why: "No assets have a fault.", "No assets are without data.", `No assets match "{query}".`,
   "No assets in {zone name}." (and "…in {zone} have a fault." / "…are without data." when a tab is chosen too).
 
+### Inspector words
+
+Settled 2026-10-15 (V2-09.8) by the tech lead: every proposal of the analysis is accepted as written. What the
+inspector sheet says, where the sections above give the rows and the state but not the words. The pure part is
+`lib/assetInspector.ts`.
+
+- **The head** reads "{code} · {class name}", the name, then three badges: the state pill, the place line and the
+  incident badge. The pill is the state of § State of an asset with no age: "Fault", "Running", "Standby",
+  "No data since 15:41" and "Offline since 15:41" (the time of the last reading, `HH:MM`, with the date when it is
+  not the API's day), and nothing for an asset the console cannot judge. The incident badge is "No open incidents"
+  or "Fault · INC-000108", and is not said while the incident list is loading. A class-specific word such as
+  `controlMode` is **not** appended to the pill: it is an ordinary row ("Control mode", "Auto").
+- **Readings.** The eyebrow is "Live readings" with "Updated 0.4 s ago" beside it while the asset is live, and
+  "Last readings" with "1 min 12 s old" when it is stale or offline. The age is the asset's own, never a point's: the
+  API sends a key only when its value changes, so a steady key's age would read "old" on a healthy device.
+  A stale asset also dims every value, stops every sparkline at its last reading, and says "Charts stop at the
+  last reading; the gap is the outage."
+- **Rows** are § Reading rows: headline points, points a rule watches, then the rest behind "All points (n)". A
+  number or a boolean point draws a sparkline of the last 15 minutes (a boolean steps and has no limit line); an
+  enum point draws its value only. A point with no reading yet reads "—" and draws no sparkline. A value past its
+  rule's limit is drawn in the rule's severity, and a visually hidden "over its limit" says it too.
+- **A live series is extended to now.** The API sends changed keys only, so a steady key's newest point can be
+  minutes old; the inspector adds its latest value at the server's time while live, and does not when stale.
+- **States of the sheet.** Loading draws skeleton rows shaped like the head; an asset that no longer exists reads
+  "This asset no longer exists."; a rate limit and a failed load are the incident detail's.
+
 ## Open questions
 
 1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that

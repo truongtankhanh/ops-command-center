@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import styles from './App.module.css';
 import { AssetFeed } from './components/AssetFeed';
+import { AssetInspector } from './components/AssetInspector';
 import { CameraStrip } from './components/CameraStrip';
 import { CameraViewer } from './components/CameraViewer';
 import { CampusMap } from './components/CampusMap';
@@ -15,9 +16,10 @@ import { SidePanel } from './components/SidePanel';
 import { TelemetryBanner } from './components/TelemetryBanner';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
+import { deriveWatchSet } from './lib/telemetryWatch';
 import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
-import { useTelemetry } from './realtime/useTelemetry';
+import { useTelemetry, useTelemetryWatch } from './realtime/useTelemetry';
 import { useConsole } from './store';
 import { Button } from './ui/Button';
 import { ErrorBoundary } from './ui/ErrorBoundary';
@@ -62,17 +64,37 @@ function DisplayPreferences() {
   return null;
 }
 
+/**
+ * What the console asks the API for every reading of: the asset open in the inspector, and
+ * nothing when none is. The set is left in place when a caller unmounts (`useTelemetryWatch`), so
+ * closing the inspector clears it by this component passing `[]`. A component of its own, long
+ * lived, where the open incident's asset joins the set (V2-11.2).
+ */
+function TelemetryWatchSet() {
+  const inspected = useConsole((s) => s.selectedAssetCode);
+  useTelemetryWatch(deriveWatchSet({ inspected, incident: null }));
+  return null;
+}
+
 export function App() {
   useLiveIncidents();
   useTelemetry();
   const selectedId = useConsole((s) => s.selectedIncidentId);
+  const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
   const reporting = useConsole((s) => s.reporting);
-  const sheetOpen = reporting || selectedId !== null;
+  const sheetOpen = reporting || selectedAssetCode !== null || selectedId !== null;
+  // What the sheet holds. The store keeps the three exclusive, so at most one of them applies.
+  const sheet: SheetContent = reporting
+    ? 'report'
+    : selectedAssetCode !== null
+      ? 'asset'
+      : 'incident';
 
   return (
     <div className={styles.console}>
       <AttentionSignals />
       <DisplayPreferences />
+      <TelemetryWatchSet />
       <Header />
       {/* One host for both contents: switching between them keeps the sheet's opener (UI-10). */}
       <SheetHost>
@@ -115,15 +137,25 @@ export function App() {
               <CameraStrip />
             </Region>
             {sheetOpen && (
-              // Keyed by the content, so opening another incident or the report form starts afresh
-              // after a crash.
+              // Keyed by the content, so opening another incident, an asset or the report form
+              // starts afresh after a crash.
               <ErrorBoundary
-                key={reporting ? 'report' : selectedId}
-                region="Incident panel"
-                fallback={(retry) => <SheetFallback reporting={reporting} retry={retry} />}
+                key={
+                  sheet === 'report'
+                    ? 'report'
+                    : sheet === 'asset'
+                      ? `asset:${selectedAssetCode}`
+                      : `incident:${selectedId}`
+                }
+                region={sheet === 'asset' ? 'Asset panel' : 'Incident panel'}
+                fallback={(retry) => <SheetFallback content={sheet} retry={retry} />}
               >
-                {reporting ? (
+                {sheet === 'report' ? (
                   <ReportIncidentForm />
+                ) : sheet === 'asset' ? (
+                  selectedAssetCode && (
+                    <AssetInspector key={selectedAssetCode} code={selectedAssetCode} />
+                  )
                 ) : (
                   selectedId && <IncidentDetail key={selectedId} id={selectedId} />
                 )}
@@ -172,18 +204,33 @@ function Region({
   );
 }
 
+/** What the sheet holds: the report form, an asset in the inspector, or an incident's detail. */
+type SheetContent = 'report' | 'asset' | 'incident';
+
+const FALLBACK_LABELS: Record<SheetContent, string> = {
+  report: 'Report an incident',
+  asset: 'Asset',
+  incident: 'Incident',
+};
+
 /**
  * The sheet's fallback is a sheet too, so the stage keeps its layout and the operator can close it
- * (Close or Escape). Retry remounts the detail or the report form; a report draft is lost with it
- * (Q5), a note draft is not (it lives in the store).
+ * (Close or Escape). Retry remounts the detail, the inspector or the report form; a report draft is
+ * lost with it (Q5), a note draft is not (it lives in the store).
  */
-function SheetFallback({ reporting, retry }: { reporting: boolean; retry: () => void }) {
-  // Clears the selection and closes the report form alike.
+function SheetFallback({ content, retry }: { content: SheetContent; retry: () => void }) {
   const select = useConsole((s) => s.select);
-  const close = () => select(null);
-  const label = reporting ? 'Report an incident' : 'Incident';
+  const selectAsset = useConsole((s) => s.selectAsset);
+  // `select(null)` clears the incident and closes the report form alike, but leaves the asset on
+  // purpose (closing an incident is not deselecting the asset), so an asset has its own close.
+  const close = () => (content === 'asset' ? selectAsset(null) : select(null));
+  const label = FALLBACK_LABELS[content];
   return (
-    <Sheet id={reporting ? 'report-incident-panel' : undefined} label={label} onClose={close}>
+    <Sheet
+      id={content === 'report' ? 'report-incident-panel' : undefined}
+      label={label}
+      onClose={close}
+    >
       <div className={styles.sheetFallbackHead}>
         <Button variant="ghost" size="sm" shortcut="Esc" onClick={close}>
           Close
