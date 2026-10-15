@@ -1,0 +1,51 @@
+/*
+ * Sparkline (V2 frames 03, 05, 10, 15; the mockups' `twin.css` `.spark`). State is an attribute:
+ * `data-severity` for a series over its limit, `data-stale` for one that stopped (ADR-0016).
+ * It sets its own `--sev` only through its own `data-severity`, never through an ancestor's: an
+ * incident row's severity must not tint a reading that is within its limit.
+ */
+
+.spark {
+  display: block;
+  flex: none;
+  width: calc(96px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
+  /* The "now" dot sits on the right edge and the line can reach the top: let them spill, not clip. */
+  overflow: visible;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.limit {
+  stroke: var(--text-tertiary);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.dot {
+  fill: var(--accent);
+}
+
+.spark[data-severity] .line {
+  stroke: var(--sev);
+}
+
+.spark[data-severity] .dot {
+  fill: var(--sev);
+}
+
+/* After the severity rules on purpose: stale wins, dashed and grey (frame 05). */
+.spark[data-stale] .line {
+  stroke: var(--text-tertiary);
+  stroke-dasharray: 3 3;
+}
+
+.spark[data-stale] .dot {
+  fill: var(--text-tertiary);
+}
