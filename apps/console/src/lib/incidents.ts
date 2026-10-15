@@ -66,7 +66,7 @@ export const matchesSeverity = (incident: Incident, severity: IncidentSeverity |
  * Folds text for search: case- and accent-insensitive, so "chay" finds "Cháy". `đ` has no NFD
  * decomposition, so it is mapped by hand.
  */
-const fold = (text: string): string =>
+export const fold = (text: string): string =>
   text.replace(/[đĐ]/g, 'd').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 /** The folded words of a search query; a blank query has none. */
