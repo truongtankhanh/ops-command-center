@@ -136,6 +136,13 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     on a replica, `Invalid namespace`). Only `paused` and reconnecting raise the banner. "Retry now" reconnects the
     console's socket and sends the watch set again; it cannot restart the API's broker connection.
   - The telemetry worker delivers state to React at most 4 times a second; the per-frame target buffer is V2-14's.
+  - Settled in V2-08.4, without changing the decision: the worker is given no catalogue, so the rule above runs on
+    the main thread, in a pure module (`lib/telemetryFreshness.ts`) that reads the state the worker posts and the
+    asset catalogue the console already holds; the worker owns the socket, the watch set and the ring buffers.
+    It posts `state` (changed assets only, with the server's time) at most 4 times a second and `series` at most
+    once a second. Where there is no `Worker` the same engine runs on the main thread. A worker is another
+    JavaScript context, so its socket is a second WebSocket, not multiplexed with `/events`: the two handshakes per
+    console counted above. Enum points are not buffered yet; the protocol reserves a field for their values.
 - **Compose.**
   - Default: `TELEMETRY_SOURCE=mock`, so `docker compose up` shows a live twin with no broker.
   - Profile `telemetry` (beside the existing `observability`): `eclipse-mosquitto:2` (pinned minor) on the Compose
