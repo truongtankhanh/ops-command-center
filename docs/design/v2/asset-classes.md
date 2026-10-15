@@ -541,6 +541,24 @@ Settled 2026-10-15 (V2-09.9), the three blocks below the readings:
   box at its position. Its readings, states and incident work exactly as for modelled assets." The size is the
   class's footprint, width × depth × height.
 
+Settled 2026-10-15 (V2-09.10), the foot of the sheet:
+
+- **Report a fault.** A user with `incident:report` (operator, supervisor, technician) gets a block button "Report a
+  fault on CT-01" with the `Flag` glyph; it is `primary` (the only action in the sheet; frame 03 draws a secondary
+  one, which fails 3:1 on the foot's surface). It opens the report form on Facilities / Equipment fault, in the
+  asset's zone, with the title "Fault — Cooling tower 1 (CT-01)": the report is not linked to the asset (the request
+  has no `assetId`), so the tag is the only trace of which asset it was, and a name too long for the title's limit is
+  cut with "…" before the tag.
+- **The pin** is the asset's own position only when it lies inside the asset's zone (`GEN-01` stands 3 m outside
+  `BLD-DC`, and the API answers `400` for a pin outside the zone); otherwise the report is placed at the zone's centre.
+  A zone the console does not have (the list still loading) is left to the operator, with no pin.
+- **A viewer** (and anyone with no `incident:report`) gets the view-only note in its place: **View only** "Readings,
+  parts and cameras are all yours to explore. Reporting a fault needs the operator, supervisor or technician role."
+  The sheet never ends in a gap; the API's `403` is still the control (ADR-0011).
+- **Escape** closes the inspector. A report form opened from here is a draft only once something differs from what it
+  opened with, so an untouched one closes on Escape too; the form starts at its title.
+- **"Focus"** (V2-12) is not drawn and has no key: it is added to the foot's row, at its end.
+
 ## Open questions
 
 1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that

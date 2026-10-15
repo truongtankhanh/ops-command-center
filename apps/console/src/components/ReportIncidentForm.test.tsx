@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
+import type { ReportPreset } from '../lib/assetReport';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { useToasts } from '../ui/toasts';
@@ -424,6 +425,150 @@ describe('ReportIncidentForm', () => {
 
     await userEvent.keyboard('{Escape}');
     expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  describe('opened from an asset', () => {
+    const PRESET: ReportPreset = {
+      zoneId: zone.id,
+      position: PIN,
+      category: 'facilities',
+      type: 'equipment_fault',
+      title: 'Fault — Cooling tower 1 (CT-01)',
+    };
+
+    function openFromAsset(preset: ReportPreset = PRESET, zones: Zone[] = [zone]) {
+      act(() => useConsole.getState().startReport(preset));
+      return renderForm(zones);
+    }
+
+    const sentBody = () => JSON.parse(fetchMock.mock.calls[0]![1]!.body as string);
+
+    it('starts with the category, type, location and title chosen, and the type’s severity', () => {
+      const { form } = openFromAsset();
+
+      expect(form.getByRole('radio', { name: 'Facilities' })).toBeChecked();
+      expect(form.getByRole('radio', { name: 'Equipment fault' })).toBeChecked();
+      expect(form.getByLabelText('Medium')).toBeChecked();
+      expect(form.getByLabelText('Location')).toHaveValue(zone.id);
+      expect(titleBox(form)).toHaveValue('Fault — Cooling tower 1 (CT-01)');
+      expect(form.getByText('Pin inside Library · 11.9531, 108.4412')).toBeInTheDocument();
+    });
+
+    it('starts at the title, the next thing to check', () => {
+      const { form } = openFromAsset();
+
+      expect(titleBox(form)).toHaveFocus();
+    });
+
+    it('sends the preset as an ordinary report, with the pin and an idempotency key', async () => {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+      const { form } = openFromAsset();
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(sentBody()).toEqual({
+        type: 'equipment_fault',
+        severity: 'medium',
+        zoneId: zone.id,
+        title: 'Fault — Cooling tower 1 (CT-01)',
+        position: PIN,
+      });
+      expect(sentKey(0)).toMatch(UUID_V4);
+    });
+
+    it('sends no position when the preset has no pin, and says the centre is used', async () => {
+      fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));
+      const { form } = openFromAsset({ ...PRESET, position: null });
+      expect(form.getByText('No pin: placed at the centre of Library.')).toBeInTheDocument();
+
+      await userEvent.click(form.getByRole('button', { name: 'Report incident' }));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(sentBody()).not.toHaveProperty('position');
+      expect(sentBody().zoneId).toBe(zone.id);
+    });
+
+    it('closes on Escape while nothing differs from the preset', async () => {
+      const { form } = openFromAsset();
+      const cancel = form.getByRole('button', { name: 'Cancel' });
+      expect(form.queryByText(DRAFT_KEPT, { selector: 'p' })).toBeNull();
+      expect(cancel).toHaveAttribute('aria-keyshortcuts', 'Escape');
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().reporting).toBe(false);
+    });
+
+    it.each([
+      {
+        edit: 'the title',
+        change: async (form: Form) => userEvent.type(titleBox(form), ' (bearing noise)'),
+      },
+      {
+        edit: 'the severity',
+        change: async (form: Form) => userEvent.click(form.getByLabelText('Critical')),
+      },
+      {
+        edit: 'the zone',
+        change: async (form: Form) =>
+          userEvent.selectOptions(form.getByLabelText('Location'), otherZone.id),
+      },
+      {
+        edit: 'the pin',
+        change: async () => {
+          act(() => useConsole.getState().placePin(MOVED, zone.id));
+        },
+      },
+      {
+        edit: 'the details',
+        change: async (form: Form) =>
+          userEvent.type(form.getByLabelText('Details (optional)'), 'Fan is noisy'),
+      },
+    ])('keeps the form on Escape once $edit is changed', async ({ change }) => {
+      const { form } = openFromAsset(PRESET, [zone, otherZone]);
+
+      await change(form);
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().reporting).toBe(true);
+      expect(form.getByText(DRAFT_KEPT, { selector: 'p' })).toBeInTheDocument();
+    });
+
+    it('is no draft again once the edit is undone', async () => {
+      const { form } = openFromAsset();
+      await userEvent.type(titleBox(form), 'x');
+      expect(form.getByText(DRAFT_KEPT, { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent.keyboard('{Backspace}');
+
+      expect(form.queryByText(DRAFT_KEPT, { selector: 'p' })).toBeNull();
+      await userEvent.keyboard('{Escape}');
+      expect(useConsole.getState().reporting).toBe(false);
+    });
+
+    it('closes on Cancel, with or without changes', async () => {
+      const { form } = openFromAsset();
+      await userEvent.type(titleBox(form), 'x');
+
+      await userEvent.click(form.getByRole('button', { name: 'Cancel' }));
+
+      expect(useConsole.getState().reporting).toBe(false);
+    });
+
+    it('does not leak into the next report opened from the header', () => {
+      act(() => {
+        useConsole.getState().startReport(PRESET);
+        useConsole.getState().closeReport();
+        useConsole.getState().startReport();
+      });
+
+      const { form } = renderForm();
+
+      expect(form.queryByRole('radio', { name: 'Facilities', checked: true })).toBeNull();
+      expect(titleBox(form)).toHaveValue('');
+      expect(form.getByLabelText('Location')).toHaveValue('');
+    });
   });
 
   describe('validation', () => {

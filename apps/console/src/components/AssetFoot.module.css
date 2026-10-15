@@ -1,0 +1,23 @@
+/*
+ * The asset inspector's foot (frame 03 `.sheet-foot > .actions`). The same chrome as the incident
+ * sheet's foot (`IncidentResponse.module.css` `.footer`): sticky at the bottom of the scrolling
+ * sheet, `margin-top: auto` so a short sheet still ends in it.
+ */
+
+.foot {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 var(--border-subtle),
+    var(--shadow-1);
+}
+
+/* Grows: the row's end is where "Focus" will go (V2-12). */
+.report {
+  flex: 1;
+}

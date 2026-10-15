@@ -273,6 +273,7 @@ export {
   Crosshair,
   Eye,
   Fan,
+  Flag,
   House,
   Info,
   Keyboard,

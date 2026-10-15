@@ -1,5 +1,6 @@
 import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
+import type { ReportPreset } from './lib/assetReport';
 import type { AssetFilter } from './lib/assets';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
@@ -20,13 +21,21 @@ export type ConnectionState = 'connecting' | 'live' | 'reconnecting' | 'offline'
 export type SidePanelTab = 'incidents' | 'assets';
 
 /**
- * Where the incident being reported is, chosen in the report form or on the map. Kept here, not in
- * the form, because the map (a sibling) draws the pin and outlines the zone, and places the pin.
+ * Where the incident being reported is, chosen in the report form or on the map, and what the form
+ * opened with. The location is kept here, not in the form, because the map (a sibling) draws the pin
+ * and outlines the zone, and places the pin. The preset (V2-09.10) is read once by the form and is
+ * the baseline its draft is measured from, so it lives and dies with the location: every path that
+ * ends or starts a report resets both.
  */
 interface ReportLocation {
   reportZoneId: string | null;
   /** The pin, always inside `reportZoneId`; `null` lets the API use the zone's centre. */
   reportPosition: LngLat | null;
+  /**
+   * What the report form opened with, when it was opened from an asset: its category, type and
+   * title, and the zone and pin it was placed with. `null` for a form opened from the header or `N`.
+   */
+  reportPreset: ReportPreset | null;
   /** "Pick on map" is on: a map click places the pin, and the pin can be dragged. */
   picking: boolean;
   /** The last click or drop was outside every zone, so the pin was not placed or moved. */
@@ -37,6 +46,7 @@ interface ReportLocation {
 const NO_REPORT_LOCATION: ReportLocation = {
   reportZoneId: null,
   reportPosition: null,
+  reportPreset: null,
   picking: false,
   pinMissed: false,
 };
@@ -106,8 +116,12 @@ interface ConsoleState extends ReportLocation {
 
   /** Selecting an incident (not `null`) also closes the report form and the selected asset. */
   select(id: string | null): void;
-  /** Also closes the selected asset: the report form takes the sheet. */
-  startReport(): void;
+  /**
+   * Also closes the selected asset: the report form takes the sheet. With a `preset` (a fault
+   * reported from an asset) the zone and pin are set at once and the form starts from its category,
+   * type and title; without one the report starts empty, whatever the last report began with.
+   */
+  startReport(preset?: ReportPreset): void;
   closeReport(): void;
   setFilter(filter: FeedFilter): void;
   /**
@@ -190,12 +204,15 @@ export const useConsole = create<ConsoleState>((set, get) => ({
         ? next
         : { ...next, fresh: without(state.fresh, id) };
     }),
-  startReport: () =>
+  startReport: (preset) =>
     set({
       reporting: true,
       selectedIncidentId: null,
       selectedAssetCode: null,
       ...NO_REPORT_LOCATION,
+      ...(preset
+        ? { reportZoneId: preset.zoneId, reportPosition: preset.position, reportPreset: preset }
+        : {}),
     }),
   closeReport: () => set({ reporting: false, ...NO_REPORT_LOCATION }),
   setFilter: (filter) => set({ filter }),

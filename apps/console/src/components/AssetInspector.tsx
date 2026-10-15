@@ -23,6 +23,7 @@ import { assetStateIcon, Box, severityIcon, zoneKindIcon } from '../ui/icons';
 import { Sheet } from '../ui/Sheet';
 import { SheetSection } from '../ui/SheetSection';
 import { Skeleton } from '../ui/Skeleton';
+import { AssetFoot } from './AssetFoot';
 import { AssetIncidents } from './AssetIncidents';
 import styles from './AssetInspector.module.css';
 import { AssetParts } from './AssetParts';
@@ -218,6 +219,7 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
           <Hint>{noModelNote(detail.class.footprintM)}</Hint>
         </SheetSection>
       )}
+      <AssetFoot asset={detail} />
     </>
   );
 }
