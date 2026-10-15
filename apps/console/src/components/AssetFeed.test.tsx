@@ -1,6 +1,6 @@
-import type { Asset, Incident, TelemetryPoint, Zone } from '@occ/contracts';
+import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
 import { QueryClient } from '@tanstack/react-query';
-import { act, screen } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   queryRetryDelay,
@@ -10,6 +10,7 @@ import {
 } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
@@ -102,10 +103,10 @@ function json(body: unknown, status = 200): Response {
 }
 
 /** A cache with the catalogue, the incidents and the zones; no request is needed. */
-function seeded(list: Asset[] = assets): QueryClient {
+function seeded(list: Asset[] = assets, raised: Incident[] = incidents): QueryClient {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.assets, list);
-  client.setQueryData(queryKeys.incidents, incidents);
+  client.setQueryData(queryKeys.incidents, raised);
   client.setQueryData(queryKeys.zones, zones);
   return client;
 }
@@ -118,6 +119,50 @@ function unseeded(client = createTestQueryClient()): QueryClient {
 }
 
 const searchbox = () => screen.getByRole('searchbox', { name: 'Search assets' });
+
+// A local time, so a clock text does not depend on the runner's timezone.
+const NOW = new Date(2026, 9, 15, 15, 41, 20).getTime();
+const receivedAgo = (agoMs: number) => new Date(NOW - agoMs).toISOString();
+
+interface Held {
+  /** How long before the server's now the reading was received; 1 s is live for a 1 s asset. */
+  agoMs?: number;
+  online?: boolean;
+  values?: Record<string, TelemetryValue>;
+}
+
+/**
+ * What the telemetry store holds: overview entries by asset code, a server clock at `NOW`, and
+ * the link (`socket`, `upstream`...). Wrapped in `act`, as a store change outside React must be.
+ */
+function hold(entries: Record<string, Held>, link: Partial<TelemetryState> = {}) {
+  const held = Object.fromEntries(
+    Object.entries(entries).map(([code, { agoMs = 1000, online = true, values = {} }]) => [
+      code,
+      { online, receivedAt: receivedAgo(agoMs), headline: {}, values, keyReceivedAt: {} },
+    ]),
+  );
+  act(() =>
+    useTelemetryStore.setState({
+      view: {
+        state: {
+          ...initialTelemetryState,
+          socket: 'live',
+          upstream: 'live',
+          serverClock: { at: NOW, mono: performance.now() },
+          ...link,
+          assets: held,
+        },
+        series: new Map(),
+      },
+    }),
+  );
+}
+
+const rowNamed = (name: RegExp) => screen.getByRole('button', { name });
+const header = (zone: string) => screen.getByRole('button', { name: `Show only ${zone}` });
+/** Every row's and header's button, in reading order: what the keyboard walks. */
+const stops = () => within(screen.getByRole('tabpanel')).getAllByRole('button');
 
 describe('AssetFeed', () => {
   beforeEach(() => {
@@ -151,11 +196,12 @@ describe('AssetFeed', () => {
       expect(screen.getByRole('tab', { name: 'No data 2' })).toBeInTheDocument();
     });
 
-    it('draws nothing under the tabs for a catalogue that has assets, and no empty list', () => {
+    it('lists the assets of a catalogue under the tabs, not an empty list', () => {
       renderWithQueryClient(<AssetFeed />, seeded());
 
-      expect(screen.queryByRole('list')).toBeNull();
+      expect(screen.getAllByRole('list').length).toBeGreaterThan(0);
       expect(screen.queryByText('No assets are set up on this site.')).toBeNull();
+      expect(rowNamed(/Cooling tower 1/)).toBeInTheDocument();
     });
 
     it('selects a filter tab in the store', async () => {
@@ -176,6 +222,301 @@ describe('AssetFeed', () => {
       renderWithQueryClient(<AssetFeed />, seeded());
 
       expect(screen.getByRole('tab', { name: 'All 3' })).toBeInTheDocument();
+    });
+  });
+
+  describe('the list', () => {
+    it('groups the assets by zone, A–Z, with the zone as a header', () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      const headers = screen
+        .getAllByRole('button', { name: /^Show only / })
+        .map((button) => button.textContent);
+
+      expect(headers).toEqual(['Data Center', 'Library']);
+      const dataCenter = within(screen.getByRole('list', { name: 'Data Center' }));
+      expect(dataCenter.getAllByRole('button')).toHaveLength(2);
+      expect(
+        within(screen.getByRole('list', { name: 'Library' })).getByText('Leak sensor B3'),
+      ).toBeInTheDocument();
+    });
+
+    it('gives each row its value and its state word', () => {
+      hold({
+        'CT-01': { values: { running: true, fanSpeedRpm: 1420 } },
+        'CT-02': { values: { running: false, fanSpeedRpm: 0 } },
+        'LKS-B3': { values: { running: true, fanSpeedRpm: 900 } },
+      });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      const ct01 = within(rowNamed(/Cooling tower 1/));
+      expect(ct01.getByText('1,420 rpm')).toBeInTheDocument();
+      expect(ct01.getByText(/Fault · INC-000001/)).toBeInTheDocument();
+      const ct02 = within(rowNamed(/Cooling tower 2/));
+      expect(ct02.getByText('0 rpm')).toBeInTheDocument();
+      expect(ct02.getByText('Standby')).toBeInTheDocument();
+      expect(within(rowNamed(/Leak sensor B3/)).getByText('Running')).toBeInTheDocument();
+    });
+
+    it('dims and ages a stale asset, and says offline for one whose device went', () => {
+      hold({
+        'CT-01': { values: { fanSpeedRpm: 1420 } },
+        'CT-02': { agoMs: 65_000, values: { running: true, fanSpeedRpm: 1420 } },
+        'LKS-B3': { agoMs: 190_000, online: false, values: { fanSpeedRpm: 900 } },
+      });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      const stale = within(rowNamed(/Cooling tower 2/));
+      expect(stale.getByText('No data · 1 min')).toBeInTheDocument();
+      expect(stale.getByText('1,420 rpm')).toHaveAttribute('data-stale', 'true');
+      expect(within(rowNamed(/Leak sensor B3/)).getByText('Offline · 3 min')).toBeInTheDocument();
+    });
+
+    it('says no data, with no value, for an asset it has nothing of', () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      const row = within(rowNamed(/Cooling tower 2/));
+      expect(row.getByText('No data')).toBeInTheDocument();
+      expect(row.getByText('—')).toBeInTheDocument();
+    });
+
+    it('lists exactly the faults in Faults, with the incident code, and the count matches', async () => {
+      hold({ 'CT-02': { values: { running: true } }, 'LKS-B3': { values: { running: true } } });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Faults 1' }));
+
+      expect(
+        within(screen.getByRole('tabpanel')).getAllByRole('button', { name: /Cooling/ }),
+      ).toHaveLength(1);
+      expect(screen.getByText(/Fault · INC-000001/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cooling tower 2/ })).toBeNull();
+    });
+
+    it('lists stale and offline assets in No data, and the count matches', async () => {
+      hold({
+        'CT-01': {},
+        'CT-02': { agoMs: 65_000, values: { running: true } },
+        'LKS-B3': { online: false, values: {} },
+      });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(screen.getByRole('tab', { name: 'No data 2' }));
+
+      expect(rowNamed(/Cooling tower 2/)).toBeInTheDocument();
+      expect(rowNamed(/Leak sensor B3/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cooling tower 1/ })).toBeNull();
+    });
+
+    it('draws the raw class of an asset whose class it does not know', () => {
+      const odd = asset({
+        id: 'asset-odd',
+        code: 'ODD-01',
+        name: 'Odd machine',
+        class: { ...asset({}).class, code: 'mystery_pump', name: 'Mystery pump' },
+      });
+      renderWithQueryClient(<AssetFeed />, seeded([...assets, odd]));
+
+      const row = within(rowNamed(/Odd machine/));
+      expect(row.getByText('mystery_pump')).toBeInTheDocument();
+      expect(row.getByText('—')).toBeInTheDocument();
+    });
+
+    it('selects an asset on click and marks it current', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(rowNamed(/Cooling tower 2/));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-02');
+      expect(rowNamed(/Cooling tower 2/)).toHaveAttribute('aria-current', 'true');
+    });
+  });
+
+  describe('the zone chip', () => {
+    it('is set by a header, narrows the list and the counts, and moves focus to the chip', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(header('Library'));
+
+      expect(useConsole.getState().assetZoneId).toBe('zone-lib');
+      expect(screen.getByText('Library only')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'All 1' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Cooling tower/ })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Clear zone filter' })).toHaveFocus();
+    });
+
+    it('leaves the one group a plain label, not a button that does nothing', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(header('Library'));
+
+      expect(screen.queryByRole('button', { name: /^Show only/ })).toBeNull();
+      expect(within(screen.getByRole('tabpanel')).getAllByText('Library').length).toBeGreaterThan(
+        0,
+      );
+    });
+
+    it('clears with ×, shows every zone again and focuses the selected tab', async () => {
+      useConsole.setState({ assetZoneId: 'zone-lib' });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear zone filter' }));
+
+      expect(useConsole.getState().assetZoneId).toBeNull();
+      expect(screen.getByRole('tab', { name: 'All 3' })).toHaveFocus();
+      expect(header('Data Center')).toBeInTheDocument();
+    });
+  });
+
+  describe('the notice', () => {
+    it('says nothing while telemetry is live', () => {
+      hold({ 'CT-02': { values: { running: true } } });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.queryByText(/not updating|No readings/)).toBeNull();
+    });
+
+    it('says nothing while the first connection is made', () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.queryByText(/not updating|No readings/)).toBeNull();
+    });
+
+    it('reads as of the newest reading while the API source is paused, and clears on resume', () => {
+      hold(
+        { 'CT-02': { agoMs: 0, values: { running: true } } },
+        { upstream: 'paused', upstreamSince: receivedAgo(30_000) },
+      );
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.getByText('Readings as of 15:41:20 — not updating')).toBeInTheDocument();
+
+      hold({ 'CT-02': { values: { running: true } } }, { upstream: 'live' });
+
+      expect(screen.queryByText(/not updating/)).toBeNull();
+    });
+
+    it('reads the same while this console is reconnecting', () => {
+      hold(
+        { 'CT-02': { agoMs: 0, values: { running: true } } },
+        { socket: 'reconnecting', socketSince: NOW },
+      );
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.getByText('Readings as of 15:41:20 — not updating')).toBeInTheDocument();
+    });
+
+    it('says telemetry is unavailable on an API without it', () => {
+      hold({}, { socket: 'unavailable' });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.getByText('No readings: telemetry is unavailable')).toBeInTheDocument();
+    });
+  });
+
+  describe('the keyboard', () => {
+    it('is one Tab stop for the headers and the rows together', () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      const tabbable = stops().filter((button) => button.getAttribute('tabindex') === '0');
+
+      expect(tabbable).toHaveLength(1);
+      expect(tabbable[0]).toBe(header('Data Center'));
+    });
+
+    it('walks headers and rows with the arrows, Home and End, without wrapping', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+      act(() => header('Data Center').focus());
+
+      await userEvent.keyboard('{ArrowDown}');
+      expect(rowNamed(/Cooling tower 1/)).toHaveFocus();
+
+      await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+      expect(header('Library')).toHaveFocus();
+
+      await userEvent.keyboard('{End}');
+      expect(rowNamed(/Leak sensor B3/)).toHaveFocus();
+
+      await userEvent.keyboard('{ArrowDown}');
+      expect(rowNamed(/Leak sensor B3/)).toHaveFocus();
+
+      await userEvent.keyboard('{Home}');
+      expect(header('Data Center')).toHaveFocus();
+    });
+
+    it('moves the Tab stop to the item focused last', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      act(() => rowNamed(/Cooling tower 2/).focus());
+
+      expect(rowNamed(/Cooling tower 2/)).toHaveAttribute('tabindex', '0');
+      expect(header('Data Center')).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('starts the Tab stop on the selected asset', () => {
+      useConsole.setState({ selectedAssetCode: 'LKS-B3' });
+
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(rowNamed(/Leak sensor B3/)).toHaveAttribute('tabindex', '0');
+    });
+
+    it('selects an asset with Enter and filters by a zone with Enter on its header', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+      act(() => rowNamed(/Cooling tower 2/).focus());
+
+      await userEvent.keyboard('{Enter}');
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-02');
+
+      act(() => header('Library').focus());
+      await userEvent.keyboard('{Enter}');
+      expect(useConsole.getState().assetZoneId).toBe('zone-lib');
+    });
+  });
+
+  describe('when nothing is left to list', () => {
+    it('says no assets have a fault', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded(assets, []));
+
+      await userEvent.click(screen.getByRole('tab', { name: 'Faults 0' }));
+
+      expect(screen.getByText('No assets have a fault.')).toBeInTheDocument();
+    });
+
+    it('says which search matched nothing', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.type(searchbox(), 'zzz');
+
+      expect(screen.getByText('No assets match "zzz".')).toBeInTheDocument();
+    });
+
+    it('names the zone when it is the zone that is empty of faults', () => {
+      useConsole.setState({ assetZoneId: 'zone-lib', assetFilter: 'faults' });
+
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.getByText('No assets in Library have a fault.')).toBeInTheDocument();
+    });
+  });
+
+  describe('the hovered asset', () => {
+    it('is dropped when the search takes its row out of the list', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+      act(() => useConsole.getState().hoverAsset('LKS-B3'));
+
+      await userEvent.type(searchbox(), 'tower');
+
+      expect(useConsole.getState().hoveredAssetCode).toBeNull();
+    });
+
+    it('is left alone while its row is still listed', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+      act(() => useConsole.getState().hoverAsset('CT-02'));
+
+      await userEvent.type(searchbox(), 'tower');
+
+      expect(useConsole.getState().hoveredAssetCode).toBe('CT-02');
     });
   });
 

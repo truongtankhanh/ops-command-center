@@ -24,10 +24,33 @@
   min-height: 0;
 }
 
+/* The zone chip and the notice sit above the list they describe; placement only (`FilterChip`). */
+.chip {
+  flex: none;
+  align-self: flex-start;
+  margin: var(--space-2) var(--space-3);
+}
+
+/* Frame 05 `.feed-notice`: the rows are the last known state, not live. */
+.notice {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+/* Zone groups, one under another; the list scrolls inside the feed's column. */
 .list {
   display: grid;
   align-content: start;
-  gap: var(--list-gap);
+  gap: var(--space-2);
   list-style: none;
   margin: 0;
   padding: var(--space-2);
@@ -35,7 +58,57 @@
   flex: 1;
 }
 
+.group {
+  display: grid;
+  gap: var(--list-gap);
+}
+
+/* Frame 02 `.asset-group`: the zone's name, small and uppercase, above its rows. */
+.groupName,
+.groupHeader {
+  margin: var(--space-1) var(--space-1) 0;
+  padding: 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+/* The header is a button: it filters by the zone, so it reads as one on hover. */
+.groupHeader {
+  justify-self: start;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  cursor: pointer;
+}
+
+.groupHeader:hover {
+  color: var(--text-primary);
+}
+
+.rows {
+  display: grid;
+  gap: var(--list-gap);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* Loading: a row's glyph tile, name and meta line, so nothing jumps when data arrives. */
+.skeletonList {
+  display: grid;
+  align-content: start;
+  gap: var(--list-gap);
+  padding: var(--space-2);
+  overflow-y: auto;
+  flex: 1;
+}
+
 .skeletonRow {
   display: grid;
   grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
@@ -72,7 +145,8 @@
 }
 
 @media (max-width: 720px) {
-  .list {
+  .list,
+  .skeletonList {
     overflow: visible;
   }
 }

@@ -85,10 +85,10 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
     ],
   },
   {
-    title: 'Incident list',
+    title: 'Incident and asset lists',
     rows: [
-      { keys: ['↑', '↓'], description: 'Previous or next incident' },
-      { keys: ['Home', 'End'], description: 'First or last incident' },
+      { keys: ['↑', '↓'], description: 'Previous or next incident or asset' },
+      { keys: ['Home', 'End'], description: 'First or last incident or asset' },
     ],
   },
   {

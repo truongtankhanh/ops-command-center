@@ -1,0 +1,168 @@
+/*
+ * Asset row (frame 02 `.asset-row`): a class glyph tile, the name and the first reading, then a
+ * meta line with the state and the code. The mockup's 8 / 9 px paddings snap to the 4 px grid, as
+ * `IncidentRow` does.
+ */
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* A fault takes its incident's tint and edge: the same pairs `IncidentRow` uses over `--surface-1`. */
+.row[data-severity='critical'] {
+  --row-tint: var(--sev-critical-bg);
+  --row-edge: var(--sev-critical-border);
+}
+
+.row[data-severity='high'] {
+  --row-tint: var(--sev-high-bg);
+  --row-edge: var(--sev-high-border);
+}
+
+.row[data-severity='medium'] {
+  --row-tint: var(--sev-medium-bg);
+  --row-edge: var(--sev-medium-border);
+}
+
+.row[data-severity='low'] {
+  --row-tint: var(--sev-low-bg);
+  --row-edge: var(--sev-low-border);
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+/* Selection is the raised surface and `aria-current`; the accent border only reinforces it. */
+.row[aria-current='true'] {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.tile {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.row[data-severity] .tile {
+  border-color: var(--row-edge);
+  background: var(--row-tint);
+  color: var(--sev);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-l);
+}
+
+.value {
+  justify-self: end;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-body);
+  white-space: nowrap;
+}
+
+/* The last known value, no longer live (frame 05): dimmed, and the state beside it says why. */
+.value[data-stale='true'] {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+/* On a fault's tint `--text-tertiary` is not a checked pair; the dim stays `--text-secondary`. */
+.row[data-severity] .value[data-stale='true'] {
+  color: var(--text-secondary);
+}
+
+.meta {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Device state (frame 02 `.dstate`): glyph and word, neutral; only a fault's glyph takes `--sev`. */
+.state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.state[data-state='running'],
+.state[data-state='fault'] {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.state[data-state='fault'] svg {
+  color: var(--sev);
+}
+
+/* A class this build does not know, named as the API sent it; gives way before the state does. */
+.rawClass {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+}
+
+/*
+ * `--text-secondary`, not the mockup's `--text-tertiary`: on a fault row's tint tertiary is not a
+ * checked pair (the same reason as `IncidentRow`'s code).
+ */
+.code {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Touch screens: a row stays a 44 px target even in compact density. */
+@media (pointer: coarse) {
+  .row {
+    min-height: calc(44px * var(--ui-scale));
+  }
+}

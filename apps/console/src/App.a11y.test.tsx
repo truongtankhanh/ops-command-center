@@ -6,6 +6,7 @@ import type {
   Role,
   SitePlan,
   StreamDescriptor,
+  TelemetryPoint,
   Zone,
 } from '@occ/contracts';
 import { act, screen, within } from '@testing-library/react';
@@ -15,6 +16,8 @@ import { App } from './App';
 import { useSession } from './auth/store';
 import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
+import { initialTelemetryState } from './lib/telemetryState';
+import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';
 import {
   createTestQueryClient,
@@ -89,7 +92,23 @@ const ZONES: Zone[] = [
   },
 ];
 
-/** Two assets in the library, so the Assets tab has a catalogue to count (its rows are V2-09.6). */
+/**
+ * A headline point, so an asset can be judged stale at all: with none, its threshold is unknown and
+ * `staleAfterMs` says "cannot judge", which never reads as stale (V2-08.1).
+ */
+const FAN_SPEED: TelemetryPoint = {
+  key: 'fanSpeedRpm',
+  label: 'Fan speed',
+  unit: 'rpm',
+  kind: 'number',
+  min: null,
+  max: null,
+  enumValues: null,
+  expectedIntervalS: 1,
+  headline: 1,
+};
+
+/** Two assets in the library, so the Assets tab has a catalogue to list and count. */
 const ASSETS: Asset[] = ['CT-01', 'CT-02'].map((code, index) => ({
   id: `asset-${index}`,
   code,
@@ -105,7 +124,7 @@ const ASSETS: Asset[] = ['CT-01', 'CT-02'].map((code, index) => ({
   position: [108.4415, 11.953],
   elevationM: 0,
   headingDeg: 0,
-  headline: [],
+  headline: [FAN_SPEED],
 }));
 
 const SITE_PLAN: SitePlan = {
@@ -239,6 +258,7 @@ describe('the console', () => {
     resetStore(useConsole);
     resetStore(useSession);
     resetStore(useToasts);
+    resetStore(useTelemetryStore);
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -320,6 +340,68 @@ describe('the console', () => {
       await userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
 
       expect(screen.getByText('No assets are set up on this site.')).toBeInTheDocument();
+      await checkPage();
+    });
+
+    // The rows the list draws in V2-09.6: a fault, a stale asset, a class this build lacks, a paused
+    // source (the notice), then a zone chosen. Every state is checked whole, with `region` on.
+    it('the Assets tab with rows in several states, the notice and a zone chip', async () => {
+      const odd: Asset = {
+        ...ASSETS[0]!,
+        id: 'asset-odd',
+        code: 'ODD-01',
+        name: 'Odd machine',
+        class: { ...ASSETS[0]!.class, code: 'mystery_pump', name: 'Mystery pump' },
+      };
+      renderConsole({
+        incidents: [
+          ...INCIDENTS,
+          incident({
+            id: 'i-fault',
+            code: 'INC-000099',
+            type: 'equipment_fault',
+            title: 'Fan fault',
+            assetId: 'asset-0',
+          }),
+        ],
+        assets: [...ASSETS, odd],
+      });
+      const now = Date.now();
+      act(() =>
+        useTelemetryStore.setState({
+          view: {
+            state: {
+              ...initialTelemetryState,
+              socket: 'live',
+              upstream: 'paused',
+              upstreamSince: new Date(now - 30_000).toISOString(),
+              serverClock: { at: now, mono: performance.now() },
+              assets: {
+                'CT-02': {
+                  online: true,
+                  receivedAt: new Date(now - 90_000).toISOString(),
+                  headline: {},
+                  values: { running: true, fanSpeedRpm: 1420 },
+                  keyReceivedAt: {},
+                },
+              },
+            },
+            series: new Map(),
+          },
+        }),
+      );
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
+
+      expect(screen.getByText(/Readings as of .* — not updating/)).toBeInTheDocument();
+      expect(screen.getByText(/Fault · INC-000099/)).toBeInTheDocument();
+      expect(screen.getByText(/No data · 1 min/)).toBeInTheDocument();
+      expect(screen.getByText('mystery_pump')).toBeInTheDocument();
+      await checkPage();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show only Library' }));
+
+      expect(screen.getByRole('button', { name: 'Clear zone filter' })).toBeInTheDocument();
       await checkPage();
     });
 
