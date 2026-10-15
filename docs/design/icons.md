@@ -24,25 +24,28 @@ contract lacks (ADR-0021, rolling deploys). `incidentTypeIcon`, `categoryIcon` a
 shows the raw id (`typeLabel`). `unknownIcon` has one meaning, "a value this console does not know": it is never the
 glyph of a known value, and nothing else uses it. It is the one deliberate exception to "one glyph per domain value".
 `severityIcon`, `statusIcon`, `eventKindIcon` and `actorKindIcon` have no fallback, because no planned contract change
-widens those unions.
+widens those unions. `assetClassIcon` falls back for a different reason: an asset class code is a plain string
+in the contract, open data rather than a union, so a class this build lacks is expected until `icons.ts` lists it.
 
-| Accessor                         | Value                                                                                                    | Glyph                                                                                                           |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `severityIcon`                   | `critical` / `high` / `medium` / `low`                                                                   | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                                       |
-| `incidentTypeIcon` (security)    | `intrusion` / `crowding` / `suspicious_object` / `theft` / `vandalism` / `suspicious_person` / `assault` | `DoorOpen` / `Users` / `Package` / `HandGrab` / `SprayCan` / `UserRoundSearch` / `HandFist`                     |
-| `incidentTypeIcon` (fire_safety) | `fire_alarm` / `fire` / `gas_leak` / `hazmat_spill`                                                      | `Flame` / `FlameKindling` / `Cylinder` / `Biohazard`                                                            |
-| `incidentTypeIcon` (medical)     | `medical` / `injury`                                                                                     | `HeartPulse` / `Cross`                                                                                          |
-| `incidentTypeIcon` (facilities)  | `equipment_fault` / `power_outage` / `water_leak` / `lift_entrapment` / `hvac_fault` / `network_outage`  | `Wrench` / `Zap` / `Droplet` / `ArrowUpDown` / `Fan` / `ServerOff`                                              |
-| `incidentTypeIcon` (environment) | `severe_weather` / `flooding` / `fallen_tree`                                                            | `Tornado` / `WavesArrowUp` / `TreeDeciduous`                                                                    |
-| `incidentTypeIcon` (traffic)     | `traffic_accident` / `blocked_access`                                                                    | `CarFront` / `Ban`                                                                                              |
-| `categoryIcon`                   | `security` / `fire_safety` / `medical` / `facilities` / `environment` / `traffic`                        | `ShieldUser` / `FireExtinguisher` / `Stethoscope` / `HardHat` / `CloudLightning` / `Car` (never a type's glyph) |
-| `statusIcon`                     | `open` / `acknowledged` / `resolved`                                                                     | `CircleDot` / `UserCheck` / `CircleCheck`                                                                       |
-| `eventKindIcon`                  | `reported` / `acknowledged` / `resolved`                                                                 | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)                                   |
-| `zoneKindIcon`                   | `building` / `parking` / `gate` / `outdoor` / `sports` / `utility` / `water`                             | `Building2` / `SquareParking` / `Fence` / `Trees` / `Volleyball` / `UtilityPole` / `WavesHorizontal`            |
-| `actorKindIcon`                  | `user` / `system`                                                                                        | `User` / `Cpu`                                                                                                  |
-| `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                       | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                        |
-| `cameraIcon`                     | `online: true` / `false`                                                                                 | `Video` / `VideoOff`                                                                                            |
-| `unknownIcon`                    | fallback of `incidentTypeIcon` / `categoryIcon` / `zoneKindIcon` for a value outside the contract        | `CircleQuestionMark` (never a known value's glyph)                                                              |
+| Accessor                         | Value                                                                                                                | Glyph                                                                                                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `severityIcon`                   | `critical` / `high` / `medium` / `low`                                                                               | `OctagonAlert` / `TriangleAlert` / `CircleAlert` / `Info`                                                        |
+| `incidentTypeIcon` (security)    | `intrusion` / `crowding` / `suspicious_object` / `theft` / `vandalism` / `suspicious_person` / `assault`             | `DoorOpen` / `Users` / `Package` / `HandGrab` / `SprayCan` / `UserRoundSearch` / `HandFist`                      |
+| `incidentTypeIcon` (fire_safety) | `fire_alarm` / `fire` / `gas_leak` / `hazmat_spill`                                                                  | `Flame` / `FlameKindling` / `Cylinder` / `Biohazard`                                                             |
+| `incidentTypeIcon` (medical)     | `medical` / `injury`                                                                                                 | `HeartPulse` / `Cross`                                                                                           |
+| `incidentTypeIcon` (facilities)  | `equipment_fault` / `power_outage` / `water_leak` / `lift_entrapment` / `hvac_fault` / `network_outage`              | `Wrench` / `Zap` / `Droplet` / `ArrowUpDown` / `Fan` / `ServerOff`                                               |
+| `incidentTypeIcon` (environment) | `severe_weather` / `flooding` / `fallen_tree`                                                                        | `Tornado` / `WavesArrowUp` / `TreeDeciduous`                                                                     |
+| `incidentTypeIcon` (traffic)     | `traffic_accident` / `blocked_access`                                                                                | `CarFront` / `Ban`                                                                                               |
+| `categoryIcon`                   | `security` / `fire_safety` / `medical` / `facilities` / `environment` / `traffic`                                    | `ShieldUser` / `FireExtinguisher` / `Stethoscope` / `HardHat` / `CloudLightning` / `Car` (never a type's glyph)  |
+| `statusIcon`                     | `open` / `acknowledged` / `resolved`                                                                                 | `CircleDot` / `UserCheck` / `CircleCheck`                                                                        |
+| `eventKindIcon`                  | `reported` / `acknowledged` / `resolved`                                                                             | `Flag` / `UserCheck` / `CircleCheck` (same meaning as the status, same glyph)                                    |
+| `zoneKindIcon`                   | `building` / `parking` / `gate` / `outdoor` / `sports` / `utility` / `water`                                         | `Building2` / `SquareParking` / `Fence` / `Trees` / `Volleyball` / `UtilityPole` / `WavesHorizontal`             |
+| `actorKindIcon`                  | `user` / `system`                                                                                                    | `User` / `Cpu`                                                                                                   |
+| `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                                   | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                         |
+| `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                             |
+| `assetClassIcon`                 | the 16 asset class codes, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))                          | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` |
+| `assetStateIcon`                 | `running` / `standby` / `nodata` / `offline` (a fault uses `severityIcon`; `unknown` has no glyph)                   | `Activity` / `Pause` / `Clock` / `Clock`                                                                         |
+| `unknownIcon`                    | fallback of `incidentTypeIcon` / `categoryIcon` / `zoneKindIcon` / `assetClassIcon` for a value outside the contract | `CircleQuestionMark` (never a known value's glyph)                                                               |
 
 Generic UI glyphs, re-exported by name from `icons.ts`: `Plus`, `X`, `Search`, `Eye`, `Lock`, `Clock`, `Volume2`,
 `ChevronDown`, `LogOut`, for the map controls (frame 01) `Minus` (zoom out) and `Scan` (fit campus, the frame's
@@ -68,7 +71,9 @@ global `Map`), and `Box` for an asset drawn without a 3D model (frame 15). `Zap`
 `power_outage` and `hvac_fault` ([below](#v2-values-frame-deviations-and-choices-v2-022)) with the same meaning —
 electric supply, air handling — as `connecting` and `reconnecting` share theirs. The frames give `Activity` (Running,
 Vibration, the Telemetry source), `Pause` (Standby, Telemetry paused) and `Box` (no model, isolated, see-through) more
-than one meaning; that is settled when they are wired, not here.
+than one meaning. V2-09.4 settled the asset states: Running shares `Activity` with the Telemetry pill's live state and
+Standby shares `Pause` with its paused state ([below](#asset-classes-and-states-v2-094)); Vibration and `Box` are
+settled when they are wired.
 
 `medium` and `low` share the circle and differ only by the inner mark. Severity always comes with its label (brief,
 principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in the DOM. The one place without a
@@ -102,6 +107,54 @@ zone kind `water` (`WavesArrowUp`, rising water / `WavesHorizontal`, a body of w
 `outdoor` (`TreeDeciduous` / `Trees`); `traffic_accident` / the Traffic category (`CarFront` / `Car`);
 `suspicious_person` / actor `user` (`UserRoundSearch` / `User`). `WavesHorizontal` is the name in `lucide-react`
 1.52.0; `Waves` is only its old alias.
+
+### Asset classes and states (V2-09.4)
+
+The 16 classes of the catalogue ([asset-classes.md](v2/asset-classes.md#classes)) and the states of the Assets list
+(V2-09.1) have glyphs of their own, wired in V2-09.4 as `assetClassIcon(classCode)` and `assetStateIcon(state)`.
+
+**Classes.** A glyph is shared only where the meaning is the same, and a share is on this table and pinned by a test
+(`ui/icons.test.ts`):
+
+| Class (`code`)                                   | Glyph         | Meaning, and what it shares it with                              |
+| ------------------------------------------------ | ------------- | ---------------------------------------------------------------- |
+| `cooling_tower`, `fume_hood`, `air_handler`      | `Fan`         | air handling, and the `hvac_fault` type                          |
+| `ups`, `transformer`                             | `Zap`         | electric supply, and the `power_outage` type                     |
+| `ups_battery`                                    | `Battery`     | a battery bank (its own)                                         |
+| `standby_generator`, `switchgear`                | `Power`       | a power source or switching                                      |
+| `precision_cooling`, `chiller`, `indoor_climate` | `Thermometer` | temperature control or measurement                               |
+| `lift`                                           | `ArrowUpDown` | a lift, as the `lift_entrapment` type                            |
+| `barrier_arm`                                    | `Fence`       | a gate, as the `gate` zone kind                                  |
+| `leak_sensor`                                    | `Droplet`     | a leak, as the `water_leak` type                                 |
+| `gas_detector`                                   | `Cylinder`    | gas, as the `gas_leak` type                                      |
+| `booster_pump`                                   | `Gauge`       | pressure: its headline point is the discharge pressure (its own) |
+| any other code                                   | `unknownIcon` | a class this build lacks (a newer API)                           |
+
+- The class code is open data and the contract has no list of codes, so a class missing here fails no `typecheck`:
+  it draws `unknownIcon` until it is added to `icons.ts`. The test's list of 16 codes is the check, kept in step with
+  asset-classes.md by hand.
+- `Thermometer` is the weakest share (a sensor next to two cooling plants); the frames draw all three with the same
+  glyph, and the row's name and readings tell them apart.
+- A class glyph is never a state glyph (`Activity`, `Pause`, `Clock`), so a state never reads as a piece of
+  equipment.
+
+**States.** The state word always sits beside its glyph:
+
+| State     | Glyph      | Shared with                                                               |
+| --------- | ---------- | ------------------------------------------------------------------------- |
+| `running` | `Activity` | the Telemetry pill's `live`: a live signal and an operating asset         |
+| `standby` | `Pause`    | the pill's `paused`: a paused feed and an asset on hold                   |
+| `nodata`  | `Clock`    | `offline`: the same look, told apart by the label (V2-08.1)               |
+| `offline` | `Clock`    | `nodata`                                                                  |
+| `fault`   | —          | the incident's severity glyph (`severityIcon`), chosen by the caller      |
+| `unknown` | —          | none: the class has a state point and no value, so there is no state word |
+
+`assetStateIcon` takes the four states that have a glyph of their own; a fault is drawn with `severityIcon` of its
+incident (which only the caller holds), and `unknown` draws nothing.
+
+**Deviations from the frames.** Frames 02 and 03 draw the Booster pump and the Gas detector with the sprite's
+`activity`. That glyph is also Running and the Telemetry pill's live state, so the two classes take `Gauge` and
+`Cylinder`; the brief's [Frames to revise](v2/brief.md#frames-to-revise-after-phase-0) table lists the change.
 
 ## Using `Icon`
 
