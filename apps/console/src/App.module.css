@@ -29,6 +29,26 @@
 }
 
 /*
+ * Top centre of the part of the stage the sheet leaves visible (`--sheet-inset`, set on the
+ * stage), as the map's pick hint. The system banners (events, telemetry) stack here, the first
+ * above the second, so one never covers the other whatever its height. Placement only; the look is
+ * the `Banner` primitive's. Under the session banner (`--z-session`), which is fixed over the whole
+ * console.
+ */
+.banners {
+  position: absolute;
+  top: var(--space-3);
+  left: calc((100% - var(--sheet-inset, 0px)) / 2);
+  z-index: var(--z-banner);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-4));
+  transform: translateX(-50%);
+}
+
+/*
  * Error boundary fallbacks (`Region`) in a region's place: the feed's column and the strip keep
  * their surface, so a broken region does not leave a hole in the layout. The map's needs none.
  */

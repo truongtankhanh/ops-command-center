@@ -10,6 +10,7 @@ import { RegionFallback } from './components/LoadStates';
 import { OfflineBanner } from './components/OfflineBanner';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
 import { ShortcutHelp } from './components/ShortcutHelp';
+import { TelemetryBanner } from './components/TelemetryBanner';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
 import { useAttentionBadge } from './lib/useAttentionBadge';
@@ -96,7 +97,11 @@ export function App() {
                 )}
               </ErrorBoundary>
             )}
-            <OfflineBanner />
+            {/* Each mounts only while its condition holds; an empty wrapper has no size. */}
+            <div className={styles.banners}>
+              <OfflineBanner />
+              <TelemetryBanner />
+            </div>
             {/* Over the stage beside the sheet, so a toast never covers the incident it is about. */}
             <ToastRegion fallbackFocus={feedFocusTarget} />
           </div>

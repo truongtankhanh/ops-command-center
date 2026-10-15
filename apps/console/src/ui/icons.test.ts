@@ -19,6 +19,7 @@ import {
   incidentTypeIcon,
   severityIcon,
   statusIcon,
+  telemetryIcon,
   unknownIcon,
   zoneKindIcon,
 } from './icons';
@@ -50,6 +51,20 @@ describe('connection glyphs', () => {
   it('gives live, reconnecting and offline their own glyphs', () => {
     const glyphs = (['live', 'reconnecting', 'offline'] as const).map(connectionIcon);
     expect(new Set(glyphs).size).toBe(3);
+  });
+});
+
+// The `Telemetry` pill and banner (V2-08.1): a link being made or lost reads as the Live pill's.
+describe('telemetry glyphs', () => {
+  it('gives live, paused, reconnecting and unavailable their own glyphs', () => {
+    const glyphs = (['live', 'paused', 'reconnecting', 'unavailable'] as const).map(telemetryIcon);
+    expect(new Set(glyphs).size).toBe(4);
+  });
+
+  it('draws a link being made, or lost, as the Live pill does', () => {
+    expect(telemetryIcon('connecting')).toBe(connectionIcon('connecting'));
+    expect(telemetryIcon('reconnecting')).toBe(connectionIcon('reconnecting'));
+    expect(telemetryIcon('unavailable')).toBe(connectionIcon('offline'));
   });
 });
 

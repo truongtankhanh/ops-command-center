@@ -19,13 +19,20 @@
   flex: none;
 }
 
+/* The two connection pills (events, telemetry), pushed right together. */
+.conns {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-1-5);
+  margin-left: auto;
+}
+
 .pill {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: var(--space-1-5);
   height: calc(30px * var(--ui-scale));
-  margin-left: auto;
   padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
@@ -50,7 +57,10 @@
   color: var(--success);
 }
 
-.pill[data-state='offline'] {
+/* `paused` and `unavailable` are the telemetry pill's: readings are not coming, as `offline`. */
+.pill[data-state='offline'],
+.pill[data-state='paused'],
+.pill[data-state='unavailable'] {
   border-color: color-mix(in srgb, var(--warning) 50%, transparent);
   background: color-mix(in srgb, var(--warning) 12%, transparent);
   color: var(--warning);

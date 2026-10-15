@@ -7,6 +7,7 @@
  * the generic UI glyphs at the bottom.
  */
 import {
+  Activity,
   ArrowUpDown,
   Ban,
   Biohazard,
@@ -37,6 +38,7 @@ import {
   type LucideIcon,
   OctagonAlert,
   Package,
+  Pause,
   Radio,
   RefreshCw,
   ServerOff,
@@ -71,6 +73,7 @@ import type {
   IncidentType,
   ZoneKind,
 } from '@occ/contracts';
+import type { TelemetryPillState } from '../lib/telemetryState';
 import type { ConnectionState } from '../store';
 
 /** A drawable glyph. Consumers use this type, never the icon set's own. */
@@ -183,6 +186,18 @@ const CONNECTION_ICONS: Record<ConnectionState, Glyph> = {
 };
 
 export const connectionIcon = (state: ConnectionState) => CONNECTION_ICONS[state];
+
+// The `Telemetry` pill and its banner (V2-08.1). A link being made or lost reads as the Live pill's
+// does; `live` and `paused` have glyphs of their own, as the frames draw them.
+const TELEMETRY_ICONS: Record<TelemetryPillState, Glyph> = {
+  connecting: CONNECTION_ICONS.connecting,
+  live: Activity,
+  paused: Pause,
+  reconnecting: CONNECTION_ICONS.reconnecting,
+  unavailable: CONNECTION_ICONS.offline,
+};
+
+export const telemetryIcon = (state: TelemetryPillState) => TELEMETRY_ICONS[state];
 
 export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff);
 
