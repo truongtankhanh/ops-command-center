@@ -120,6 +120,23 @@ sequenceDiagram
 - On reconnect, the console refetches once to recover anything missed while offline.
 - Events, HTTP responses and refetches can arrive in any order. Every incident carries a `version`, and the console keeps whichever copy has the higher one, so a late response or refetch never overwrites a newer event (see [events.md](api/events.md)).
 
+### Telemetry path
+
+Equipment readings take a separate, best-effort route. They never go through the outbox, and an incident event never goes through this one ([ADR-0019](adr/0019-telemetry-transport.md)).
+
+```mermaid
+flowchart LR
+  D[Devices] -- MQTT --> A[API telemetry source]
+  A -- "/telemetry: overview 1 Hz, frames up to 10 Hz, snapshot, status" --> W["Web Worker: socket, watch set, ring buffers"]
+  W -- "state up to 4 Hz, series up to 1 Hz" --> M["Main thread: telemetry client"]
+  M -- "token, history seed over REST" --> W
+```
+
+- **Best-effort, latest wins.** The API emits overviews and frames as `volatile` packets, so a console that cannot keep up skips them and the next one corrects it. A snapshot after connect and after each watch change, and the upstream status, are always delivered.
+- **The worker owns the socket.** It connects with the token the main thread gives it for each handshake, sends the watch set (at most four assets, at most four times a second), keeps a ring buffer (900 points, one per second) for each numeric or boolean key of a watched asset, and posts only what changed. The main thread never handles a message per reading. Where there is no `Worker` the same engine runs on the main thread.
+- **Two WebSockets.** The worker is another JavaScript context, so its socket is not multiplexed with `/events`; each console makes two handshakes.
+- **Freshness is computed from the state, on the server's clock.** The console never judges an asset against its own clock; see ADR-0019 § Freshness.
+
 ## 6. Camera sources
 
 ```ts
