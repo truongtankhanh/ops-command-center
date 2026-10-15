@@ -74,7 +74,7 @@ Payload: `TelemetrySnapshot`.
   empty when nothing is held, for instance with `TELEMETRY_SOURCE=off`; the snapshot is still sent.
 - A snapshot is an upsert per asset: replace the `values` of each asset listed and leave the others alone.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:152` (on connect) and `:219` (after a watch)
+Source: `apps/api/src/telemetry/telemetry.gateway.ts:164` (on connect) and `:231` (after a watch)
 
 ### Overview
 
@@ -103,7 +103,7 @@ Payload: `TelemetryOverview`.
 The overview keeps coming while the upstream is `paused`: what is held is still the latest known, and `receivedAt`
 says how old it is.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:253`
+Source: `apps/api/src/telemetry/telemetry.gateway.ts:270`
 
 ### Status
 
@@ -129,19 +129,22 @@ Payload: `TelemetryStatus`.
 - A paused upstream does not make the API unready: `/api/health/ready` is unchanged
   ([ADR-0013](../adr/0013-liveness-and-readiness-probes.md)).
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:135` (on a change) and `:156` (on connect)
+Source: `apps/api/src/telemetry/telemetry.gateway.ts:149` (on a change) and `:168` (on connect)
 
-### Frame
+### Frames
 
-<!-- steel:endpoint EVENT /telemetry telemetry.frame | payload: TelemetryFrame | auth: bearer (handshake) -->
+<!-- steel:endpoint EVENT /telemetry telemetry.frames | payload: TelemetryFrames | auth: bearer (handshake) -->
 
-`telemetry.frame` · Status: current
+`telemetry.frames` · Status: current
 
-The new readings of **one watched asset**, sent to the sockets that are watching it
+The new readings of **every watched asset that changed**, in one packet per socket per tick
 ([`telemetry.watch`](#watch)). **Best-effort**: a volatile emit, like the overview, so a socket that cannot keep
-up skips it and the server does not queue it.
+up skips the whole packet and the server does not queue it.
 
-Payload: `TelemetryFrame`.
+Payload: `TelemetryFrames`, `{ frames: TelemetryFrame[] }`: one entry per watched asset that changed in the tick,
+at most 4, in the server's order. A socket sees only the assets it watches, and never an empty `frames`.
+
+`TelemetryFrame`:
 
 | Field        | Type                                          | Notes                                                    |
 | ------------ | --------------------------------------------- | -------------------------------------------------------- |
@@ -150,7 +153,11 @@ Payload: `TelemetryFrame`.
 | `receivedAt` | ISO 8601 string                               | when the API received them; judge freshness from it      |
 | `values`     | `Record<string, number \| boolean \| string>` | the keys that changed, by point key; never an empty `{}` |
 
-- At most 10 frames a second per asset: the server looks every 100 ms and sends nothing when nothing differs.
+- **One packet per socket per tick, not one per asset.** Socket.IO discards a volatile packet while the transport is
+  still sending the previous one, so a packet per asset would deliver the first and drop the rest. A console reads
+  every entry of a batch.
+- At most 10 frames a second per asset, and in practice 9: the server looks every 100 ms, and the tick that sends
+  the overview sends no frames (what changed in it goes out 100 ms later). Nothing is sent when nothing differs.
 - **Changed keys only.** A key that is absent is unchanged, not `null`. "Changed" is relative to what the
   watching sockets last received for that asset: the snapshot a watch returns counts as received, so the first
   frame holds the first change, not a repeat.
@@ -161,7 +168,7 @@ Payload: `TelemetryFrame`.
   follows has the latest of every key.
 - Frames are built from what this replica holds, so two consoles on two replicas can differ by one reading.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:296`
+Source: `apps/api/src/telemetry/telemetry.gateway.ts:342`
 
 ## Freshness
 
@@ -180,7 +187,7 @@ reading of it with `telemetry.watch`.
 
 `telemetry.watch` · Status: current · sent by the client
 
-Sets the assets this socket receives [`telemetry.frame`](#frame) for. Any role may send it: the handshake already
+Sets the assets this socket receives [`telemetry.frames`](#frames) for. Any role may send it: the handshake already
 checked the token and the role, and watching changes what the server sends, not what it does.
 
 ```ts
@@ -217,7 +224,7 @@ Acknowledgement: `TelemetryWatchAck`, `{ accepted: string[] }`.
 - A code the catalogue does not hold yet is ignored: on a database that was just seeded this lasts until the
   replica re-reads the catalogue, up to a minute.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:182`
+Source: `apps/api/src/telemetry/telemetry.gateway.ts:194`
 
 ## Topics and payload for a gateway
 
@@ -261,3 +268,6 @@ reconnect can meet an old replica and the next a new one.
 
 A replica from before `telemetry.watch` ignores it and never answers, so send it with an acknowledgement timeout
 and treat a timeout as "no frames from this replica"; watch again after the next reconnect.
+
+`telemetry.frames` is new in V2-08.2 (it replaced a one-asset `telemetry.frame` that no console read), so there is no
+older console to keep working; a replica from before it emits no `telemetry.frames`, which reads like a silent period.

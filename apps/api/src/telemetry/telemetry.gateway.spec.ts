@@ -24,27 +24,31 @@ type Namespace = Parameters<TelemetryGateway['afterInit']>[0];
 type Client = Parameters<TelemetryGateway['handleConnection']>[0];
 
 /**
- * The namespace as the gateway uses it: sockets to count, a middleware slot, two emit paths, and
- * the adapter's rooms, which is where the gateway reads what is watched. `to(room).volatile.emit`
- * is recorded in `roomEmit` as `(room, event, payload)`.
+ * The namespace as the gateway uses it: sockets to count and to emit to, a middleware slot, the
+ * namespace's own emit paths (status, overview), and the adapter's rooms, which is where the
+ * gateway reads what is watched. A frame goes to a socket's `volatile.emit`, recorded in
+ * `frameEmit` as `(socketId, event, payload)`.
  */
 function fakeNamespace() {
   const emit = jest.fn();
   const volatileEmit = jest.fn();
-  const roomEmit = jest.fn();
+  const frameEmit = jest.fn();
   const use = jest.fn();
   const sockets = new Map<string, unknown>();
   const rooms = new Map<string, Set<string>>();
-  const to = jest.fn((room: string) => ({
-    volatile: { emit: (event: string, payload: unknown) => roomEmit(room, event, payload) },
-  }));
   const namespace = {
     sockets,
     use,
     emit,
     volatile: { emit: volatileEmit },
     adapter: { rooms },
-    to,
+  };
+  /** A socket that is in the namespace and records the frames it is sent. */
+  const addSocket = (id: string) => {
+    sockets.set(id, {
+      id,
+      volatile: { emit: (event: string, payload: unknown) => frameEmit(id, event, payload) },
+    });
   };
   return {
     namespace: namespace as unknown as Namespace,
@@ -52,8 +56,8 @@ function fakeNamespace() {
     rooms,
     emit,
     volatileEmit,
-    roomEmit,
-    to,
+    frameEmit,
+    addSocket,
     use,
   };
 }
@@ -91,7 +95,11 @@ function fakeIngest() {
  * A socket that records what it is sent. With `rooms` it also joins and leaves them the way
  * Socket.IO does, and is in the room named by its own id, so `watchedBy` has something to skip.
  */
-function fakeClient(id = 'socket-1', rooms?: Map<string, Set<string>>) {
+function fakeClient(
+  id = 'socket-1',
+  rooms?: Map<string, Set<string>>,
+  onVolatile?: (event: string, payload: unknown) => void,
+) {
   const emit = jest.fn();
   const joined = new Set<string>([id]);
   const enter = (name: string) => {
@@ -110,13 +118,22 @@ function fakeClient(id = 'socket-1', rooms?: Map<string, Set<string>>) {
     if (members?.size === 0) rooms?.delete(name);
   });
   enter(id);
-  const client = { id, data: { user: { subject: 'user-1' } }, emit, rooms: joined, join, leave };
+  const volatile = { emit: (event: string, payload: unknown) => onVolatile?.(event, payload) };
+  const client = {
+    id,
+    data: { user: { subject: 'user-1' } },
+    emit,
+    volatile,
+    rooms: joined,
+    join,
+    leave,
+  };
   return { client: client as unknown as Client, emit, join, leave, rooms: joined };
 }
 
 /** A console that has connected: in the namespace, and in the namespace's rooms. */
 function connected(ns: ReturnType<typeof fakeNamespace>, id = 'socket-1') {
-  const fake = fakeClient(id, ns.rooms);
+  const fake = fakeClient(id, ns.rooms, (event, payload) => ns.frameEmit(id, event, payload));
   ns.sockets.set(id, fake.client);
   return fake;
 }
@@ -329,7 +346,7 @@ describe('TelemetryGateway', () => {
       const { gateway, ns } = build();
       ns.sockets.set('a', {});
       gateway.afterInit(ns.namespace);
-      const timer = gateway['overviewTimer'] as NodeJS.Timeout;
+      const timer = gateway['tickTimer'] as NodeJS.Timeout;
 
       expect(timer.hasRef()).toBe(false);
 
@@ -470,7 +487,7 @@ describe('TelemetryGateway', () => {
         expect(emit).toHaveBeenCalledWith(TelemetryEvents.Snapshot, { at: iso(NOW), assets });
         expect(ns.emit).not.toHaveBeenCalled();
         expect(ns.volatileEmit).not.toHaveBeenCalled();
-        expect(ns.roomEmit).not.toHaveBeenCalled();
+        expect(ns.frameEmit).not.toHaveBeenCalled();
       });
 
       it('is sent even when no asset holds a reading yet, so "nothing" is told', async () => {
@@ -590,13 +607,26 @@ describe('TelemetryGateway', () => {
   });
 
   describe('frames', () => {
+    /** Sockets that watch assets: in the namespace, and in the room of each code. */
     const watching = (ns: ReturnType<typeof fakeNamespace>, ...codes: string[]) => {
-      ns.sockets.set('a', {});
+      ns.addSocket('a');
       ns.rooms.set('a', new Set(['a']));
       for (const code of codes) ns.rooms.set(`asset:${code}`, new Set(['a']));
     };
 
-    it('is one volatile emit to the room of a watched asset, with the change as the frame', () => {
+    /** What each socket was sent, as `[socketId, frames]`, in order. */
+    const batches = (ns: ReturnType<typeof fakeNamespace>) =>
+      ns.frameEmit.mock.calls.map(([id, , payload]) => [
+        id as string,
+        (payload as { frames: unknown[] }).frames,
+      ]);
+    const valuesOf = (ns: ReturnType<typeof fakeNamespace>) =>
+      ns.frameEmit.mock.calls.map(
+        ([, , payload]) =>
+          (payload as { frames: { values: Record<string, unknown> }[] }).frames[0]?.values,
+      );
+
+    it('is one volatile emit to the socket that watches an asset, with the change as its frame', () => {
       const { gateway, ingest, ns } = build();
       watching(ns, 'CT-01');
       ingest.changedSince.mockReturnValue({
@@ -607,17 +637,77 @@ describe('TelemetryGateway', () => {
 
       jest.advanceTimersByTime(100);
 
-      expect(ns.to).toHaveBeenCalledWith('asset:CT-01');
-      expect(ns.roomEmit).toHaveBeenCalledTimes(1);
-      expect(ns.roomEmit).toHaveBeenCalledWith('asset:CT-01', TelemetryEvents.Frame, {
-        assetCode: 'CT-01',
-        at: iso(NOW),
-        receivedAt: iso(NOW),
-        values: { temp: 21, running: true },
+      expect(ns.frameEmit).toHaveBeenCalledTimes(1);
+      expect(ns.frameEmit).toHaveBeenCalledWith('a', TelemetryEvents.Frames, {
+        frames: [
+          {
+            assetCode: 'CT-01',
+            at: iso(NOW),
+            receivedAt: iso(NOW),
+            values: { temp: 21, running: true },
+          },
+        ],
       });
       // Never a plain emit, and not through the overview's broadcast.
       expect(ns.emit).not.toHaveBeenCalled();
       expect(ns.volatileEmit).not.toHaveBeenCalled();
+    });
+
+    it('sends two assets that changed in one tick as one packet with two frames, in order', () => {
+      const { gateway, ingest, ns } = build();
+      watching(ns, 'CT-01', 'CT-02');
+      ingest.changedSince.mockReturnValue({
+        version: 1,
+        changes: [change('CT-02', { temp: 30 }), change('CT-01', { temp: 20 })],
+      });
+      gateway.afterInit(ns.namespace);
+
+      jest.advanceTimersByTime(100);
+
+      // One emit, because a second volatile emit in the same turn is discarded by the transport.
+      expect(ns.frameEmit).toHaveBeenCalledTimes(1);
+      const [[, frames]] = batches(ns) as [[string, { assetCode: string }[]]];
+      expect(frames.map((frame) => frame.assetCode)).toEqual(['CT-02', 'CT-01']);
+    });
+
+    it('gives each socket the frames of the assets it watches, and only those', () => {
+      const { gateway, ingest, ns } = build();
+      ns.addSocket('a');
+      ns.addSocket('b');
+      ns.rooms.set('a', new Set(['a']));
+      ns.rooms.set('b', new Set(['b']));
+      ns.rooms.set('asset:CT-01', new Set(['a']));
+      ns.rooms.set('asset:CT-02', new Set(['a', 'b']));
+      ingest.changedSince.mockReturnValue({
+        version: 1,
+        changes: [change('CT-01', { temp: 20 }), change('CT-02', { temp: 30 })],
+      });
+      gateway.afterInit(ns.namespace);
+
+      jest.advanceTimersByTime(100);
+
+      const codes = batches(ns).map(([id, frames]) => [
+        id,
+        (frames as { assetCode: string }[]).map((frame) => frame.assetCode),
+      ]);
+      expect(codes).toEqual([
+        ['a', ['CT-01', 'CT-02']],
+        ['b', ['CT-02']],
+      ]);
+    });
+
+    it('merges an asset listed twice in a tick instead of dropping the first entry', () => {
+      const { gateway, ingest, ns } = build();
+      watching(ns, 'CT-01');
+      ingest.changedSince.mockReturnValue({
+        version: 1,
+        changes: [change('CT-01', { temp: 20 }), change('CT-01', { pressure: 4 })],
+      });
+      gateway.afterInit(ns.namespace);
+
+      jest.advanceTimersByTime(100);
+
+      expect(valuesOf(ns)).toEqual([{ temp: 20, pressure: 4 }]);
     });
 
     it('sends nothing for an asset that nobody watches', () => {
@@ -631,10 +721,26 @@ describe('TelemetryGateway', () => {
 
       jest.advanceTimersByTime(100);
 
-      expect(ns.roomEmit).not.toHaveBeenCalled();
+      expect(ns.frameEmit).not.toHaveBeenCalled();
     });
 
-    it('carries the keys that changed since the previous frame to that room, and nothing when none did', () => {
+    it('skips a socket that has left the namespace since the rooms were read, without a warning', () => {
+      const { gateway, ingest, warn, ns } = build();
+      watching(ns, 'CT-01');
+      ns.sockets.delete('a');
+      ingest.changedSince.mockReturnValue({
+        version: 1,
+        changes: [change('CT-01', { temp: 20 })],
+      });
+      gateway.afterInit(ns.namespace);
+
+      expect(() => jest.advanceTimersByTime(100)).not.toThrow();
+
+      expect(ns.frameEmit).not.toHaveBeenCalled();
+      expect(warn).not.toHaveBeenCalled();
+    });
+
+    it('carries the keys that changed since the previous frame to that socket, and nothing when none did', () => {
       const { gateway, ingest, ns } = build();
       watching(ns, 'CT-01');
       gateway.afterInit(ns.namespace);
@@ -651,10 +757,7 @@ describe('TelemetryGateway', () => {
       arrives({ temp: 20, pressure: 5 });
       jest.advanceTimersByTime(100);
 
-      expect(ns.roomEmit.mock.calls.map(([, , frame]) => frame.values)).toEqual([
-        { temp: 20, pressure: 4 },
-        { pressure: 5 },
-      ]);
+      expect(valuesOf(ns)).toEqual([{ temp: 20, pressure: 4 }, { pressure: 5 }]);
     });
 
     it('is not a repeat of the snapshot the watch returned', async () => {
@@ -671,14 +774,14 @@ describe('TelemetryGateway', () => {
         changes: [change('CT-01', { temp: 20, pressure: 4 })],
       });
       jest.advanceTimersByTime(100);
-      expect(ns.roomEmit).not.toHaveBeenCalled();
+      expect(ns.frameEmit).not.toHaveBeenCalled();
 
       ingest.changedSince.mockReturnValueOnce({
         version: 2,
         changes: [change('CT-01', { temp: 21, pressure: 4 })],
       });
       jest.advanceTimersByTime(100);
-      expect(ns.roomEmit.mock.calls.map(([, , frame]) => frame.values)).toEqual([{ temp: 21 }]);
+      expect(valuesOf(ns)).toEqual([{ temp: 21 }]);
     });
 
     it('takes the baseline again when an emptied room is watched anew, even before a tick saw it empty', async () => {
@@ -703,7 +806,7 @@ describe('TelemetryGateway', () => {
       jest.advanceTimersByTime(100);
 
       // A baseline left over from the first watch (20) would make 25 a change.
-      expect(ns.roomEmit).not.toHaveBeenCalled();
+      expect(ns.frameEmit).not.toHaveBeenCalled();
     });
 
     it('leaves the baseline of a room that already has a watcher as that watcher was last sent', async () => {
@@ -727,12 +830,10 @@ describe('TelemetryGateway', () => {
       });
       jest.advanceTimersByTime(100);
 
-      expect(ns.roomEmit).toHaveBeenCalledTimes(1);
-      expect(ns.roomEmit).toHaveBeenCalledWith(
-        'asset:CT-01',
-        TelemetryEvents.Frame,
-        expect.objectContaining({ values: { temp: 21 } }),
-      );
+      // One frame, built once for the room, and each of its two sockets gets its own packet.
+      expect(ns.frameEmit).toHaveBeenCalledTimes(2);
+      expect(ns.frameEmit.mock.calls.map(([id]) => id).sort()).toEqual(['socket-1', 'socket-2']);
+      expect(valuesOf(ns)).toEqual([{ temp: 21 }, { temp: 21 }]);
     });
 
     it('reads the ingest service once per tick, from the cursor it was last given', () => {
@@ -768,7 +869,32 @@ describe('TelemetryGateway', () => {
 
       jest.advanceTimersByTime(1_000);
 
-      expect(ns.roomEmit).toHaveBeenCalledTimes(10);
+      // Nine ticks of frames: the tenth tick of the second is the overview's.
+      expect(ns.frameEmit).toHaveBeenCalledTimes(9);
+    });
+
+    it('does no frame work in the tick that sends the overview, and loses nothing by it', () => {
+      const { gateway, ingest, ns } = build();
+      watching(ns, 'CT-01');
+      ingest.changedSince.mockImplementation((version: number) => ({
+        version: version + 1,
+        changes: [change('CT-01', { temp: version })],
+      }));
+      gateway.afterInit(ns.namespace);
+
+      jest.advanceTimersByTime(1_000);
+
+      // Nine reads, from cursors 0 to 8; the overview went out on the tenth tick.
+      expect(ingest.changedSince.mock.calls.map(([version]) => version)).toEqual([
+        0, 1, 2, 3, 4, 5, 6, 7, 8,
+      ]);
+      expect(ns.volatileEmit).toHaveBeenCalledTimes(1);
+
+      jest.advanceTimersByTime(100);
+
+      // The next tick carries on from the cursor the ninth left: what arrived meanwhile is read then.
+      expect(ingest.changedSince.mock.calls.at(-1)).toEqual([9]);
+      expect(ns.frameEmit).toHaveBeenCalledTimes(10);
     });
 
     it('does not keep the process alive, and stops when the module is destroyed', () => {
@@ -776,14 +902,14 @@ describe('TelemetryGateway', () => {
       watching(ns, 'CT-01');
       ingest.changedSince.mockReturnValue({ version: 1, changes: [change('CT-01', { temp: 1 })] });
       gateway.afterInit(ns.namespace);
-      const timer = gateway['frameTimer'] as NodeJS.Timeout;
+      const timer = gateway['tickTimer'] as NodeJS.Timeout;
 
       expect(timer.hasRef()).toBe(false);
 
       gateway.onModuleDestroy();
       jest.advanceTimersByTime(1_000);
 
-      expect(ns.roomEmit).not.toHaveBeenCalled();
+      expect(ns.frameEmit).not.toHaveBeenCalled();
     });
 
     it('survives a failed tick: warns once, and the next tick still runs', () => {
@@ -800,11 +926,11 @@ describe('TelemetryGateway', () => {
 
       expect(() => jest.advanceTimersByTime(200)).not.toThrow();
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(ns.roomEmit).not.toHaveBeenCalled();
+      expect(ns.frameEmit).not.toHaveBeenCalled();
 
       jest.advanceTimersByTime(100);
 
-      expect(ns.roomEmit).toHaveBeenCalledTimes(1);
+      expect(ns.frameEmit).toHaveBeenCalledTimes(1);
       expect(warn).toHaveBeenCalledTimes(1);
     });
 

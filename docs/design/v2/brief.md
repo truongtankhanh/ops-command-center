@@ -297,7 +297,8 @@ Device / PLC ──MQTT──▶ Broker ──▶ API telemetry bridge ──Soc
 ### Message shape (draft for the contract)
 
 ```ts
-// Server → client, namespace /telemetry: `telemetry.frame`, at most 10 Hz per watched asset, changed keys only.
+// Server → client, namespace /telemetry: `telemetry.frames` carries one of these per changed asset (V2-08.2),
+// at most 10 Hz per watched asset, changed keys only.
 interface TelemetryFrame {
   assetCode: string; // "CT-01"
   at: string; // ISO time the device measured it

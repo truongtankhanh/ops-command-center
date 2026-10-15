@@ -50,7 +50,7 @@ export const TELEMETRY_NAMESPACE = '/telemetry';
 /** `Watch` is sent by the client; the other four are sent by the server. */
 export const TelemetryEvents = {
   Overview: 'telemetry.overview',
-  Frame: 'telemetry.frame',
+  Frames: 'telemetry.frames',
   Snapshot: 'telemetry.snapshot',
   Status: 'telemetry.status',
   Watch: 'telemetry.watch',
@@ -60,9 +60,9 @@ export const TelemetryEvents = {
 export const TELEMETRY_WATCH_LIMIT = 4;
 
 /**
- * The new readings of one watched asset, at most 10 times a second (`telemetry.frame`).
- * Best-effort: a console that cannot keep up skips frames, and the next frame or the overview
- * corrects it.
+ * The new readings of one watched asset, at most 10 times a second, carried in a
+ * `TelemetryFrames` batch (`telemetry.frames`). Best-effort: a console that cannot keep up skips
+ * the batch, and the next frame or the overview corrects it.
  */
 export interface TelemetryFrame {
   /** The asset's code: `CT-01`. */
@@ -73,6 +73,17 @@ export interface TelemetryFrame {
   receivedAt: string;
   /** Changed keys only: a key that is absent is unchanged, not `null`. */
   values: Record<string, TelemetryValue>;
+}
+
+/**
+ * What a socket receives on `telemetry.frames`: the frames of every asset it watches that changed
+ * in one 100 ms tick, in a single volatile emit. A socket gets one packet per tick, never one per
+ * asset, because Socket.IO discards a volatile packet while the transport is still sending the
+ * previous one (ADR-0019). At most `TELEMETRY_WATCH_LIMIT` entries, one per asset. Best-effort: a
+ * console that cannot keep up skips the whole batch, and the next one or the overview corrects it.
+ */
+export interface TelemetryFrames {
+  frames: TelemetryFrame[];
 }
 
 /** One asset's entry in `TelemetryOverview`. */
@@ -87,7 +98,7 @@ export interface TelemetryAssetOverview {
 
 /**
  * Where every asset stands, every second (`telemetry.overview`). Best-effort, like
- * `TelemetryFrame`.
+ * `TelemetryFrames`.
  */
 export interface TelemetryOverview {
   /** ISO time the overview was built. */
@@ -151,7 +162,7 @@ export interface TelemetryWatchAck {
 /** Server → client event map of `/telemetry`, as `ServerToClientEvents` is for `/events`. */
 export interface TelemetryServerToClientEvents {
   [TelemetryEvents.Overview]: (overview: TelemetryOverview) => void;
-  [TelemetryEvents.Frame]: (frame: TelemetryFrame) => void;
+  [TelemetryEvents.Frames]: (batch: TelemetryFrames) => void;
   [TelemetryEvents.Snapshot]: (snapshot: TelemetrySnapshot) => void;
   [TelemetryEvents.Status]: (status: TelemetryStatus) => void;
 }
