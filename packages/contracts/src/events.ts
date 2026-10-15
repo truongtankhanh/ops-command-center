@@ -92,7 +92,11 @@ export interface TelemetryAssetOverview {
   online: boolean;
   /** ISO time the API received the asset's latest reading. */
   receivedAt: string;
-  /** The current values of the asset's headline points, by point key. */
+  /**
+   * The current values of the asset's headline points, by point key, and of its class's state
+   * point (`ASSET_STATE_POINT_KEYS`) when the class has one, whatever its headline rank. A key with
+   * no reading yet is absent; an API from before V2-09.2 never sends the state point.
+   */
   headline: Record<string, TelemetryValue>;
 }
 

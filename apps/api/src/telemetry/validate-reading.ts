@@ -1,4 +1,4 @@
-import type { TelemetryPoint, TelemetryValue } from '@occ/contracts';
+import { ASSET_STATE_POINT_KEYS, type TelemetryPoint, type TelemetryValue } from '@occ/contracts';
 import type { CatalogueAsset } from '../assets/assets.service';
 import type { TelemetryMessageResult } from '../metrics/telemetry.metrics';
 import type { RawReading } from './telemetry-source';
@@ -17,6 +17,11 @@ export interface AssetIndex {
   readonly points: ReadonlyMap<string, TelemetryPoint>;
   /** Keys of the headline points, rank 1 then 2. */
   readonly headlineKeys: readonly string[];
+  /**
+   * Keys the 1 Hz overview carries: the headline keys, then the class's state point when it is not
+   * one of them (V2-09.2). Kept apart from `headlineKeys`, which stays what its name says.
+   */
+  readonly overviewKeys: readonly string[];
 }
 
 export type CatalogueIndex = ReadonlyMap<string, AssetIndex>;
@@ -28,10 +33,19 @@ export function indexCatalogue(assets: readonly CatalogueAsset[]): CatalogueInde
     for (const point of asset.points) {
       if (point.headline !== null) headlines.push({ key: point.key, rank: point.headline });
     }
+    const headlineKeys = headlines.sort((a, b) => a.rank - b.rank).map((headline) => headline.key);
+    const points = new Map<string, TelemetryPoint>(asset.points.map((point) => [point.key, point]));
+    // Matched by key alone, as the contract names it: the class's other points are only on the wire
+    // while the asset is watched, so without this a list cannot say Running or Standby (V2-09.1).
+    const stateKey = ASSET_STATE_POINT_KEYS.find((key) => points.has(key));
     index.set(asset.code, {
       id: asset.id,
-      points: new Map(asset.points.map((point) => [point.key, point])),
-      headlineKeys: headlines.sort((a, b) => a.rank - b.rank).map((headline) => headline.key),
+      points,
+      headlineKeys,
+      overviewKeys:
+        stateKey === undefined || headlineKeys.includes(stateKey)
+          ? headlineKeys
+          : [...headlineKeys, stateKey],
     });
   }
   return index;

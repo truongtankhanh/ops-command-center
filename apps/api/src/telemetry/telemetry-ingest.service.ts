@@ -193,12 +193,15 @@ export class TelemetryIngestService implements OnApplicationBootstrap, BeforeApp
     return this.index.has(assetCode);
   }
 
-  /** As `latestState`, with only the headline points that have a value. */
+  /**
+   * As `latestState`, with only the headline points and the class's state point (V2-09.2) that
+   * have a value. A key with no reading is absent: the overview never invents one.
+   */
   overview(): Record<string, TelemetryAssetOverview> {
     const overview: Record<string, TelemetryAssetOverview> = {};
     for (const [assetCode, asset] of this.state) {
       const headline: Record<string, TelemetryValue> = {};
-      for (const key of this.index.get(assetCode)?.headlineKeys ?? []) {
+      for (const key of this.index.get(assetCode)?.overviewKeys ?? []) {
         const entry = asset.keys.get(key);
         if (entry) headline[key] = entry.value;
       }

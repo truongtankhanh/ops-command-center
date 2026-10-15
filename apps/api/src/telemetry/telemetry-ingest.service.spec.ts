@@ -336,6 +336,53 @@ describe('TelemetryIngestService', () => {
       expect(receivedAt).toBe(iso(NOW));
     });
 
+    // V2-09.2: the class's state point rides the overview whatever its rank, so a console can say
+    // Running / Standby for an asset it does not watch. `running` is not a headline of `CT_01`.
+    it('carries the state point beside the headlines once it has a value, and not before', async () => {
+      const { service, boot } = build();
+      await boot();
+
+      service.ingest(reading('CT-01', { temp: 10, vibration: 3 }));
+      expect(service.overview()['CT-01'].headline).toEqual({ temp: 10 });
+
+      service.ingest(reading('CT-01', { running: true }));
+      expect(service.overview()['CT-01'].headline).toEqual({ temp: 10, running: true });
+    });
+
+    it('carries a state point that reads false: false is a value', async () => {
+      const { service, boot } = build();
+      await boot();
+
+      service.ingest(reading('CT-01', { temp: 10, running: false }));
+
+      expect(service.overview()['CT-01'].headline).toEqual({ temp: 10, running: false });
+    });
+
+    it('does not repeat a state point that is already a headline', async () => {
+      const pump = asset('PMP-01', [
+        point('pressure', { headline: 1 }),
+        point('running', { kind: 'boolean', min: null, max: null, headline: 2 }),
+      ]);
+      const { service, boot } = build([pump]);
+      await boot();
+
+      service.ingest(reading('PMP-01', { running: false, pressure: 4 }));
+
+      const { headline } = service.overview()['PMP-01'];
+      expect(Object.keys(headline)).toEqual(['pressure', 'running']);
+      expect(headline).toEqual({ pressure: 4, running: false });
+    });
+
+    it('leaves the held values alone: the state point is in them already', async () => {
+      const { service, boot } = build();
+      await boot();
+
+      service.ingest(reading('CT-01', { temp: 10, running: true }));
+
+      expect(service.valuesOf('CT-01')).toEqual({ temp: 10, running: true });
+      expect(service.latestState()['CT-01'].values).toEqual({ temp: 10, running: true });
+    });
+
     it('hands out copies: changing a result changes nothing held', async () => {
       const { service, boot } = build();
       await boot();

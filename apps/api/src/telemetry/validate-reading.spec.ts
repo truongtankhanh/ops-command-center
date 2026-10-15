@@ -73,6 +73,60 @@ describe('indexCatalogue', () => {
     expect(index.get('CT-01')?.points.get('nope')).toBeUndefined();
     expect(index.get('XX-99')).toBeUndefined();
   });
+
+  // The 1 Hz overview carries each class's state point as well as its headlines (V2-09.2), so a
+  // console can say Running / Standby for an asset it does not watch.
+  describe('overviewKeys', () => {
+    // [class, headline keys by rank, state point]: the points the seeded catalogue gives them.
+    const CLASSES: Array<[string, string[], string]> = [
+      ['cooling_tower', ['fanSpeedRpm', 'motorTempC'], 'running'],
+      ['standby_generator', ['fuelLevelPct', 'starterBatteryV'], 'running'],
+      ['precision_cooling', ['supplyAirTempC', 'returnAirTempC'], 'running'],
+      ['air_handler', ['indoorTempC', 'supplyAirTempC'], 'running'],
+      // The state point is already a headline: it appears once, in its rank position.
+      ['chiller', ['chilledWaterSupplyTempC', 'running'], 'running'],
+      ['booster_pump', ['dischargePressureBar', 'running'], 'running'],
+      ['barrier_arm', ['armPosition'], 'armPosition'],
+    ];
+
+    it.each(CLASSES)(
+      'lists the headlines, then the state point, of a %s',
+      (_class, heads, state) => {
+        const points = heads.map((key, i) => point(key, { headline: (i + 1) as 1 | 2 }));
+        if (!heads.includes(state))
+          points.push(point(state, { kind: 'boolean', min: null, max: null }));
+
+        const indexed = indexCatalogue([asset('X-01', points)]);
+
+        expect(indexed.get('X-01')?.overviewKeys).toEqual([...new Set([...heads, state])]);
+        // `headlineKeys` still says what its name says.
+        expect(indexed.get('X-01')?.headlineKeys).toEqual(heads);
+      },
+    );
+
+    it('is the headline keys for a class with no state point', () => {
+      const indexed = indexCatalogue([
+        asset('UPS-01', [point('loadPct', { headline: 1 }), point('autonomyMin', { headline: 2 })]),
+      ]);
+
+      expect(indexed.get('UPS-01')?.overviewKeys).toEqual(['loadPct', 'autonomyMin']);
+    });
+
+    it('is empty for a class with neither headlines nor a state point', () => {
+      const indexed = indexCatalogue([asset('X-01', [point('x')])]);
+
+      expect(indexed.get('X-01')?.overviewKeys).toEqual([]);
+    });
+
+    it('matches the state point by key, not by kind', () => {
+      // The catalogue is an operator's data; a `running` of another kind still names the point.
+      const indexed = indexCatalogue([
+        asset('X-01', [point('a', { headline: 1 }), point('running')]),
+      ]);
+
+      expect(indexed.get('X-01')?.overviewKeys).toEqual(['a', 'running']);
+    });
+  });
 });
 
 describe('validateReading', () => {
