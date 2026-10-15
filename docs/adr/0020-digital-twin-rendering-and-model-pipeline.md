@@ -104,6 +104,10 @@ their author, checked in CI, and served by nginx as immutable files.
     and a `tint` node (state only) carries neither. `bind` must be a `telemetry_point.key` of the class
     (ADR-0018). The console builds its bindings from `extras`, so a new class needs a model and catalogue rows, not
     code.
+    - Settled in V2-09.1, without changing the decision: the models do not exist before V2-13, so until V2-14 binds
+      from `extras` the inspector's Parts section is a code-owned table in the console (`lib/assetParts.ts`: role,
+      label and bound point, from asset-classes.md) for the two modelled classes. V2-14 deletes it, and a class
+      without a model has no Parts section.
   - Each bound node's pivot sits on its axis of motion; +Y up; 1 unit = 1 m; origin at the centre of the footprint.
   - Static nodes are merged at load; only bound nodes stay separate.
 - **Budgets, checked by `pnpm models:check` in CI** (added in V2-13; no such script exists yet) on every `.glb` under

@@ -147,6 +147,11 @@ displayName: 'Telemetry rule' }` in `apps/api/src/incidents/actors.ts`, next to 
     `telemetry_incidents_raised_total{result}` (`raised`, `already_open`, `error`).
 - **Contracts.** `Asset`, `AssetClass`, `TelemetryPoint`, `TelemetryRule` (read model), `Incident.assetId: string |
 null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetId` as `null`.
+  - Settled in V2-09.1, without changing the decision: there is no `state` field. The console derives an asset's
+    state (Fault, No data, Standby, Running) from its open incidents, its freshness and the class's state point
+    (`running`, or `armPosition` for barrier arms), which the telemetry overview therefore carries for every asset
+    (ADR-0019, V2-09.2). Precedence, words, rows and order of the Assets list: asset-classes.md § Console
+    presentation.
 - **History** (`telemetry_sample`): `asset_id`, `bucket_at` (5 s buckets), `values` (`jsonb`, last value of each key
   in the bucket), primary key `(asset_id, bucket_at)`, `PARTITION BY RANGE (bucket_at)`, one partition per day. The
   telemetry leader writes one row per asset per bucket and keeps the next two days' partitions created; partitions

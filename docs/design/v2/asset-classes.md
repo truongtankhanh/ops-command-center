@@ -66,6 +66,10 @@ this table and V2-13 commissions the models against it.
   point is `false` (`cooling_tower`, `standby_generator`, `precision_cooling`, `chiller`, `air_handler`,
   `booster_pump`) or `armPosition` is `down` (`barrier_arm`); every other class is always Running. Fault comes from
   an open incident and No data from freshness.
+  - Settled in V2-09.1, without changing the decision: the 1 Hz overview carries headline points only, and
+    `running` is a headline point of `chiller` and `booster_pump` alone, so the overview also carries the class's
+    state point (V2-09.2). The precedence of the four states and the worked examples are in
+    [§ Console presentation](#console-presentation).
 
 | Code         | Name                  | Class               | Zone         | East  | North  | `elevation_m` | `heading_deg` | Basis                                  |
 | ------------ | --------------------- | ------------------- | ------------ | ----- | ------ | ------------- | ------------- | -------------------------------------- |
@@ -310,6 +314,135 @@ V2-07 evaluates them; no asset has an override at start. Rules raise only `facil
   rules may not raise (ADR-0021). The gas detection panel keeps its own alarm path; only the detector's fault is
   watched here (open question 4, decided).
 - **Indoor climate** feeds the heat overlay only; comfort alerts would flood the feed.
+
+## Console presentation
+
+Decided 2026-10-14 (V2-09.1) by the tech lead: every proposal of the task is accepted as written. This is how the
+Assets list and the inspector turn the catalogue above into words, rows and an order. Frames 02, 03, 08 and 15 draw
+more than the data of Phase 2 supports; where they disagree with this section, this section wins and the brief's
+[Frames to revise](brief.md#frames-to-revise-after-phase-0) table says so. A rule marked `unverified` is a
+clarification the task did not spell out.
+
+### State of an asset
+
+One word per asset, the first match of:
+
+| #   | State                 | When                                                                                 |
+| --- | --------------------- | ------------------------------------------------------------------------------------ |
+| 1   | **Fault**             | an unresolved incident whose `assetId` is the asset                                  |
+| 2   | **No data** / Offline | the asset is stale, or its device's last will fired (ADR-0019, § Freshness; V2-08.1) |
+| 3   | **Standby**           | the class's state point says so: `running` is `false`, or `armPosition` is `down`    |
+| 4   | **Running**           | anything else                                                                        |
+
+- **A fault is never hidden by a stale reading.** An asset with an open incident reads Fault even when it is also
+  stale; its values stay drawn as stale. The Assets tab's `Faults` tab holds the faults, and its `No data` tab holds
+  No data and Offline.
+- **The state point** of a class is `running` for `cooling_tower`, `standby_generator`, `precision_cooling`,
+  `chiller`, `air_handler` and `booster_pump`, and `armPosition` for `barrier_arm`. The other classes (`ups`,
+  `ups_battery`, `transformer`, `switchgear`, `lift`, `fume_hood`, `gas_detector`, `leak_sensor`, `indoor_climate`)
+  have none and are Running whenever rules 1 and 2 do not match.
+- **Where it comes from.** The overview carries the state point of every asset, whatever its headline rank (V2-09.2,
+  additive): four classes (`cooling_tower`, `standby_generator`, `precision_cooling`, `air_handler`; eight demo
+  assets) gain one boolean each. The console derives the state as above; the API sends none. Where the class has a
+  state point and its value is absent (an API from before V2-09.2, or no reading yet) the list draws **no state
+  word**: it never says Running for an asset it does not know. Rejected: showing the state only for the inspected
+  asset (the list would be wrong for all the rest), and an API-computed `state` (contradicts "the API sends no
+  state").
+
+Worked examples, from the demo catalogue:
+
+| Asset  | Facts                                                                          | State       | Reads in the list                |
+| ------ | ------------------------------------------------------------------------------ | ----------- | -------------------------------- |
+| CT-02  | no incident, fresh, `running` is `false`                                       | **Standby** | "CT-02 · Standby · 0 rpm" (02)   |
+| GEN-01 | frame: no incident, `running` `false`, 86 % fuel                               | **Standby** | "86 % fuel" (02)                 |
+| GEN-01 | with an open "Low fuel" incident, and its reading older than 180 s             | **Fault**   | the fault, values drawn stale    |
+| LKS-B3 | the "Water leak" incident is open (`leakDetected` true, "Wet"); no state point | **Fault**   | "Fault · INC-000108", "Wet" (15) |
+
+The second GEN-01 row is a hypothetical (the mock scenario scripts breaches of `CT-01` and `LKS-B3` only); it shows
+rule 1 over rule 2, because the generator's threshold is 3 × 60 s (§ open question 6). Without the incident LKS-B3
+would read Running: a leak sensor has no state point.
+
+### Parts of an asset
+
+A code-owned table, `lib/assetParts.ts` in the console, for the two modelled classes only: the part's role, its label
+and the point it is bound to, taken from the Bound part columns above. **It is temporary**: V2-14 removes it when the
+model's `extras` supply the bindings (ADR-0020), and a class without a model has **no Parts section** (frame 15).
+Static parts (`Casing`, `Enclosure`, …) bind nothing and get no row. A label is the node name in sentence case, where
+frames 03 and 08 spell it otherwise the frame wins.
+
+| Class               | Node (role)    | Label           | Point             | Motion |
+| ------------------- | -------------- | --------------- | ----------------- | ------ |
+| `cooling_tower`     | `FanBlade`     | Fan blade       | `fanSpeedRpm`     | spin   |
+| `cooling_tower`     | `FanMotor`     | Fan motor       | `motorTempC`      | tint   |
+| `cooling_tower`     | `Pump`         | Pump            | `pumpFlowM3h`     | tint   |
+| `cooling_tower`     | `Valve`        | Valve           | `valveOpenPct`    | turn   |
+| `cooling_tower`     | `Switch`       | Switch          | `switchState`     | turn   |
+| `standby_generator` | `FuelTank`     | Fuel tank       | `fuelLevelPct`    | tint   |
+| `standby_generator` | `Battery`      | Starter battery | `starterBatteryV` | tint   |
+| `standby_generator` | `Engine`       | Engine          | `coolantTempC`    | tint   |
+| `standby_generator` | `RadiatorFan`  | Radiator        | `engineSpeedRpm`  | spin   |
+| `standby_generator` | `Alternator`   | Alternator      | `alternatorKw`    | tint   |
+| `standby_generator` | `Breaker`      | Breaker         | `breakerClosed`   | turn   |
+| `standby_generator` | `ControlPanel` | Control panel   | `controlMode`     | tint   |
+
+"Starter battery" and "Radiator" are frame 08's words, not the node names'.
+
+### Reading rows
+
+- **Order.** The headline points (rank 1, 2), then the points a rule watches (in catalogue order), then the rest
+  behind a disclosure labelled "All points (n)", `n` being the number of rows inside it. The set point
+  (`fanSetpointRpm`) is one more row, not a sub-line of the fan speed.
+- **The line under a label** is the rule on that point: `above` → "Limit {limit} {unit}", `below` →
+  "Low at {limit} {unit}" (frame 08). A point with no rule has no line. A boolean point has no line either
+  (`unverified`): its rule's 0.5 is an encoding (ADR-0018), not a number an operator reads.
+- **Not built, because there is no data:** "Rated 22 A" and the generator's capacity "2,150 of 2,500 L" (a rating and
+  a capacity are asset facts, out of the catalogue); "ΔT 5.1 °C" and the merged "Water in / out" row (the two points
+  are two rows); "Since 15:17" under a leak (the age of a reading is shown instead, V2-08.1); frame 15's "Replace
+  below 20 %" (wording, not data: the line reads "Low at 20 %").
+- **Worked example, `CT-01`:** Fan speed, Motor temperature ("Limit 85 °C"); Vibration ("Limit 7.1 mm/s"), Motor
+  current ("Limit 24 A"); then "All points (8)": Fan set point, Water in, Water out, Pump flow, Valve opening, Control
+  switch, Running, Run hours.
+
+### Words for values
+
+A table by point `key`, in `lib/readingLabels.ts`; any other boolean reads "Yes" / "No", and any other enum value in
+sentence case. A value this table does not know is drawn as it came (types, kinds and values can arrive from a newer
+API first). A follow-up may move the words into the catalogue (a column and a migration) if a site needs its own.
+
+| `key`          | Value                    | Word                        |
+| -------------- | ------------------------ | --------------------------- |
+| `leakDetected` | `true` · `false`         | Wet · Dry                   |
+| `inService`    | `true` · `false`         | In service · Out of service |
+| `running`      | `true` · `false`         | Running · Stopped           |
+| `armPosition`  | `up` · `down` · `moving` | Up · Down · Moving          |
+| `carFloor`     | _n_                      | Floor _n_                   |
+
+### Place line
+
+The line under an asset's name is "{zone name}", then, for an asset in a `building` zone (`unverified`: roof and
+level are building terms): "roof" when `elevationM` equals the zone's `heightM`, else "level _n_" when `elevationM`
+is a multiple of 4, with _n_ = `elevationM` / 4 + 1 (floors are 4 m apart, § Demo assets). Nothing else is invented:
+"east yard" and "riser cupboard" are not data. A zone with no `heightM` has no roof.
+
+| Asset    | `elevation_m` | Zone `heightM` | Line                  |
+| -------- | ------------- | -------------- | --------------------- |
+| `CT-01`  | 14            | 14             | Data Center · roof    |
+| `AHU-H1` | 24            | 24             | Innovation Hub · roof |
+| `FH-L1`  | 4             | 16             | Science Lab · level 2 |
+| `LKS-B3` | 8             | 20             | Dormitory B · level 3 |
+| `AHU-L1` | 0             | 18             | Library · level 1     |
+| `BAR-01` | 0             | none (a gate)  | Main Gate             |
+
+### Order, filter and search
+
+- **Order.** Groups by zone name A–Z (`localeCompare`), assets by `code` within a group. Frame 02's order (Data
+  Center, Utility Plant, Dormitory B, Dormitory A, …) is curated, not data. The 31 demo assets fall in 15 groups: Admin
+  Building, Data Center, Dormitory A, Dormitory B, East Gate, Health Clinic, Innovation Hub, Lecture Hall A, Library,
+  Main Gate, Science Lab, Security office, Sports Hall, Student Center, Utility Plant.
+- **Zone filter.** A group header is a button that sets the filter chip ("Data Center only"), cleared by its ×. The
+  building level of V2-15 sets the same filter; there is no zone click on the map in this phase.
+- **Search** matches the asset's name, code and zone name, folding case and accents as `searchTerms` does for
+  incidents.
 
 ## Open questions
 

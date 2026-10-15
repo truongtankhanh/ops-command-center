@@ -437,6 +437,9 @@ source.
 | 09 Report by category                | The severity hint has no reason sentence; the Title field and the zone select ("Pick on map") stay instead of the free-text location                                  | V2-03.6                          |
 | 11 Technician, out-of-scope incident | The Security category chip is `ShieldUser`, not `Shield`                                                                                                              | V2-02.2 (`icons.md`)             |
 | 05 Telemetry paused                  | Two pill states it does not draw: "Telemetry reconnecting…", "Telemetry unavailable"; the banner button reads "Reconnect"                                             | V2-08.1                          |
+| 02 Assets list                       | Groups run by zone name A–Z, not as drawn; the place line is the zone plus "roof" or "level n" ("east yard" is not data); no state word without a state value         | V2-09.1 (`asset-classes.md`)     |
+| 03, 08 Inspector                     | Rows: headline, rule-watched points, then "All points"; no "Rated 22 A", "ΔT" or merged "Water in / out", no tank capacity; the set point is its own row              | V2-09.1 (`asset-classes.md`)     |
+| 15 Sensor without model              | "Replace below 20 %" reads "Low at 20 %"; "Since 15:17" gives way to the reading's age; no "riser cupboard" place text; no Parts section                              | V2-09.1 (`asset-classes.md`)     |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).
