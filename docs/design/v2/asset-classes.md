@@ -444,6 +444,44 @@ is a multiple of 4, with _n_ = `elevationM` / 4 + 1 (floors are 4 m apart, § De
 - **Search** matches the asset's name, code and zone name, folding case and accents as `searchTerms` does for
   incidents.
 
+### List words
+
+Settled 2026-10-15 (V2-09.6) by the tech lead: every proposal of the analysis is accepted as written. What a row of
+the Assets list and its notice say, where the sections above give the state and the order but not the words. All of it
+is in `lib/assetList.ts`.
+
+- **A row** reads the asset's name, its **first headline reading** (`values` over the overview's `headline`, "—" when
+  there is none), then the state and the code. The state word is the one of § State of an asset, with what makes it
+  exact:
+
+  | State     | Reads in the list    | When there is no age or code to give |
+  | --------- | -------------------- | ------------------------------------ |
+  | Fault     | "Fault · INC-000108" | "Fault"                              |
+  | No data   | "No data · 1 min"    | "No data" (no entry for the asset)   |
+  | Offline   | "Offline · 3 min"    | "Offline"                            |
+  | Standby   | "Standby"            |                                      |
+  | Running   | "Running"            |                                      |
+  | (unknown) | no word and no glyph |                                      |
+
+  The age is the reading's, on the API's clock, in the list's coarse form (`12 s`, `1 min`, `1 h`). A stale or offline
+  asset's value is dimmed, **also under a fault**: the incident is never hidden by a stale reading, and its values
+  are still drawn as stale.
+
+- **Staleness is the asset's own.** Nothing forces every row to No data while telemetry is paused: a row turns No
+  data when its own threshold has passed (open question 6). The notice, not the rows, says at once that
+  nothing is live.
+- **The notice** above the list, with a `Clock` glyph: "Readings as of {HH:MM:SS} — not updating" while the API's
+  source is paused or the console's own socket is down, the time being the newest `receivedAt` of the overview
+  (the API's clock; with none, the pause time the API gave, or the time the socket was lost); "No readings:
+  telemetry is unavailable" on an API without `/telemetry`. Nothing while connecting or live.
+- **Zones.** The group of assets whose zone this console does not have is **"Other zones"**, listed last, and has no
+  zone to filter by, so its header is text. While a zone chip is on, the one group's header is text too: the chip is
+  the control.
+- **A class this build does not know** draws the unknown glyph and its raw class code (`mystery_pump`) after the
+  state; its value is whatever its own headline point gives, and "—" when there is none.
+- **Empty tabs** say why: "No assets have a fault.", "No assets are without data.", `No assets match "{query}".`,
+  "No assets in {zone name}." (and "…in {zone} have a fault." / "…are without data." when a tab is chosen too).
+
 ## Open questions
 
 1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that

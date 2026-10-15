@@ -39,7 +39,7 @@ describe('ShortcutHelp', () => {
 
     expect(help()).not.toBeNull();
     for (const key of ['N', '/', '?', 'A', 'R']) expect(keys(key)).toHaveLength(1);
-    for (const name of ['Incident list', 'Tabs', 'Map, while it has focus']) {
+    for (const name of ['Incident and asset lists', 'Tabs', 'Map, while it has focus']) {
       expect(within(help()!).getByRole('heading', { name })).toBeInTheDocument();
     }
   });
