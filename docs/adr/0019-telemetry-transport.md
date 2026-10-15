@@ -107,8 +107,8 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     `/events`, so each console makes two.
   - Server → client (types in `@occ/contracts`):
     - `telemetry.overview`, every second: `{ at, assets: { [assetCode]: { online, receivedAt, headline } } }`;
-    - `telemetry.frame`, at most 10 Hz per watched asset: `{ assetCode, at, receivedAt, values }`, changed keys
-      only;
+    - `telemetry.frames`, at most 10 Hz per watched asset: `{ frames: [{ assetCode, at, receivedAt, values }] }`,
+      one entry per watched asset that changed, changed keys only;
     - `telemetry.snapshot`, after connect and after each watch change: the full latest state in scope;
     - `telemetry.status`: `{ upstream: 'live' | 'paused', since }`, when this replica's source connection drops or
       returns. This is the console's `Telemetry paused` (brief, frame 05), distinct from its own socket being down.
@@ -117,6 +117,13 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
     per second per socket, an unknown code ignored. Watched assets map to Socket.IO rooms `asset:<code>`.
   - Overview and frames use `volatile` emits: a socket that cannot keep up skips messages instead of buffering
     them. Snapshot and status are always delivered.
+    - Settled in V2-08.2, without changing the decision: Socket.IO also discards a volatile packet that follows
+      another in the same synchronous turn (the transport is not writable until its send callback), so one frame
+      per asset delivered only the first to a socket that watched several. A socket now gets one `volatile`
+      `telemetry.frames` packet per tick holding all its changed assets (the single-frame `telemetry.frame` no
+      console read was replaced), and one timer alternates nine frame ticks with an overview tick that sends no
+      frames, so the two volatile emits never share a turn. A plain emit was rejected: it queues without bound for
+      a slow console, which is what `volatile` exists to avoid.
 - **Freshness** is decided by the console's worker from `receivedAt` and each point's `expected_interval_s`
   (stale after three intervals), and from `online`. The server never invents a value.
   - Settled in V2-08.1, without changing the decision: the overview and the snapshot carry one `receivedAt` per

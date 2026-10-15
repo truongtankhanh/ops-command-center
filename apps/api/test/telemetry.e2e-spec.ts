@@ -6,6 +6,7 @@ import {
   type TelemetryClientToServerEvents,
   TelemetryEvents,
   type TelemetryFrame,
+  type TelemetryFrames,
   type TelemetryOverview,
   type TelemetryServerToClientEvents,
   type TelemetrySnapshot,
@@ -233,10 +234,11 @@ describe('Telemetry namespace (e2e)', () => {
       const watch = (socket: TelemetrySocket, assets: unknown): Promise<TelemetryWatchAck> =>
         socket.timeout(5_000).emitWithAck(TelemetryEvents.Watch, assets as TelemetryWatchRequest);
 
+      /** Every frame received, in order, whichever `telemetry.frames` packet carried it. */
       const frames = (received: Received[]): TelemetryFrame[] =>
         received
-          .filter((message) => message.event === TelemetryEvents.Frame)
-          .map((message) => message.payload as TelemetryFrame);
+          .filter((message) => message.event === TelemetryEvents.Frames)
+          .flatMap((message) => (message.payload as TelemetryFrames).frames);
 
       const snapshots = (received: Received[]): TelemetrySnapshot[] =>
         received
@@ -257,6 +259,33 @@ describe('Telemetry namespace (e2e)', () => {
         );
 
         expect(frames(received).every((frame) => frame.assetCode === 'CT-01')).toBe(true);
+      });
+
+      it('streams frames of every asset of a set of two, not only the first that changed', async () => {
+        const { socket, received } = await connect(app, await withToken());
+
+        await expect(watch(socket, { assets: ['CT-01', 'CT-02'] })).resolves.toEqual({
+          accepted: ['CT-01', 'CT-02'],
+        });
+        // The mock source makes both due on the same second: with one frame per asset in a tick,
+        // Socket.IO discarded all but the first, and the second asset never arrived (V2-06.12).
+        const count = (code: string) =>
+          frames(received).filter((frame) => frame.assetCode === code).length;
+        await eventually(
+          () => Math.min(count('CT-01'), count('CT-02')),
+          (least) => least >= 2,
+          'two frames of each asset',
+          15_000,
+        );
+
+        // Never an empty batch, and a packet holds at most one frame per watched asset.
+        const packets = received
+          .filter((message) => message.event === TelemetryEvents.Frames)
+          .map((message) => (message.payload as TelemetryFrames).frames);
+        for (const packet of packets) {
+          expect(packet.length).toBeGreaterThan(0);
+          expect(new Set(packet.map((frame) => frame.assetCode)).size).toBe(packet.length);
+        }
       });
 
       it("stops the first set's frames when a second set is watched", async () => {
@@ -333,9 +362,10 @@ describe('Telemetry namespace (e2e)', () => {
             known[key] = value;
           }
         }
+        // One time per frame, so a packet counts for every frame it carries.
         const times = received
-          .filter((message) => message.event === TelemetryEvents.Frame)
-          .map((message) => message.at);
+          .filter((message) => message.event === TelemetryEvents.Frames)
+          .flatMap((message) => (message.payload as TelemetryFrames).frames.map(() => message.at));
         for (const t of times) {
           expect(
             times.filter((other) => other > t - 1_000 && other <= t).length,

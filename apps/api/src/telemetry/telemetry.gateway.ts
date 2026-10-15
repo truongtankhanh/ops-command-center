@@ -14,6 +14,7 @@ import {
   TELEMETRY_NAMESPACE,
   type TelemetryClientToServerEvents,
   TelemetryEvents,
+  type TelemetryFrame,
   type TelemetryServerToClientEvents,
   type TelemetryWatchAck,
 } from '@occ/contracts';
@@ -44,8 +45,14 @@ type TelemetrySocket = Socket<
 /** The overview's cadence (ADR-0019: "every second"). */
 const OVERVIEW_INTERVAL_MS = 1_000;
 
-/** The frames' cadence: one tick per 100 ms is the 10 Hz ceiling per watched asset (ADR-0019). */
+/**
+ * The namespace's one tick: 100 ms is the 10 Hz ceiling per watched asset (ADR-0019). Every tick
+ * but each tenth carries frames; the tenth carries the overview and no frames (see `onTick`).
+ */
 const FRAME_INTERVAL_MS = 100;
+
+/** Ticks between two overviews: the overview's cadence on the frames' timer. */
+const OVERVIEW_EVERY_TICKS = OVERVIEW_INTERVAL_MS / FRAME_INTERVAL_MS;
 
 /**
  * A watched asset is a Socket.IO room named `asset:<code>` (ADR-0019). Every socket is also in a
@@ -75,10 +82,16 @@ function watchedBy(client: Pick<TelemetrySocket, 'rooms'>): Set<string> {
  * coordinate with other replicas, so two consoles on two replicas can briefly differ by one reading.
  *
  * Delivery is best-effort and latest-wins, unlike `/events`:
- * - `telemetry.overview` and `telemetry.frame` are **volatile** emits. A socket whose transport is
+ * - `telemetry.overview` and `telemetry.frames` are **volatile** emits. A socket whose transport is
  *   not writable skips them instead of queueing them (Socket.IO drops a volatile packet at
  *   `writeToEngine`), so a slow console cannot make this process buffer, and the next one
  *   corrects it.
+ * - That discard also happens to a second volatile emit in the same synchronous turn: the
+ *   transport is not writable again until its send callback. So a socket gets **one** packet per
+ *   tick, `telemetry.frames`, holding the frames of every asset it watches that changed (a frame
+ *   per asset would starve all but the first), and the tick that sends the overview sends no
+ *   frames. Nothing is lost by that tick: the ingest cursor and the baselines stay put, so the
+ *   next tick carries what accumulated.
  * - `telemetry.snapshot` and `telemetry.status` are plain emits: always delivered.
  *
  * The one message a console may send is `telemetry.watch`: the few assets it wants every reading
@@ -92,8 +105,9 @@ export class TelemetryGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
   private readonly logger = new Logger(TelemetryGateway.name);
-  private overviewTimer?: NodeJS.Timeout;
-  private frameTimer?: NodeJS.Timeout;
+  private tickTimer?: NodeJS.Timeout;
+  /** Ticks since the last overview; `OVERVIEW_EVERY_TICKS` is the overview's tick. */
+  private tick = 0;
   private unsubscribeUpstream?: Unsubscribe;
   private overviewFailureReported = false;
   private frameFailureReported = false;
@@ -135,14 +149,12 @@ export class TelemetryGateway
       server.emit(TelemetryEvents.Status, state),
     );
 
-    // One timer per cadence for the namespace, not one per socket: the payload of an overview is
-    // the same for every console, and a frame is the same for every socket in its room, so each
-    // is built and encoded once per tick. `unref()`: neither alone may keep the process alive, in
-    // a spec or at shutdown.
-    this.overviewTimer = setInterval(() => this.broadcastOverview(server), OVERVIEW_INTERVAL_MS);
-    this.overviewTimer.unref();
-    this.frameTimer = setInterval(() => this.broadcastFrames(server), FRAME_INTERVAL_MS);
-    this.frameTimer.unref();
+    // One timer for the namespace, not one per socket, and not one per cadence: the overview and
+    // the frames are both volatile, so they must never share a synchronous turn (the second would
+    // be discarded). One timer with a counter makes that order deterministic. `unref()`: it may
+    // not keep the process alive, in a spec or at shutdown.
+    this.tickTimer = setInterval(() => this.onTick(server), FRAME_INTERVAL_MS);
+    this.tickTimer.unref();
   }
 
   handleConnection(client: TelemetrySocket): void {
@@ -224,10 +236,8 @@ export class TelemetryGateway
 
   /** Runs before `beforeApplicationShutdown`, so nothing is emitted into a closing server. */
   onModuleDestroy(): void {
-    clearInterval(this.overviewTimer);
-    this.overviewTimer = undefined;
-    clearInterval(this.frameTimer);
-    this.frameTimer = undefined;
+    clearInterval(this.tickTimer);
+    this.tickTimer = undefined;
     this.baselines.clear();
     this.unsubscribeUpstream?.();
     this.unsubscribeUpstream = undefined;
@@ -240,6 +250,13 @@ export class TelemetryGateway
       this.limiters.set(client, limiter);
     }
     return limiter;
+  }
+
+  /** Nine ticks of frames, then one of overview: each is one synchronous turn of its own. */
+  private onTick(server: TelemetryNamespace): void {
+    this.tick = (this.tick + 1) % OVERVIEW_EVERY_TICKS;
+    if (this.tick === 0) this.broadcastOverview(server);
+    else this.broadcastFrames(server);
   }
 
   /**
@@ -264,9 +281,13 @@ export class TelemetryGateway
   }
 
   /**
-   * One tick of frames for every watched asset. The watched assets are the `asset:` rooms the
-   * adapter holds: Socket.IO deletes a room when its last member leaves, so there is no count of
-   * watchers here to drift, and a baseline outlives its room by at most one tick.
+   * One tick of frames for every watched asset, delivered as one `telemetry.frames` packet per
+   * socket. The watched assets are the `asset:` rooms the adapter holds: Socket.IO deletes a room
+   * when its last member leaves, so there is no count of watchers here to drift, and a baseline
+   * outlives its room by at most one tick.
+   *
+   * A frame that a socket skipped (its transport was busy) is not repeated: the baseline moved
+   * when the frame was built, and a key is sent again when its value changes (`docs/api/telemetry.md`).
    *
    * With nothing watched this returns before reading the ingest service, and the cursor stays where
    * it was. That is harmless: a baseline is seeded from the snapshot when a watch starts, so what
@@ -286,6 +307,9 @@ export class TelemetryGateway
       // One scan for every room: it reads every held key, so it is not done per socket.
       const { version, changes } = this.ingest.changedSince(this.frameCursor);
       this.frameCursor = version;
+      // By asset, in the ingest's order. An asset listed twice is merged, never overwritten: its
+      // baseline has already moved, so a dropped entry would be a key lost.
+      const frames = new Map<string, TelemetryFrame>();
       for (const change of changes) {
         if (!watched.has(change.assetCode)) continue;
         // `changedSince` lists the keys that arrived; a frame carries the ones that differ.
@@ -293,12 +317,29 @@ export class TelemetryGateway
         if (!values) continue;
         // `at` and `receivedAt` are the change's: the newest among the keys that arrived, so
         // never older than what this frame holds.
-        server.to(roomOf(change.assetCode)).volatile.emit(TelemetryEvents.Frame, {
+        const earlier = frames.get(change.assetCode);
+        frames.set(change.assetCode, {
           assetCode: change.assetCode,
           at: change.at,
           receivedAt: change.receivedAt,
-          values,
+          values: earlier ? { ...earlier.values, ...values } : values,
         });
+      }
+      if (frames.size === 0) return;
+
+      // The sockets in each changed asset's room, from the adapter's rooms already read above:
+      // each gets the frames of the assets it watches, in one emit.
+      const batches = new Map<string, TelemetryFrame[]>();
+      for (const [code, frame] of frames) {
+        for (const socketId of server.adapter.rooms.get(roomOf(code)) ?? []) {
+          const batch = batches.get(socketId);
+          if (batch) batch.push(frame);
+          else batches.set(socketId, [frame]);
+        }
+      }
+      for (const [socketId, batch] of batches) {
+        // A socket that left between the room read and now is simply not there.
+        server.sockets.get(socketId)?.volatile.emit(TelemetryEvents.Frames, { frames: batch });
       }
     } catch (error) {
       if (this.frameFailureReported) return;

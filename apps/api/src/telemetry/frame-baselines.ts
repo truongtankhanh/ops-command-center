@@ -1,7 +1,7 @@
 import type { TelemetryValue } from '@occ/contracts';
 
 /**
- * What each watched room last received, per asset code, so a `telemetry.frame` carries the keys
+ * What each watched room last received, per asset code, so a frame of `telemetry.frames` carries the keys
  * that changed (ADR-0019). `TelemetryIngestService.changedSince` cannot say that by itself: it
  * lists every key a reading *arrived* for, whether or not the value differs.
  *
