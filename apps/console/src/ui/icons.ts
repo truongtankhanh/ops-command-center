@@ -10,6 +10,7 @@ import {
   Activity,
   ArrowUpDown,
   Ban,
+  Battery,
   Biohazard,
   Building2,
   Car,
@@ -18,6 +19,7 @@ import {
   CircleCheck,
   CircleDot,
   CircleQuestionMark,
+  Clock,
   CloudLightning,
   Cpu,
   Cross,
@@ -30,6 +32,7 @@ import {
   Flag,
   Flame,
   FlameKindling,
+  Gauge,
   HandFist,
   HandGrab,
   HardHat,
@@ -39,6 +42,7 @@ import {
   OctagonAlert,
   Package,
   Pause,
+  Power,
   Radio,
   RefreshCw,
   ServerOff,
@@ -46,6 +50,7 @@ import {
   SprayCan,
   SquareParking,
   Stethoscope,
+  Thermometer,
   Tornado,
   TreeDeciduous,
   Trees,
@@ -73,6 +78,7 @@ import type {
   IncidentType,
   ZoneKind,
 } from '@occ/contracts';
+import type { AssetState } from '../lib/assets';
 import type { TelemetryPillState } from '../lib/telemetryState';
 import type { ConnectionState } from '../store';
 
@@ -198,6 +204,59 @@ const TELEMETRY_ICONS: Record<TelemetryPillState, Glyph> = {
 };
 
 export const telemetryIcon = (state: TelemetryPillState) => TELEMETRY_ICONS[state];
+
+// An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
+// states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),
+// `Zap` electric supply (also `power_outage`), `Power` a power source or switching, `Thermometer`
+// temperature control or measurement; `ArrowUpDown`, `Fence`, `Droplet` and `Cylinder` are the glyph
+// of the incident type or zone kind that means the same (`lift_entrapment`, `gate`, `water_leak`,
+// `gas_leak`).
+//
+// A class code is open data (a newer API can send one this build lacks) and the contract has no list
+// of them, so unlike the maps above nothing fails `typecheck` for a class missing here: it draws
+// `unknownIcon` until it is added. A `Map`, so a code such as `constructor` is not read off the
+// object prototype.
+const ASSET_CLASS_ICONS = new Map<string, Glyph>([
+  ['cooling_tower', Fan],
+  ['fume_hood', Fan],
+  ['air_handler', Fan],
+  ['ups', Zap],
+  ['transformer', Zap],
+  ['ups_battery', Battery],
+  ['standby_generator', Power],
+  ['switchgear', Power],
+  ['precision_cooling', Thermometer],
+  ['chiller', Thermometer],
+  ['indoor_climate', Thermometer],
+  ['lift', ArrowUpDown],
+  ['barrier_arm', Fence],
+  ['leak_sensor', Droplet],
+  ['gas_detector', Cylinder],
+  // Its headline point is the discharge pressure.
+  ['booster_pump', Gauge],
+]);
+
+export const assetClassIcon = (classCode: string): Glyph =>
+  ASSET_CLASS_ICONS.get(classCode) ?? unknownIcon;
+
+/** The states of an asset that have a glyph of their own. */
+type GlyphedAssetState = Exclude<AssetState, 'fault' | 'unknown'>;
+
+// The list always draws the state word beside its glyph. `running` and `standby` share `Activity` and
+// `Pause` with the telemetry pill's `live` and `paused`: a live signal and an operating asset, a
+// paused feed and an asset on hold, told apart by the word next to them. `nodata` and `offline` share
+// `Clock`: the same look, a different label (V2-08.1).
+//
+// Not here: `fault`, whose glyph is the severity glyph of its incident (`severityIcon`), which only
+// the caller knows; and `unknown`, which has no state word and so no glyph.
+const ASSET_STATE_ICONS: Record<GlyphedAssetState, Glyph> = {
+  running: Activity,
+  standby: Pause,
+  nodata: Clock,
+  offline: Clock,
+};
+
+export const assetStateIcon = (state: GlyphedAssetState): Glyph => ASSET_STATE_ICONS[state];
 
 export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff);
 

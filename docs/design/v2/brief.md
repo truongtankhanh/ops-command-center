@@ -440,6 +440,7 @@ source.
 | 02 Assets list                       | Groups run by zone name A–Z, not as drawn; the place line is the zone plus "roof" or "level n" ("east yard" is not data); no state word without a state value         | V2-09.1 (`asset-classes.md`)     |
 | 03, 08 Inspector                     | Rows: headline, rule-watched points, then "All points"; no "Rated 22 A", "ΔT" or merged "Water in / out", no tank capacity; the set point is its own row              | V2-09.1 (`asset-classes.md`)     |
 | 15 Sensor without model              | "Replace below 20 %" reads "Low at 20 %"; "Since 15:17" gives way to the reading's age; no "riser cupboard" place text; no Parts section                              | V2-09.1 (`asset-classes.md`)     |
+| 02, 03 Assets list                   | Booster pump draws `Gauge` and Gas detector `Cylinder`, not `activity`: that glyph is Running and the Telemetry pill's live state                                     | V2-09.4 (`icons.md`)             |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).
