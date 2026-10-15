@@ -29,6 +29,9 @@ const WORDS = new Map<string, (value: TelemetryValue) => string | null>([
   ['inService', booleanWords('In service', 'Out of service')],
   ['running', booleanWords('Running', 'Stopped')],
   ['armPosition', enumWords({ up: 'Up', down: 'Down', moving: 'Moving' })],
+  // The generator's main breaker, a part row of the inspector (V2-09.9): "Yes" would answer a
+  // question nobody asked.
+  ['breakerClosed', booleanWords('Closed', 'Open')],
   [
     'carFloor',
     (value) => (typeof value === 'number' && Number.isFinite(value) ? `Floor ${value}` : null),

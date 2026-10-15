@@ -1,8 +1,10 @@
-import type { TelemetryPoint, TelemetryRule } from '@occ/contracts';
+import type { Incident, TelemetryPoint, TelemetryRule } from '@occ/contracts';
 import {
   drawnSeries,
   encodedLatest,
+  footprintText,
   freshnessText,
+  incidentsOf,
   inspectorRows,
   inspectorStateText,
   overSeverity,
@@ -241,5 +243,91 @@ describe('freshnessText', () => {
 describe('SPARKLINE_WINDOW_MS', () => {
   it('is the 15 minutes of a ring buffer', () => {
     expect(SPARKLINE_WINDOW_MS).toBe(15 * 60 * 1000);
+  });
+});
+
+describe('incidentsOf', () => {
+  const incident = (overrides: Partial<Incident>): Incident => ({
+    id: 'inc-1',
+    code: 'INC-000001',
+    type: 'equipment_fault',
+    severity: 'medium',
+    status: 'open',
+    title: 'Motor over temperature',
+    description: null,
+    zoneId: 'zone-dc',
+    position: [0, 0],
+    source: 'telemetry',
+    assetId: 'asset-ct-01',
+    reportedAt: '2026-10-15T08:00:00.000Z',
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    ...overrides,
+  });
+  const asset = { id: 'asset-ct-01' };
+
+  it('lists the unresolved incidents of the asset and nothing else', () => {
+    const mine = incident({ id: 'a' });
+    const acknowledged = incident({ id: 'b', status: 'acknowledged' });
+    const resolved = incident({ id: 'c', status: 'resolved' });
+    const another = incident({ id: 'd', assetId: 'asset-ct-02' });
+    const operator = incident({ id: 'e', assetId: null });
+    // An API from before `incident.asset_id` never sends the field.
+    const old = incident({ id: 'f' });
+    delete old.assetId;
+
+    const found = incidentsOf(asset, [mine, resolved, another, operator, old, acknowledged]);
+
+    expect(found.map((i) => i.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('orders them as the feed does: most severe first, then newest', () => {
+    const low = incident({ id: 'low', severity: 'low' });
+    const olderHigh = incident({
+      id: 'older-high',
+      severity: 'high',
+      reportedAt: '2026-10-15T07:00:00.000Z',
+    });
+    const newerHigh = incident({
+      id: 'newer-high',
+      severity: 'high',
+      reportedAt: '2026-10-15T09:00:00.000Z',
+    });
+
+    expect(incidentsOf(asset, [low, olderHigh, newerHigh]).map((i) => i.id)).toEqual([
+      'newer-high',
+      'older-high',
+      'low',
+    ]);
+  });
+
+  it('does not reorder or change the list it is given', () => {
+    const list = [
+      incident({ id: 'low', severity: 'low' }),
+      incident({ id: 'high', severity: 'high' }),
+    ];
+
+    incidentsOf(asset, list);
+
+    expect(list.map((i) => i.id)).toEqual(['low', 'high']);
+  });
+
+  it('returns nothing for no incidents', () => {
+    expect(incidentsOf(asset, [])).toEqual([]);
+  });
+});
+
+describe('footprintText', () => {
+  it('writes a cube as three equal numbers', () => {
+    expect(footprintText({ width: 1.4, depth: 1.4, height: 1.4 })).toBe('1.4 × 1.4 × 1.4 m');
+  });
+
+  it('writes width, depth and height, a whole number without a fraction', () => {
+    expect(footprintText({ width: 6, depth: 1, height: 2.3 })).toBe('6 × 1 × 2.3 m');
+  });
+
+  it('keeps one fraction digit at most', () => {
+    expect(footprintText({ width: 2.54, depth: 0.8, height: 2.04 })).toBe('2.5 × 0.8 × 2 m');
   });
 });

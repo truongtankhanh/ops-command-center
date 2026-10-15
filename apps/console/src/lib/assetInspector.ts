@@ -1,10 +1,14 @@
 import type {
+  Asset,
+  AssetFootprint,
+  Incident,
   IncidentSeverity,
   TelemetryPoint,
   TelemetryRule,
   TelemetryValue,
 } from '@occ/contracts';
 import type { AssetState } from './assets';
+import { compareIncidents, isActive } from './incidents';
 import { encodeReading } from './ringBuffer';
 import { formatReadingAge, formatSince } from './telemetryAge';
 import { isStale } from './telemetryFreshness';
@@ -173,4 +177,27 @@ export function freshnessText(ageMs: number | null, stale: boolean): string | nu
   if (ageMs === null) return null;
   const age = formatReadingAge(ageMs);
   return stale ? `${age} old` : `Updated ${age} ago`;
+}
+
+/**
+ * The unresolved incidents of `asset`, in the feed's order (most severe, then newest), so the
+ * first is the one `openIncidentOf` names and the head's "Fault · INC-…" says. Nothing resolved is
+ * listed: with none open the inspector draws no incident section at all (V2-09.9).
+ */
+export function incidentsOf(asset: Pick<Asset, 'id'>, incidents: readonly Incident[]): Incident[] {
+  return incidents
+    .filter((incident) => incident.assetId === asset.id && isActive(incident))
+    .sort(compareIncidents);
+}
+
+// `en-GB` like `readings.ts`: "1.4", "6", "2.3".
+const METRES = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
+
+/**
+ * The box a neutral placeholder is drawn from, as "1.4 × 1.4 × 1.4 m" (width × depth × height,
+ * frame 15's note). A width alone would read as a cube for a 6 × 1 × 2.3 m switchgear.
+ */
+export function footprintText(footprint: AssetFootprint): string {
+  const { width, depth, height } = footprint;
+  return `${METRES.format(width)} × ${METRES.format(depth)} × ${METRES.format(height)} m`;
 }

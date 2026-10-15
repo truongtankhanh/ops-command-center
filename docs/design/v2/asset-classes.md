@@ -367,8 +367,8 @@ would read Running: a leak sensor has no state point.
 A code-owned table, `lib/assetParts.ts` in the console, for the two modelled classes only: the part's role, its label
 and the point it is bound to, taken from the Bound part columns above. **It is temporary**: V2-14 removes it when the
 model's `extras` supply the bindings (ADR-0020), and a class without a model has **no Parts section** (frame 15).
-Static parts (`Casing`, `Enclosure`, …) bind nothing and get no row. A label is the node name in sentence case, where
-frames 03 and 08 spell it otherwise the frame wins.
+A label is the node name in sentence case; where frames 03 and 08 spell a part otherwise, the table's word stands
+(settled in V2-09.9: frame 08 draws `Battery` and `Main breaker`, the table says "Starter battery" and "Breaker").
 
 | Class               | Node (role)    | Label           | Point             | Motion |
 | ------------------- | -------------- | --------------- | ----------------- | ------ |
@@ -385,7 +385,26 @@ frames 03 and 08 spell it otherwise the frame wins.
 | `standby_generator` | `Breaker`      | Breaker         | `breakerClosed`   | turn   |
 | `standby_generator` | `ControlPanel` | Control panel   | `controlMode`     | tint   |
 
-"Starter battery" and "Radiator" are frame 08's words, not the node names'.
+"Radiator" is frame 08's word, not the node name's; "Starter battery" names what the point is, as `starterBatteryV`
+does.
+
+Settled 2026-10-15 (V2-09.9) by the tech lead: every proposal of the analysis is accepted as written.
+
+- **Static parts are rows.** The ones a frame draws are listed with the table's bound parts, in the frames' order,
+  and read "static": `Casing`, `FanStack` and `ControlPanel` on the cooling tower, `Enclosure` on the generator
+  (frame 08's "see-through" describes the 3D view, which the inspector does not have). `Pipe` and `Riser` of the
+  brief's tree are in no frame and have no row. A part another part sits under (`FanStack`, `ControlPanel`) is
+  drawn open, with the children one level in: `FanBlade` under `FanStack`, `Switch` under `ControlPanel` on the
+  tower and `Breaker` under `ControlPanel` on the generator.
+- **A part shows its one bound reading**, written as a readings row writes it ("1,420 rpm", "41 °C", "86 %",
+  "Auto", "Open"), "—" while it has none, and "last 1,420 rpm" while the asset is not live. Not built, because
+  there is no single bound reading behind them: frame 08's "stopped · 41 °C" and "fan stopped", frame 03's
+  "71 °C · 18.6 A", "64 % open" and "On · Auto".
+- **Rows are read, not chosen.** A row is a `treeitem` and not a button until V2-15 makes parts selectable; the
+  list has one tab stop and the arrow keys, Home and End move through it.
+- **The section is keyed on the class being in this table**, not on the class's model: `model_key` is `null` for
+  every class until V2-13, so the table says which classes are modelled. A class that is in no table and has a model
+  gets neither the section nor the "No 3D model" note.
 
 ### Reading rows
 
@@ -409,13 +428,14 @@ A table by point `key`, in `lib/readingLabels.ts`; any other boolean reads "Yes"
 sentence case. A value this table does not know is drawn as it came (types, kinds and values can arrive from a newer
 API first). A follow-up may move the words into the catalogue (a column and a migration) if a site needs its own.
 
-| `key`          | Value                    | Word                        |
-| -------------- | ------------------------ | --------------------------- |
-| `leakDetected` | `true` · `false`         | Wet · Dry                   |
-| `inService`    | `true` · `false`         | In service · Out of service |
-| `running`      | `true` · `false`         | Running · Stopped           |
-| `armPosition`  | `up` · `down` · `moving` | Up · Down · Moving          |
-| `carFloor`     | _n_                      | Floor _n_                   |
+| `key`           | Value                    | Word                        |
+| --------------- | ------------------------ | --------------------------- |
+| `leakDetected`  | `true` · `false`         | Wet · Dry                   |
+| `inService`     | `true` · `false`         | In service · Out of service |
+| `running`       | `true` · `false`         | Running · Stopped           |
+| `armPosition`   | `up` · `down` · `moving` | Up · Down · Moving          |
+| `carFloor`      | _n_                      | Floor _n_                   |
+| `breakerClosed` | `true` · `false`         | Closed · Open               |
 
 ### Place line
 
@@ -507,6 +527,19 @@ inspector sheet says, where the sections above give the rows and the state but n
   minutes old; the inspector adds its latest value at the server's time while live, and does not when stale.
 - **States of the sheet.** Loading draws skeleton rows shaped like the head; an asset that no longer exists reads
   "This asset no longer exists."; a rate limit and a failed load are the incident detail's.
+
+Settled 2026-10-15 (V2-09.9), the three blocks below the readings:
+
+- **Parts** are § Parts of an asset: the modelled classes only, below the readings.
+- **The incident section** lists the asset's unresolved incidents as the feed draws them, most severe first, and is
+  titled "Incident raised by this asset" ("Incidents raised …" for several). Nothing resolved is listed, and with
+  none open there is no section (the head's "No open incidents" says it). It is not drawn while the incident list
+  loads. "Open INC-000108" sits under the first row, in the section, and names the incident the head names;
+  opening an incident closes the inspector, and the incident sheet's own footer decides what the user may do.
+- **The no-model note** is for a class that is in no part table and has no model: a "No 3D model" chip in the head
+  and an "In the twin" section: "This asset class has no model yet, so it is drawn as a 1.4 × 1.4 × 1.4 m neutral
+  box at its position. Its readings, states and incident work exactly as for modelled assets." The size is the
+  class's footprint, width × depth × height.
 
 ## Open questions
 

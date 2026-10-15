@@ -35,6 +35,8 @@ describe('formatReading', () => {
       ['arm up', enumPoint('armPosition'), 'up', 'Up'],
       ['arm down', enumPoint('armPosition'), 'down', 'Down'],
       ['arm moving', enumPoint('armPosition'), 'moving', 'Moving'],
+      ['breaker closed', bool('breakerClosed'), true, 'Closed'],
+      ['breaker open', bool('breakerClosed'), false, 'Open'],
       ['a car floor', num('carFloor', null), 2, 'Floor 2'],
       ['a basement floor', num('carFloor', null), -1, 'Floor -1'],
     ])('%s', (_name, point, value, expected) => {
@@ -48,8 +50,8 @@ describe('formatReading', () => {
 
   describe('a key with no word entry', () => {
     it('reads a boolean as Yes / No', () => {
-      expect(formatReading(bool('breakerClosed'), true)).toBe('Yes');
-      expect(formatReading(bool('breakerClosed'), false)).toBe('No');
+      expect(formatReading(bool('interlockClosed'), true)).toBe('Yes');
+      expect(formatReading(bool('interlockClosed'), false)).toBe('No');
     });
 
     it('reads an enum value in sentence case', () => {

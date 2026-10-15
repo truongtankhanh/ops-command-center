@@ -267,6 +267,7 @@ export {
   Box,
   Check,
   ChevronDown,
+  CircleDot,
   CircleX,
   Clock,
   Crosshair,

@@ -2,7 +2,14 @@ import type { AssetDetail } from '@occ/contracts';
 import { type ReactNode, useCallback, useMemo } from 'react';
 import { ApiRequestError, isRateLimited } from '../api/client';
 import { useAsset, useIncidents, useZones } from '../api/queries';
-import { inspectorRows, inspectorStateText, readingIsStale } from '../lib/assetInspector';
+import {
+  footprintText,
+  incidentsOf,
+  inspectorRows,
+  inspectorStateText,
+  readingIsStale,
+} from '../lib/assetInspector';
+import { partsOf } from '../lib/assetParts';
 import { assetStates, openIncidentOf, placeLabel } from '../lib/assets';
 import { severityLabel } from '../lib/incidents';
 import { staleAfterMs } from '../lib/telemetryFreshness';
@@ -10,11 +17,15 @@ import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';
+import { Hint } from '../ui/Hint';
 import { Icon } from '../ui/Icon';
-import { assetStateIcon, severityIcon, zoneKindIcon } from '../ui/icons';
+import { assetStateIcon, Box, severityIcon, zoneKindIcon } from '../ui/icons';
 import { Sheet } from '../ui/Sheet';
+import { SheetSection } from '../ui/SheetSection';
 import { Skeleton } from '../ui/Skeleton';
+import { AssetIncidents } from './AssetIncidents';
 import styles from './AssetInspector.module.css';
+import { AssetParts } from './AssetParts';
 import { AssetReadings } from './AssetReadings';
 import { LoadFailed, RateLimited } from './LoadStates';
 
@@ -124,6 +135,15 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
   );
   const incident = incidents === undefined ? undefined : openIncidentOf(detail, incidents);
   const rows = useMemo(() => inspectorRows(detail.points, detail.rules), [detail]);
+  // Parts are keyed on the class being in the console's table, not on `modelUrl`, which is `null`
+  // for every class until V2-13. A class that has a model and no table row yet gets neither the
+  // parts nor the "no model" words, rather than a false "No 3D model" (V2-09.9).
+  const parts = partsOf(detail.class.code);
+  const unmodelled = parts === undefined && detail.class.modelUrl === null;
+  const raised = useMemo(
+    () => (incidents === undefined ? [] : incidentsOf(detail, incidents)),
+    [detail, incidents],
+  );
 
   const pillText = inspectorStateText(state, entry?.receivedAt ?? null, serverNow);
   // A fault keeps its incident's severity glyph; `unknown` has no word and so no glyph.
@@ -167,6 +187,12 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
               {incident ? `Fault · ${incident.code}` : 'No open incidents'}
             </span>
           )}
+          {unmodelled && (
+            <span className={styles.chip}>
+              <Icon glyph={Box} size={16} className={styles.chipIcon} />
+              No 3D model
+            </span>
+          )}
         </div>
       </div>
       <AssetReadings
@@ -176,6 +202,30 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
         serverNow={serverNow}
         stale={stale}
       />
+      {parts && (
+        <AssetParts
+          assetCode={detail.code}
+          parts={parts}
+          points={detail.points}
+          entry={entry}
+          stale={stale}
+        />
+      )}
+      {/* Not drawn while the incident list loads, as the head's badge: "none" would be a guess. */}
+      {raised.length > 0 && <AssetIncidents incidents={raised} />}
+      {unmodelled && (
+        <SheetSection title="In the twin">
+          <Hint>{noModelNote(detail.class.footprintM)}</Hint>
+        </SheetSection>
+      )}
     </>
+  );
+}
+
+/** Frame 15's note, with the class's box in place of the frame's one cube. */
+function noModelNote(footprint: AssetDetail['class']['footprintM']): string {
+  return (
+    `This asset class has no model yet, so it is drawn as a ${footprintText(footprint)} neutral ` +
+    'box at its position. Its readings, states and incident work exactly as for modelled assets.'
   );
 }

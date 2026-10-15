@@ -1,0 +1,14 @@
+/* The incident rows of the asset inspector (frame 15 `.row` and `.btn-block`). */
+
+.list {
+  display: grid;
+  gap: var(--list-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* `Button` sets no outer layout; frame 15's block button fills the row. */
+.open {
+  width: 100%;
+}
