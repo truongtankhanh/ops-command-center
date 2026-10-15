@@ -1,12 +1,14 @@
 import { usePermission } from '../auth/usePermission';
 import { formatAge } from '../lib/incidents';
+import type { TelemetryPillState } from '../lib/telemetryState';
 import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';
 import { useShortcut } from '../lib/useShortcut';
+import { useTelemetryStatus } from '../realtime/telemetryStore';
 import { type ConnectionState, useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { connectionIcon, Plus } from '../ui/icons';
+import { connectionIcon, Plus, telemetryIcon } from '../ui/icons';
 import { Brand } from './Brand';
 import styles from './Header.module.css';
 import { KpiTiles } from './KpiTiles';
@@ -17,6 +19,15 @@ const CONNECTION_LABEL: Record<ConnectionState, string> = {
   connecting: 'Connecting…',
   reconnecting: 'Reconnecting…',
   offline: 'Offline',
+};
+
+// The wording of V2-08.1; frames 01 and 05 draw `live` and `paused`.
+const TELEMETRY_LABEL: Record<TelemetryPillState, string> = {
+  connecting: 'Telemetry connecting…',
+  live: 'Telemetry',
+  paused: 'Telemetry paused',
+  reconnecting: 'Telemetry reconnecting…',
+  unavailable: 'Telemetry unavailable',
 };
 
 const DATE = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -40,7 +51,10 @@ export function Header() {
     <header className={styles.header}>
       <Brand />
       <KpiTiles className={styles.kpis} />
-      <ConnectionPill />
+      <div className={styles.conns}>
+        <ConnectionPill />
+        <TelemetryPill />
+      </div>
       <Clock />
       {canReport && (
         <Button
@@ -77,6 +91,23 @@ function ConnectionPill() {
       {offlineSince !== null && (
         <small className={styles.age}>since {formatClockTime(offlineSince)}</small>
       )}
+    </div>
+  );
+}
+
+/**
+ * The second pill (frames 01, 05): whether readings are arriving, which is separate from whether
+ * incidents are (the Live pill). Same markup and live-region rule as `ConnectionPill`. It says the
+ * state only: since when the readings stopped is the banner's line, over the stage.
+ */
+function TelemetryPill() {
+  const { pill } = useTelemetryStatus();
+  return (
+    <div className={styles.pill} data-state={pill}>
+      <span role="status" className={styles.pillState}>
+        <Icon glyph={telemetryIcon(pill)} size={14} />
+        {TELEMETRY_LABEL[pill]}
+      </span>
     </div>
   );
 }

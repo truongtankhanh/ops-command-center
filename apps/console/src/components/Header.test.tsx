@@ -7,6 +7,8 @@ import { signOut } from '../auth/session';
 import { useSession } from '../auth/store';
 import type * as CriticalCue from '../lib/criticalCue';
 import { playCriticalCue, unlockAudio } from '../lib/criticalCue';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { Header } from './Header';
@@ -43,12 +45,19 @@ const incident = (id: string, severity: IncidentSeverity, status: IncidentStatus
 const tiles = () =>
   within(screen.getByRole('list', { name: /Active incidents by severity/ })).getAllByRole('button');
 
+/**
+ * A pill's state word. The header has two live regions (events, telemetry), so one is asked for by
+ * its text; `getByRole('status')` alone would find both.
+ */
+const stateWord = (label: string) => screen.getByText(label, { selector: '[role="status"]' });
+
 describe('Header', () => {
   let client: QueryClient;
 
   beforeEach(() => {
     resetStore(useSession);
     resetStore(useConsole);
+    resetStore(useTelemetryStore);
     vi.mocked(signOut).mockReset();
     useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
     // useIncidents never goes stale, so a seeded list means no request. The pending fetch is a
@@ -192,7 +201,7 @@ describe('Header', () => {
     ] as const)('names the %s state', (connection, label) => {
       act(() => useConsole.setState({ connection }));
 
-      expect(screen.getByRole('status')).toHaveTextContent(label);
+      expect(stateWord(label)).toBeInTheDocument();
     });
 
     it('shows how long ago the live link last answered, outside the status region', () => {
@@ -200,21 +209,24 @@ describe('Header', () => {
 
       expect(screen.getByText('12s ago')).toBeInTheDocument();
       // The age ticks; announcing it would interrupt a screen reader every few seconds.
-      expect(screen.getByRole('status')).not.toHaveTextContent(/ago/);
+      expect(stateWord('Live')).not.toHaveTextContent(/ago/);
 
       act(() => useConsole.setState({ connection: 'offline' }));
       expect(screen.queryByText(/ago/)).toBeNull();
     });
 
-    it.each(['offline', 'reconnecting'] as const)(
+    it.each([
+      ['offline', 'Offline'],
+      ['reconnecting', 'Reconnecting…'],
+    ] as const)(
       'says since when the link is down while %s, outside the status region',
-      (connection) => {
+      (connection, label) => {
         // A local time, so the text does not depend on the runner's timezone.
         const lostAt = new Date(2026, 9, 8, 15, 2).getTime();
         act(() => useConsole.setState({ connection, offlineSince: lostAt }));
 
         expect(screen.getByText('since 15:02')).toBeInTheDocument();
-        expect(screen.getByRole('status')).not.toHaveTextContent(/since/);
+        expect(stateWord(label)).not.toHaveTextContent(/since/);
       },
     );
 
@@ -229,6 +241,65 @@ describe('Header', () => {
       const time = screen.getByText(/^\d{2}:\d{2}$/);
       expect(Number.isNaN(Date.parse(time.closest('time')!.getAttribute('datetime')!))).toBe(false);
       expect(screen.getByText(/^[A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2} · GMT/)).toBeInTheDocument();
+    });
+  });
+
+  // The second pill (V2-08.6): whether readings arrive, apart from whether incidents do.
+  describe('telemetry', () => {
+    const setTelemetry = (patch: Partial<TelemetryState>) =>
+      act(() =>
+        useTelemetryStore.setState({
+          view: { state: { ...initialTelemetryState, ...patch }, series: new Map() },
+        }),
+      );
+
+    it('reads "connecting" until the first status is heard', () => {
+      expect(stateWord('Telemetry connecting…')).toBeInTheDocument();
+    });
+
+    it.each([
+      ['live', 'Telemetry', { socket: 'live', upstream: 'live' }],
+      [
+        'paused',
+        'Telemetry paused',
+        { socket: 'live', upstream: 'paused', upstreamSince: '2026-10-15T08:41:20.000Z' },
+      ],
+      ['reconnecting', 'Telemetry reconnecting…', { socket: 'reconnecting', socketSince: 1 }],
+      ['unavailable', 'Telemetry unavailable', { socket: 'unavailable' }],
+    ] as const)('names the %s state', (state, label, patch) => {
+      setTelemetry(patch);
+
+      expect(stateWord(label).parentElement).toHaveAttribute('data-state', state);
+    });
+
+    it('keeps the two pills apart: events down, telemetry live', () => {
+      act(() => useConsole.setState({ connection: 'offline' }));
+      setTelemetry({ socket: 'live', upstream: 'live' });
+
+      expect(stateWord('Offline')).toBeInTheDocument();
+      expect(stateWord('Telemetry')).toBeInTheDocument();
+    });
+
+    it('keeps the two pills apart: events live, telemetry paused', () => {
+      act(() => useConsole.setState({ connection: 'live' }));
+      setTelemetry({ socket: 'live', upstream: 'paused', upstreamSince: '2026-10-15T08:41:20Z' });
+
+      expect(stateWord('Live')).toBeInTheDocument();
+      expect(stateWord('Telemetry paused')).toBeInTheDocument();
+    });
+
+    it('says only the state, with the since left to the banner', () => {
+      setTelemetry({ socket: 'live', upstream: 'paused', upstreamSince: '2026-10-15T08:41:20Z' });
+
+      expect(stateWord('Telemetry paused')).toHaveTextContent(/^Telemetry paused$/);
+      expect(screen.queryByText(/since/)).toBeNull();
+    });
+
+    it('is shown to a viewer too', () => {
+      act(() => useSession.getState().signedIn({ displayName: 'Demo Viewer', roles: ['viewer'] }));
+      setTelemetry({ socket: 'live', upstream: 'live' });
+
+      expect(stateWord('Telemetry')).toBeInTheDocument();
     });
   });
 
