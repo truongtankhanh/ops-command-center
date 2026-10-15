@@ -441,6 +441,8 @@ source.
 | 03, 08 Inspector                     | Rows: headline, rule-watched points, then "All points"; no "Rated 22 A", "ΔT" or merged "Water in / out", no tank capacity; the set point is its own row              | V2-09.1 (`asset-classes.md`)     |
 | 15 Sensor without model              | "Replace below 20 %" reads "Low at 20 %"; "Since 15:17" gives way to the reading's age; no "riser cupboard" place text; no Parts section                              | V2-09.1 (`asset-classes.md`)     |
 | 02, 03 Assets list                   | Booster pump draws `Gauge` and Gas detector `Cylinder`, not `activity`: that glyph is Running and the Telemetry pill's live state                                     | V2-09.4 (`icons.md`)             |
+| 03, 05, 08 Parts                     | Static parts are "static" rows (no "see-through"); a part shows its one bound reading, not "stopped · 41 °C", "71 °C · 18.6 A"; "last …" when stale                   | V2-09.9 (`asset-classes.md`)     |
+| 15 Sensor without model              | The note gives the box's three sides ("1.4 × 1.4 × 1.4 m"); "Open INC-…" sits in the incident section, not in the foot                                                | V2-09.9 (`asset-classes.md`)     |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).

@@ -1,0 +1,51 @@
+/*
+ * The parts tree of the asset inspector (frames 03, 05, 08; the mockups' `twin.css` `.tree`,
+ * `.tree-row`, `.l1`). State is an attribute: `data-level` for the indent, `data-stale` for a
+ * remembered value. No hover or selected look: a row is read, not chosen, until V2-15.
+ */
+
+.tree {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: calc(18px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: calc(34px * var(--ui-scale));
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-s);
+  font-size: var(--type-m);
+}
+
+.row[data-level='2'] {
+  padding-left: calc(26px * var(--ui-scale));
+}
+
+.glyph {
+  color: var(--text-tertiary);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.value {
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* A remembered reading (frame 05): the word "last" says it, the tone only agrees. */
+.row[data-stale='true'] .value {
+  color: var(--text-tertiary);
+}

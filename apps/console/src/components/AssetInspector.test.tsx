@@ -116,6 +116,70 @@ const INCIDENT: Incident = {
   version: 1,
 };
 
+const FUEL = point({ key: 'fuelLevelPct', label: 'Fuel level', unit: '%', headline: 1 });
+const COOLANT = point({ key: 'coolantTempC', label: 'Coolant temperature', unit: '°C' });
+const BREAKER = point({ key: 'breakerClosed', label: 'Main breaker', unit: null, kind: 'boolean' });
+
+/** The other modelled class: its parts include a parent with a boolean and an enum underneath. */
+const GENERATOR: AssetDetail = {
+  ...DETAIL,
+  id: 'asset-gen-01',
+  code: 'GEN-01',
+  name: 'Standby generator',
+  class: {
+    id: 'class-generator',
+    code: 'standby_generator',
+    name: 'Standby generator',
+    modelUrl: null,
+    footprintM: { width: 6, depth: 2.5, height: 3 },
+  },
+  headline: [FUEL],
+  points: [FUEL, COOLANT, BREAKER, MODE],
+  rules: [],
+};
+
+const generatorEntry = (): AssetTelemetryState => ({
+  online: true,
+  receivedAt: RECEIVED,
+  headline: { fuelLevelPct: 86 },
+  values: { fuelLevelPct: 86, coolantTempC: 41, breakerClosed: false, controlMode: 'auto' },
+  keyReceivedAt: {},
+});
+
+const LEAK = point({
+  key: 'leakDetected',
+  label: 'Leak',
+  unit: null,
+  kind: 'boolean',
+  headline: 1,
+});
+
+/** A class with no part table and no model (frame 15). */
+const SENSOR: AssetDetail = {
+  ...DETAIL,
+  id: 'asset-lks-b3',
+  code: 'LKS-B3',
+  name: 'Leak sensor, level 3',
+  class: {
+    id: 'class-leak',
+    code: 'leak_sensor',
+    name: 'Leak sensor',
+    modelUrl: null,
+    footprintM: { width: 1.4, depth: 1.4, height: 1.4 },
+  },
+  headline: [LEAK],
+  points: [LEAK],
+  rules: [],
+};
+
+const sensorEntry = (): AssetTelemetryState => ({
+  online: true,
+  receivedAt: RECEIVED,
+  headline: { leakDetected: true },
+  values: { leakDetected: true },
+  keyReceivedAt: {},
+});
+
 const entry = (values: AssetTelemetryState['values'] = {}): AssetTelemetryState => ({
   online: true,
   receivedAt: RECEIVED,
@@ -194,6 +258,12 @@ const readingRow = (label: string): HTMLElement => {
   const row = screen.getByText(label).closest('li');
   if (!row) throw new Error(`no reading row for ${label}`);
   return row;
+};
+
+const partRow = (label: string): HTMLElement => {
+  const row = within(screen.getByRole('tree')).getByText(label).closest('[role="treeitem"]');
+  if (!row) throw new Error(`no part row for ${label}`);
+  return row as HTMLElement;
 };
 
 describe('AssetInspector', () => {
@@ -484,6 +554,285 @@ describe('AssetInspector', () => {
     });
   });
 
+  describe('parts', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    it('lists the parts of a modelled class in the frames order, with static ones', () => {
+      renderInspector({ incidents: [] });
+
+      expect(screen.getByRole('heading', { level: 3, name: 'Parts' })).toBeInTheDocument();
+      const items = within(screen.getByRole('tree', { name: 'Parts of CT-01' })).getAllByRole(
+        'treeitem',
+      );
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Casingstatic',
+        'Fan stackstatic',
+        'Fan blade1,420 rpm',
+        'Fan motor71 °C',
+        'Pump—',
+        'Valve—',
+        'Control panelstatic',
+        'Switch—',
+      ]);
+    });
+
+    it('puts a child one level under its parent and marks the parent open', () => {
+      renderInspector({ incidents: [] });
+
+      expect(partRow('Fan stack')).toHaveAttribute('aria-level', '1');
+      expect(partRow('Fan stack')).toHaveAttribute('aria-expanded', 'true');
+      expect(partRow('Fan blade')).toHaveAttribute('aria-level', '2');
+      expect(partRow('Fan blade')).not.toHaveAttribute('aria-expanded');
+      expect(partRow('Casing')).not.toHaveAttribute('aria-expanded');
+    });
+
+    it('shows a dash for a part whose point the asset does not have', () => {
+      renderInspector({ incidents: [] });
+
+      // `DETAIL` has no pump flow point; the part stays and says so.
+      expect(partRow('Pump')).toHaveTextContent('—');
+    });
+
+    it('reads a generator in the words of its points', () => {
+      hold({ assets: { 'GEN-01': generatorEntry() }, afterMs: 400 });
+
+      renderInspector({ detail: GENERATOR, incidents: [] });
+
+      expect(partRow('Engine')).toHaveTextContent('41 °C');
+      expect(partRow('Fuel tank')).toHaveTextContent('86 %');
+      expect(partRow('Control panel')).toHaveTextContent('Auto');
+      expect(partRow('Breaker')).toHaveTextContent('Open');
+      expect(partRow('Breaker')).toHaveAttribute('aria-level', '2');
+      expect(partRow('Enclosure')).toHaveTextContent('static');
+    });
+
+    it('is not a control: no button, no selection', () => {
+      renderInspector({ incidents: [] });
+
+      const tree = screen.getByRole('tree');
+      expect(within(tree).queryByRole('button')).toBeNull();
+      expect(within(tree).queryAllByRole('treeitem', { selected: true })).toHaveLength(0);
+    });
+
+    it('has one tab stop and moves it with the arrow keys, Home and End', () => {
+      renderInspector({ incidents: [] });
+      const items = within(screen.getByRole('tree')).getAllByRole('treeitem');
+      const last = items.length - 1;
+      expect(items.map((item) => item.getAttribute('tabindex'))).toEqual([
+        '0',
+        ...items.slice(1).map(() => '-1'),
+      ]);
+
+      fireEvent.keyDown(items[0] as HTMLElement, { key: 'ArrowDown' });
+      expect(items[1]).toHaveFocus();
+      expect(items[1]).toHaveAttribute('tabindex', '0');
+      expect(items[0]).toHaveAttribute('tabindex', '-1');
+
+      fireEvent.keyDown(items[1] as HTMLElement, { key: 'End' });
+      expect(items[last]).toHaveFocus();
+      // A list does not wrap.
+      fireEvent.keyDown(items[last] as HTMLElement, { key: 'ArrowDown' });
+      expect(items[last]).toHaveFocus();
+
+      fireEvent.keyDown(items[last] as HTMLElement, { key: 'Home' });
+      expect(items[0]).toHaveFocus();
+      fireEvent.keyDown(items[0] as HTMLElement, { key: 'ArrowUp' });
+      expect(items[0]).toHaveFocus();
+    });
+
+    it('leaves the other keys to the browser', () => {
+      renderInspector({ incidents: [] });
+      const first = within(screen.getByRole('tree')).getAllByRole('treeitem')[0] as HTMLElement;
+
+      // `fireEvent` returns `false` when the handler called `preventDefault`.
+      expect(fireEvent.keyDown(first, { key: 'Tab' })).toBe(true);
+    });
+
+    it('says "last" before a reading that is not live, and not before a static part', () => {
+      hold({ assets: { 'CT-01': entry() }, afterMs: 72_000 });
+
+      renderInspector({ incidents: [] });
+
+      expect(partRow('Fan blade')).toHaveTextContent('last 1,420 rpm');
+      expect(partRow('Fan motor')).toHaveTextContent('last 71 °C');
+      expect(partRow('Casing')).toHaveTextContent('static');
+      expect(partRow('Casing')).not.toHaveTextContent('last');
+      expect(partRow('Fan blade')).toHaveAttribute('data-stale', 'true');
+      expect(partRow('Casing')).not.toHaveAttribute('data-stale');
+    });
+
+    it('shows a dash, not "last —", for a part with no reading while stale', () => {
+      hold({ assets: { 'CT-01': entry() }, afterMs: 72_000 });
+
+      renderInspector({ incidents: [] });
+
+      expect(partRow('Pump')).toHaveTextContent('—');
+      expect(partRow('Pump')).not.toHaveTextContent('last');
+    });
+
+    it('has no Parts section for a class that is not in the table, and no error', () => {
+      hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
+
+      renderInspector({ detail: SENSOR, incidents: [] });
+
+      expect(screen.queryByRole('tree')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Leak sensor, level 3' }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('a class without a model', () => {
+    beforeEach(() => hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 }));
+
+    it('says so in the head and in the twin, with the size from the class footprint', () => {
+      renderInspector({ detail: SENSOR, incidents: [] });
+
+      expect(screen.getByText('No 3D model')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: 'In the twin' })).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'This asset class has no model yet, so it is drawn as a 1.4 × 1.4 × 1.4 m neutral box ' +
+            'at its position. Its readings, states and incident work exactly as for modelled assets.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('gives the three sides of a class that is not a cube', () => {
+      const switchgear: AssetDetail = {
+        ...SENSOR,
+        class: { ...SENSOR.class, footprintM: { width: 6, depth: 1, height: 2.3 } },
+      };
+
+      renderInspector({ detail: switchgear, incidents: [] });
+
+      expect(screen.getByText(/drawn as a 6 × 1 × 2\.3 m neutral box/)).toBeInTheDocument();
+    });
+
+    it('says nothing about a model for a class in the table, whose model_key is still null', () => {
+      hold({ assets: { 'CT-01': entry() }, afterMs: 400 });
+
+      renderInspector({ incidents: [] });
+
+      expect(screen.queryByText('No 3D model')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
+    });
+
+    it('does not claim "No 3D model" for a class that has a model and no table row yet', () => {
+      const modelled: AssetDetail = {
+        ...SENSOR,
+        class: { ...SENSOR.class, modelUrl: '/models/leak_sensor.0123456789ab.glb' },
+      };
+
+      renderInspector({ detail: modelled, incidents: [] });
+
+      expect(screen.queryByText('No 3D model')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
+      expect(screen.queryByRole('tree')).toBeNull();
+    });
+  });
+
+  describe('the incident this asset raised', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    const SECOND: Incident = {
+      ...INCIDENT,
+      id: 'inc-2',
+      code: 'INC-000109',
+      severity: 'critical',
+      title: 'Vibration over limit',
+    };
+
+    it('shows it as the feed does, with a button that names it', () => {
+      renderInspector({ incidents: [INCIDENT] });
+
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'Incident raised by this asset' }),
+      ).toBeInTheDocument();
+      expect(screen.getByText('Motor over temperature')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Open INC-000108' })).toBeInTheDocument();
+    });
+
+    it('opens the incident, which closes the inspector', async () => {
+      useConsole.getState().selectAsset('CT-01');
+      renderInspector({ incidents: [INCIDENT] });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open INC-000108' }));
+
+      expect(useConsole.getState().selectedIncidentId).toBe('inc-1');
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
+    it('opens it from its row as well', async () => {
+      useConsole.getState().selectAsset('CT-01');
+      renderInspector({ incidents: [INCIDENT] });
+      const row = screen.getByText('Motor over temperature').closest('button') as HTMLElement;
+
+      await userEvent.click(row);
+
+      expect(useConsole.getState().selectedIncidentId).toBe('inc-1');
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
+    it('lists several most severe first, and the button names the one the head names', () => {
+      renderInspector({ incidents: [INCIDENT, SECOND] });
+
+      expect(
+        screen.getByRole('heading', { level: 3, name: 'Incidents raised by this asset' }),
+      ).toBeInTheDocument();
+      // Each title sits after a visually hidden "Equipment fault: ", so compare positions, not text.
+      const critical = screen.getByText('Vibration over limit');
+      const high = screen.getByText('Motor over temperature');
+      expect(
+        critical.compareDocumentPosition(high) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: /^Open INC-/ })).toHaveLength(1);
+      expect(screen.getByRole('button', { name: 'Open INC-000109' })).toBeInTheDocument();
+      expect(screen.getByText('Fault · INC-000109')).toBeInTheDocument();
+    });
+
+    it('draws no section when nothing is open: a resolved incident is not listed', () => {
+      const resolved: Incident = { ...INCIDENT, status: 'resolved', resolvedAt: RECEIVED };
+
+      renderInspector({ incidents: [resolved] });
+
+      expect(screen.queryByRole('heading', { name: /raised by this asset/ })).toBeNull();
+      expect(screen.getByText('No open incidents')).toBeInTheDocument();
+    });
+
+    it("draws no section for another asset's incident", () => {
+      renderInspector({ incidents: [{ ...INCIDENT, assetId: 'asset-ct-02' }] });
+
+      expect(screen.queryByRole('heading', { name: /raised by this asset/ })).toBeNull();
+    });
+
+    it('draws nothing while the incident list is loading', () => {
+      renderInspector();
+
+      expect(screen.queryByRole('heading', { name: /raised by this asset/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Open INC-/ })).toBeNull();
+    });
+
+    it('shows the fault of an unmodelled asset with its row, before the note', () => {
+      hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
+      const leak: Incident = {
+        ...INCIDENT,
+        id: 'inc-leak',
+        assetId: SENSOR.id,
+        title: 'Water leak',
+      };
+
+      renderInspector({ detail: SENSOR, incidents: [leak] });
+
+      const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
+      expect(headings.indexOf('Incident raised by this asset')).toBeGreaterThan(-1);
+      expect(headings.indexOf('Incident raised by this asset')).toBeLessThan(
+        headings.indexOf('In the twin'),
+      );
+    });
+  });
+
   describe('re-rendering', () => {
     function renderProfiled() {
       const onRender = vi.fn();
@@ -532,7 +881,8 @@ describe('AssetInspector', () => {
         })),
       );
       expect(onRender.mock.calls.length).toBeGreaterThan(before);
-      expect(screen.getByText('1,500 rpm')).toBeInTheDocument();
+      // The parts list shows the fan blade's reading too: scope to the readings row.
+      expect(within(readingRow('Fan speed')).getByText('1,500 rpm')).toBeInTheDocument();
     });
   });
 });
