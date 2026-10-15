@@ -168,6 +168,11 @@ const PAIRS: Pair[] = [
     min: UI,
     reportOnly: 'lightness carries the value; the legend and the Assets tab carry the number',
   })),
+  // V2-09.7 adds no new pair: the sparkline's line and dot (`--accent`) and its dashed limit and
+  // stale line (`--text-tertiary`) are the 4.5:1 pairs on every surface at the top of this list, and
+  // its over-limit tint (`--sev-*`) is the severity pairs on `--surface-0` … `--surface-2`. It sits
+  // on `--surface-1` (the sheet) and `--surface-2` (the incident evidence block); both clear the 3:1
+  // a graphic needs (WCAG 1.4.11).
 ];
 
 const tokensCss = readFileSync(TOKENS_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
