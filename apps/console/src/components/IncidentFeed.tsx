@@ -50,6 +50,8 @@ export function IncidentFeed() {
   const now = useNow();
   const [query, setQuery] = useState('');
   const [focusId, setFocusId] = useState<string | null>(null);
+  // Both panels stay mounted (`SidePanel`), so the key belongs to the visible one only.
+  const visiblePanel = useConsole((s) => s.sidePanel === 'incidents');
   const feedRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -58,7 +60,7 @@ export function IncidentFeed() {
     searchRef.current?.focus();
     searchRef.current?.select();
   }, []);
-  useShortcut('/', focusSearch, true);
+  useShortcut('/', focusSearch, visiblePanel);
 
   // A technician's tabs are Active · Mine to handle · All, everyone else's Active · Resolved · All.
   // The stored filter may be one the user is not offered (roles change on token renewal): show
@@ -116,7 +118,7 @@ export function IncidentFeed() {
   };
 
   return (
-    <aside ref={feedRef} id="incident-feed" className={styles.feed} aria-label="Incidents">
+    <section ref={feedRef} id="incident-feed" className={styles.feed} aria-label="Incidents">
       <FeedSearch value={query} onChange={setQuery} ref={searchRef} className={styles.search} />
       {/* Always mounted: screen readers announce a change in an existing live region. */}
       <p role="status" className={styles.hidden}>
@@ -186,7 +188,7 @@ export function IncidentFeed() {
           </ul>
         )}
       </Tabs>
-    </aside>
+    </section>
   );
 }
 

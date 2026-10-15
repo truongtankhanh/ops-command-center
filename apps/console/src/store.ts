@@ -1,5 +1,6 @@
 import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
+import type { AssetFilter } from './lib/assets';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/density';
@@ -14,6 +15,9 @@ export const FRESH_LIMIT = 20;
 
 /** `connecting` is the first connect only; every later attempt is `reconnecting`. */
 export type ConnectionState = 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+/** The two panels of the side column (frame 01). */
+export type SidePanelTab = 'incidents' | 'assets';
 
 /**
  * Where the incident being reported is, chosen in the report form or on the map. Kept here, not in
@@ -58,8 +62,24 @@ interface ConsoleState extends ReportLocation {
    * `FRESH_LIMIT`. One leaves when it is selected or no longer open.
    */
   fresh: ReadonlySet<string>;
-  /** The report form is open. Mutually exclusive with a selected incident. */
+  /** The report form is open. Mutually exclusive with a selected incident and a selected asset. */
   reporting: boolean;
+  /**
+   * The panel the side column shows. Both stay mounted, so switching keeps the incident feed's
+   * search, selection and keyboard stop. Not remembered: the console opens on incidents.
+   */
+  sidePanel: SidePanelTab;
+  /**
+   * The asset open in the inspector, by asset **code**, or `null`. Mutually exclusive with a
+   * selected incident and the report form: they share the sheet (V2-09.8).
+   */
+  selectedAssetCode: string | null;
+  /** The asset under the pointer in the list or on the map; highlights its twin. Never opens a sheet. */
+  hoveredAssetCode: string | null;
+  /** The Assets tab's filter tab. */
+  assetFilter: AssetFilter;
+  /** The Assets list shows this zone only (a group header sets it, V2-09.6); `null` shows every zone. */
+  assetZoneId: string | null;
   /**
    * Unsent timeline notes by incident id. Kept here, not in the detail, so switching to another
    * incident or to the report form and back never loses one: only Close and a sent note clear it.
@@ -84,16 +104,28 @@ interface ConsoleState extends ReportLocation {
   /** How tightly the console is spaced. Comfortable by default; remembered in this browser. */
   density: Density;
 
+  /** Selecting an incident (not `null`) also closes the report form and the selected asset. */
   select(id: string | null): void;
+  /** Also closes the selected asset: the report form takes the sheet. */
   startReport(): void;
   closeReport(): void;
   setFilter(filter: FeedFilter): void;
   /**
    * Selects `severity`, or clears it when it is already selected. Selecting also shows the active
-   * tab, because the KPI tiles count active incidents and the list must match the tile.
+   * tab and the Incidents panel, because the KPI tiles count active incidents and the list they
+   * filter must be the one on screen and must match the tile.
    */
   toggleSeverity(severity: IncidentSeverity): void;
   clearSeverity(): void;
+  setSidePanel(tab: SidePanelTab): void;
+  /**
+   * Opens `code` in the inspector, which closes the selected incident and the report form (and
+   * the pin, as they do). `null` clears the asset only: it never reopens anything.
+   */
+  selectAsset(code: string | null): void;
+  hoverAsset(code: string | null): void;
+  setAssetFilter(filter: AssetFilter): void;
+  setAssetZone(zoneId: string | null): void;
   /** Also keeps `offlineSince`: set on the first state after a loss, cleared once `live`. */
   setConnection(state: ConnectionState, at?: number): void;
   markAlive(at?: number): void;
@@ -135,6 +167,11 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   offlineSince: null,
   fresh: new Set(),
   reporting: false,
+  sidePanel: 'incidents',
+  selectedAssetCode: null,
+  hoveredAssetCode: null,
+  assetFilter: 'all',
+  assetZoneId: null,
   noteDrafts: {},
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
@@ -147,18 +184,43 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   select: (id) =>
     set((state) => {
       const closed = { selectedIncidentId: id, reporting: false, ...NO_REPORT_LOCATION };
+      // Closing the incident (`null`) is not "deselect the asset": only a new selection takes the sheet.
+      const next = id === null ? closed : { ...closed, selectedAssetCode: null };
       return id === null || !state.fresh.has(id)
-        ? closed
-        : { ...closed, fresh: without(state.fresh, id) };
+        ? next
+        : { ...next, fresh: without(state.fresh, id) };
     }),
-  startReport: () => set({ reporting: true, selectedIncidentId: null, ...NO_REPORT_LOCATION }),
+  startReport: () =>
+    set({
+      reporting: true,
+      selectedIncidentId: null,
+      selectedAssetCode: null,
+      ...NO_REPORT_LOCATION,
+    }),
   closeReport: () => set({ reporting: false, ...NO_REPORT_LOCATION }),
   setFilter: (filter) => set({ filter }),
   toggleSeverity: (severity) =>
     set((state) =>
-      state.severity === severity ? { severity: null } : { severity, filter: 'active' },
+      state.severity === severity
+        ? { severity: null }
+        : { severity, filter: 'active', sidePanel: 'incidents' },
     ),
   clearSeverity: () => set({ severity: null }),
+  setSidePanel: (sidePanel) => set({ sidePanel }),
+  selectAsset: (code) =>
+    set(
+      code === null
+        ? { selectedAssetCode: null }
+        : {
+            selectedAssetCode: code,
+            selectedIncidentId: null,
+            reporting: false,
+            ...NO_REPORT_LOCATION,
+          },
+    ),
+  hoverAsset: (hoveredAssetCode) => set({ hoveredAssetCode }),
+  setAssetFilter: (assetFilter) => set({ assetFilter }),
+  setAssetZone: (assetZoneId) => set({ assetZoneId }),
   setConnection: (connection, at = Date.now()) =>
     set((state) => ({
       connection,

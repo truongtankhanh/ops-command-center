@@ -113,6 +113,117 @@ describe('useConsole', () => {
     });
   });
 
+  describe('side panel', () => {
+    it('starts on the incidents', () => {
+      expect(state().sidePanel).toBe('incidents');
+    });
+
+    it('switches panel', () => {
+      state().setSidePanel('assets');
+      expect(state().sidePanel).toBe('assets');
+
+      state().setSidePanel('incidents');
+      expect(state().sidePanel).toBe('incidents');
+    });
+
+    it('keeps the incident selection and the severity chip while the assets are shown', () => {
+      state().select('a');
+      state().toggleSeverity('high');
+
+      state().setSidePanel('assets');
+
+      expect(state().selectedIncidentId).toBe('a');
+      expect(state().severity).toBe('high');
+    });
+  });
+
+  // The incident detail, the report form and (V2-09.8) the asset inspector share one sheet.
+  describe('asset selection', () => {
+    it('starts with no asset selected or hovered', () => {
+      expect(state().selectedAssetCode).toBeNull();
+      expect(state().hoveredAssetCode).toBeNull();
+    });
+
+    it('selects an asset and closes the incident, the report form and the pin', () => {
+      state().select('a');
+      state().startReport();
+      state().setReportZone('z1');
+      state().setPicking(true);
+
+      state().selectAsset('CT-01');
+
+      expect(state().selectedAssetCode).toBe('CT-01');
+      expect(state().selectedIncidentId).toBeNull();
+      expect(state().reporting).toBe(false);
+      expect(state().reportZoneId).toBeNull();
+      expect(state().picking).toBe(false);
+    });
+
+    it('closes the selected asset when an incident is selected', () => {
+      state().selectAsset('CT-01');
+
+      state().select('a');
+
+      expect(state().selectedAssetCode).toBeNull();
+      expect(state().selectedIncidentId).toBe('a');
+    });
+
+    it('closes the selected asset when the report form opens', () => {
+      state().selectAsset('CT-01');
+
+      state().startReport();
+
+      expect(state().selectedAssetCode).toBeNull();
+      expect(state().reporting).toBe(true);
+    });
+
+    it('keeps the asset when the incident sheet or the report form is closed', () => {
+      state().selectAsset('CT-01');
+
+      state().select(null);
+      state().closeReport();
+
+      expect(state().selectedAssetCode).toBe('CT-01');
+    });
+
+    it('clears the asset without reopening anything', () => {
+      state().selectAsset('CT-01');
+
+      state().selectAsset(null);
+
+      expect(state().selectedAssetCode).toBeNull();
+      expect(state().selectedIncidentId).toBeNull();
+      expect(state().reporting).toBe(false);
+    });
+
+    it('hovers and un-hovers an asset without selecting it', () => {
+      state().hoverAsset('CT-02');
+      expect(state().hoveredAssetCode).toBe('CT-02');
+      expect(state().selectedAssetCode).toBeNull();
+
+      state().hoverAsset(null);
+      expect(state().hoveredAssetCode).toBeNull();
+    });
+  });
+
+  describe('asset filters', () => {
+    it('starts on every asset in every zone', () => {
+      expect(state().assetFilter).toBe('all');
+      expect(state().assetZoneId).toBeNull();
+    });
+
+    it('sets the filter tab and the zone, and clears the zone', () => {
+      state().setAssetFilter('faults');
+      state().setAssetZone('z1');
+
+      expect(state().assetFilter).toBe('faults');
+      expect(state().assetZoneId).toBe('z1');
+
+      state().setAssetZone(null);
+      expect(state().assetZoneId).toBeNull();
+    });
+  });
+
   describe('severity filter', () => {
     it('filters by a severity and shows the active tab, which the KPI tiles count', () => {
       state().setFilter('resolved');
@@ -130,6 +241,19 @@ describe('useConsole', () => {
 
       expect(state().severity).toBeNull();
       expect(state().filter).toBe('active');
+    });
+
+    // The tiles filter the incident feed: with the assets showing, a press must show the feed.
+    it('shows the incidents panel when a severity is selected, and not when it is cleared', () => {
+      state().setSidePanel('assets');
+
+      state().toggleSeverity('high');
+      expect(state().sidePanel).toBe('incidents');
+
+      state().setSidePanel('assets');
+      state().toggleSeverity('high');
+      expect(state().severity).toBeNull();
+      expect(state().sidePanel).toBe('assets');
     });
 
     it('switches to another severity instead of clearing', () => {

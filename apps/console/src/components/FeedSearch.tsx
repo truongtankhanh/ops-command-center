@@ -21,11 +21,16 @@ export function FeedSearch({
   onChange,
   ref,
   className,
+  label = 'Search incidents',
+  placeholder = 'Search code, title or zone',
 }: {
   value: string;
   onChange: (value: string) => void;
   ref: RefObject<HTMLInputElement | null>;
   className?: string;
+  /** The box's accessible name; the visible hint is the placeholder. The incident feed's by default. */
+  label?: string;
+  placeholder?: string;
 }) {
   const keysOn = useConsole((s) => s.keyboardShortcuts);
   const clear = () => {
@@ -45,7 +50,7 @@ export function FeedSearch({
   return (
     <div className={className ? `${styles.search} ${className}` : styles.search}>
       <label>
-        <span className={styles.hidden}>Search incidents</span>
+        <span className={styles.hidden}>{label}</span>
         <Icon glyph={Search} size={16} className={styles.icon} />
         <TextInput
           ref={ref}
@@ -54,7 +59,7 @@ export function FeedSearch({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Search code, title or zone"
+          placeholder={placeholder}
           aria-keyshortcuts={keysOn ? '/' : undefined}
           autoComplete="off"
           spellCheck={false}

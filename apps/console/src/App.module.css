@@ -49,13 +49,13 @@
 }
 
 /*
- * Error boundary fallbacks (`Region`) in a region's place: the feed's column and the strip keep
- * their surface, so a broken region does not leave a hole in the layout. The map's needs none.
+ * Error boundary fallbacks (`Region`) in a region's place: a side panel (inside the column, which
+ * has its own surface and border) and the strip keep their place, so a broken region does not
+ * leave a hole in the layout. The map's needs none.
  */
 .feedFallback {
+  flex: 1;
   min-height: 0;
-  border-right: 1px solid var(--border-subtle);
-  background: var(--surface-1);
 }
 
 .stripFallback {

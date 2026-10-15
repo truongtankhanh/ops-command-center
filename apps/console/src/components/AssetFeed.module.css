@@ -1,0 +1,78 @@
+/*
+ * The Assets panel (frames 02 and 03), a sibling of the incident feed inside the side panel. The
+ * column's surface and border are the panel's (`SidePanel`); this only lays out its own parts.
+ */
+.feed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Placement only: the search box draws itself (`FeedSearch`). Frame 02 `.feed-top`. */
+.search {
+  flex: none;
+  margin: var(--space-3) var(--space-3) var(--space-1);
+}
+
+/* The tab panel holds the list, which scrolls inside the column. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.list {
+  display: grid;
+  align-content: start;
+  gap: var(--list-gap);
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Loading: a row's glyph tile, name and meta line, so nothing jumps when data arrives. */
+.skeletonRow {
+  display: grid;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
+  gap: var(--space-1) var(--space-3);
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+}
+
+.skeletonTile {
+  grid-row: span 2;
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+.skeletonName {
+  width: 65%;
+  height: calc(16px * var(--ui-scale));
+  margin-top: var(--space-0-5);
+}
+
+.skeletonMeta {
+  width: 40%;
+  height: calc(12px * var(--ui-scale));
+}
+
+/* Read by assistive tech, not drawn: the search result count and the loading state. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .list {
+    overflow: visible;
+  }
+}
