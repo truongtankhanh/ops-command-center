@@ -14,6 +14,7 @@ import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
 import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
+import { useTelemetry } from './realtime/useTelemetry';
 import { useConsole } from './store';
 import { Button } from './ui/Button';
 import { ErrorBoundary } from './ui/ErrorBoundary';
@@ -47,6 +48,7 @@ function DisplayPreferences() {
 
 export function App() {
   useLiveIncidents();
+  useTelemetry();
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const reporting = useConsole((s) => s.reporting);
   const sheetOpen = reporting || selectedId !== null;
