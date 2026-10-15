@@ -67,7 +67,7 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
         character: true,
         permission: 'incident:report',
       },
-      { keys: ['/'], description: 'Search incidents', character: true },
+      { keys: ['/'], description: 'Search incidents or assets', character: true },
       { keys: ['?'], description: 'Show keyboard shortcuts', character: true },
     ],
   },

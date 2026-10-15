@@ -1,10 +1,10 @@
+/* The column's surface and border are the side panel's (`SidePanel`); this fills its panel. */
 .feed {
   position: relative;
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  border-right: 1px solid var(--border-subtle);
-  background: var(--surface-1);
 }
 
 /* Placement only: the search box draws itself (`FeedSearch`). Frame 01 `.feed-top`. */
@@ -92,10 +92,6 @@
 }
 
 @media (max-width: 720px) {
-  .feed {
-    border-right: 0;
-  }
-
   .list {
     overflow: visible;
   }

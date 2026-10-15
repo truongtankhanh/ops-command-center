@@ -1,0 +1,87 @@
+/*
+ * The side column (frame 01): the surface and the right border the incident feed used to draw,
+ * the Incidents / Assets switch, and the two panels (`SidePanel`). The panels draw their own
+ * content; this only places them.
+ */
+.side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border-subtle);
+  background: var(--surface-1);
+}
+
+/* Frame 01 `.panel-switch`: two equal tabs in a recessed track, the selected one raised. */
+.switch {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  margin: var(--space-3) var(--space-3) var(--space-1);
+  padding: calc(3px * var(--ui-scale));
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1-5);
+  height: calc(32px * var(--ui-scale));
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+/* A raised face as well as colour, so the selection never rests on colour alone. */
+.tab[aria-selected='true'] {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  box-shadow:
+    var(--shadow-1),
+    inset 0 0 0 1px var(--border-subtle);
+}
+
+/* The count, as in `ui/Tabs`; the same quiet pill in both states. */
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(22px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
+  padding: 0 var(--space-1-5);
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+/* A panel fills the column under the switch; the feed inside scrolls. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* `display: flex` above would otherwise beat the attribute's UA `display: none`. */
+.panel[hidden] {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .side {
+    border-right: 0;
+  }
+}

@@ -329,6 +329,20 @@ describe('IncidentFeed', () => {
       expect(searchbox()).toHaveValue('');
     });
 
+    // Both panels stay mounted (`SidePanel`); `/` belongs to the one that is shown.
+    describe('while the assets panel is shown', () => {
+      afterEach(() => resetStore(useConsole));
+
+      it('leaves / to the asset list', async () => {
+        useConsole.setState({ sidePanel: 'assets' });
+        renderFeed();
+
+        await userEvent.keyboard('/');
+
+        expect(searchbox()).not.toHaveFocus();
+      });
+    });
+
     // WCAG 2.1.4: the account menu's switch turns single-key shortcuts off (UI-16).
     describe('with single-key shortcuts off', () => {
       afterEach(() => resetStore(useConsole));

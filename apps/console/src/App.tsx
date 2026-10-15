@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import styles from './App.module.css';
+import { AssetFeed } from './components/AssetFeed';
 import { CameraStrip } from './components/CameraStrip';
 import { CameraViewer } from './components/CameraViewer';
 import { CampusMap } from './components/CampusMap';
@@ -10,6 +11,7 @@ import { RegionFallback } from './components/LoadStates';
 import { OfflineBanner } from './components/OfflineBanner';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
 import { ShortcutHelp } from './components/ShortcutHelp';
+import { SidePanel } from './components/SidePanel';
 import { TelemetryBanner } from './components/TelemetryBanner';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
@@ -22,13 +24,26 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { Sheet, SheetHost } from './ui/Sheet';
 import { ToastRegion } from './ui/Toast';
 
+/** In order of preference; the last one is the Assets panel's, for when the incidents are hidden. */
+const FEED_FOCUS_TARGETS = [
+  '#incident-feed ul [tabindex="0"]',
+  '#incident-feed input[type="search"]',
+  '#asset-feed input[type="search"]',
+];
+
 /**
  * Where focus goes when a dismissed toast held it and nothing nearer is left (see `ToastRegion`):
- * the feed row that holds the feed's tab stop, else the feed's search box.
+ * the feed row that holds the feed's tab stop, else the feed's search box. Both side panels stay
+ * mounted, and a hidden one cannot take focus, so the first target that is shown wins and the
+ * Assets panel's search box stands in while the incidents are hidden.
  */
-const feedFocusTarget = () =>
-  document.querySelector<HTMLElement>('#incident-feed ul [tabindex="0"]') ??
-  document.querySelector<HTMLElement>('#incident-feed input[type="search"]');
+const feedFocusTarget = () => {
+  for (const selector of FEED_FOCUS_TARGETS) {
+    const target = document.querySelector<HTMLElement>(selector);
+    if (target && target.closest('[hidden]') === null) return target;
+  }
+  return null;
+};
 
 /**
  * The tab title / favicon badge and the audio unlock. A component of its own, so the incident list
@@ -62,14 +77,31 @@ export function App() {
       {/* One host for both contents: switching between them keeps the sheet's opener (UI-10). */}
       <SheetHost>
         <main className={styles.workspace}>
-          {/* Each region has its own error boundary: one that breaks leaves the others working. */}
-          <Region
-            label="Incidents"
-            message="The incident list stopped working."
-            className={styles.feedFallback}
-          >
-            <IncidentFeed />
-          </Region>
+          {/*
+            Each region has its own error boundary: one that breaks leaves the others working. The
+            side panel holds two (the incident list and the asset list), so a crash in one never
+            takes the other, and the switch between them, with it.
+          */}
+          <SidePanel
+            incidents={
+              <Region
+                label="Incidents"
+                message="The incident list stopped working."
+                className={styles.feedFallback}
+              >
+                <IncidentFeed />
+              </Region>
+            }
+            assets={
+              <Region
+                label="Assets"
+                message="The asset list stopped working."
+                className={styles.feedFallback}
+              >
+                <AssetFeed />
+              </Region>
+            }
+          />
           {/* The sheet lies over the stage, so opening it never resizes the map. */}
           <div className={styles.stage} data-sheet={sheetOpen ? 'open' : undefined}>
             <Region label="Campus map" message="The map stopped working.">

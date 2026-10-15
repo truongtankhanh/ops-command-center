@@ -1,4 +1,5 @@
 import type {
+  Asset,
   Camera,
   Incident,
   IncidentDetail,
@@ -87,6 +88,25 @@ const ZONES: Zone[] = [
     center: [108.4415, 11.953],
   },
 ];
+
+/** Two assets in the library, so the Assets tab has a catalogue to count (its rows are V2-09.6). */
+const ASSETS: Asset[] = ['CT-01', 'CT-02'].map((code, index) => ({
+  id: `asset-${index}`,
+  code,
+  name: `Cooling tower ${index + 1}`,
+  class: {
+    id: 'class-cooling-tower',
+    code: 'cooling_tower',
+    name: 'Cooling tower',
+    modelUrl: null,
+    footprintM: { width: 1, depth: 1, height: 1 },
+  },
+  zoneId: 'z1',
+  position: [108.4415, 11.953],
+  elevationM: 0,
+  headingDeg: 0,
+  headline: [],
+}));
 
 const SITE_PLAN: SitePlan = {
   id: 's1',
@@ -193,10 +213,12 @@ const detailOf = (item: Incident): IncidentDetail => ({ ...item, timeline: [] })
 function renderConsole({
   role = 'operator',
   incidents = INCIDENTS,
-}: { role?: Role; incidents?: Incident[] } = {}) {
+  assets = ASSETS,
+}: { role?: Role; incidents?: Incident[]; assets?: Asset[] } = {}) {
   useSession.getState().signedIn({ displayName: 'Demo Operator', roles: [role] });
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
+  client.setQueryData(queryKeys.assets, assets);
   client.setQueryData(queryKeys.zones, ZONES);
   client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
   client.setQueryData(queryKeys.cameras, CAMERAS);
@@ -238,7 +260,10 @@ describe('the console', () => {
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: 'Incidents' })).toBeInTheDocument();
+    // The side column holds both panels; the incident list is a region inside it.
+    const side = screen.getByRole('complementary', { name: 'Incidents and assets' });
+    expect(within(side).getByRole('region', { name: 'Incidents' })).toBeInTheDocument();
+    expect(within(side).getByRole('tab', { name: /^Assets/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Campus map' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Cameras' })).toBeInTheDocument();
     expect(screen.getByText('INC-000001')).toBeInTheDocument();
@@ -270,6 +295,31 @@ describe('the console', () => {
 
       // The filter chip has no test file of its own: this is where it is checked (DN-T1).
       expect(screen.getByRole('button', { name: 'Clear severity filter' })).toBeInTheDocument();
+      await checkPage();
+    });
+
+    it('the Assets tab', async () => {
+      renderConsole();
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
+
+      expect(screen.getByRole('tab', { name: 'Assets 2' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('region', { name: 'Assets' })).toBeInTheDocument();
+      expect(screen.getByRole('tablist', { name: 'Filter assets' })).toBeInTheDocument();
+      // The incident feed is mounted but hidden: its search box is not in the page for assistive tech.
+      expect(screen.queryByRole('searchbox', { name: 'Search incidents' })).toBeNull();
+      await checkPage();
+    });
+
+    it('the Assets tab, with no assets on the site', async () => {
+      renderConsole({ assets: [] });
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
+
+      expect(screen.getByText('No assets are set up on this site.')).toBeInTheDocument();
       await checkPage();
     });
 
