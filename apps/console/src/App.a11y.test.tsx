@@ -1,5 +1,6 @@
 import type {
   Asset,
+  AssetDetail,
   Camera,
   Incident,
   IncidentDetail,
@@ -233,11 +234,13 @@ function renderConsole({
   role = 'operator',
   incidents = INCIDENTS,
   assets = ASSETS,
-}: { role?: Role; incidents?: Incident[]; assets?: Asset[] } = {}) {
+  details = [],
+}: { role?: Role; incidents?: Incident[]; assets?: Asset[]; details?: AssetDetail[] } = {}) {
   useSession.getState().signedIn({ displayName: 'Demo Operator', roles: [role] });
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.assets, assets);
+  for (const detail of details) client.setQueryData(queryKeys.asset(detail.code), detail);
   client.setQueryData(queryKeys.zones, ZONES);
   client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
   client.setQueryData(queryKeys.cameras, CAMERAS);
@@ -403,6 +406,45 @@ describe('the console', () => {
 
       expect(screen.getByRole('button', { name: 'Clear zone filter' })).toBeInTheDocument();
       await checkPage();
+    });
+
+    // V2-09.8: an asset takes the sheet. The role cases and the live readings are V2-11.5's and the
+    // component's own tests; this is the wiring, and the page checked whole.
+    it('an asset in the inspector', async () => {
+      renderConsole({ details: [{ ...ASSETS[0]!, points: [FAN_SPEED], rules: [] }] });
+
+      act(() => consoleState().selectAsset('CT-01'));
+
+      expect(screen.getByRole('complementary', { name: 'Asset CT-01' })).toBeInTheDocument();
+      // Not /^Incident/: the side panel is "Incidents and assets". An incident's sheet is "Incident INC-…".
+      expect(screen.queryByRole('complementary', { name: /^Incident INC-/ })).toBeNull();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
+      ).toBeInTheDocument();
+      expect(document.querySelector('[data-sheet="open"]')).not.toBeNull();
+      await checkPage();
+    });
+
+    it('closes a broken inspector with its fallback, which clears the asset', async () => {
+      // React logs the render error it hands to the boundary.
+      const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+      try {
+        // No `points`: the inspector throws while it renders.
+        renderConsole({ details: [{ ...ASSETS[0]!, points: undefined as never, rules: [] }] });
+
+        act(() => consoleState().selectAsset('CT-01'));
+
+        expect(await screen.findByText('This panel stopped working.')).toBeInTheDocument();
+        const sheet = screen.getByRole('complementary', { name: 'Asset' });
+
+        await userEvent.click(within(sheet).getByRole('button', { name: 'Close' }));
+
+        // `select(null)` would have left the asset selected, and Retry would have reopened it.
+        expect(consoleState().selectedAssetCode).toBeNull();
+        expect(screen.queryByRole('complementary', { name: 'Asset' })).toBeNull();
+      } finally {
+        logged.mockRestore();
+      }
     });
 
     it('an incident selected, as an operator', async () => {
