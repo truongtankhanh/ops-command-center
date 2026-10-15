@@ -1,10 +1,19 @@
-import type { AssetDetail, Incident, TelemetryPoint, TelemetryRule, Zone } from '@occ/contracts';
+import type {
+  AssetDetail,
+  Incident,
+  LngLat,
+  Role,
+  TelemetryPoint,
+  TelemetryRule,
+  Zone,
+} from '@occ/contracts';
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
 import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
@@ -238,10 +247,11 @@ const apiError = (status: number, message: string): Response =>
 function renderInspector({
   detail = DETAIL,
   incidents,
-}: { detail?: AssetDetail; incidents?: Incident[] } = {}) {
+  zones = [zone],
+}: { detail?: AssetDetail; incidents?: Incident[]; zones?: Zone[] } = {}) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.asset(detail.code), detail);
-  client.setQueryData(queryKeys.zones, [zone]);
+  client.setQueryData(queryKeys.zones, zones);
   if (incidents) client.setQueryData(queryKeys.incidents, incidents);
   return renderWithQueryClient(<AssetInspector code={detail.code} />, client);
 }
@@ -270,6 +280,7 @@ describe('AssetInspector', () => {
   beforeEach(() => {
     resetStore(useConsole);
     resetStore(useTelemetryStore);
+    resetStore(useSession);
     answers = [];
     fetchMock.mockReset().mockImplementation(() => {
       const answer = answers.shift();
@@ -830,6 +841,145 @@ describe('AssetInspector', () => {
       expect(headings.indexOf('Incident raised by this asset')).toBeLessThan(
         headings.indexOf('In the twin'),
       );
+    });
+  });
+
+  describe('the foot', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    const signInAs = (role: Role) =>
+      act(() => useSession.getState().signedIn({ displayName: 'Demo User', roles: [role] }));
+
+    /** The data center's square, around the asset's position `[108.44, 11.95]`. */
+    const around = (): Zone => ({
+      ...zone,
+      polygon: [
+        [108.43, 11.94],
+        [108.45, 11.94],
+        [108.45, 11.96],
+        [108.43, 11.96],
+        [108.43, 11.94],
+      ] satisfies LngLat[],
+    });
+
+    it.each(['operator', 'supervisor', 'technician'] as const)(
+      'offers a %s a button that opens the report form on the asset',
+      async (role) => {
+        signInAs(role);
+        useConsole.getState().selectAsset('CT-01');
+        renderInspector({ incidents: [] });
+
+        await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));
+
+        expect(useConsole.getState()).toMatchObject({
+          reporting: true,
+          selectedAssetCode: null,
+          reportZoneId: DETAIL.zoneId,
+          reportPreset: {
+            category: 'facilities',
+            type: 'equipment_fault',
+            title: 'Fault — Cooling tower 1 (CT-01)',
+          },
+        });
+        expect(screen.queryByRole('note')).toBeNull();
+      },
+    );
+
+    it("puts the asset's pin in the preset when it stands inside its zone", async () => {
+      signInAs('operator');
+      renderInspector({ incidents: [], zones: [around()] });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));
+
+      expect(useConsole.getState().reportPosition).toEqual(DETAIL.position);
+    });
+
+    it('puts no pin in the preset for an asset beside its zone, and keeps the zone', async () => {
+      signInAs('operator');
+      renderInspector({
+        detail: { ...DETAIL, position: [108.5, 11.95] },
+        incidents: [],
+        zones: [around()],
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));
+
+      expect(useConsole.getState()).toMatchObject({
+        reporting: true,
+        reportZoneId: DETAIL.zoneId,
+        reportPosition: null,
+      });
+    });
+
+    it('offers no zone when the console does not have the asset’s zone', async () => {
+      signInAs('operator');
+      renderInspector({ incidents: [], zones: [] });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));
+
+      expect(useConsole.getState()).toMatchObject({
+        reporting: true,
+        reportZoneId: null,
+        reportPosition: null,
+      });
+    });
+
+    it.each([
+      ['a viewer', () => signInAs('viewer')],
+      ['someone signed out', () => undefined],
+    ])('shows %s the view-only note in place of the button', (_who, setUp) => {
+      setUp();
+
+      renderInspector({ incidents: [] });
+
+      const note = screen.getByRole('note');
+      expect(note).toHaveAttribute('data-footer', 'view-only');
+      expect(note).toHaveTextContent('View only');
+      expect(note).toHaveTextContent(
+        'Readings, parts and cameras are all yours to explore. Reporting a fault needs the operator, supervisor or technician role.',
+      );
+      expect(screen.queryByRole('button', { name: /Report a fault/ })).toBeNull();
+    });
+
+    it('changes nothing else in the sheet for a viewer', () => {
+      signInAs('viewer');
+
+      renderInspector({ incidents: [INCIDENT] });
+
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.getByRole('tree', { name: 'Parts of CT-01' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Open INC-000108' })).toBeInTheDocument();
+    });
+
+    it('is the last thing in the sheet, so it sticks to the bottom', () => {
+      signInAs('operator');
+      renderInspector({ incidents: [INCIDENT] });
+
+      const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+      const foot = screen.getByRole('button', { name: 'Report a fault on CT-01' }).parentElement;
+
+      // The sheet's own status region (the kept-draft announcement) comes after its content.
+      const content = Array.from(sheet.children).filter(
+        (el) => el.getAttribute('role') !== 'status',
+      );
+      expect(content.at(-1)).toBe(foot);
+    });
+
+    it('draws no Focus control and registers no key for it', () => {
+      signInAs('operator');
+      renderInspector({ incidents: [] });
+
+      expect(screen.queryByRole('button', { name: /Focus/ })).toBeNull();
+      expect(document.querySelector('[aria-keyshortcuts="F"]')).toBeNull();
+    });
+
+    it('is not drawn while the asset loads', () => {
+      signInAs('operator');
+
+      renderUncached();
+
+      expect(screen.queryByRole('button', { name: /Report a fault/ })).toBeNull();
+      expect(screen.queryByRole('note')).toBeNull();
     });
   });
 

@@ -1,3 +1,4 @@
+import type { ReportPreset } from './lib/assetReport';
 import { FRESH_LIMIT, useConsole } from './store';
 import { resetStore } from './test-utils';
 
@@ -377,6 +378,85 @@ describe('useConsole', () => {
   });
 
   // The form and the map share the report's location; a cancelled pin must never come back.
+  describe('report preset', () => {
+    const PIN: [number, number] = [108.4415, 11.953];
+    const PRESET: ReportPreset = {
+      zoneId: 'z1',
+      position: PIN,
+      category: 'facilities',
+      type: 'equipment_fault',
+      title: 'Fault — Cooling tower 1 (CT-01)',
+    };
+
+    it('starts a report with the preset, its zone and its pin', () => {
+      state().startReport(PRESET);
+
+      expect(state()).toMatchObject({
+        reporting: true,
+        reportZoneId: 'z1',
+        reportPosition: PIN,
+        reportPreset: PRESET,
+        picking: false,
+        pinMissed: false,
+      });
+    });
+
+    it('starts without a pin when the preset has none', () => {
+      state().startReport({ ...PRESET, position: null });
+
+      expect(state()).toMatchObject({ reportZoneId: 'z1', reportPosition: null });
+    });
+
+    it('closes the selected asset and the selected incident, as any report does', () => {
+      state().select('a');
+      state().selectAsset('CT-01');
+
+      state().startReport(PRESET);
+
+      expect(state()).toMatchObject({ selectedIncidentId: null, selectedAssetCode: null });
+    });
+
+    it('starts an empty report when none is given, whatever the last one began with', () => {
+      state().startReport(PRESET);
+
+      state().startReport();
+
+      expect(state()).toMatchObject({
+        reporting: true,
+        reportZoneId: null,
+        reportPosition: null,
+        reportPreset: null,
+      });
+    });
+
+    it.each([
+      ['the report is closed', () => state().closeReport()],
+      ['an incident is selected', () => state().select('a')],
+      ['an asset is selected', () => state().selectAsset('CT-01')],
+    ])('forgets the preset when %s', (_when, run) => {
+      state().startReport(PRESET);
+
+      run();
+
+      expect(state()).toMatchObject({
+        reportZoneId: null,
+        reportPosition: null,
+        reportPreset: null,
+      });
+    });
+
+    it('keeps the preset as the baseline while the zone or the pin are changed', () => {
+      state().startReport(PRESET);
+
+      state().setReportZone('z2');
+      state().placePin([108.45, 11.96], 'z2');
+      state().clearPin();
+
+      expect(state().reportPreset).toBe(PRESET);
+      expect(state().reportZoneId).toBe('z2');
+    });
+  });
+
   describe('report location', () => {
     const PIN: [number, number] = [108.4415, 11.953];
 

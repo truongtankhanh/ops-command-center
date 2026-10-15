@@ -17,6 +17,9 @@ import {
   type ZoneUse,
 } from '@occ/contracts';
 
+/** The longest title the API accepts for a reported incident; the report form's limit. */
+export const REPORT_TITLE_MAX = 160;
+
 export type FeedFilter = 'active' | 'mine' | 'resolved' | 'all';
 
 /** Every filter, in tab order. A user is offered a subset of it: see `feedFiltersFor`. */

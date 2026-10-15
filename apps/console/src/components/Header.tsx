@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { usePermission } from '../auth/usePermission';
 import { formatAge } from '../lib/incidents';
 import type { TelemetryPillState } from '../lib/telemetryState';
@@ -42,10 +43,13 @@ export function Header() {
   const reporting = useConsole((s) => s.reporting);
   const startReport = useConsole((s) => s.startReport);
   const keysOn = useConsole((s) => s.keyboardShortcuts);
+  // `startReport` takes an optional preset (the asset inspector's), so it is never the click
+  // handler itself: the event would arrive as the preset.
+  const openReport = useCallback(() => startReport(), [startReport]);
 
   // A note being written in the open incident survives the report form (`noteDrafts`), so `N` and
   // the button can always open it.
-  useShortcut('n', startReport, canReport && !reporting);
+  useShortcut('n', openReport, canReport && !reporting);
 
   return (
     <header className={styles.header}>
@@ -63,7 +67,7 @@ export function Header() {
           shortcut={keysOn ? 'N' : undefined}
           aria-expanded={reporting}
           aria-controls="report-incident-panel"
-          onClick={startReport}
+          onClick={openReport}
         >
           Report incident
         </Button>

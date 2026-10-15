@@ -17,9 +17,9 @@ import { Dialog } from '../ui/Dialog';
 import { Field, Textarea } from '../ui/Field';
 import { focusLost } from '../ui/focus';
 import { Hint } from '../ui/Hint';
-import { Icon } from '../ui/Icon';
-import { Eye, Info } from '../ui/icons';
+import { Info } from '../ui/icons';
 import styles from './IncidentResponse.module.css';
+import { ViewOnlyNote } from './ViewOnlyNote';
 
 /** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
 export const NOTE_KEPT = 'Esc keeps your note. Close discards it.';
@@ -64,12 +64,9 @@ export function IncidentResponse({ incident, kept }: { incident: IncidentDetail;
 
 function ViewOnlyFooter() {
   return (
-    <div className={styles.viewOnly} role="note" data-footer="view-only">
-      <Icon glyph={Eye} size={18} className={styles.viewOnlyIcon} />
-      <p className={styles.viewOnlyText}>
-        <strong>View only</strong> Acknowledging and resolving need the operator or supervisor role.
-      </p>
-    </div>
+    <ViewOnlyNote>
+      <strong>View only</strong> Acknowledging and resolving need the operator or supervisor role.
+    </ViewOnlyNote>
   );
 }
 
@@ -93,19 +90,16 @@ function OutOfScopeFooter({ category }: { category: IncidentCategory | null }) {
       ? countByFilter(incidents, () => true, handlingScope(roles)).mine
       : null;
   return (
-    <div className={styles.viewOnly} role="note" data-footer="out-of-scope">
-      <Icon glyph={Info} size={18} className={styles.viewOnlyIcon} />
-      <p className={styles.viewOnlyText}>
-        <strong>{subject} are handled by operators</strong> You can follow this one and report new
-        incidents.
-        {queue !== null && (
-          <>
-            {' '}
-            Your queue is in <b>Mine to handle</b> ({queue}).
-          </>
-        )}
-      </p>
-    </div>
+    <ViewOnlyNote icon={Info} footer="out-of-scope">
+      <strong>{subject} are handled by operators</strong> You can follow this one and report new
+      incidents.
+      {queue !== null && (
+        <>
+          {' '}
+          Your queue is in <b>Mine to handle</b> ({queue}).
+        </>
+      )}
+    </ViewOnlyNote>
   );
 }
 

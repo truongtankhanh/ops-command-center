@@ -18,6 +18,7 @@ import { formatLatLng } from '../lib/geo';
 import { newIdempotencyKey } from '../lib/idempotency';
 import {
   categoryLabel,
+  REPORT_TITLE_MAX,
   severityLabel,
   typeLabel,
   typeLabelInSentence,
@@ -34,7 +35,6 @@ import { Sheet } from '../ui/Sheet';
 import { showToast } from '../ui/toasts';
 import styles from './ReportIncidentForm.module.css';
 
-const TITLE_MAX = 160;
 const DESCRIPTION_MAX = 2000;
 /** Until a type suggests its own (`INCIDENT_TYPE_DEFAULT_SEVERITY`). */
 const DEFAULT_SEVERITY: IncidentSeverity = 'medium';
@@ -72,6 +72,12 @@ const OUTSIDE_ZONE_PREFIX = 'position is outside zone';
 function inTechnicianQueue(category: IncidentCategory): boolean {
   const scope = ROLE_CATEGORY_SCOPE.technician;
   return scope === 'all' || scope.includes(category);
+}
+
+/** Whether two pins are the same place: both absent, or the same coordinates. */
+function samePin(a: LngLat | null, b: LngLat | null): boolean {
+  if (a === null || b === null) return a === b;
+  return a[0] === b[0] && a[1] === b[1];
 }
 
 /** The line under the severity, once a type is chosen. No reason sentence (V2-03.6 Q1). */
@@ -140,12 +146,18 @@ export function ReportIncidentForm() {
   const setPicking = useConsole((s) => s.setPicking);
   const clearPin = useConsole((s) => s.clearPin);
 
-  const [category, setCategory] = useState<IncidentCategory | null>(null);
-  const [type, setType] = useState<IncidentType | null>(null);
-  const [severity, setSeverity] = useState<IncidentSeverity>(DEFAULT_SEVERITY);
+  // What the form opened with (V2-09.10): a fault reported from an asset. Read once, and the
+  // baseline the draft below is measured from, so an untouched preset is not something to keep.
+  const [preset] = useState(() => useConsole.getState().reportPreset);
+
+  const [category, setCategory] = useState<IncidentCategory | null>(preset?.category ?? null);
+  const [type, setType] = useState<IncidentType | null>(preset?.type ?? null);
+  const [severity, setSeverity] = useState<IncidentSeverity>(
+    preset ? INCIDENT_TYPE_DEFAULT_SEVERITY[preset.type] : DEFAULT_SEVERITY,
+  );
   // Once the user picks a severity themselves, a type no longer overrides it with its suggestion.
   const [severityByHand, setSeverityByHand] = useState(false);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(preset?.title ?? '');
   const [description, setDescription] = useState('');
   // One key per opened form, reused by every retry. Not renewed when a field or the pin changes: if
   // a failed attempt actually reached the API, an edited retry must get a 422, not create a duplicate.
@@ -160,12 +172,14 @@ export function ReportIncidentForm() {
   const locationHintId = useId();
   const severityHintId = useId();
 
-  // Opening the form (`N` or the header button) starts at step 1. This runs after `Sheet`'s own
-  // layout effect, which focuses the sheet (child effects run first), so the opener `Sheet`
-  // recorded still gets focus back on close.
+  // Opening the form (`N` or the header button) starts at step 1; a form opened from an asset has
+  // its category and type chosen, so it starts at the title, the next thing to check. This runs
+  // after `Sheet`'s own layout effect, which focuses the sheet (child effects run first), so the
+  // opener `Sheet` recorded still gets focus back on close.
   useLayoutEffect(() => {
-    categoryRef.current?.querySelector('input')?.focus({ preventScroll: true });
-  }, []);
+    const target = preset ? titleRef.current : categoryRef.current?.querySelector('input');
+    target?.focus({ preventScroll: true });
+  }, [preset]);
 
   const zone = zones.find((z) => z.id === reportZoneId);
   const locationHint = locationHintOf(zone, reportPosition, pinMissed);
@@ -189,14 +203,16 @@ export function ReportIncidentForm() {
     setSeverityByHand(true);
   };
 
-  // A severity set only by the suggestion is no draft: the category it came from already is.
+  // A severity set only by the suggestion is no draft: the category it came from already is. A
+  // draft is whatever differs from what the form opened with (nothing, unless it came from an
+  // asset), so a preset the operator has not touched loses nothing on Escape.
   const hasDraft =
-    category !== null ||
-    type !== null ||
+    category !== (preset?.category ?? null) ||
+    type !== (preset?.type ?? null) ||
     severityByHand ||
-    reportZoneId !== null ||
-    reportPosition !== null ||
-    title.trim() !== '' ||
+    reportZoneId !== (preset?.zoneId ?? null) ||
+    !samePin(reportPosition, preset?.position ?? null) ||
+    title.trim() !== (preset?.title ?? '').trim() ||
     description.trim() !== '';
 
   // Set when Escape was ignored to keep the draft; forgotten once the draft is gone.
@@ -370,12 +386,16 @@ export function ReportIncidentForm() {
             )}
           </div>
 
-          <Field label="Title" count={`${title.length} / ${TITLE_MAX}`} error={errorFor('title')}>
+          <Field
+            label="Title"
+            count={`${title.length} / ${REPORT_TITLE_MAX}`}
+            error={errorFor('title')}
+          >
             <TextInput
               ref={titleRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              maxLength={TITLE_MAX}
+              maxLength={REPORT_TITLE_MAX}
               placeholder="What is happening, in a few words"
               required
             />
