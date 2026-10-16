@@ -1,0 +1,55 @@
+/*
+ * Frame 14's `.layers`: look only, `StageView` places it beside the 3D / 2D switch. The pressed
+ * look (accent tint, border) is `Button`'s own `aria-pressed` rule. The overrides below have one
+ * selector part more than `Button`'s rules, so they do not depend on CSS order.
+ */
+.layers {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  padding: var(--space-0-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+}
+
+.label {
+  padding: 0 var(--space-1-5) 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  color: var(--text-tertiary);
+}
+
+.layers .layer {
+  height: var(--control-s);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-s);
+  font-size: var(--type-m);
+}
+
+/* A drawing of the pressed state: an empty box, filled in the accent while the layer is shown. */
+.tick {
+  flex: none;
+  width: calc(14px * var(--ui-scale));
+  height: calc(14px * var(--ui-scale));
+  border-radius: calc(3px * var(--ui-scale));
+  box-shadow: inset 0 0 0 calc(1.5px * var(--ui-scale)) var(--border-strong);
+}
+
+.layer[aria-pressed='true'] .tick {
+  background: var(--accent);
+  box-shadow: none;
+}
+
+/* Said in words, in the warning tone: the one layer whose absence can be mistaken for "all quiet". */
+.note {
+  padding: 0 var(--space-2) 0 var(--space-1);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  color: var(--warning);
+  white-space: nowrap;
+}

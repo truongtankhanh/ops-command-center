@@ -1,5 +1,6 @@
 import { useConsole } from '../store';
 import { CampusMap } from './CampusMap';
+import { LayersControl } from './LayersControl';
 import styles from './StageView.module.css';
 import { ViewSwitch } from './ViewSwitch';
 
@@ -13,7 +14,7 @@ import { ViewSwitch } from './ViewSwitch';
  *
  * The tools are siblings of the map, not children: the map's own box clips and stacks what is
  * inside it, and the stage grid places the map and the strip, so the tools are out of the flow
- * (`StageView.module.css`), as the banners are. V2-10.2 adds the layers control beside the switch.
+ * (`StageView.module.css`), as the banners are. The layers control sits beside the switch.
  */
 export function StageView() {
   const view = useConsole((s) => s.view);
@@ -22,6 +23,7 @@ export function StageView() {
       <CampusMap />
       <div className={styles.tools} data-view={view}>
         <ViewSwitch />
+        <LayersControl />
       </div>
     </>
   );

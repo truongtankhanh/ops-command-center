@@ -252,6 +252,37 @@ describe('MapTooltip', () => {
     expect(map.canvas.style.cursor).toBe('');
   });
 
+  // V2-10.2: a layer the operator has hidden is not asked about, so it points out nothing.
+  describe('layers the operator has hidden', () => {
+    it('asks the map only about the layers that are shown', () => {
+      const map = fakeMap();
+      renderTooltip(map, { incidents: [incident()] });
+      act(() => useConsole.getState().toggleLayer('incidents'));
+
+      hover(map);
+
+      expect(map.queryRenderedFeatures).toHaveBeenLastCalledWith(
+        { x: 0, y: 0 },
+        { layers: [MAP_LAYERS.cameras] },
+      );
+    });
+
+    it('points out nothing, and asks nothing, when every layer it knows is hidden', () => {
+      const map = fakeMap();
+      renderTooltip(map, { incidents: [incident()] });
+      act(() => {
+        useConsole.getState().toggleLayer('incidents');
+        useConsole.getState().toggleLayer('cameras');
+      });
+
+      hover(map, hit(MAP_LAYERS.incidents, { id: 'a' }));
+
+      expect(map.queryRenderedFeatures).not.toHaveBeenCalled();
+      expect(tooltip()).toBeNull();
+      expect(map.canvas.style.cursor).toBe('');
+    });
+  });
+
   it('closes when the pointer leaves the map', () => {
     const map = fakeMap();
     renderTooltip(map, { incidents: [incident()] });

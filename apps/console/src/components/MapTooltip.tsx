@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { useCameras, useIncidents, useZones } from '../api/queries';
 import { formatAge, isActive, severityLabel, statusLabel } from '../lib/incidents';
 import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../lib/mapHover';
-import { HOVER_LAYERS } from '../lib/mapLayers';
+import { HOVER_LAYERS, visibleLayers } from '../lib/mapLayers';
 import { useNow } from '../lib/useNow';
 import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
@@ -53,7 +53,10 @@ export function MapTooltip({ map }: { map: MapLibreMap | null }) {
         setHover(null);
         return;
       }
-      const [hit] = map.queryRenderedFeatures(event.point, { layers: HOVER_LAYERS });
+      // Only what is drawn: nothing is pointed out on a layer the operator has hidden.
+      const hoverable = visibleLayers(HOVER_LAYERS, useConsole.getState().layers);
+      const [hit] =
+        hoverable.length === 0 ? [] : map.queryRenderedFeatures(event.point, { layers: hoverable });
       canvas.style.cursor = hit && isClickable(hit.layer.id) ? 'pointer' : '';
       const target =
         hit && !moving ? hoverTargetOf(hit.layer.id, hit.properties, hit.geometry) : null;

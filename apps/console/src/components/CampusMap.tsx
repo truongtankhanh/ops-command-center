@@ -30,10 +30,14 @@ import {
   incidentLayers,
   incidentSources,
   INTERACTIVE_LAYERS,
+  LAYER_GROUPS,
+  type LayerVisibility,
+  MAP_LAYER_KEYS,
   MAP_LAYERS,
   MAP_SOURCES,
   removeLayers,
   siteSources,
+  visibleLayers,
   zoneHighlightFilter,
   zoneOverlayLayers,
 } from '../lib/mapLayers';
@@ -105,6 +109,7 @@ export function CampusMap() {
   const reporting = useConsole((s) => s.reporting);
   const reportZoneId = useConsole((s) => s.reportZoneId);
   const picking = useConsole((s) => s.picking);
+  const layers = useConsole((s) => s.layers);
   const sheetOpen = selectedId !== null || reporting;
   /** What the view frames; read by `useSiteLayers` when the ground is (re)drawn. */
   const focusRef = useRef<ViewTarget>({ point: null, sheetOpen: false });
@@ -154,7 +159,10 @@ export function CampusMap() {
   useCameraLayer(map, cameras);
   // Between the cameras and the incidents: layers added later are drawn higher (see the hook).
   useAssetLayers(map, assets, incidents);
-  useIncidentLayers(map, features);
+  useIncidentLayers(map, features, layers.incidents);
+  // After every hook that adds a layer: effects run in declaration order, so the layers exist when
+  // this applies the operator's toggles (do not move it above them).
+  useLayerVisibility(map, layers);
   useReportPick(map, zones);
 
   // Bring the selected incident into view beside the sheet, at the marker as drawn (it may be fanned
@@ -429,6 +437,8 @@ function useAssetLayers(
 function useIncidentLayers(
   map: maplibregl.Map | null,
   features: ReturnType<typeof incidentFeatures> | null,
+  /** The Incidents toggle: the layers follow it in `useLayerVisibility`, the DOM tag and pulse here. */
+  shown: boolean,
 ) {
   const codeTag = useRef<maplibregl.Marker | null>(null);
   const pulsing = features?.pulsing ?? false;
@@ -453,7 +463,10 @@ function useIncidentLayers(
     const onClick = (event: MapMouseEvent) => {
       // While picking, a click places the report's pin (`useReportPick`) and selects nothing.
       if (useConsole.getState().picking) return;
-      const [hit] = map.queryRenderedFeatures(event.point, { layers: INTERACTIVE_LAYERS });
+      // Only what is drawn: a hidden layer is not hit, whatever MapLibre would answer for it.
+      const hittable = visibleLayers(INTERACTIVE_LAYERS, useConsole.getState().layers);
+      if (hittable.length === 0) return;
+      const [hit] = map.queryRenderedFeatures(event.point, { layers: hittable });
       if (!hit) return;
       if (hit.layer.id === MAP_LAYERS.clusters) {
         expandCluster(map, hit);
@@ -487,24 +500,51 @@ function useIncidentLayers(
     if (!map || !features) return;
     map.getSource<GeoJSONSource>(MAP_SOURCES.incidents)?.setData(features.rest);
     map.getSource<GeoJSONSource>(MAP_SOURCES.selected)?.setData(features.selected);
+  }, [map, features]);
 
+  // The code tag is DOM, so it is not hidden with the layers: it goes while the incidents are.
+  useEffect(() => {
+    if (!map || !features) return;
     const tag = codeTag.current;
     if (!tag) return;
     const [selected] = features.selected.features;
-    if (!selected) {
+    if (!selected || !shown) {
       tag.remove();
       return;
     }
     tag.getElement().textContent = selected.properties.code;
     tag.setLngLat(selected.geometry.coordinates as [number, number]);
     if (!tag.getElement().isConnected) tag.addTo(map);
-  }, [map, features]);
+  }, [map, features, shown]);
 
-  // The wave repaints the map every frame, so it runs only while something pulses.
+  // The wave repaints the map every frame, so it runs only while something pulses and is drawn.
   useEffect(() => {
-    if (!map || !pulsing || reducedMotion) return;
+    if (!map || !pulsing || reducedMotion || !shown) return;
     return startPulse(map, mapMotion.pulseMs);
-  }, [map, pulsing, reducedMotion]);
+  }, [map, pulsing, reducedMotion, shown]);
+}
+
+/**
+ * The operator's toggles (frame 14's "Show"): each group of layers is shown or hidden as one
+ * (`LAYER_GROUPS`). Only a group whose toggle changed is touched, and none at all while everything
+ * is shown, so a console that never hides anything pays nothing. A layer a group names that the
+ * map does not have (yet) is skipped.
+ */
+function useLayerVisibility(map: maplibregl.Map | null, layers: LayerVisibility) {
+  /** What the map has been told: every layer starts shown. */
+  const applied = useRef<LayerVisibility>({ incidents: true, cameras: true, assets: true });
+
+  useEffect(() => {
+    if (!map) return;
+    for (const key of MAP_LAYER_KEYS) {
+      if (applied.current[key] === layers[key]) continue;
+      const visibility = layers[key] ? 'visible' : 'none';
+      for (const id of LAYER_GROUPS[key]) {
+        if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility);
+      }
+    }
+    applied.current = layers;
+  }, [map, layers]);
 }
 
 /**

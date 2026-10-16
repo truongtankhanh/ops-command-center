@@ -132,3 +132,31 @@
     transparent calc(14px * var(--ui-scale))
   );
 }
+
+/*
+ * An asset on the map (frame 14 `.lg-dev`, drawn like the marker image in `mapImages.ts`): a small
+ * diamond on `--surface-2`. The look is told by the edge, not by the hue alone: light when normal,
+ * the severity at 30 % with a severity edge for a fault (frame 14's medium), a dim dashed edge
+ * with no data. The words beside it say the same.
+ */
+.asset {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(10px * var(--ui-scale));
+  height: calc(10px * var(--ui-scale));
+  margin: 0 calc(1px * var(--ui-scale));
+  border: calc(1.5px * var(--ui-scale)) solid var(--text-secondary);
+  border-radius: calc(1.5px * var(--ui-scale));
+  background: var(--surface-2);
+  transform: rotate(45deg);
+}
+
+.asset[data-look='fault'] {
+  border-color: var(--sev-medium);
+  background: color-mix(in srgb, var(--sev-medium) 30%, var(--surface-2));
+}
+
+.asset[data-look='nodata'] {
+  border-style: dashed;
+  border-color: var(--tw-stale-edge);
+}

@@ -21,6 +21,13 @@ describe('StageView', () => {
     expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
   });
 
+  it('offers the layers control beside the view switch', () => {
+    render(<StageView />);
+
+    expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+  });
+
   // Until V2-12 the store never holds `3d` (see `effectiveView`), so what is stored cannot change
   // what is drawn: the stage keeps showing the map and the switch shows 2D pressed.
   it('still draws the map when a 3D choice was stored by a later build', () => {

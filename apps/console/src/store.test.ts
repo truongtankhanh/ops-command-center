@@ -663,6 +663,68 @@ describe('useConsole', () => {
     });
   });
 
+  describe('layers', () => {
+    it('opens with incidents, cameras and assets all shown', () => {
+      expect(useConsole.getInitialState().layers).toEqual({
+        incidents: true,
+        cameras: true,
+        assets: true,
+      });
+    });
+
+    it('hides and shows one layer and leaves the others', () => {
+      state().toggleLayer('cameras');
+      expect(state().layers).toEqual({ incidents: true, cameras: false, assets: true });
+
+      state().toggleLayer('cameras');
+      expect(state().layers).toEqual({ incidents: true, cameras: true, assets: true });
+    });
+
+    it('is not remembered in this browser', () => {
+      localStorage.clear();
+
+      state().toggleLayer('assets');
+
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('shows a hidden layer, and keeps the same object when it is already shown', () => {
+      state().toggleLayer('incidents');
+
+      state().showLayer('incidents');
+      expect(state().layers.incidents).toBe(true);
+
+      const before = state().layers;
+      state().showLayer('incidents');
+      expect(state().layers).toBe(before);
+    });
+
+    it('shows the incidents again when one is selected', () => {
+      state().toggleLayer('incidents');
+
+      state().select('a');
+
+      expect(state().layers.incidents).toBe(true);
+    });
+
+    it('leaves the other layers as they were when an incident is selected', () => {
+      state().toggleLayer('incidents');
+      state().toggleLayer('cameras');
+
+      state().select('a');
+
+      expect(state().layers).toEqual({ incidents: true, cameras: false, assets: true });
+    });
+
+    it('does not show them again when the incident is closed', () => {
+      state().toggleLayer('incidents');
+
+      state().select(null);
+
+      expect(state().layers.incidents).toBe(false);
+    });
+  });
+
   describe('camera pins', () => {
     const KNOWN = ['c1', 'c2', 'c3', 'c4', 'c5'];
     const stored = () => JSON.parse(localStorage.getItem('occ.console.pinnedCameras') ?? 'null');

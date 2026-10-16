@@ -76,6 +76,55 @@ export const INTERACTIVE_LAYERS = [
 /** Layers that show a tooltip under the pointer, topmost first: every layer a click acts on. */
 export const HOVER_LAYERS = INTERACTIVE_LAYERS;
 
+/** What the operator can show or hide as one (frame 14's "Show": Incidents · Cameras · Assets). */
+export type MapLayerKey = 'incidents' | 'cameras' | 'assets';
+
+export const MAP_LAYER_KEYS: readonly MapLayerKey[] = ['incidents', 'cameras', 'assets'];
+
+/** Which of the three is shown. */
+export type LayerVisibility = Record<MapLayerKey, boolean>;
+
+/**
+ * The map layers each toggle covers. A camera's view cone goes with its marker: a cone with no
+ * camera is a stray shape. Never in a group, so never hidden: the ground, the zone outline and the
+ * highlight of the selected or reported zone (they are the campus, not what is on it), and the DOM
+ * markers (zone labels, the report's pin). The selected incident's code tag is DOM too; it follows
+ * the incidents layers by hand in `CampusMap`.
+ */
+export const LAYER_GROUPS: Record<MapLayerKey, readonly string[]> = {
+  incidents: [
+    MAP_LAYERS.pulseStatic,
+    MAP_LAYERS.pulseWave,
+    MAP_LAYERS.selectedPulseStatic,
+    MAP_LAYERS.selectedPulseWave,
+    MAP_LAYERS.clusters,
+    MAP_LAYERS.clusterCount,
+    MAP_LAYERS.clusterSeverity,
+    MAP_LAYERS.incidents,
+    MAP_LAYERS.selectedRing,
+    MAP_LAYERS.selected,
+  ],
+  cameras: [
+    MAP_LAYERS.cameras,
+    MAP_LAYERS.cameraViewFill,
+    MAP_LAYERS.cameraViewLine,
+    MAP_LAYERS.cameraViewLineOffline,
+  ],
+  assets: [MAP_LAYERS.assets],
+};
+
+/**
+ * `ids` without the layers of a hidden group, in order. What a click or a hover may hit, so that
+ * "nothing happens on a hidden layer" does not depend on how MapLibre treats a hidden layer in a
+ * query. An empty answer means there is nothing to ask the map.
+ */
+export function visibleLayers(ids: readonly string[], layers: LayerVisibility): string[] {
+  const hidden = new Set(
+    MAP_LAYER_KEYS.filter((key) => !layers[key]).flatMap((k) => LAYER_GROUPS[k]),
+  );
+  return ids.filter((id) => !hidden.has(id));
+}
+
 /** The animated pulse rings, one per incident source. */
 export const PULSE_WAVE_LAYERS = [MAP_LAYERS.pulseWave, MAP_LAYERS.selectedPulseWave];
 
@@ -88,7 +137,11 @@ const CLUSTER_MAX_ZOOM = 19;
 
 const EMPTY: FeatureCollection = { type: 'FeatureCollection', features: [] };
 
-/** Never hide a marker to make room for another: an incident must always be on the map. */
+/**
+ * Never hide a marker to make room for another: an incident must always be on the map. The one
+ * deliberate exception is the operator's own Incidents toggle (V2-10.2, Open question 4), which
+ * a new critical incident, or selecting one, turns back on.
+ */
 const ICON_PLACEMENT = { 'icon-allow-overlap': true, 'icon-ignore-placement': true } as const;
 
 const isCluster: FilterSpecification = ['has', 'point_count'];
