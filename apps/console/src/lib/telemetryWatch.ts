@@ -1,4 +1,5 @@
-import { TELEMETRY_WATCH_LIMIT } from '@occ/contracts';
+import { type Asset, type Incident, TELEMETRY_WATCH_LIMIT } from '@occ/contracts';
+import { isActive } from './incidents';
 
 /**
  * What the console wants every reading of, by asset **code** (`CT-01`). Codes, not ids: an
@@ -26,4 +27,20 @@ export function deriveWatchSet(
     (code): code is string => code !== null && code !== '',
   );
   return [...new Set(wanted)].slice(0, Math.max(0, limit));
+}
+
+/**
+ * The asset code to watch for the open incident, or `null` when there is nothing to read live.
+ * Only a telemetry incident that is still unresolved is watched: a person's or the simulator's
+ * incident has no rule reading behind it, and a resolved one shows "Raised at …" from its evidence
+ * alone (V2-11.2). `assetId` is an id and `telemetry.watch` takes a code, so the catalogue turns
+ * one into the other (V2-08.5); an id the catalogue does not have (an asset deleted since) is `null`.
+ */
+export function incidentWatchCode(
+  incident: Incident,
+  assets: readonly Pick<Asset, 'id' | 'code'>[],
+): string | null {
+  if (incident.source !== 'telemetry' || !isActive(incident)) return null;
+  if (!incident.assetId) return null;
+  return assets.find((asset) => asset.id === incident.assetId)?.code ?? null;
 }

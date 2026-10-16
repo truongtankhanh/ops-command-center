@@ -14,13 +14,13 @@ import { ShortcutHelp } from './components/ShortcutHelp';
 import { SidePanel } from './components/SidePanel';
 import { StageView } from './components/StageView';
 import { TelemetryBanner } from './components/TelemetryBanner';
+import { TelemetryWatchSet } from './components/TelemetryWatchSet';
 import { TwinFallbackBanner } from './components/TwinFallbackBanner';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
-import { deriveWatchSet } from './lib/telemetryWatch';
 import { useAttentionBadge } from './lib/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
-import { useTelemetry, useTelemetryWatch } from './realtime/useTelemetry';
+import { useTelemetry } from './realtime/useTelemetry';
 import { useConsole } from './store';
 import { Button } from './ui/Button';
 import { ErrorBoundary } from './ui/ErrorBoundary';
@@ -62,18 +62,6 @@ function AttentionSignals() {
 /** Display preferences set on `<html>` (density), so they also reach the portalled dialogs. */
 function DisplayPreferences() {
   useDensityAttribute(useConsole((s) => s.density));
-  return null;
-}
-
-/**
- * What the console asks the API for every reading of: the asset open in the inspector, and
- * nothing when none is. The set is left in place when a caller unmounts (`useTelemetryWatch`), so
- * closing the inspector clears it by this component passing `[]`. A component of its own, long
- * lived, where the open incident's asset joins the set (V2-11.2).
- */
-function TelemetryWatchSet() {
-  const inspected = useConsole((s) => s.selectedAssetCode);
-  useTelemetryWatch(deriveWatchSet({ inspected, incident: null }));
   return null;
 }
 

@@ -15,6 +15,7 @@ import { Sheet } from '../ui/Sheet';
 import { Skeleton } from '../ui/Skeleton';
 import { CameraTile } from './CameraTile';
 import styles from './IncidentDetail.module.css';
+import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
 import { IncidentTimeline } from './IncidentTimeline';
@@ -204,6 +205,12 @@ function DetailBody({
               {zone.name}
             </span>
           )}
+          {incident.source === 'telemetry' && (
+            <span className={styles.chip}>
+              <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
+              Telemetry rule
+            </span>
+          )}
         </div>
         <h2 className={styles.title}>{incident.title}</h2>
         <IncidentLifecycle incident={incident} />
@@ -219,6 +226,9 @@ function DetailBody({
           </dd>
         </dl>
       </div>
+
+      {/* Frame 10: the evidence comes before the history. Only a telemetry rule leaves evidence. */}
+      {incident.source === 'telemetry' && <IncidentEvidence incident={incident} />}
 
       <section className={styles.section}>
         <h3>Timeline</h3>

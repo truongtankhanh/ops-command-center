@@ -1,0 +1,455 @@
+import type {
+  AssetDetail,
+  IncidentDetail,
+  IncidentEvent,
+  TelemetryPoint,
+  TelemetryRule,
+} from '@occ/contracts';
+import { act, screen, within } from '@testing-library/react';
+import { queryKeys } from '../api/queries';
+import { getAccessToken, renewSession } from '../auth/session';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
+import { useTelemetryStore } from '../realtime/telemetryStore';
+import {
+  createTestQueryClient,
+  expectNoAxeViolations,
+  renderWithQueryClient,
+  resetStore,
+} from '../test-utils';
+import { IncidentEvidence } from './IncidentEvidence';
+
+// The session module is tested on its own; here it only decides which token the client sends.
+vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+
+const RECEIVED = '2026-10-16T08:00:00.000Z';
+const RECEIVED_MS = Date.parse(RECEIVED);
+
+const point = (overrides: Partial<TelemetryPoint> = {}): TelemetryPoint => ({
+  key: 'motorTempC',
+  label: 'Motor temperature',
+  unit: '°C',
+  kind: 'number',
+  min: -40,
+  max: 150,
+  enumValues: null,
+  expectedIntervalS: 1,
+  headline: 1,
+  ...overrides,
+});
+
+const rule = (overrides: Partial<TelemetryRule> = {}): TelemetryRule => ({
+  name: 'Motor over-temperature',
+  key: 'motorTempC',
+  comparator: 'above',
+  limit: 85,
+  clear: 80,
+  forS: 60,
+  severity: 'critical',
+  incidentType: 'equipment_fault',
+  ...overrides,
+});
+
+const TEMP = point();
+const LEAK = point({
+  key: 'leakDetected',
+  label: 'Leak',
+  unit: null,
+  kind: 'boolean',
+  min: null,
+  max: null,
+});
+
+const asset = (overrides: Partial<AssetDetail>): AssetDetail => ({
+  id: 'asset-ct-01',
+  code: 'CT-01',
+  name: 'Cooling tower 1',
+  class: {
+    id: 'class-cooling-tower',
+    code: 'cooling_tower',
+    name: 'Cooling tower',
+    modelUrl: null,
+    footprintM: { width: 1, depth: 1, height: 1 },
+  },
+  zoneId: 'zone-dc',
+  position: [108.44, 11.95],
+  elevationM: 14,
+  headingDeg: 0,
+  headline: [TEMP],
+  points: [TEMP],
+  rules: [rule()],
+  ...overrides,
+});
+
+const COOLING_TOWER = asset({});
+const LEAK_SENSOR = asset({
+  id: 'asset-lks-b3',
+  code: 'LKS-B3',
+  name: 'Leak sensor, level 3',
+  headline: [LEAK],
+  points: [LEAK],
+  rules: [
+    rule({
+      name: 'Water leak',
+      key: 'leakDetected',
+      limit: 0.5,
+      clear: 0.5,
+      forS: 10,
+      severity: 'high',
+    }),
+  ],
+});
+
+const event = (note: string | null): IncidentEvent => ({
+  id: 'event-1',
+  kind: 'reported',
+  note,
+  at: RECEIVED,
+  actor: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
+});
+
+/** A critical incident the motor rule raised, with the API's own evidence text. */
+function incident(overrides: Partial<IncidentDetail> = {}): IncidentDetail {
+  return {
+    id: 'incident-1',
+    code: 'INC-000107',
+    type: 'equipment_fault',
+    severity: 'critical',
+    status: 'open',
+    title: 'Motor over-temperature — Cooling tower 1',
+    description: null,
+    zoneId: 'zone-dc',
+    position: [108.44, 11.95],
+    source: 'telemetry',
+    assetId: COOLING_TOWER.id,
+    reportedAt: RECEIVED,
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    timeline: [event('motorTempC 92 > 85 for 60 s')],
+    ...overrides,
+  };
+}
+
+const leakIncident = (): IncidentDetail =>
+  incident({
+    severity: 'high',
+    title: 'Water leak — Leak sensor, level 3',
+    assetId: LEAK_SENSOR.id,
+    timeline: [event('leakDetected 1 > 0.5 for 10 s')],
+  });
+
+const entry = (values: AssetTelemetryState['values']): AssetTelemetryState => ({
+  online: true,
+  receivedAt: RECEIVED,
+  headline: values,
+  values,
+  keyReceivedAt: {},
+});
+
+/** The API's clock `afterMs` after the reading was received; the age of the reading, to the ms. */
+const clockAfter = (afterMs: number) => ({ at: RECEIVED_MS + afterMs, mono: performance.now() });
+
+/** The motor's last minutes, rising through the limit. */
+const motorSeries = (afterMs: number): SeriesView => ({
+  t: Float64Array.of(RECEIVED_MS + afterMs - 120_000, RECEIVED_MS + afterMs - 60_000),
+  v: Float32Array.of(78, 88),
+});
+
+function hold({
+  assets,
+  afterMs,
+  series = new Map<string, SeriesView>(),
+}: {
+  assets: Record<string, AssetTelemetryState>;
+  afterMs: number;
+  series?: Map<string, SeriesView>;
+}) {
+  act(() =>
+    useTelemetryStore.setState({
+      view: {
+        state: { ...initialTelemetryState, serverClock: clockAfter(afterMs), assets },
+        series,
+      },
+    }),
+  );
+}
+
+const fetchMock = vi.fn<typeof fetch>();
+const json = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), { status });
+
+/** The catalogue and the asset's detail are cached, so the first render is the loaded block. */
+function renderBlock(
+  detail: IncidentDetail,
+  { catalogue = [COOLING_TOWER, LEAK_SENSOR], details = [COOLING_TOWER, LEAK_SENSOR] } = {},
+) {
+  const client = createTestQueryClient();
+  client.setQueryData(queryKeys.assets, catalogue);
+  for (const cached of details) client.setQueryData(queryKeys.asset(cached.code), cached);
+  return renderWithQueryClient(<IncidentEvidence incident={detail} />, client);
+}
+
+/** The block's one reading row, found from its label. */
+const readingRow = (label: string): HTMLElement => {
+  const row = screen.getByText(label).closest('div');
+  if (!row) throw new Error(`no reading row for ${label}`);
+  return row as HTMLElement;
+};
+
+describe('IncidentEvidence', () => {
+  beforeEach(() => {
+    resetStore(useTelemetryStore);
+    fetchMock.mockReset().mockImplementation(() => new Promise<Response>(() => {}));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
+    vi.mocked(renewSession).mockReset().mockResolvedValue(false);
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  describe('live', () => {
+    beforeEach(() =>
+      hold({
+        assets: { 'CT-01': entry({ motorTempC: 92 }) },
+        afterMs: 400,
+        series: new Map([[seriesKey('CT-01', 'motorTempC'), motorSeries(400)]]),
+      }),
+    );
+
+    it('names the rule, the limit with its clear level and the live value', () => {
+      renderBlock(incident());
+
+      expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+      expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
+      expect(screen.getByText('above 85 °C for 60 s')).toBeInTheDocument();
+      expect(screen.getByText('Motor temperature')).toBeInTheDocument();
+      expect(screen.getByText('Limit 85 °C · clears below 80 °C')).toBeInTheDocument();
+      expect(screen.getByText('92 °C')).toBeInTheDocument();
+      expect(screen.getByText('Live')).toBeInTheDocument();
+    });
+
+    it('draws the series with the limit line, tinted in the rule severity', () => {
+      renderBlock(incident());
+
+      const spark = readingRow('Motor temperature').querySelector('svg');
+      expect(spark).toHaveAttribute('data-severity', 'critical');
+      expect(spark).not.toHaveAttribute('data-stale');
+      expect(spark?.querySelector('line')).not.toBeNull();
+      expect(spark?.querySelector('polyline')).not.toBeNull();
+    });
+
+    it('says in words that the value is over its limit, and follows the next reading', () => {
+      renderBlock(incident());
+      expect(screen.getByText(', over its limit')).toBeInTheDocument();
+
+      hold({ assets: { 'CT-01': entry({ motorTempC: 71 }) }, afterMs: 800 });
+
+      expect(screen.getByText('71 °C')).toBeInTheDocument();
+      expect(screen.queryByText(', over its limit')).toBeNull();
+      expect(readingRow('Motor temperature').querySelector('svg')).not.toHaveAttribute(
+        'data-severity',
+      );
+    });
+
+    it('is the same block with the freshness outside any live region', () => {
+      renderBlock(incident());
+
+      expect(screen.getByText('Live').closest('[role="status"], [aria-live]')).toBeNull();
+    });
+
+    it('has no accessibility violation', async () => {
+      renderBlock(incident());
+
+      await expectNoAxeViolations();
+    });
+  });
+
+  describe('stale', () => {
+    beforeEach(() =>
+      hold({
+        assets: { 'CT-01': entry({ motorTempC: 92 }) },
+        afterMs: 72_000,
+        series: new Map([[seriesKey('CT-01', 'motorTempC'), motorSeries(72_000)]]),
+      }),
+    );
+
+    it('says Stale, dims the row and shows the age of the value', () => {
+      renderBlock(incident());
+
+      expect(screen.getByText('Stale')).toBeInTheDocument();
+      expect(screen.queryByText('Live')).toBeNull();
+      expect(screen.getByText('1 min 12 s old')).toBeInTheDocument();
+      const spark = readingRow('Motor temperature').querySelector('svg');
+      expect(spark).toHaveAttribute('data-stale');
+      expect(readingRow('Motor temperature')).toHaveAttribute('data-stale', 'true');
+    });
+
+    it('treats a device that went offline as stale at once', () => {
+      hold({ assets: { 'CT-01': { ...entry({ motorTempC: 92 }), online: false } }, afterMs: 400 });
+
+      renderBlock(incident());
+
+      expect(screen.getByText('Stale')).toBeInTheDocument();
+    });
+  });
+
+  describe('no reading yet', () => {
+    it('shows a dash with no chart and no freshness chip', () => {
+      hold({ assets: {}, afterMs: 400 });
+
+      renderBlock(incident());
+
+      expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
+      expect(screen.getByText('Limit 85 °C · clears below 80 °C')).toBeInTheDocument();
+      expect(screen.getByText('—')).toBeInTheDocument();
+      expect(readingRow('Motor temperature').querySelector('svg')).toBeNull();
+      expect(screen.queryByText('Live')).toBeNull();
+      expect(screen.queryByText('Stale')).toBeNull();
+    });
+  });
+
+  describe('resolved', () => {
+    it('shows what was raised, with no live value, chart or freshness', () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 71 }) }, afterMs: 400 });
+
+      renderBlock(incident({ status: 'resolved', resolvedAt: RECEIVED }));
+
+      expect(screen.getByText('Raised at 92 °C')).toBeInTheDocument();
+      expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
+      expect(screen.getByText('Limit 85 °C · clears below 80 °C')).toBeInTheDocument();
+      expect(screen.queryByText('71 °C')).toBeNull();
+      expect(screen.queryByText('Live')).toBeNull();
+      expect(screen.queryByText('Stale')).toBeNull();
+      expect(readingRow('Motor temperature').querySelector('svg')).toBeNull();
+    });
+
+    it('keeps an acknowledged incident live', () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+
+      renderBlock(incident({ status: 'acknowledged', acknowledgedAt: RECEIVED }));
+
+      expect(screen.getByText('Live')).toBeInTheDocument();
+    });
+  });
+
+  describe('asset gone', () => {
+    it('describes the evidence alone when the catalogue has no such asset', () => {
+      renderBlock(incident(), { catalogue: [], details: [] });
+
+      expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+      expect(screen.getByText('above 85 for 60 s')).toBeInTheDocument();
+      expect(screen.getByText('Raised at 92')).toBeInTheDocument();
+      expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      expect(screen.queryByText(/clears below/)).toBeNull();
+      expect(screen.queryByText('Rule details could not be loaded.')).toBeNull();
+    });
+
+    it('does the same when the asset answers 404', async () => {
+      fetchMock.mockResolvedValue(json({ statusCode: 404, message: 'Not found' }, 404));
+
+      renderBlock(incident(), { details: [] });
+
+      expect(await screen.findByText('Raised at 92')).toBeInTheDocument();
+      expect(screen.queryByText(/clears below/)).toBeNull();
+      expect(screen.queryByText('Rule details could not be loaded.')).toBeNull();
+    });
+
+    it('says the rules could not be loaded when the asset fails for another reason', async () => {
+      fetchMock.mockResolvedValue(json({ statusCode: 500, message: 'Boom' }, 500));
+
+      renderBlock(incident(), { details: [] });
+
+      expect(await screen.findByText('Rule details could not be loaded.')).toBeInTheDocument();
+      expect(screen.getByText('Raised at 92')).toBeInTheDocument();
+    });
+  });
+
+  describe('not evidence', () => {
+    it.each([
+      ['a person’s note', 'Technician on the way'],
+      ['no note', null],
+      ['a note with a suffix', 'motorTempC 92 > 85 for 60 s on CT-01'],
+    ])('draws nothing and asks for nothing for %s', (_name, note) => {
+      const { container } = renderBlock(incident({ timeline: [event(note)] }));
+
+      expect(container).toBeEmptyDOMElement();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('draws nothing for an incident with no timeline', () => {
+      const { container } = renderBlock(incident({ timeline: [] }));
+
+      expect(container).toBeEmptyDOMElement();
+    });
+  });
+
+  describe('loading', () => {
+    it('shows a skeleton and says so while the catalogue loads', () => {
+      renderWithQueryClient(<IncidentEvidence incident={incident()} />);
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading evidence…');
+    });
+
+    it('shows a skeleton while the asset loads', () => {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.assets, [COOLING_TOWER]);
+      renderWithQueryClient(<IncidentEvidence incident={incident()} />, client);
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading evidence…');
+    });
+  });
+
+  describe('a rule that cannot be matched', () => {
+    it('keeps the limit from the evidence and the incident severity, with no name or clear level', () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+      // The rule was edited after the incident: its limit is now 90.
+      const edited = asset({ rules: [rule({ limit: 90, clear: 85 })] });
+
+      renderBlock(incident({ severity: 'high' }), { details: [edited] });
+
+      expect(screen.getByText('above 85 °C for 60 s')).toBeInTheDocument();
+      expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      expect(screen.queryByText(/clears below/)).toBeNull();
+      const spark = readingRow('Motor temperature').querySelector('svg');
+      expect(spark).toHaveAttribute('data-severity', 'high');
+      expect(spark?.querySelector('line')).not.toBeNull();
+    });
+  });
+
+  describe('a boolean point', () => {
+    it('says Wet in words, with no limit line on the chart', () => {
+      hold({ assets: { 'LKS-B3': entry({ leakDetected: true }) }, afterMs: 400 });
+
+      renderBlock(leakIncident());
+
+      expect(screen.getByText('Water leak')).toBeInTheDocument();
+      expect(screen.getByText('Wet for 10 s')).toBeInTheDocument();
+      expect(screen.getByText('Wet')).toBeInTheDocument();
+      expect(screen.queryByText(/^Limit/)).toBeNull();
+      const spark = readingRow('Leak').querySelector('svg');
+      expect(spark).toHaveAttribute('data-severity', 'high');
+      expect(spark?.querySelector('line')).toBeNull();
+    });
+  });
+
+  describe('a point the asset does not have', () => {
+    it('falls back to what the evidence recorded', () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+
+      renderBlock(incident(), { details: [asset({ points: [], headline: [] })] });
+
+      expect(screen.getByText('Raised at 92')).toBeInTheDocument();
+      expect(screen.queryByText('Live')).toBeNull();
+    });
+  });
+
+  it('keeps the block to its own section', () => {
+    hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+
+    renderBlock(incident());
+
+    const section = screen.getByRole('region', { name: 'Why it was raised' });
+    expect(within(section).getByText('92 °C')).toBeInTheDocument();
+  });
+});

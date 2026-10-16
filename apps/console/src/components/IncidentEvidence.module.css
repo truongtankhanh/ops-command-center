@@ -1,0 +1,141 @@
+/*
+ * "Why it was raised" (frame 10's `.evidence`, `.evidence-rule`; V2-11.2). The reading row is the
+ * inspector's (`AssetReadings.module.css`), copied rather than shared: CSS Modules do not share a
+ * class across files. State is an attribute: `data-stale` on the chip and the row, `data-severity`
+ * on a row whose reading is over its limit (read through the global `--sev`, base.css).
+ */
+
+.evidence {
+  display: grid;
+  gap: var(--space-3);
+  padding: calc(12px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.rule b {
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+/* The freshness chip beside the eyebrow: the word says it, the dot only adds the colour. */
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dot {
+  width: calc(7px * var(--ui-scale));
+  height: calc(7px * var(--ui-scale));
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.freshness[data-stale='true'] .dot {
+  background: var(--warning);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(96px * var(--ui-scale)) minmax(0, auto);
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.label {
+  display: grid;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-m);
+}
+
+.limit {
+  font-size: var(--type-s);
+  color: var(--text-tertiary);
+}
+
+/* A fixed cell, so the value stays in its column whether or not there is a chart. */
+.chart {
+  display: block;
+  height: calc(28px * var(--ui-scale));
+}
+
+.value {
+  display: grid;
+  justify-items: end;
+  justify-self: end;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-xl);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.row[data-severity] .value {
+  color: var(--sev);
+}
+
+/* After the severity rule on purpose: a stale value is dimmed whatever it was (frame 05). */
+.row[data-stale='true'] .value {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+.age {
+  margin-top: var(--space-1);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+}
+
+/* What the evidence recorded, not a live value: quieter than one. */
+.raised {
+  font-size: var(--type-m);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.note {
+  margin: 0;
+}
+
+.skeletonCard {
+  display: block;
+  height: calc(88px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn: that a value is over its limit is not left to its colour. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
