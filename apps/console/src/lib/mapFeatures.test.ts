@@ -1,4 +1,5 @@
 import {
+  type Asset,
   type Camera,
   type Incident,
   INCIDENT_SEVERITIES,
@@ -6,13 +7,18 @@ import {
   type IncidentType,
   type LngLat,
 } from '@occ/contracts';
+import type { AssetState } from './assets';
 import {
+  assetFeatures,
+  assetImageId,
+  assetLookOf,
   cameraFeatures,
   cameraImageId,
   cameraViewFeatures,
   clusterCountImageId,
   clusterSeverityImageId,
   fanOut,
+  fanOutAssets,
   incidentFeatures,
   incidentImageId,
   type MarkerType,
@@ -160,6 +166,207 @@ describe('fanOut', () => {
     ];
 
     expect(fanOut([...list].reverse())).toEqual(fanOut(list));
+  });
+});
+
+const asset = (overrides: Partial<Asset>): Asset => ({
+  id: 'asset-id',
+  code: 'CT-01',
+  name: 'Cooling tower 1',
+  class: {
+    id: 'class-cooling-tower',
+    code: 'cooling_tower',
+    name: 'Cooling tower',
+    modelUrl: null,
+    footprintM: { width: 1, depth: 1, height: 1 },
+  },
+  zoneId: 'z1',
+  position: ANCHOR,
+  elevationM: 0,
+  headingDeg: 0,
+  headline: [],
+  ...overrides,
+});
+
+describe('asset image ids', () => {
+  it('draws a fault in its state, nodata and offline alike, everything else as normal', () => {
+    expect(assetLookOf('fault')).toBe('fault');
+    expect(assetLookOf('nodata')).toBe('nodata');
+    expect(assetLookOf('offline')).toBe('nodata');
+    for (const state of ['running', 'standby', 'unknown'] as const) {
+      expect(assetLookOf(state)).toBe('normal');
+    }
+  });
+
+  it('names a fault by the severity of its incident, and the other looks by the look', () => {
+    expect(assetImageId('normal', null)).toBe('asset-normal');
+    expect(assetImageId('nodata', 'critical')).toBe('asset-nodata');
+    expect(assetImageId('fault', 'critical')).toBe('asset-fault-critical');
+    expect(new Set(INCIDENT_SEVERITIES.map((s) => assetImageId('fault', s))).size).toBe(4);
+  });
+
+  it('draws a fault with no known severity as medium rather than as a missing image', () => {
+    expect(assetImageId('fault', null)).toBe('asset-fault-medium');
+  });
+});
+
+describe('fanOutAssets', () => {
+  it('keeps the position of an asset with nobody near it', () => {
+    const positions = fanOutAssets([asset({ code: 'A' })]);
+
+    expect(positions.get('A')).toEqual(ANCHOR);
+  });
+
+  it('leaves assets farther apart than a marker where they are', () => {
+    const near = eastOf(1);
+    const positions = fanOutAssets([asset({ code: 'A' }), asset({ code: 'B', position: near })]);
+
+    expect(positions.get('A')).toEqual(ANCHOR);
+    expect(positions.get('B')).toEqual(near);
+  });
+
+  it('spreads two assets on one point on a ring, the first code at north', () => {
+    // PMP-S1 and ICS-STU: the pump is a box on the sensor's point (asset-classes.md).
+    const positions = fanOutAssets([asset({ code: 'PMP-S1' }), asset({ code: 'ICS-STU' })]);
+    const first = positions.get('ICS-STU')!;
+    const second = positions.get('PMP-S1')!;
+
+    expect(first[0]).toBeCloseTo(ANCHOR[0], 9);
+    expect(first[1]).toBeGreaterThan(ANCHOR[1]);
+    expect(second[1]).toBeLessThan(ANCHOR[1]);
+    expect(metresBetween(first, second)).toBeGreaterThanOrEqual(4);
+  });
+
+  it('groups assets closer than the threshold even when not identical', () => {
+    const positions = fanOutAssets([
+      asset({ code: 'A' }),
+      asset({ code: 'B', position: eastOf(0.4) }),
+    ]);
+
+    expect(metresBetween(positions.get('A')!, positions.get('B')!)).toBeGreaterThanOrEqual(4);
+  });
+
+  it('does not group assets just past the threshold', () => {
+    const far = eastOf(0.6);
+    const positions = fanOutAssets([asset({ code: 'A' }), asset({ code: 'B', position: far })]);
+
+    expect(positions.get('B')).toEqual(far);
+  });
+
+  it('keeps every asset of a large group apart', () => {
+    const group = Array.from({ length: 6 }, (_, i) => asset({ code: `A${i}` }));
+    const points = [...fanOutAssets(group).values()];
+
+    for (const [i, a] of points.entries()) {
+      for (const b of points.slice(i + 1)) expect(metresBetween(a, b)).toBeGreaterThan(3.5);
+    }
+  });
+
+  it('orders the ring by code whatever the input order', () => {
+    const list = [asset({ code: 'B' }), asset({ code: 'A' }), asset({ code: 'C' })];
+
+    expect(fanOutAssets([...list].reverse())).toEqual(fanOutAssets(list));
+  });
+});
+
+describe('assetFeatures', () => {
+  const states = (entries: [string, AssetState][]) => new Map(entries);
+
+  it('draws one marker per asset at its own position, ordered by code', () => {
+    const list = [
+      asset({ id: 'b', code: 'B', position: eastOf(20) }),
+      asset({ id: 'a', code: 'A', position: eastOf(10) }),
+    ];
+
+    const { features } = assetFeatures(list, states([]), []);
+
+    expect(features.map((f) => f.properties.code)).toEqual(['A', 'B']);
+    expect(features[0]!.geometry.coordinates).toEqual(eastOf(10));
+    expect(features[1]!.geometry.coordinates).toEqual(eastOf(20));
+  });
+
+  // GEN-01 stands 3 m outside its zone (asset-classes.md): nothing clips an asset to its zone.
+  it('draws an asset where it stands, outside its zone included', () => {
+    const outside = eastOf(3);
+
+    const { features } = assetFeatures(
+      [asset({ code: 'GEN-01', position: outside })],
+      states([]),
+      [],
+    );
+
+    expect(features[0]!.geometry.coordinates).toEqual(outside);
+  });
+
+  it('describes each asset for the layer by its state', () => {
+    const list = [
+      asset({ id: 'a', code: 'A', position: eastOf(10) }),
+      asset({ id: 'b', code: 'B', position: eastOf(20) }),
+      asset({ id: 'c', code: 'C', position: eastOf(30) }),
+    ];
+
+    const { features } = assetFeatures(
+      list,
+      states([
+        ['A', 'running'],
+        ['B', 'offline'],
+        ['C', 'standby'],
+      ]),
+      [],
+    );
+
+    expect(features.map((f) => f.properties.image)).toEqual([
+      'asset-normal',
+      'asset-nodata',
+      'asset-normal',
+    ]);
+    expect(features[0]!.properties).toMatchObject({
+      code: 'A',
+      name: 'Cooling tower 1',
+      state: 'running',
+    });
+  });
+
+  it('draws a fault in the severity of the incident that raised it', () => {
+    const faulty = asset({ id: 'a-1', code: 'CT-01' });
+    const incidents = [
+      incident({ id: 'low', assetId: 'a-1', severity: 'low' }),
+      incident({ id: 'high', assetId: 'a-1', severity: 'high' }),
+      incident({ id: 'other', assetId: 'someone-else', severity: 'critical' }),
+    ];
+
+    const { features } = assetFeatures([faulty], states([['CT-01', 'fault']]), incidents);
+
+    expect(features[0]!.properties).toMatchObject({
+      state: 'fault',
+      severity: 'high',
+      image: 'asset-fault-high',
+    });
+  });
+
+  it('carries no severity unless the asset is a fault', () => {
+    const { features } = assetFeatures(
+      [asset({ id: 'a-1', code: 'CT-01' })],
+      states([['CT-01', 'running']]),
+      [incident({ assetId: 'a-1', severity: 'critical' })],
+    );
+
+    expect(features[0]!.properties.severity).toBeNull();
+  });
+
+  it('draws an asset the states do not know as normal', () => {
+    const { features } = assetFeatures([asset({ code: 'NEW-01' })], states([]), []);
+
+    expect(features[0]!.properties).toMatchObject({ state: 'unknown', image: 'asset-normal' });
+  });
+
+  it('gives the same list for the same facts, so an unchanged tick can be told apart', () => {
+    const list = [asset({ code: 'A' }), asset({ code: 'B' })];
+    const known = states([['A', 'running']]);
+
+    expect(JSON.stringify(assetFeatures(list, known, []))).toBe(
+      JSON.stringify(assetFeatures([...list].reverse(), new Map(known), [])),
+    );
   });
 });
 

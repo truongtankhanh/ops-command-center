@@ -215,7 +215,8 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
 2. **Forms and ids.** `incident-{severity}-{open|acknowledged}-{type}` (192), `incident-resolved-{type}` (24), the same
    9 forms for a type outside the contract (`incident-{severity}-{open|acknowledged}-unknown`,
    `incident-resolved-unknown`, drawn with `unknownIcon`, V2-03.2), `camera-online` / `camera-offline`,
-   `cluster-severity-{severity}` (4, UI-16) — 231 images. `incidentImageId` maps any type that is not in
+   `cluster-severity-{severity}` (4, UI-16), `asset-normal` / `asset-nodata` / `asset-fault-{severity}` (6, V2-10.3)
+   — 237 images. `incidentImageId` maps any type that is not in
    `INCIDENT_TYPES` to the `unknown` suffix (`markerType` in `lib/mapFeatures.ts`; a unit test keeps `unknown` out of
    the contract). The unknown-type forms are registered up front with all the others, not on `styleimagemissing`
    (item 6): that event needs the image added synchronously, and glyph images decode asynchronously (item 4). The
@@ -223,7 +224,9 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
    `--on-accent`, drawn on the cluster's ring at its top-right by its own `symbol` layer, so a cluster's highest
    severity is not told by the ring colour alone (WCAG 1.4.1). Geometry follows frames 01, 02 and 04 (`.mk-*`,
    `.pl-cam`): open = severity disc with an `--on-accent` glyph, acknowledged = ground disc in a severity ring with a
-   severity glyph, resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4).
+   severity glyph, resolved = the ring form in `--text-tertiary`; glyphs stroked at 2.6 (cameras 2.4). The asset
+   diamond (frame 14 `.pl-asset`) is the one form with **no glyph**: an 8 px square turned 45°, light edge when
+   normal, the incident's severity at 30 % with a severity edge for a fault, a dim dashed edge with no data.
 3. **SVG markup from the component.** One `createRoot` on a detached element renders each glyph with `flushSync`
    and `createElement(glyph, { size, color, strokeWidth })`; its `innerHTML` is the markup, and the root is unmounted
    at the end. Done in the map's `load` handler, never during render or in a layout effect (`flushSync` warns there).

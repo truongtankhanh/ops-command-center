@@ -1,19 +1,26 @@
-import type { Camera, Incident, SitePlan, Zone } from '@occ/contracts';
+import type { Asset, Camera, Incident, SitePlan, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { FeatureCollection, Geometry, Point } from 'geojson';
 import { queryKeys } from '../api/queries';
-import { incidentFeatures, type IncidentProperties } from '../lib/mapFeatures';
+import {
+  type AssetProperties,
+  incidentFeatures,
+  type IncidentProperties,
+} from '../lib/mapFeatures';
 import { registerMapImages } from '../lib/mapImages';
 import {
   cameraViewLayers,
   groundLayers,
+  HOVER_LAYERS,
   INTERACTIVE_LAYERS,
   MAP_LAYERS,
   MAP_SOURCES,
   zoneOverlayLayers,
 } from '../lib/mapLayers';
 import { siteBounds, type SiteProperties } from '../lib/sitePlan';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { CampusMap } from './CampusMap';
@@ -231,7 +238,14 @@ async function renderMap(
     zones = [] as Zone[] | null,
     sitePlan = SITE_PLAN as SitePlan | null,
     cameras = [] as Camera[],
-  }: { load?: boolean; zones?: Zone[] | null; sitePlan?: SitePlan | null; cameras?: Camera[] } = {},
+    assets = [] as Asset[],
+  }: {
+    load?: boolean;
+    zones?: Zone[] | null;
+    sitePlan?: SitePlan | null;
+    cameras?: Camera[];
+    assets?: Asset[];
+  } = {},
 ) {
   const client = createTestQueryClient();
   // `null`: not cached, so the map asks the API for the zones.
@@ -239,6 +253,7 @@ async function renderMap(
   // `null`: not cached, so the map asks the API for it.
   if (sitePlan) client.setQueryData(queryKeys.sitePlan, sitePlan);
   client.setQueryData(queryKeys.cameras, cameras);
+  client.setQueryData(queryKeys.assets, assets);
   client.setQueryData(queryKeys.incidents, incidents);
   const view = renderWithQueryClient(<CampusMap />, client);
   const map = fake.maps.at(-1)!;
@@ -346,6 +361,7 @@ describe('CampusMap', () => {
     expect(map.addSource.mock.calls.map(([id]) => id)).toEqual([
       MAP_SOURCES.cameraViews,
       MAP_SOURCES.cameras,
+      MAP_SOURCES.assets,
       MAP_SOURCES.incidents,
       MAP_SOURCES.selected,
     ]);
@@ -493,6 +509,201 @@ describe('CampusMap', () => {
     expect(map.removeLayer).not.toHaveBeenCalled();
   });
 
+  // V2-10.3: the equipment, drawn under the incidents and over the cameras, from the catalogue and
+  // the telemetry the console holds.
+  describe('assets', () => {
+    const NOW = Date.parse('2026-10-15T08:00:00.000Z');
+    const RECEIVED = new Date(NOW).toISOString();
+    const point = (key: string, expectedIntervalS: number): TelemetryPoint => ({
+      key,
+      label: key,
+      unit: null,
+      kind: 'number',
+      min: null,
+      max: null,
+      enumValues: null,
+      expectedIntervalS,
+      headline: 1,
+    });
+    /** Stale after the 5 s floor; a class with no state point is Running while nothing is wrong. */
+    const asset = (overrides: Partial<Asset> = {}): Asset => ({
+      id: 'asset-ct-01',
+      code: 'CT-01',
+      name: 'Cooling tower 1',
+      class: {
+        id: 'class-cooling-tower',
+        code: 'cooling_tower',
+        name: 'Cooling tower',
+        modelUrl: null,
+        footprintM: { width: 1, depth: 1, height: 1 },
+      },
+      zoneId: 'z1',
+      position: POSITION,
+      elevationM: 0,
+      headingDeg: 0,
+      headline: [point('fanSpeedRpm', 1)],
+      ...overrides,
+    });
+
+    /** The API's clock anchored at `NOW` at monotonic time 1000, and what each asset last sent. */
+    const telemetry = (
+      assets: Record<string, { online?: boolean; receivedAt?: string; rpm?: number }>,
+    ): TelemetryState => ({
+      ...initialTelemetryState,
+      serverClock: { at: NOW, mono: 1000 },
+      assets: Object.fromEntries(
+        Object.entries(assets).map(
+          ([code, { online = true, receivedAt = RECEIVED, rpm = 1200 }]) => [
+            code,
+            {
+              online,
+              receivedAt,
+              headline: { fanSpeedRpm: rpm },
+              values: { fanSpeedRpm: rpm },
+              keyReceivedAt: { fanSpeedRpm: receivedAt },
+            },
+          ],
+        ),
+      ),
+    });
+    const setTelemetry = (state: TelemetryState) =>
+      act(() => useTelemetryStore.setState({ view: { state, series: new Map() } }));
+
+    const data = (map: InstanceType<typeof fake.FakeMap>) =>
+      lastData(map, MAP_SOURCES.assets) as unknown as FeatureCollection<Point, AssetProperties>;
+    const setDataCalls = (map: InstanceType<typeof fake.FakeMap>) =>
+      map.sources.get(MAP_SOURCES.assets)!.setData.mock.calls.length;
+    const images = (map: InstanceType<typeof fake.FakeMap>) =>
+      data(map).features.map((f) => f.properties.image);
+
+    beforeEach(() => {
+      resetStore(useTelemetryStore);
+      // The clock the map reads, and the only timer it uses, are the two this block controls.
+      vi.spyOn(performance, 'now').mockReturnValue(1000);
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it('adds the layer after the cameras and before the incidents', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { assets: [asset()] });
+
+      const order = map.addLayer.mock.calls.map(([layer]) => layer.id);
+      expect(order.indexOf(MAP_LAYERS.assets)).toBeGreaterThan(order.indexOf(MAP_LAYERS.cameras));
+      expect(order.indexOf(MAP_LAYERS.assets)).toBeLessThan(order.indexOf(MAP_LAYERS.pulseStatic));
+      expect(order.indexOf(MAP_LAYERS.assets)).toBeLessThan(order.indexOf(MAP_LAYERS.incidents));
+    });
+
+    // The click handler reads any hit as an incident or a camera; nothing handles an asset until
+    // V2-10.4, which lists the layer together with its click and hover.
+    it('is not a layer a click or a hover acts on yet', () => {
+      expect(INTERACTIVE_LAYERS).not.toContain(MAP_LAYERS.assets);
+      expect(HOVER_LAYERS).not.toContain(MAP_LAYERS.assets);
+    });
+
+    it('draws each asset at its own position, `GEN-01` outside its zone included', async () => {
+      const outside: [number, number] = [POSITION[0] + 0.0002, POSITION[1]];
+      const { map } = await renderMap([], {
+        assets: [
+          asset({ id: 'a', code: 'CT-01' }),
+          asset({ id: 'g', code: 'GEN-01', position: outside }),
+        ],
+      });
+
+      const features = data(map).features;
+      expect(features.map((f) => f.properties.code)).toEqual(['CT-01', 'GEN-01']);
+      expect(features[0]!.geometry.coordinates).toEqual(POSITION);
+      expect(features[1]!.geometry.coordinates).toEqual(outside);
+    });
+
+    it('keeps two assets on one point apart, so each can be picked', async () => {
+      const { map } = await renderMap([], {
+        assets: [asset({ id: 'p', code: 'PMP-S1' }), asset({ id: 'i', code: 'ICS-STU' })],
+      });
+
+      const [first, second] = data(map).features.map((f) => f.geometry.coordinates);
+      expect(first).not.toEqual(second);
+    });
+
+    it('draws an empty catalogue as no markers', async () => {
+      const { map } = await renderMap([], { assets: [] });
+
+      expect(data(map).features).toEqual([]);
+    });
+
+    it('draws a fault in the severity of its incident, even when its reading is old', async () => {
+      await setTelemetry(
+        telemetry({ 'CT-01': { receivedAt: new Date(NOW - 600_000).toISOString() } }),
+      );
+
+      const { map } = await renderMap(
+        [incident({ id: 'inc', assetId: 'asset-ct-01', severity: 'critical' })],
+        { assets: [asset()] },
+      );
+
+      expect(images(map)).toEqual(['asset-fault-critical']);
+    });
+
+    it('updates one marker, not the layers, when an asset goes offline and comes back', async () => {
+      await setTelemetry(telemetry({ 'CT-01': {}, 'CT-02': {} }));
+      const { map } = await renderMap([], {
+        assets: [
+          asset(),
+          asset({ id: 'asset-ct-02', code: 'CT-02', position: [108.4416, 11.953] }),
+        ],
+      });
+      expect(images(map)).toEqual(['asset-normal', 'asset-normal']);
+      const built = creations(map);
+
+      await setTelemetry(telemetry({ 'CT-01': { online: false }, 'CT-02': {} }));
+      expect(images(map)).toEqual(['asset-nodata', 'asset-normal']);
+
+      await setTelemetry(telemetry({ 'CT-01': {}, 'CT-02': {} }));
+      expect(images(map)).toEqual(['asset-normal', 'asset-normal']);
+      expect(creations(map)).toEqual(built);
+    });
+
+    it('sends nothing for a reading that changes no state, on telemetry or on the timer', async () => {
+      await setTelemetry(telemetry({ 'CT-01': { rpm: 1200 } }));
+      const { map } = await renderMap([], { assets: [asset()] });
+      const sent = setDataCalls(map);
+
+      await setTelemetry(telemetry({ 'CT-01': { rpm: 1250 } }));
+      await setTelemetry(telemetry({ 'CT-01': { rpm: 1300 } }));
+      act(() => vi.advanceTimersByTime(3000));
+
+      expect(setDataCalls(map)).toBe(sent);
+    });
+
+    it('marks an asset as no data when its reading ages past its threshold with no traffic', async () => {
+      await setTelemetry(telemetry({ 'CT-01': {} }));
+      const { map } = await renderMap([], { assets: [asset()] });
+      expect(images(map)).toEqual(['asset-normal']);
+
+      // Nothing arrives; the API's clock moves on (the 5 s floor is long past).
+      vi.mocked(performance.now).mockReturnValue(1000 + 60_000);
+      act(() => vi.advanceTimersByTime(1000));
+
+      expect(images(map)).toEqual(['asset-nodata']);
+    });
+
+    it('stops listening and ticking when the map goes', async () => {
+      await setTelemetry(telemetry({ 'CT-01': {} }));
+      const { map, unmount } = await renderMap([], { assets: [asset()] });
+      const sent = setDataCalls(map);
+
+      unmount();
+      await setTelemetry(telemetry({ 'CT-01': { online: false } }));
+      act(() => vi.advanceTimersByTime(3000));
+
+      expect(setDataCalls(map)).toBe(sent);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
+
   // The zones are the campus: without them the map is an empty ground, so it says why (UI-15).
   describe('zones loading', () => {
     it('says the map is loading until the zones arrive', async () => {
@@ -542,6 +753,7 @@ describe('CampusMap', () => {
         MAP_SOURCES.zones,
         MAP_SOURCES.cameraViews,
         MAP_SOURCES.cameras,
+        MAP_SOURCES.assets,
         MAP_SOURCES.incidents,
         MAP_SOURCES.selected,
       ]);

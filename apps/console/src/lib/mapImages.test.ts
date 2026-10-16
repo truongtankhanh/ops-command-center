@@ -81,6 +81,12 @@ describe('imageIdOf', () => {
     expect(imageIdOf({ kind: 'resolved', type: 'medical' })).toBe('incident-resolved-medical');
     expect(imageIdOf({ kind: 'camera', online: false })).toBe('camera-offline');
   });
+
+  it('names an asset diamond as the features do', () => {
+    expect(imageIdOf({ kind: 'asset', look: 'normal' })).toBe('asset-normal');
+    expect(imageIdOf({ kind: 'asset', look: 'nodata' })).toBe('asset-nodata');
+    expect(imageIdOf({ kind: 'asset', look: 'fault', severity: 'high' })).toBe('asset-fault-high');
+  });
 });
 
 describe('markerSvg', () => {
@@ -116,6 +122,48 @@ describe('markerSvg', () => {
   it('dashes the outline of an offline camera only', () => {
     expect(markerSvg({ kind: 'camera', online: false }, '', 1)).toContain('stroke-dasharray="2 2"');
     expect(markerSvg({ kind: 'camera', online: true }, '', 1)).not.toContain('stroke-dasharray');
+  });
+});
+
+describe('asset diamond', () => {
+  it('is a square of 8 px turned 45°, with no glyph', () => {
+    const svg = markerSvg({ kind: 'asset', look: 'normal' }, '<svg id="glyph"/>', 1);
+
+    expect(svg).toContain('width="8" height="8"');
+    expect(svg).toContain('rotate(45)');
+    expect(svg).not.toContain('id="glyph"');
+    expect(svg).not.toContain('<g ');
+  });
+
+  it('draws a normal asset on its surface with a light edge', () => {
+    const svg = markerSvg({ kind: 'asset', look: 'normal' }, '', 1);
+
+    expect(svg).toContain(
+      `fill="${mapColors.surface2}" stroke="${mapColors.textSecondary}" stroke-width="1.5"`,
+    );
+    expect(svg).not.toContain('stroke-dasharray');
+  });
+
+  it('draws a fault as its severity at 30 % over the surface, edged in that severity', () => {
+    const svg = markerSvg({ kind: 'asset', look: 'fault', severity: 'high' }, '', 1);
+
+    expect(svg).toContain(`fill="${mapColors.surface2}"`);
+    expect(svg).toContain(
+      `fill="${mapColors.severity.high}" fill-opacity="0.3" stroke="${mapColors.severity.high}" stroke-width="1.5"`,
+    );
+  });
+
+  it('draws no data as a dim dashed edge, which is the only cue that differs', () => {
+    const svg = markerSvg({ kind: 'asset', look: 'nodata' }, '', 1);
+
+    expect(svg).toContain(`stroke="${mapColors.staleEdge}"`);
+    expect(svg).toContain('stroke-dasharray="2 2"');
+  });
+
+  it('scales the bitmap with the pixel ratio, not the drawing', () => {
+    expect(markerSvg({ kind: 'asset', look: 'normal' }, '', 2)).toContain(
+      'width="28" height="28" viewBox="0 0 14 14"',
+    );
   });
 });
 
@@ -168,8 +216,9 @@ describe('registerMapImages', () => {
 
     await registerMapImages(asMap(map), new AbortController().signal);
 
-    // 4 severities × 2 statuses × (24 types + unknown), 25 resolved, 2 cameras, 4 cluster badges.
-    expect(map.images.size).toBe(231);
+    // 4 severities × 2 statuses × (24 types + unknown), 25 resolved, 2 cameras, 4 cluster badges,
+    // 6 asset diamonds (normal, no data, a fault per severity).
+    expect(map.images.size).toBe(237);
     expect(map.images.get('incident-critical-open-fire_alarm')).toEqual({ pixelRatio: 1 });
     expect(map.images.has('incident-low-acknowledged-crowding')).toBe(true);
     expect(map.images.has('incident-resolved-suspicious_object')).toBe(true);
@@ -177,6 +226,21 @@ describe('registerMapImages', () => {
     expect(map.images.has('cluster-severity-critical')).toBe(true);
     expect(map.images.has('incident-critical-open-unknown')).toBe(true);
     expect(map.images.has('incident-resolved-unknown')).toBe(true);
+    expect(map.images.has('asset-normal')).toBe(true);
+    expect(map.images.has('asset-nodata')).toBe(true);
+    for (const severity of ['low', 'medium', 'high', 'critical']) {
+      expect(map.images.has(`asset-fault-${severity}`)).toBe(true);
+    }
+  });
+
+  it('draws the asset diamonds with no glyph from the icon set', async () => {
+    const map = fakeMap();
+
+    await registerMapImages(asMap(map), new AbortController().signal);
+
+    const [, image] = map.addImage.mock.calls.find(([id]) => id === 'asset-normal')!;
+    const svg = decodeURIComponent((image as DecodedImage).src.split(',')[1]!);
+    expect(svg.match(/<svg/g)).toHaveLength(1);
   });
 
   it('renders the glyph from the icon set into the image', async () => {

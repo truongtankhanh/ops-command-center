@@ -290,6 +290,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-medium`      | `--tw-alarm-top`                          | 4.73  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
 | `--sev-low`         | `--tw-alarm-top`                          | 3.54  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
 | `--tw-stale-edge`   | `--tw-stale-top`                          | 1.68  | 3       | reported only: dim on purpose; the dash, stopped motion and value ages carry stale         |
+| `--tw-stale-edge`   | `map ground`                              | 2.35  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
 | `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
@@ -304,12 +305,14 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapColors.severity.medium` (src/styles/tokens.ts)   | #f2d04b                   | #f2d04b                   | match  |
 | `mapColors.severity.low` (src/styles/tokens.ts)      | #6cc3d5                   | #6cc3d5                   | match  |
 | `mapColors.surface1` (src/styles/tokens.ts)          | #13222d                   | #13222d                   | match  |
+| `mapColors.surface2` (src/styles/tokens.ts)          | #1a2d3a                   | #1a2d3a                   | match  |
 | `mapColors.surface3` (src/styles/tokens.ts)          | #223848                   | #223848                   | match  |
 | `mapColors.accent` (src/styles/tokens.ts)            | #8c9bff                   | #8c9bff                   | match  |
 | `mapColors.onAccent` (src/styles/tokens.ts)          | #0c1821                   | #0c1821                   | match  |
 | `mapColors.textPrimary` (src/styles/tokens.ts)       | #e4edf3                   | #e4edf3                   | match  |
 | `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
 | `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
+| `mapColors.staleEdge` (src/styles/tokens.ts)         | #4a555c                   | #4a555c                   | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |
 | `breakpoints.wall4k` (src/styles/tokens.ts)          | 3200px                    | 3200px                    | match  |

@@ -162,6 +162,16 @@ const PAIRS: Pair[] = [
     min: UI,
     reportOnly: 'dim on purpose; the dash, stopped motion and value ages carry stale',
   },
+  // V2-10.3: the 2D asset marker with no data draws the same dim dashed edge on the map ground
+  // (frame 14 `.is-stale`). Dim on purpose, as above: the dash carries it, and the Assets tab and the
+  // inspector say it in words. The normal marker's `--text-secondary` stroke and the fault's severity
+  // stroke are the ground pairs at the top of this list.
+  {
+    fg: '--tw-stale-edge',
+    bg: 'map ground',
+    min: UI,
+    reportOnly: 'dim on purpose; the dash carries no data, and the Assets tab says it too',
+  },
   // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground.
   { fg: '--text-secondary', bg: '--tw-ground', min: TEXT },
   // The heat ramp's ends on the ground: lightness carries the value, not a boundary.
@@ -332,12 +342,14 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       `--sev-${severity}`,
     ]),
     ['surface1', mapColors.surface1, '--surface-1'],
+    ['surface2', mapColors.surface2, '--surface-2'],
     ['surface3', mapColors.surface3, '--surface-3'],
     ['accent', mapColors.accent, '--accent'],
     ['onAccent', mapColors.onAccent, '--on-accent'],
     ['textPrimary', mapColors.textPrimary, '--text-primary'],
     ['textSecondary', mapColors.textSecondary, '--text-secondary'],
     ['textTertiary', mapColors.textTertiary, '--text-tertiary'],
+    ['staleEdge', mapColors.staleEdge, '--tw-stale-edge'],
   ];
   return [
     ...mapCopies.map(([copy, value, token]) => ({

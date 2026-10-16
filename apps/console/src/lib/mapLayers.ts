@@ -13,9 +13,10 @@ import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX, clusterSeverityImageId } from 
 import { type SitePart, siteFeatures, zoneFeatures } from './sitePlan';
 
 /*
- * Sources and layers for the site plan, zones, camera views, cameras and incidents. Shapes come
- * from the frames: 01 (site plan, markers, cameras), 02 (selected marker), 03 (highlighted zone),
- * 04 (critical pulse). No frame shows camera views; they follow ADR-0017. No layer uses `text-*`:
+ * Sources and layers for the site plan, zones, camera views, cameras, assets and incidents. Shapes
+ * come from the frames: 01 (site plan, markers, cameras), 02 (selected marker), 03 (highlighted
+ * zone), 04 (critical pulse), 14 (assets). No frame shows camera views; they follow ADR-0017. No
+ * layer uses `text-*`:
  * the offline style has no `glyphs`, so every label is an image (see `mapImages.ts`) or stays in
  * the DOM.
  */
@@ -25,6 +26,7 @@ export const MAP_SOURCES = {
   zones: 'zones',
   cameraViews: 'camera-views',
   cameras: 'cameras',
+  assets: 'assets',
   incidents: 'incidents',
   selected: 'incident-selected',
 } as const;
@@ -43,6 +45,7 @@ export const MAP_LAYERS = {
   zoneOutline: 'zone-outline',
   zoneHighlight: 'zone-highlight',
   cameras: 'cameras',
+  assets: 'assets',
   pulseStatic: 'pulse-static',
   pulseWave: 'pulse-wave',
   selectedPulseStatic: 'selected-pulse-static',
@@ -58,6 +61,10 @@ export const MAP_LAYERS = {
 /**
  * Layers a click can hit, topmost first: an incident selects, a cluster zooms in, a camera opens the
  * viewer (UI-13). Cameras are drawn under the incidents, so a marker over a camera still wins.
+ *
+ * The asset layer is not here yet: it is drawn (V2-10.3) but nothing handles a click or a hover on
+ * it until V2-10.4, which lists it with them. Listed alone it would turn the pointer into a hand
+ * over a marker that does nothing, and the click handler would read an asset as an incident.
  */
 export const INTERACTIVE_LAYERS = [
   MAP_LAYERS.selected,
@@ -289,6 +296,10 @@ export function cameraViewSource(): [id: string, source: GeoJSONSourceSpecificat
   return [MAP_SOURCES.cameraViews, { type: 'geojson', data: EMPTY }];
 }
 
+export function assetSource(): [id: string, source: GeoJSONSourceSpecification] {
+  return [MAP_SOURCES.assets, { type: 'geojson', data: EMPTY }];
+}
+
 export function incidentSources(): [id: string, source: GeoJSONSourceSpecification][] {
   return [
     [
@@ -315,6 +326,23 @@ export function cameraLayers(): LayerSpecification[] {
       id: MAP_LAYERS.cameras,
       type: 'symbol',
       source: MAP_SOURCES.cameras,
+      layout: { ...ICON_PLACEMENT, 'icon-image': ['get', 'image'] },
+    },
+  ];
+}
+
+/**
+ * Asset markers (frame 14): small diamonds, drawn **above the cameras and below the incidents**, so
+ * an incident raised at an asset's position stays on top. Add after `cameraLayers()` and before
+ * `incidentLayers()`; that order is the draw order. Like the others it never hides a marker to make
+ * room for another.
+ */
+export function assetLayers(): LayerSpecification[] {
+  return [
+    {
+      id: MAP_LAYERS.assets,
+      type: 'symbol',
+      source: MAP_SOURCES.assets,
       layout: { ...ICON_PLACEMENT, 'icon-image': ['get', 'image'] },
     },
   ];
