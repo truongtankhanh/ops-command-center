@@ -44,9 +44,10 @@ Goal: the full loop works end to end with synthetic data.
 
 ## M4 — Operations hardening
 
-| #      | Ticket                                                              |
-| ------ | ------------------------------------------------------------------- |
-| OCC-23 | ✅ Structured logging + request correlation IDs                     |
-| OCC-24 | ✅ Metrics endpoint (Prometheus) and a Grafana dashboard in Compose |
-| OCC-25 | Playwright end-to-end smoke test of the console                     |
-| OCC-26 | Incident SLA timers and escalation rules                            |
+| #      | Ticket                                                                                       |
+| ------ | -------------------------------------------------------------------------------------------- |
+| OCC-23 | ✅ Structured logging + request correlation IDs                                              |
+| OCC-24 | ✅ Metrics endpoint (Prometheus) and a Grafana dashboard in Compose                          |
+| OCC-25 | Playwright end-to-end smoke test of the console                                              |
+| OCC-26 | Incident SLA timers and escalation rules                                                     |
+| OCC-29 | ✅ Realm client for iot-telemetry-pipeline: client credentials, `technician` service account |
