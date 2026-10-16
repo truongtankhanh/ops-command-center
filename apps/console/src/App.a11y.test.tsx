@@ -8,6 +8,8 @@ import type {
   SitePlan,
   StreamDescriptor,
   TelemetryPoint,
+  TelemetryRule,
+  TelemetryValue,
   Zone,
 } from '@occ/contracts';
 import { act, screen, within } from '@testing-library/react';
@@ -229,13 +231,168 @@ const hls = (cameraId: string): StreamDescriptor => ({
 
 const detailOf = (item: Incident): IncidentDetail => ({ ...item, timeline: [] });
 
+/*
+ * What Phase 3 adds to the pages above (V2-11.5): the tower's motor and the rule that raises its
+ * incident, a sensor whose class has no model, and an incident that rule raised, with the note the
+ * API writes as its evidence (`formatRuleEvidence`).
+ */
+const MOTOR_TEMP: TelemetryPoint = {
+  key: 'motorTempC',
+  label: 'Motor temperature',
+  unit: '°C',
+  kind: 'number',
+  min: -40,
+  max: 150,
+  enumValues: null,
+  expectedIntervalS: 1,
+  headline: 2,
+};
+
+const MOTOR_RULE: TelemetryRule = {
+  name: 'Motor over-temperature',
+  key: 'motorTempC',
+  comparator: 'above',
+  limit: 85,
+  clear: 80,
+  forS: 60,
+  severity: 'critical',
+  incidentType: 'equipment_fault',
+};
+
+/** `CT-01` with its points and rule: what the inspector and the evidence block read. */
+const TOWER: AssetDetail = {
+  ...ASSETS[0]!,
+  headline: [FAN_SPEED, MOTOR_TEMP],
+  points: [FAN_SPEED, MOTOR_TEMP],
+  rules: [MOTOR_RULE],
+};
+
+const LEAK: TelemetryPoint = {
+  key: 'leakDetected',
+  label: 'Leak',
+  unit: null,
+  kind: 'boolean',
+  min: null,
+  max: null,
+  enumValues: null,
+  expectedIntervalS: 1,
+  headline: 1,
+};
+
+/** A class with no part table and no model: the inspector draws its neutral box and says so (frame 15). */
+const LEAK_SENSOR: AssetDetail = {
+  id: 'asset-leak',
+  code: 'LKS-B3',
+  name: 'Leak sensor, level 3',
+  class: {
+    id: 'class-leak',
+    code: 'leak_sensor',
+    name: 'Leak sensor',
+    modelUrl: null,
+    footprintM: { width: 1.4, depth: 1.4, height: 1.4 },
+  },
+  zoneId: 'z1',
+  position: [108.4415, 11.953],
+  elevationM: 8,
+  headingDeg: 0,
+  headline: [LEAK],
+  points: [LEAK],
+  rules: [],
+};
+
+/** Raised by the motor rule on `CT-01` (`asset-0`), as the demo scenario does (frame 10). */
+const RAISED_BY_RULE = incident({
+  id: 'i-tel',
+  code: 'INC-000101',
+  type: 'equipment_fault',
+  severity: 'critical',
+  title: 'Motor over-temperature — Cooling tower 1',
+  source: 'telemetry',
+  assetId: 'asset-0',
+});
+
+const raisedDetail = (overrides: Partial<IncidentDetail> = {}): IncidentDetail => ({
+  ...RAISED_BY_RULE,
+  timeline: [
+    {
+      id: 'event-1',
+      kind: 'reported',
+      note: 'motorTempC 92 > 85 for 60 s',
+      at: new Date().toISOString(),
+      actor: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
+    },
+  ],
+  ...overrides,
+});
+
+/** One asset's last reading: how old it is, and its values (the overview's headline and the latest). */
+interface Reading {
+  ageMs: number;
+  values: Record<string, TelemetryValue>;
+}
+
+/**
+ * Puts readings in the telemetry store with a fixed server clock, so ages stay as the case sets
+ * them (`useServerNow` only adds the few milliseconds a case takes). `upstream: 'paused'` is the
+ * API saying its source stopped.
+ */
+function holdTelemetry(readings: Record<string, Reading>, upstream: 'live' | 'paused' = 'live') {
+  const now = Date.now();
+  const assets = Object.fromEntries(
+    Object.entries(readings).map(([code, { ageMs, values }]) => [
+      code,
+      {
+        online: true,
+        receivedAt: new Date(now - ageMs).toISOString(),
+        headline: values,
+        values,
+        keyReceivedAt: {},
+      },
+    ]),
+  );
+  act(() =>
+    useTelemetryStore.setState({
+      view: {
+        state: {
+          ...initialTelemetryState,
+          socket: 'live',
+          upstream,
+          upstreamSince: upstream === 'paused' ? new Date(now - 30_000).toISOString() : null,
+          serverClock: { at: now, mono: performance.now() },
+          assets,
+        },
+        series: new Map(),
+      },
+    }),
+  );
+}
+
+/**
+ * The state word is announced, the age is not: no live region holds a ticking age ("… ago",
+ * "… old"), which a screen reader would read out every few seconds (brief § Accessibility).
+ */
+function expectNoTickingAgeAnnounced() {
+  const regions = [...document.querySelectorAll('[role="status"], [role="alert"], [aria-live]')];
+  for (const region of regions) {
+    expect(region.textContent ?? '').not.toMatch(/\b(ago|old)\b/);
+  }
+}
+
 /** The console as `main.tsx` mounts it (without StrictMode and the top boundary), signed in as `role`. */
 function renderConsole({
   role = 'operator',
   incidents = INCIDENTS,
   assets = ASSETS,
   details = [],
-}: { role?: Role; incidents?: Incident[]; assets?: Asset[]; details?: AssetDetail[] } = {}) {
+  incidentDetails = [],
+}: {
+  role?: Role;
+  incidents?: Incident[];
+  assets?: Asset[];
+  details?: AssetDetail[];
+  /** Details with a timeline, for the incidents whose evidence a case reads. */
+  incidentDetails?: IncidentDetail[];
+} = {}) {
   useSession.getState().signedIn({ displayName: 'Demo Operator', roles: [role] });
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
@@ -248,6 +405,7 @@ function renderConsole({
     if (item.online) client.setQueryData(queryKeys.stream(item.id), hls(item.id));
   }
   for (const item of incidents) client.setQueryData(queryKeys.incident(item.id), detailOf(item));
+  for (const detail of incidentDetails) client.setQueryData(queryKeys.incident(detail.id), detail);
   return renderWithQueryClient(
     <AuthGate>
       <App />
@@ -445,6 +603,200 @@ describe('the console', () => {
       } finally {
         logged.mockRestore();
       }
+    });
+
+    // V2-11.5: what Phase 3 put on screen, each reached first and then checked whole, with no rule
+    // turned off. The map's markers are layers, which the fake map never draws and axe cannot see: the
+    // Assets tab and the inspector are the accessible twin of them (brief § Accessibility).
+    describe('assets and telemetry', () => {
+      const openAssetsTab = () => userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
+      const withLeakSensor = { assets: [...ASSETS, LEAK_SENSOR] };
+
+      it('the Assets tab with live readings', async () => {
+        renderConsole();
+        holdTelemetry({
+          'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, running: true } },
+          'CT-02': { ageMs: 400, values: { fanSpeedRpm: 1380, running: true } },
+        });
+
+        await openAssetsTab();
+
+        const list = screen.getByRole('region', { name: 'Assets' });
+        expect(within(list).getAllByText('Running')).toHaveLength(2);
+        expect(within(list).getByText('1,420 rpm')).toBeInTheDocument();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('the Assets tab with a stale asset', async () => {
+        renderConsole();
+        holdTelemetry({
+          'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, running: true } },
+          'CT-02': { ageMs: 90_000, values: { fanSpeedRpm: 1380, running: true } },
+        });
+
+        await openAssetsTab();
+
+        const list = screen.getByRole('region', { name: 'Assets' });
+        expect(within(list).getByText(/No data · 1 min/)).toBeInTheDocument();
+        expect(within(list).getAllByText('Running')).toHaveLength(1);
+        await checkPage();
+      });
+
+      it('the inspector with live readings', async () => {
+        renderConsole({ details: [TOWER] });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+
+        act(() => consoleState().selectAsset('CT-01'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        expect(within(sheet).getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+        // In the readings section: the fan motor's row in the parts list shows the same value.
+        const readings = within(sheet).getByRole('region', { name: 'Live readings' });
+        expect(within(readings).getByText('71 °C')).toBeInTheDocument();
+        expect(
+          within(sheet).getByRole('button', { name: 'Report a fault on CT-01' }),
+        ).toBeVisible();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('the inspector with stale readings, which say their age as words', async () => {
+        renderConsole({ details: [TOWER] });
+        holdTelemetry({
+          'CT-01': { ageMs: 72_000, values: { fanSpeedRpm: 1420, motorTempC: 71 } },
+        });
+
+        act(() => consoleState().selectAsset('CT-01'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        expect(within(sheet).getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(within(sheet).getByText(/^1 min \d+ s old$/)).toBeInTheDocument();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('the inspector of an asset whose class has no model', async () => {
+        renderConsole({ ...withLeakSensor, details: [LEAK_SENSOR] });
+        holdTelemetry({ 'LKS-B3': { ageMs: 400, values: { leakDetected: true } } });
+
+        act(() => consoleState().selectAsset('LKS-B3'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Asset LKS-B3' });
+        expect(within(sheet).getByText('No 3D model')).toBeInTheDocument();
+        expect(within(sheet).getByRole('heading', { name: 'In the twin' })).toBeInTheDocument();
+        await checkPage();
+      });
+
+      it('the inspector as a viewer, whose foot is the view-only note', async () => {
+        renderConsole({ role: 'viewer', details: [TOWER] });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+
+        act(() => consoleState().selectAsset('CT-01'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        expect(within(sheet).getByRole('note')).toHaveTextContent('View only');
+        expect(within(sheet).queryByRole('button', { name: /Report a fault/ })).toBeNull();
+        await checkPage();
+      });
+
+      it('an incident raised by a telemetry rule, with its evidence live', async () => {
+        renderConsole({
+          incidents: [...INCIDENTS, RAISED_BY_RULE],
+          incidentDetails: [raisedDetail()],
+          details: [TOWER],
+        });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { motorTempC: 92 } } });
+
+        act(() => consoleState().select('i-tel'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+        expect(within(sheet).getByRole('heading', { name: 'Why it was raised' })).toBeVisible();
+        expect(within(sheet).getByText('Motor over-temperature')).toBeInTheDocument();
+        expect(within(sheet).getByText('92 °C')).toBeInTheDocument();
+        expect(within(sheet).getByText('Live')).toBeInTheDocument();
+        expect(within(sheet).getByRole('button', { name: 'Open asset CT-01' })).toBeVisible();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('an incident raised by a telemetry rule, resolved: what it raised, and no live reading', async () => {
+        const resolved = {
+          status: 'resolved',
+          acknowledgedAt: new Date().toISOString(),
+          resolvedAt: new Date().toISOString(),
+        } as const;
+        renderConsole({
+          incidents: [...INCIDENTS, { ...RAISED_BY_RULE, ...resolved }],
+          incidentDetails: [raisedDetail(resolved)],
+          details: [TOWER],
+        });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { motorTempC: 71 } } });
+
+        act(() => consoleState().select('i-tel'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+        expect(within(sheet).getByText('Raised at 92 °C')).toBeInTheDocument();
+        expect(within(sheet).queryByText('Live')).toBeNull();
+        await checkPage();
+      });
+
+      it('a telemetry incident as a viewer, who keeps the evidence and the link and loses the response', async () => {
+        renderConsole({
+          role: 'viewer',
+          incidents: [...INCIDENTS, RAISED_BY_RULE],
+          incidentDetails: [raisedDetail()],
+          details: [TOWER],
+        });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { motorTempC: 92 } } });
+
+        act(() => consoleState().select('i-tel'));
+
+        const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+        expect(within(sheet).getByRole('button', { name: 'Open asset CT-01' })).toBeVisible();
+        expect(within(sheet).getByRole('note')).toHaveTextContent('View only');
+        expect(within(sheet).queryByRole('form', { name: 'Response' })).toBeNull();
+        await checkPage();
+      });
+
+      // Frames 07 / 14. The twin is not built, so the stage is the 2D map, and the banner, the switch
+      // and the layers say so in words (no colour alone).
+      it('the 2D view, with the fallback banner, the switch, the layers and the legend', async () => {
+        renderConsole();
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, running: true } } });
+
+        // The reason is said twice on purpose: by the banner, and as the 3D option's own description,
+        // so nothing is lost once the banner is dismissed (`TwinFallbackBanner`).
+        const reason = "3D view isn't available in this version";
+        expect(screen.getAllByText(reason)).toHaveLength(2);
+        const view = screen.getByRole('group', { name: 'View' });
+        expect(within(view).getByRole('button', { name: '2D' })).toBeInTheDocument();
+        expect(within(view).getByRole('button', { name: '3D' })).toHaveAccessibleDescription(
+          reason,
+        );
+        expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Legend' })).toHaveAttribute(
+          'aria-expanded',
+          'true',
+        );
+        for (const entry of ['Asset', 'Asset fault', 'Asset no data']) {
+          expect(screen.getByText(entry)).toBeInTheDocument();
+        }
+        await checkPage();
+      });
+
+      it('the header with both pills when telemetry is paused: events live, readings not', async () => {
+        renderConsole();
+        act(() => consoleState().setConnection('live'));
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420 } } }, 'paused');
+
+        const header = screen.getByRole('banner');
+        expect(within(header).getByText('Live')).toBeInTheDocument();
+        expect(within(header).getByText('Telemetry paused')).toBeInTheDocument();
+        expect(screen.getByText(/Readings as of .* — not updating/)).toBeInTheDocument();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
     });
 
     it('an incident selected, as an operator', async () => {
