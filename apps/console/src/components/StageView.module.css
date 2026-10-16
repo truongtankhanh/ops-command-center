@@ -1,0 +1,14 @@
+/*
+ * Frame 14's `.tw-tools`: the top-left of the stage. Out of the grid's flow (`position: absolute`,
+ * like `.banners` in App.module.css), so the stage's `1fr auto` rows, the map and the strip, do not
+ * move. It follows the map in the DOM, so it paints over it; the sheet (`--z-sheet`) and the banners
+ * lie over it in turn. The sheet covers the right side, so the tools need no `--sheet-inset`.
+ */
+.tools {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

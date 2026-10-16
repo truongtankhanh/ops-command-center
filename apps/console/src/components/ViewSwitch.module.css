@@ -1,0 +1,42 @@
+/*
+ * Frame 14's `.viewseg`: look only, `StageView` places it. The pressed look (accent tint, border and
+ * glyph) is `Button`'s own `aria-pressed` rule, so none is restated here. The overrides below have
+ * one selector part more than `Button`'s rules, so they do not depend on CSS order.
+ */
+.switch {
+  display: inline-flex;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+}
+
+.switch .option {
+  height: var(--control-s);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-s);
+  font-size: var(--type-m);
+}
+
+/* The look of `Button`'s `:disabled`, for a button that keeps its focus (and its description). */
+.switch .option[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.switch .option[aria-disabled='true']:hover:not(:disabled) {
+  background: none;
+  color: var(--text-secondary);
+}
+
+/* Read by assistive tech, not drawn: why 3D is not available. */
+.reason {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

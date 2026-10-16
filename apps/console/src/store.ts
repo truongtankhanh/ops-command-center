@@ -7,6 +7,8 @@ import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/density';
 import type { FeedFilter } from './lib/incidents';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
+import { twinCapability } from './lib/twinCapability';
+import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
 
 /**
  * At most this many incidents are held as fresh. A row stays highlighted until it is looked at or
@@ -113,6 +115,12 @@ interface ConsoleState extends ReportLocation {
   shortcutHelpOpen: boolean;
   /** How tightly the console is spaced. Comfortable by default; remembered in this browser. */
   density: Density;
+  /**
+   * What the map stage draws: the view that is in effect, not the one asked for. A stored `3d` is
+   * `2d` here while the twin cannot be drawn (`twinCapability`), and is left as stored. Remembered
+   * in this browser, as an explicit choice only (V2-10.1).
+   */
+  view: ViewChoice;
 
   /** Selecting an incident (not `null`) also closes the report form and the selected asset. */
   select(id: string | null): void;
@@ -169,6 +177,11 @@ interface ConsoleState extends ReportLocation {
   openShortcutHelp(): void;
   closeShortcutHelp(): void;
   setDensity(density: Density): void;
+  /**
+   * An operator's choice of view. `3d` does nothing while the twin cannot be drawn, so the store
+   * never holds a view the stage cannot show and never remembers a choice it could not honour.
+   */
+  setView(view: ViewChoice): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -193,6 +206,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   keyboardShortcuts: readKeyboardShortcuts(),
   shortcutHelpOpen: false,
   density: readDensity(),
+  // Reads only: a choice this build cannot honour stays in storage for a build that can.
+  view: effectiveView(readViewChoice(), twinCapability()),
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
@@ -291,6 +306,11 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   setDensity: (density) => {
     writeDensity(density);
     set({ density });
+  },
+  setView: (view) => {
+    if (view === '3d' && !twinCapability().available) return;
+    writeViewChoice(view);
+    set({ view });
   },
 }));
 

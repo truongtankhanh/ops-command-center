@@ -1,0 +1,8 @@
+/*
+ * The icon-only Dismiss as a square (as the toast's). `button` in the selector gives one part more
+ * than `Button`'s `[data-size='sm']` padding, so this does not depend on CSS order.
+ */
+button.dismiss[data-size='sm'] {
+  width: var(--control-s);
+  padding: 0;
+}

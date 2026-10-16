@@ -628,6 +628,41 @@ describe('useConsole', () => {
     });
   });
 
+  describe('view', () => {
+    const KEY = 'occ.console.view';
+
+    beforeEach(() => localStorage.clear());
+
+    // The twin is not built (V2-10.1), so every view in effect is 2D until V2-12.
+    it('is 2D by default', () => {
+      expect(useConsole.getInitialState().view).toBe('2d');
+    });
+
+    it('reads a stored 3D as 2D and leaves it stored for a build that can draw it', async () => {
+      localStorage.setItem(KEY, '3d');
+      vi.resetModules();
+
+      const { useConsole: fresh } = await import('./store');
+
+      expect(fresh.getState().view).toBe('2d');
+      expect(localStorage.getItem(KEY)).toBe('3d');
+    });
+
+    it('does nothing for 3D while the twin cannot be drawn, and remembers nothing', () => {
+      state().setView('3d');
+
+      expect(state().view).toBe('2d');
+      expect(localStorage.getItem(KEY)).toBeNull();
+    });
+
+    it('remembers an explicit choice of 2D in this browser', () => {
+      state().setView('2d');
+
+      expect(state().view).toBe('2d');
+      expect(localStorage.getItem(KEY)).toBe('2d');
+    });
+  });
+
   describe('camera pins', () => {
     const KNOWN = ['c1', 'c2', 'c3', 'c4', 'c5'];
     const stored = () => JSON.parse(localStorage.getItem('occ.console.pinnedCameras') ?? 'null');
