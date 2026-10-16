@@ -74,6 +74,10 @@ their author, checked in CI, and served by nginx as immutable files.
 - **Capability check.** The console renders the twin only if a WebGL 2 context can be created. Otherwise, and after
   a `webglcontextlost` that does not restore within 5 s, it shows the 2D map with the reason (brief, frame 07). The
   viewer's last choice of 2D or 3D is a per-browser convenience in `localStorage`.
+  - Settled in V2-12.1, without changing the decision: from V2-12.4 to V2-19.8 the capability also requires a preview
+    gate (a development build, or `?twin=1` for the tab), so the 3D view cannot reach operators before incidents are
+    drawn in it (V2-16) and the frame budgets are measured (V2-19). Until the gate is lifted the reason shown is
+    "3D view isn't available in this version".
 - **Scene.**
   - Local coordinates in metres, east-north-up from `SitePlan.center` (ADR-0017), Y up. A campus fits an
     equirectangular conversion without visible error.
@@ -91,6 +95,31 @@ their author, checked in CI, and served by nginx as immutable files.
     the site boundary + 40 m, zoom to cursor, damping, fly-to 600 ms or instant with reduced motion). Outside the
     video wall, the view never moves on its own.
   - Picking: raycast against BVH-accelerated meshes, at most once per frame.
+  - Settled in V2-12.1, without changing the decision (the frames and `TwinScene.dc.html` are the evidence; where a
+    sentence above says otherwise, this block is the refinement):
+    - **Axes.** Local metres, three.js `x` = east, `y` = up, `z` = −north (right-handed), origin at `SitePlan.center`.
+      The conversion is `geo.ts`'s flat-earth model with the cosine of the centre's latitude, so the scene and the 2D
+      map agree; its inverse serves picks.
+    - **Shells are the 2D footprints.** A building is extruded from the footprint rule of `lib/sitePlan.ts` (the zone
+      inset by 8 m, ADR-0017), not from the raw zone polygon, so 2D and 3D draw the same building. A building whose
+      `heightM` is `null` is drawn at `DEFAULT_BUILDING_HEIGHT_M` = 12 m (no earlier document named a value; 12 m is in
+      the lower half of the seed's 6 – 24 m, so a missing height is never taller than a real one). Zones that are not
+      `building` are flat fills; the site plan's roads, fields, footprint outlines and parking rows are flat lines.
+    - **Placement of an asset** is derived from catalogue data: `inside` when its zone is a `building`, its position is
+      in the footprint and `elevationM < heightM`; `roof` when `elevationM` equals `heightM`; otherwise `outdoor`
+      (`GEN-01` stands 3 m outside its zone; Utility Plant is `kind: utility`). Campus level draws `outdoor` and `roof`
+      assets; `inside` assets appear with their building in focus (V2-15.8). Every asset stays in the Assets tab.
+    - **Labels** are DOM overlays (the console's fonts and tokens, no new dependency, a hard cap on their number,
+      `pointer-events: none`), not canvas text.
+    - **Layers in 3D** are Incidents and Cameras (Heat arrives with V2-17, Inside with V2-15.9). There is no Assets
+      toggle: equipment is the scene.
+    - **The loading card** lists the site plan, the 3D code and, from V2-14.7, one row per equipment model. It has no
+      rows for buildings, which have no models.
+    - **Not drawn, for lack of data:** frame 12's rack rows, and the prototype's substation, utility yard and gate posts.
+    - **Where code lives.** Everything that imports `three` or `@react-three/*` is under `apps/console/src/twin/`;
+      pure helpers stay in `src/lib/twin*.ts`, so they test without WebGL.
+    - **Camera floor.** The written limit, 78° from vertical (12° above the ground), stands; frame 00's note "never
+      below 8° above" is a drawing note.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
