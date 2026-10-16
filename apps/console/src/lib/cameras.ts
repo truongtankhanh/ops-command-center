@@ -1,4 +1,5 @@
-import type { Camera } from '@occ/contracts';
+import type { Asset, Camera, LngLat } from '@occ/contracts';
+import { isInView } from './geo';
 import type { DisplayMode } from './useDisplayMode';
 
 /**
@@ -21,19 +22,63 @@ export function stripSize(mode: DisplayMode): number {
 
 const PINNED_KEY = 'occ.console.pinnedCameras';
 
-/** Online cameras in the given zone first, then the rest; offline cameras last. */
-export function prioritise(cameras: Camera[], zoneId: string | undefined): Camera[] {
-  const score = (c: Camera) => (c.zoneId === zoneId ? 0 : 1) + (c.online ? 0 : 2);
+/**
+ * What the strip puts first after the pins: the selected incident's zone, or the selected asset
+ * (V2-09.11). At most one applies; with neither the strip has no subject.
+ */
+export type StripSubject =
+  { kind: 'zone'; zoneId: string } | { kind: 'asset'; position: LngLat; zoneId: string };
+
+/** Why a camera is tied to the subject: it sees the asset, or it is in the subject's zone. */
+export type CameraLink = 'asset' | 'zone';
+
+/**
+ * The incident's zone when an incident is selected (as before), else the selected asset, else
+ * nothing. The selection keeps them exclusive, so the order only settles a state it should not hold.
+ */
+export function stripSubject(
+  incidentZoneId: string | undefined,
+  asset: Pick<Asset, 'position' | 'zoneId'> | undefined,
+): StripSubject | undefined {
+  if (incidentZoneId !== undefined) return { kind: 'zone', zoneId: incidentZoneId };
+  if (asset !== undefined) {
+    return { kind: 'asset', position: asset.position, zoneId: asset.zoneId };
+  }
+  return undefined;
+}
+
+/**
+ * How `camera` is tied to `subject`. For an asset a camera that sees it is `asset`, whichever zone it
+ * is in; one in the asset's zone that does not is `zone`. For an incident only the zone counts.
+ */
+export function cameraLink(camera: Camera, subject: StripSubject | undefined): CameraLink | null {
+  if (subject === undefined) return null;
+  if (subject.kind === 'asset' && isInView(subject.position, camera)) return 'asset';
+  return camera.zoneId === subject.zoneId ? 'zone' : null;
+}
+
+/** The tier of a link: lower comes first. An offline camera is three tiers further (`prioritise`). */
+const LINK_TIER: Readonly<Record<CameraLink | 'none', number>> = { asset: 0, zone: 1, none: 2 };
+const OFFLINE_TIERS = 3;
+
+/**
+ * Cameras tied to the subject first (those that see the selected asset, then those in its zone),
+ * then the rest; every offline camera after every online one, whatever it is tied to. Ties go by
+ * code, so the strip never reshuffles between renders.
+ */
+export function prioritise(cameras: Camera[], subject: StripSubject | undefined): Camera[] {
+  const score = (c: Camera) =>
+    LINK_TIER[cameraLink(c, subject) ?? 'none'] + (c.online ? 0 : OFFLINE_TIERS);
   return [...cameras].sort((a, b) => score(a) - score(b) || a.code.localeCompare(b.code));
 }
 
 /**
  * The strip's `size` tiles: pinned cameras that still exist first, in pin order, then the others in
- * `prioritise` order — so a pinned camera keeps its slot whatever incident is selected.
+ * `prioritise` order — so a pinned camera keeps its slot whatever incident or asset is selected.
  */
 export function stripCameras(
   cameras: Camera[],
-  zoneId: string | undefined,
+  subject: StripSubject | undefined,
   pinnedIds: readonly string[],
   size: number,
 ): Camera[] {
@@ -41,7 +86,7 @@ export function stripCameras(
   const pinned = pinnedIds.flatMap((id) => byId.get(id) ?? []);
   const rest = prioritise(
     cameras.filter((c) => !pinnedIds.includes(c.id)),
-    zoneId,
+    subject,
   );
   return [...pinned, ...rest].slice(0, size);
 }

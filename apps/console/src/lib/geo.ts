@@ -1,4 +1,4 @@
-import type { LngLat, Zone } from '@occ/contracts';
+import type { Camera, LngLat, Zone } from '@occ/contracts';
 
 /*
  * Metres on the campus. Equirectangular: over a campus a few hundred metres wide the error is far
@@ -23,6 +23,37 @@ export function offsetM([lng, lat]: LngLat, eastM: number, northM: number): LngL
     lng + eastM / (METRES_PER_DEGREE * Math.cos(toRadians(lat))),
     lat + northM / METRES_PER_DEGREE,
   ];
+}
+
+/**
+ * The direction of `to` seen from `from`, in degrees clockwise from true north: 0 ≤ bearing < 360.
+ * The same flat-earth model as `distanceM` and `offsetM`, and the same convention as the sector the
+ * map draws for a camera (`viewRing`: east is `sin`, north is `cos`). Two equal points have no
+ * direction and give 0.
+ */
+export function bearingDeg([lng1, lat1]: LngLat, [lng2, lat2]: LngLat): number {
+  const east = (lng2 - lng1) * METRES_PER_DEGREE * Math.cos(toRadians((lat1 + lat2) / 2));
+  const north = (lat2 - lat1) * METRES_PER_DEGREE;
+  const degrees = (Math.atan2(east, north) * 180) / Math.PI;
+  return (degrees + 360) % 360;
+}
+
+/**
+ * Whether `point` is inside the sector `camera` sees (ADR-0017): within `range` metres, and the
+ * bearing from the camera within `heading ± angle / 2`, wrapping at north. The edges are inside. A
+ * camera whose orientation is not known sees nothing; an API replica from before IMP-24 omits
+ * `fieldOfView` altogether, which the contract type does not model, so a missing field counts as
+ * unknown too (as in `mapFeatures`). Height is ignored.
+ */
+export function isInView(point: LngLat, camera: Pick<Camera, 'position' | 'fieldOfView'>): boolean {
+  const view = camera.fieldOfView ?? null;
+  if (view === null) return false;
+  const distance = distanceM(camera.position, point);
+  if (distance > view.range) return false;
+  // On the camera there is no direction to compare, and a full circle has no edge.
+  if (distance === 0 || view.angle >= 360) return true;
+  const away = Math.abs(bearingDeg(camera.position, point) - view.heading) % 360;
+  return Math.min(away, 360 - away) <= view.angle / 2;
 }
 
 /** How many screen pixels `metres` covers at `zoom` and latitude `lat`. */

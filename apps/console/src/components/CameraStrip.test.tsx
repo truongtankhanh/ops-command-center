@@ -1,9 +1,10 @@
-import type { Camera, Incident, Zone } from '@occ/contracts';
+import type { Asset, Camera, Incident, Zone } from '@occ/contracts';
 import { QueryClient } from '@tanstack/react-query';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../api/client';
 import { queryKeys } from '../api/queries';
+import { offsetM } from '../lib/geo';
 import { useConsole } from '../store';
 import {
   createTestQueryClient,
@@ -90,11 +91,19 @@ const cameraRequests = () =>
 function renderStrip({
   cameras = [camera()] as Camera[] | null,
   incidents = [] as Incident[],
+  assets = null as Asset[] | null,
   client = createTestQueryClient(),
-}: { cameras?: Camera[] | null; incidents?: Incident[]; client?: QueryClient } = {}) {
+}: {
+  cameras?: Camera[] | null;
+  incidents?: Incident[];
+  assets?: Asset[] | null;
+  client?: QueryClient;
+} = {}) {
   client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.incidents, incidents);
   if (cameras) client.setQueryData(queryKeys.cameras, cameras);
+  // Unseeded, `GET /assets` stays pending in the `fetch` stub: no asset is known.
+  if (assets) client.setQueryData(queryKeys.assets, assets);
   return renderWithQueryClient(<CameraStrip />, client);
 }
 
@@ -133,6 +142,101 @@ describe('CameraStrip', () => {
     });
 
     expect(screen.getAllByText('In zone')).toHaveLength(1);
+  });
+
+  describe('with an asset selected', () => {
+    const POSITION: [number, number] = [108.44, 11.95];
+    const asset = {
+      id: 'a1',
+      code: 'CT-01',
+      name: 'Cooling tower 1',
+      class: {
+        id: 'k1',
+        code: 'cooling_tower',
+        name: 'Cooling tower',
+        modelUrl: null,
+        footprintM: { width: 4, depth: 4, height: 5 },
+      },
+      zoneId: 'z1',
+      position: POSITION,
+      elevationM: 14,
+      headingDeg: 0,
+      headline: [],
+    } satisfies Asset;
+
+    /** In the library zone, with no view; in the gate zone and looking at the asset; elsewhere. */
+    const cameras = [
+      camera({ id: 'c1', code: 'CAM-L01', name: 'Library entrance', zoneId: 'z1' }),
+      camera({
+        id: 'c2',
+        code: 'CAM-G01',
+        name: 'Gate kiosk',
+        zoneId: 'z2',
+        position: offsetM(POSITION, 0, -20),
+        fieldOfView: { heading: 0, angle: 90, range: 50 },
+      }),
+      camera({ id: 'c3', code: 'CAM-X01', name: 'Yard', zoneId: 'z3' }),
+    ];
+
+    const names = () =>
+      within(strip())
+        .getAllByRole('figure')
+        .map((tile) => tile.querySelector('figcaption')?.textContent ?? '');
+
+    it('puts the cameras that see it first, then its zone, and says which each is', () => {
+      useConsole.setState({ selectedAssetCode: 'CT-01' });
+
+      renderStrip({ cameras, assets: [asset] });
+
+      const order = names();
+      expect(order[0]).toContain('Gate kiosk');
+      expect(order[1]).toContain('Library entrance');
+      expect(order[2]).toContain('Yard');
+      expect(screen.getAllByText('On this asset')).toHaveLength(1);
+      expect(screen.getAllByText('In zone')).toHaveLength(1);
+    });
+
+    it('keeps a pinned camera ahead of the cameras that see it', () => {
+      useConsole.setState({ selectedAssetCode: 'CT-01', pinnedCameraIds: ['c3'] });
+
+      renderStrip({ cameras, assets: [asset] });
+
+      const order = names();
+      expect(order[0]).toContain('Yard');
+      expect(order[1]).toContain('Gate kiosk');
+    });
+
+    it('orders as with nothing selected while the asset list is not loaded', () => {
+      useConsole.setState({ selectedAssetCode: 'CT-01' });
+
+      renderStrip({ cameras });
+
+      expect(screen.queryByText('On this asset')).toBeNull();
+      expect(screen.queryByText('In zone')).toBeNull();
+      // By code: CAM-G01, CAM-L01, CAM-X01.
+      const order = names();
+      expect(order[0]).toContain('Gate kiosk');
+      expect(order[1]).toContain('Library entrance');
+    });
+
+    it('says nothing for an asset the list does not have', () => {
+      useConsole.setState({ selectedAssetCode: 'GONE-01' });
+
+      renderStrip({ cameras, assets: [asset] });
+
+      expect(screen.queryByText('On this asset')).toBeNull();
+      expect(screen.queryByText('In zone')).toBeNull();
+    });
+
+    it('leaves an incident selection as it was', () => {
+      useConsole.setState({ selectedIncidentId: incidentInLibrary.id });
+
+      renderStrip({ cameras, incidents: [incidentInLibrary], assets: [asset] });
+
+      expect(screen.queryByText('On this asset')).toBeNull();
+      expect(screen.getAllByText('In zone')).toHaveLength(1);
+      expect(names()[0]).toContain('Library entrance');
+    });
   });
 
   it('holds its place while the cameras load', () => {

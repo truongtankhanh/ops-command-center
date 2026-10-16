@@ -444,6 +444,7 @@ source.
 | 03, 05, 08 Parts                     | Static parts are "static" rows (no "see-through"); a part shows its one bound reading, not "stopped · 41 °C", "71 °C · 18.6 A"; "last …" when stale                   | V2-09.9 (`asset-classes.md`)     |
 | 15 Sensor without model              | The note gives the box's three sides ("1.4 × 1.4 × 1.4 m"); "Open INC-…" sits in the incident section, not in the foot                                                | V2-09.9 (`asset-classes.md`)     |
 | 03, 17 Asset inspector foot          | The report button is `primary`, not `secondary`; the report's title carries the tag "(CT-01)"; "Focus" is not drawn until V2-12                                       | V2-09.10 (`asset-classes.md`)    |
+| 03 Camera strip                      | An offline camera is after every online one, as for an incident; frame 03 draws the offline zone camera second                                                        | V2-09.11                         |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).
