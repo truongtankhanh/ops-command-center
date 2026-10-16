@@ -1,10 +1,18 @@
-import type { IncidentDetail as Detail, IncidentEvent, Role, Zone } from '@occ/contracts';
+import type {
+  AssetDetail,
+  IncidentDetail as Detail,
+  IncidentEvent,
+  Role,
+  TelemetryPoint,
+  Zone,
+} from '@occ/contracts';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { IncidentDetail } from './IncidentDetail';
@@ -355,6 +363,141 @@ describe('IncidentDetail', () => {
       const acknowledged = screen.getByText('Simulator').closest('li')!.querySelector('time');
       expect(acknowledged).toHaveAttribute('datetime', acknowledgedAt);
       expect(acknowledged).toHaveTextContent(/just now$/);
+    });
+  });
+
+  describe('telemetry incident', () => {
+    const MOTOR: TelemetryPoint = {
+      key: 'motorTempC',
+      label: 'Motor temperature',
+      unit: '°C',
+      kind: 'number',
+      min: -40,
+      max: 150,
+      enumValues: null,
+      expectedIntervalS: 1,
+      headline: 1,
+    };
+    const TOWER: AssetDetail = {
+      id: 'asset-ct-01',
+      code: 'CT-01',
+      name: 'Cooling tower 1',
+      class: {
+        id: 'class-cooling-tower',
+        code: 'cooling_tower',
+        name: 'Cooling tower',
+        modelUrl: null,
+        footprintM: { width: 1, depth: 1, height: 1 },
+      },
+      zoneId: zone.id,
+      position: zone.center,
+      elevationM: 14,
+      headingDeg: 0,
+      headline: [MOTOR],
+      points: [MOTOR],
+      rules: [
+        {
+          name: 'Motor over-temperature',
+          key: 'motorTempC',
+          comparator: 'above',
+          limit: 85,
+          clear: 80,
+          forS: 60,
+          severity: 'critical',
+          incidentType: 'equipment_fault',
+        },
+      ],
+    };
+    const telemetryEvent: IncidentEvent = {
+      id: 'event-1',
+      kind: 'reported',
+      note: 'motorTempC 92 > 85 for 60 s',
+      at: '2026-10-01T08:00:00.000Z',
+      actor: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
+    };
+    const raisedByRule = (overrides: Partial<Detail> = {}) =>
+      detail({
+        source: 'telemetry',
+        type: 'equipment_fault',
+        severity: 'critical',
+        title: 'Motor over-temperature — Cooling tower 1',
+        assetId: TOWER.id,
+        timeline: [telemetryEvent],
+        ...overrides,
+      });
+
+    /** The catalogue and the asset are cached too, so the block is drawn at once. */
+    function renderTelemetry(incident: Detail) {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.incident(incident.id), incident);
+      client.setQueryData(queryKeys.zones, [zone]);
+      client.setQueryData(queryKeys.incidents, []);
+      client.setQueryData(queryKeys.cameras, []);
+      client.setQueryData(queryKeys.assets, [TOWER]);
+      client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
+      return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
+    }
+
+    beforeEach(() => {
+      resetStore(useTelemetryStore);
+      signInAs('operator');
+    });
+
+    it('names the source on a chip and puts the evidence between the facts and the timeline', () => {
+      renderTelemetry(raisedByRule());
+
+      // The chip in the head, and the timeline's actor, which carries the same words.
+      expect(screen.getAllByText('Telemetry rule')).toHaveLength(2);
+      const facts = screen.getByText('Reported by');
+      const evidence = screen.getByRole('heading', { name: 'Why it was raised' });
+      const timeline = screen.getByRole('heading', { name: 'Timeline' });
+      const follows = (before: HTMLElement, after: HTMLElement) =>
+        Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(follows(facts, evidence)).toBe(true);
+      expect(follows(evidence, timeline)).toBe(true);
+      expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
+      expect(screen.getByText('Limit 85 °C · clears below 80 °C')).toBeInTheDocument();
+    });
+
+    it('shows neither the chip nor the block for an operator’s incident, and asks for no asset', () => {
+      renderDetail();
+
+      expect(screen.queryByText('Telemetry rule')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
+      expect(getCalls().some(([url]) => String(url).includes('/assets'))).toBe(false);
+    });
+
+    it('keeps the chip but draws no block when the note is not evidence', () => {
+      renderTelemetry(raisedByRule({ timeline: [{ ...telemetryEvent, note: 'Checked on site' }] }));
+
+      expect(screen.getAllByText('Telemetry rule')).toHaveLength(2);
+      expect(screen.queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
+      // The note stays where the operator can read it.
+      expect(screen.getByText('Checked on site')).toBeInTheDocument();
+    });
+
+    it('leaves the response footer as it is for each role', () => {
+      signInAs('viewer');
+      const { unmount } = renderTelemetry(raisedByRule());
+      expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+      expect(screen.getByRole('note')).toHaveTextContent('View only');
+      expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+      unmount();
+
+      signInAs('operator');
+      renderTelemetry(raisedByRule());
+      expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+      expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+    });
+
+    it('shows a technician the block with the scope footer when the incident is out of scope', () => {
+      signInAs('technician');
+
+      renderTelemetry(raisedByRule({ type: 'intrusion' }));
+
+      expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+      expect(screen.getByRole('note')).toHaveAttribute('data-footer', 'out-of-scope');
+      expect(screen.queryByRole('form', RESPONSE)).toBeNull();
     });
   });
 
