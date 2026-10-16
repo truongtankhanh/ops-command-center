@@ -4,7 +4,6 @@ import { AssetFeed } from './components/AssetFeed';
 import { AssetInspector } from './components/AssetInspector';
 import { CameraStrip } from './components/CameraStrip';
 import { CameraViewer } from './components/CameraViewer';
-import { CampusMap } from './components/CampusMap';
 import { Header } from './components/Header';
 import { IncidentDetail } from './components/IncidentDetail';
 import { IncidentFeed } from './components/IncidentFeed';
@@ -13,7 +12,9 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { ReportIncidentForm } from './components/ReportIncidentForm';
 import { ShortcutHelp } from './components/ShortcutHelp';
 import { SidePanel } from './components/SidePanel';
+import { StageView } from './components/StageView';
 import { TelemetryBanner } from './components/TelemetryBanner';
+import { TwinFallbackBanner } from './components/TwinFallbackBanner';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
 import { deriveWatchSet } from './lib/telemetryWatch';
@@ -127,7 +128,7 @@ export function App() {
           {/* The sheet lies over the stage, so opening it never resizes the map. */}
           <div className={styles.stage} data-sheet={sheetOpen ? 'open' : undefined}>
             <Region label="Campus map" message="The map stopped working.">
-              <CampusMap />
+              <StageView />
             </Region>
             <Region
               label="Cameras"
@@ -165,6 +166,8 @@ export function App() {
             <div className={styles.banners}>
               <OfflineBanner />
               <TelemetryBanner />
+              {/* Last: the one that matters least, and the one the operator can dismiss. */}
+              <TwinFallbackBanner />
             </div>
             {/* Over the stage beside the sheet, so a toast never covers the incident it is about. */}
             <ToastRegion fallbackFocus={feedFocusTarget} />

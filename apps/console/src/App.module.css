@@ -30,8 +30,8 @@
 
 /*
  * Top centre of the part of the stage the sheet leaves visible (`--sheet-inset`, set on the
- * stage), as the map's pick hint. The system banners (events, telemetry) stack here, the first
- * above the second, so one never covers the other whatever its height. Placement only; the look is
+ * stage), as the map's pick hint. The system banners (events, telemetry, the 3D view's) stack
+ * here, in that order, so one never covers the other whatever its height. Placement only; the look is
  * the `Banner` primitive's. Under the session banner (`--z-session`), which is fixed over the whole
  * console.
  */

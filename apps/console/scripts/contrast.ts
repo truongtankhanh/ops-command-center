@@ -123,6 +123,9 @@ const PAIRS: Pair[] = [
   ),
   // The count on the selected feed tab.
   { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
+  // The glyph of a pressed toggle (`Button` `aria-pressed`, frame 14's `3D / 2D` switch): the accent
+  // on its own tint (a graphic, 3:1). The label stays `--text-primary`, the pair above.
+  { fg: '--accent', bg: '--accent-tint', over: '--surface-1', min: UI },
   // The type glyph on an open incident's severity disc on the map (a graphic), and the severity icon
   // tile of a critical / high toast. The other marker colours on the map ground are the
   // `--surface-0` pairs above.

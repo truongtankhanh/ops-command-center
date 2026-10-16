@@ -267,6 +267,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                                                                       |
 | `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                                                                       |
 | `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                                                                       |
+| `--accent`          | `--accent-tint` over `--surface-1`        | 5.01  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-critical`                          | 5.84  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                                                                       |
