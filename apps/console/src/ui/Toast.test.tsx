@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { ToastRegion } from './Toast';
-import { showToast, type Toast, TOAST_MS, useToasts } from './toasts';
+import { showToast, type Toast, TOAST_MS, updateToast, useToasts } from './toasts';
 
 type NewToast = Omit<Toast, 'id'>;
 
@@ -256,6 +256,58 @@ describe('ToastRegion', () => {
       await user.keyboard('{Enter}');
 
       expect(focusedDuringAction).toBe(button('Outside'));
+    });
+  });
+
+  describe('a toast whose words change', () => {
+    const urgentToast: NewToast = {
+      key: 'incident-1',
+      title: 'Motor over-temperature',
+      kicker: 'Critical · raised by telemetry rule',
+      detail: 'CT-01 · Data Center · roof',
+      severity: 'critical',
+      urgent: true,
+      action: { label: 'View incident', onAction: () => {} },
+    };
+    const READING = 'CT-01 · Data Center · roof · 92 °C for 60 s, limit 85 °C';
+
+    it('is the same element with the new words, in the assertive list', () => {
+      show(urgentToast);
+      const before = toastOf('Motor over-temperature');
+
+      act(() => void updateToast('incident-1', { detail: READING }));
+
+      expect(toastOf('Motor over-temperature')).toBe(before);
+      expect(within(list('assertive')).getByText(READING)).toBeInTheDocument();
+      expect(screen.queryByText('CT-01 · Data Center · roof')).toBeNull();
+    });
+
+    it('keeps the focus that is on its action', () => {
+      show(urgentToast);
+      act(() => buttonIn('Motor over-temperature', 'View incident').focus());
+
+      act(() => void updateToast('incident-1', { detail: READING }));
+
+      expect(buttonIn('Motor over-temperature', 'View incident')).toHaveFocus();
+    });
+
+    it('can still be dismissed afterwards', async () => {
+      show(urgentToast);
+      act(() => void updateToast('incident-1', { detail: READING }));
+
+      await user.click(buttonIn('Motor over-temperature', 'Dismiss'));
+
+      expect(screen.queryByText('Motor over-temperature')).toBeNull();
+    });
+
+    it('does not bring back a toast that was dismissed', async () => {
+      show(urgentToast);
+      await user.click(buttonIn('Motor over-temperature', 'Dismiss'));
+
+      act(() => void updateToast('incident-1', { detail: READING }));
+
+      expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      expect(screen.queryByText(READING)).toBeNull();
     });
   });
 });

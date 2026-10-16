@@ -13,7 +13,7 @@ A real-time operations console for a campus security and facilities team: live i
 The demo runs on **Langbiang Tech Campus**, a fictional site with synthetic incidents and simulated cameras. One command brings up the whole stack.
 
 ```bash
-docker compose up --build
+pnpm docker:stack        # docker compose up --build
 # Console      http://localhost:18080
 # API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
@@ -23,7 +23,7 @@ Sign in as `operator`, `supervisor`, `technician` or `viewer`; each password is 
 The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
 
 ```bash
-docker compose up --build --scale api=2
+pnpm docker:stack:replicas   # docker compose up --build --scale api=2
 ```
 
 To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`docker compose logs api` shows which replica each console connected to, from the gateway's debug-level connection log).
@@ -138,10 +138,19 @@ Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service fro
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env      # set the DB_* values for your database
-docker compose up -d postgres keycloak      # database on 127.0.0.1:15432, sign-in on 127.0.0.1:18081
+pnpm docker:up                               # postgres on 127.0.0.1:15432, keycloak (sign-in) on 127.0.0.1:18081
 
 pnpm dev                                     # API on :13000 (metrics on :9464), console on :15173
 ```
+
+`pnpm docker:up` is `docker compose up -d postgres keycloak`, the two Compose services `pnpm dev` needs. Two more scripts stop and rebuild them:
+
+```bash
+pnpm docker:down      # docker compose down: stops and removes the containers and the network
+pnpm docker:restart   # recreates postgres and keycloak (also starts them when they are down)
+```
+
+None of the three touches the `pgdata` volume, so the database survives `docker:down` and `docker:restart`; deleting it takes an explicit `docker compose down -v`. `docker:restart` recreates the containers rather than restarting them, so Keycloak imports `ops/keycloak` again (an edited realm takes effect) and the command works whether or not they were running. `docker:down` stops everything in the project, including `api` and `console` if you ran the whole stack, but not the services of an opt-in profile (see the `telemetry` note below). `pnpm docker:stack` and `pnpm docker:stack:replicas`, at the top of this file, start the whole stack in the foreground (Ctrl+C stops it; `pnpm docker:down` removes it). The two `--profile` commands there stay as plain Compose, because they set an environment variable or need the profile on `down` too.
 
 The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DB_PORT`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
 
@@ -227,6 +236,7 @@ pnpm build
 
 ```bash
 cp apps/api/.env.test.example apps/api/.env.test
+pnpm docker:up                               # the postgres service has to be running
 docker compose exec postgres createdb -U postgres ops_test
 ```
 

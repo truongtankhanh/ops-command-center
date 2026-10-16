@@ -12,7 +12,13 @@ import {
   type TransitionIncidentRequest,
   type Zone,
 } from '@occ/contracts';
-import { replaceEqualDeep, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  queryOptions,
+  replaceEqualDeep,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents';
 import { api, ApiRequestError } from './client';
 
@@ -132,15 +138,21 @@ export const useIncidents = () =>
       ),
   });
 
-export const useIncident = (id: string | null) =>
-  useQuery({
-    queryKey: queryKeys.incident(id ?? ''),
+/**
+ * One incident's detail, as options: the live path fetches it outside a component (V2-11.4), and
+ * `useIncident` reads it, so the two share one key, one request and one rule for which copy wins.
+ */
+export const incidentQuery = (id: string) =>
+  queryOptions({
+    queryKey: queryKeys.incident(id),
     queryFn: () => api.get<IncidentDetail>(`/incidents/${id}`),
-    enabled: id !== null,
     // A refetch started by a live event can land after a newer mutation response.
     structuralSharing: (cached, fetched) =>
       newerIncident(cached as IncidentDetail | undefined, fetched as IncidentDetail),
   });
+
+export const useIncident = (id: string | null) =>
+  useQuery({ ...incidentQuery(id ?? ''), enabled: id !== null });
 
 /** An offline camera has nothing to stream: no request is sent until it is online again. */
 export const useStream = (camera: Pick<Camera, 'id' | 'online'>) =>

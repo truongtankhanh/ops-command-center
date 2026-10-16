@@ -1,5 +1,5 @@
 import { resetStore } from '../test-utils';
-import { dismissToast, hasToast, showToast, type Toast, useToasts } from './toasts';
+import { dismissToast, hasToast, showToast, type Toast, updateToast, useToasts } from './toasts';
 
 const toasts = () => useToasts.getState().toasts;
 const titles = () => toasts().map((toast) => toast.title);
@@ -92,6 +92,71 @@ describe('toasts', () => {
       showToast(toast('A again', { key: 'a' }));
 
       expect(titles()).toEqual(['A again', 'B', 'C']);
+    });
+  });
+
+  describe('updateToast', () => {
+    it('changes the words of the toast about the key, keeping its id and place', () => {
+      showToast(toast('A'));
+      showToast(
+        toast('Motor over-temperature', { key: 'incident-1', detail: 'CT-01', urgent: true }),
+      );
+      showToast(toast('C'));
+      const [a, keyed, c] = toasts();
+
+      const updated = updateToast('incident-1', { detail: 'CT-01 · 92 °C for 60 s, limit 85 °C' });
+
+      expect(updated).toBe(true);
+      expect(titles()).toEqual(['A', 'Motor over-temperature', 'C']);
+      expect(toasts()[1]).toEqual({ ...keyed, detail: 'CT-01 · 92 °C for 60 s, limit 85 °C' });
+      expect(toasts()[0]!.id).toBe(a!.id);
+      expect(toasts()[2]!.id).toBe(c!.id);
+    });
+
+    it('changes the kicker and the title too, and leaves the rest', () => {
+      showToast(toast('Old', { key: 'k', kicker: 'Old kicker', severity: 'high', urgent: false }));
+
+      updateToast('k', { kicker: 'New kicker', title: 'New' });
+
+      expect(toasts()[0]).toMatchObject({
+        key: 'k',
+        kicker: 'New kicker',
+        title: 'New',
+        severity: 'high',
+        urgent: false,
+      });
+    });
+
+    it('says no, and adds nothing, when no toast is about the key', () => {
+      showToast(toast('A', { key: 'other' }));
+
+      expect(updateToast('incident-1', { detail: 'late' })).toBe(false);
+
+      expect(titles()).toEqual(['A']);
+      expect(toasts()[0]!.detail).toBeUndefined();
+    });
+
+    it('does not bring back a toast that was dismissed', () => {
+      showToast(toast('A', { key: 'incident-1' }));
+      dismissToast(toasts()[0]!.id);
+
+      expect(updateToast('incident-1', { detail: 'late' })).toBe(false);
+
+      expect(toasts()).toEqual([]);
+      expect(hasToast('incident-1')).toBe(false);
+    });
+
+    it('leaves the other toasts and the limit alone', () => {
+      showToast(toast('A', { key: 'a' }));
+      showToast(toast('B'));
+      showToast(toast('C'));
+      const before = toasts();
+
+      updateToast('a', { detail: 'changed' });
+
+      expect(toasts()).toHaveLength(3);
+      expect(toasts()[1]).toBe(before[1]);
+      expect(toasts()[2]).toBe(before[2]);
     });
   });
 });

@@ -8,7 +8,7 @@ import type { Glyph } from './icons';
  *
  * UI-12 added the success toast ("Reported INC-…"); UI-14 the severity tint, urgent toasts that
  * stay until dismissed (critical incidents), an action ("View incident") and toasts keyed to a
- * subject.
+ * subject. V2-11.4 added `updateToast`: new words for a toast that is already shown.
  */
 
 /** How long a toast stays when nobody is pointing at it or focused inside it. */
@@ -44,15 +44,19 @@ export interface Toast {
   action?: { label: string; onAction(): void };
 }
 
+/** The words of a toast that can change after it is shown. */
+export type ToastChanges = Partial<Pick<Toast, 'kicker' | 'title' | 'detail'>>;
+
 interface ToastState {
   toasts: readonly Toast[];
   show(toast: Omit<Toast, 'id'>): void;
+  update(key: string, changes: ToastChanges): boolean;
   dismiss(id: number): void;
 }
 
 let lastId = 0;
 
-export const useToasts = create<ToastState>((set) => ({
+export const useToasts = create<ToastState>((set, get) => ({
   toasts: [],
   show: (toast) =>
     set((state) => {
@@ -61,6 +65,13 @@ export const useToasts = create<ToastState>((set) => ({
       const toasts = at === -1 ? [...state.toasts, next] : state.toasts.with(at, next);
       return { toasts: withinLimit(toasts) };
     }),
+  update: (key, changes) => {
+    if (!get().toasts.some((toast) => toast.key === key)) return false;
+    set((state) => ({
+      toasts: state.toasts.map((toast) => (toast.key === key ? { ...toast, ...changes } : toast)),
+    }));
+    return true;
+  },
   dismiss: (id) => set((state) => ({ toasts: state.toasts.filter((toast) => toast.id !== id) })),
 }));
 
@@ -76,6 +87,16 @@ function withinLimit(toasts: readonly Toast[]): readonly Toast[] {
 
 /** Shows a toast from anywhere, e.g. a mutation's `onSuccess`. */
 export const showToast = (toast: Omit<Toast, 'id'>) => useToasts.getState().show(toast);
+
+/**
+ * Changes the words of the toast about `key` **keeping its id**, so it is the same toast to the
+ * screen: not mounted again, no entrance animation, no second reading by a screen reader, and focus
+ * inside it stays. `showToast` with the same key is for a new subject and replaces the toast with a
+ * new id. Returns whether a toast about `key` was shown; if not (it was dismissed meanwhile) nothing
+ * is added, so a late answer never brings back a toast the operator sent away.
+ */
+export const updateToast = (key: string, changes: ToastChanges): boolean =>
+  useToasts.getState().update(key, changes);
 
 export const dismissToast = (id: number) => useToasts.getState().dismiss(id);
 
