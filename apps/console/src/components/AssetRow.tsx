@@ -35,8 +35,9 @@ interface AssetRowProps {
  * state and code. State and severity are words and glyphs as well as colour, and a stale value is
  * dimmed *and* says "No data · 1 min", so nothing rests on colour alone. A click or Enter / Space
  * selects the asset (a second one deselects, as an incident row does); hovering it sets
- * `hoveredAssetCode` for the map to follow (V2-10.4). Keyboard focus does not: an arrow walk down
- * the list would write the store on every key.
+ * `hoveredAssetCode` for the map to follow (V2-10.4), and the map's own hover over the marker
+ * highlights the row the same way (`data-hovered`, no scroll, no focus). Keyboard focus does not
+ * write it: an arrow walk down the list would write the store on every key.
  *
  * Memoized, which the console does not do by default: the list re-renders every second with the
  * server clock, and the task's criterion is that only the rows whose asset changed re-render. Every
@@ -55,6 +56,8 @@ export const AssetRow = memo(function AssetRow({
 }: AssetRowProps) {
   const entry = useAssetState(asset.code);
   const selected = useConsole((s) => s.selectedAssetCode === asset.code);
+  // The map's hover (V2-10.4): a boolean, so only the row leaving and the row entering re-render.
+  const hovered = useConsole((s) => s.hoveredAssetCode === asset.code);
   const selectAsset = useConsole((s) => s.selectAsset);
   const hoverAsset = useConsole((s) => s.hoverAsset);
 
@@ -87,6 +90,7 @@ export const AssetRow = memo(function AssetRow({
       data-state={state}
       data-severity={state === 'fault' ? incident?.severity : undefined}
       aria-current={selected}
+      data-hovered={hovered || undefined}
       onFocus={() => onFocusItem(itemKey)}
       onClick={() => selectAsset(selected ? null : asset.code)}
       onMouseEnter={() => hoverAsset(asset.code)}

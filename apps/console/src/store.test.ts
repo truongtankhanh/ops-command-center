@@ -716,6 +716,31 @@ describe('useConsole', () => {
       expect(state().layers).toEqual({ incidents: true, cameras: false, assets: true });
     });
 
+    it('shows the assets again when an asset is selected', () => {
+      state().toggleLayer('assets');
+
+      state().selectAsset('CT-01');
+
+      expect(state().layers.assets).toBe(true);
+    });
+
+    it('leaves the other layers as they were when an asset is selected', () => {
+      state().toggleLayer('assets');
+      state().toggleLayer('incidents');
+
+      state().selectAsset('CT-01');
+
+      expect(state().layers).toEqual({ incidents: false, cameras: true, assets: true });
+    });
+
+    it('does not show the assets again when the asset is deselected', () => {
+      state().toggleLayer('assets');
+
+      state().selectAsset(null);
+
+      expect(state().layers.assets).toBe(false);
+    });
+
     it('does not show them again when the incident is closed', () => {
       state().toggleLayer('incidents');
 

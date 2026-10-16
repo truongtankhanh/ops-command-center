@@ -5,6 +5,7 @@ import type { FeatureCollection, Geometry, Point } from 'geojson';
 import { queryKeys } from '../api/queries';
 import {
   type AssetProperties,
+  fanOutAssets,
   incidentFeatures,
   type IncidentProperties,
 } from '../lib/mapFeatures';
@@ -511,6 +512,239 @@ describe('CampusMap', () => {
     expect(map.removeLayer).not.toHaveBeenCalled();
   });
 
+  // V2-10.4: an asset on the map selects, rings and is followed, as an incident is.
+  describe('asset interaction', () => {
+    const oneAsset = (overrides: Partial<Asset> = {}): Asset => ({
+      id: 'asset-ct-01',
+      code: 'CT-01',
+      name: 'Cooling tower 1',
+      class: {
+        id: 'class-cooling-tower',
+        code: 'cooling_tower',
+        name: 'Cooling tower',
+        modelUrl: null,
+        footprintM: { width: 1, depth: 1, height: 1 },
+      },
+      zoneId: 'z1',
+      position: POSITION,
+      elevationM: 0,
+      headingDeg: 0,
+      headline: [],
+      ...overrides,
+    });
+    const assetHit = (code: unknown) => ({
+      layer: { id: MAP_LAYERS.assets },
+      properties: { code },
+    });
+    const ringCalls = (map: InstanceType<typeof fake.FakeMap>, layer: string) =>
+      map.setFilter.mock.calls.filter(([id]) => id === layer);
+    const campus = () => siteBounds(SITE_PLAN, [zone()]);
+
+    beforeEach(() => resetStore(useTelemetryStore));
+
+    it('selects an asset on a click, and deselects it on a second click', async () => {
+      const { map } = await renderMap([], { assets: [oneAsset()] });
+
+      click(map, assetHit('CT-01'));
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+
+      click(map, assetHit('CT-01'));
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
+    it('opens the incident drawn over an asset, not the asset', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { assets: [oneAsset()] });
+      // The map answers topmost first: the incident marker, then the asset beneath it.
+      map.queryRenderedFeatures.mockReturnValueOnce([
+        { layer: { id: MAP_LAYERS.incidents }, properties: { id: 'a' } },
+        assetHit('CT-01'),
+      ]);
+
+      map.fire('click', { point: { x: 0, y: 0 } });
+
+      expect(useConsole.getState().selectedIncidentId).toBe('a');
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
+    it('does not read a hit without a code as an incident', async () => {
+      const { map } = await renderMap([], { assets: [oneAsset()] });
+
+      click(map, assetHit(undefined));
+
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+
+    it('hits nothing, and keeps the crosshair, while the report location is picked', async () => {
+      const { map } = await renderMap([], { assets: [oneAsset()] });
+      act(() => useConsole.getState().setPicking(true));
+      map.queryRenderedFeatures.mockClear();
+      map.queryRenderedFeatures.mockReturnValueOnce([assetHit('CT-01')]);
+
+      // A click while picking places the report's pin, which reads where the pointer is.
+      clickAt(map, POSITION);
+
+      expect(map.queryRenderedFeatures).not.toHaveBeenCalled();
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+      expect(map.canvas.style.cursor).toBe('crosshair');
+    });
+
+    describe('the rings', () => {
+      it('set no filter before an asset is hovered or selected', async () => {
+        const { map } = await renderMap([], { assets: [oneAsset()] });
+
+        expect(ringCalls(map, MAP_LAYERS.assetSelected)).toEqual([]);
+        expect(ringCalls(map, MAP_LAYERS.assetHover)).toEqual([]);
+      });
+
+      it('ring the selected asset, and none once it is deselected', async () => {
+        const { map } = await renderMap([], { assets: [oneAsset()] });
+
+        act(() => useConsole.getState().selectAsset('CT-01'));
+        expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.assetSelected, [
+          '==',
+          ['get', 'code'],
+          'CT-01',
+        ]);
+
+        act(() => useConsole.getState().selectAsset(null));
+        expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.assetSelected, false);
+      });
+
+      it('ring the asset a row of the list is hovered on, and let go of it', async () => {
+        const { map } = await renderMap([], { assets: [oneAsset()] });
+
+        act(() => useConsole.getState().hoverAsset('CT-01'));
+        expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.assetHover, [
+          '==',
+          ['get', 'code'],
+          'CT-01',
+        ]);
+
+        act(() => useConsole.getState().hoverAsset(null));
+        expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.assetHover, false);
+      });
+
+      it('touch a filter only when its asset changes', async () => {
+        const { map } = await renderMap([], { assets: [oneAsset()] });
+
+        act(() => useConsole.getState().hoverAsset('CT-01'));
+        act(() => useConsole.getState().hoverAsset('CT-01'));
+        act(() => useConsole.getState().setAssetFilter('faults'));
+
+        expect(ringCalls(map, MAP_LAYERS.assetHover)).toHaveLength(1);
+        expect(ringCalls(map, MAP_LAYERS.assetSelected)).toHaveLength(0);
+      });
+
+      it('go with the Assets layer, and selecting an asset shows the layer again', async () => {
+        const { map } = await renderMap([], { assets: [oneAsset()] });
+        act(() => useConsole.getState().toggleLayer('assets'));
+        expect(
+          map.setLayoutProperty.mock.calls
+            .filter(([, , value]) => value === 'none')
+            .map(([id]) => id),
+        ).toEqual(expect.arrayContaining([MAP_LAYERS.assetHover, MAP_LAYERS.assetSelected]));
+        map.setLayoutProperty.mockClear();
+
+        act(() => useConsole.getState().selectAsset('CT-01'));
+
+        expect(map.setLayoutProperty.mock.calls.map(([id, , value]) => [id, value])).toEqual(
+          expect.arrayContaining([[MAP_LAYERS.assetSelected, 'visible']]),
+        );
+      });
+
+      it('let go of the store when the map goes', async () => {
+        const { map, unmount } = await renderMap([], { assets: [oneAsset()] });
+        const before = map.setFilter.mock.calls.length;
+
+        unmount();
+        act(() => useConsole.getState().selectAsset('CT-01'));
+
+        expect(map.setFilter.mock.calls.length).toBe(before);
+      });
+    });
+
+    describe('the view', () => {
+      it('centres the selected asset beside the open sheet and returns to the campus on close', async () => {
+        const { map } = await renderMap([], { zones: [zone()], assets: [oneAsset()] });
+
+        act(() => useConsole.getState().selectAsset('CT-01'));
+        expect(map.easeTo).toHaveBeenLastCalledWith({
+          center: POSITION,
+          offset: [-220, 0],
+          duration: 600,
+        });
+
+        act(() => useConsole.getState().selectAsset(null));
+        expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
+      });
+
+      it('centres the marker as drawn when assets stand on one point', async () => {
+        const pair = [
+          oneAsset({ id: 'p', code: 'PMP-S1', name: 'Booster pump' }),
+          oneAsset({ id: 'i', code: 'ICS-STU', name: 'Student Center sensor' }),
+        ];
+        const { map } = await renderMap([], { zones: [zone()], assets: pair });
+
+        act(() => useConsole.getState().selectAsset('PMP-S1'));
+
+        const drawn = fanOutAssets(pair).get('PMP-S1')!;
+        expect(drawn).not.toEqual(POSITION);
+        expect(map.easeTo).toHaveBeenLastCalledWith({
+          center: drawn,
+          offset: [-220, 0],
+          duration: 600,
+        });
+      });
+
+      it('moves to another asset, then to an incident when one takes the sheet', async () => {
+        const other = oneAsset({ id: 'b', code: 'CT-02', position: [108.4416, 11.953] });
+        const raised: [number, number] = [108.4413, 11.9528];
+        const { map } = await renderMap([incident({ id: 'a', position: raised })], {
+          zones: [zone()],
+          assets: [oneAsset(), other],
+        });
+        act(() => useConsole.getState().selectAsset('CT-01'));
+
+        act(() => useConsole.getState().selectAsset('CT-02'));
+        expect(map.easeTo).toHaveBeenLastCalledWith({
+          center: [108.4416, 11.953],
+          offset: [-220, 0],
+          duration: 600,
+        });
+
+        // An incident takes the sheet: the asset stops being the subject of the view.
+        act(() => useConsole.getState().select('a'));
+        expect(map.easeTo).toHaveBeenLastCalledWith({
+          center: raised,
+          offset: [-220, 0],
+          duration: 600,
+        });
+      });
+
+      it('jumps, instead of easing, when the operator prefers reduced motion', async () => {
+        vi.stubGlobal(
+          'matchMedia',
+          vi.fn(() => ({
+            matches: true,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          })),
+        );
+        const { map } = await renderMap([], { zones: [zone()], assets: [oneAsset()] });
+
+        act(() => useConsole.getState().selectAsset('CT-01'));
+        expect(map.easeTo).toHaveBeenLastCalledWith(expect.objectContaining({ duration: 0 }));
+
+        act(() => useConsole.getState().selectAsset(null));
+        expect(map.fitBounds).toHaveBeenLastCalledWith(
+          campus(),
+          expect.objectContaining({ duration: 0 }),
+        );
+      });
+    });
+  });
+
   // V2-10.2: the operator's "Show" toggles hide a kind of marker, and only that. What is hidden
   // cannot be hit, and the DOM tag of the selected incident goes with its layers.
   describe('layer toggles', () => {
@@ -563,7 +797,11 @@ describe('CampusMap', () => {
 
       act(() => useConsole.getState().toggleLayer('assets'));
 
-      expect(idsSet(map, 'none')).toEqual([MAP_LAYERS.assets]);
+      // The marker and its two rings (V2-10.4) are one group.
+      expect(idsSet(map, 'none').sort()).toEqual([...LAYER_GROUPS.assets].sort());
+      expect(idsSet(map, 'none')).toEqual(
+        expect.arrayContaining([MAP_LAYERS.assets, MAP_LAYERS.assetSelected]),
+      );
     });
 
     it('never hides the ground, the zone outline or highlight', async () => {
@@ -597,9 +835,10 @@ describe('CampusMap', () => {
 
       click(map, null);
 
+      // Incidents are hidden; the assets and the cameras are not.
       expect(map.queryRenderedFeatures).toHaveBeenLastCalledWith(
         { x: 0, y: 0 },
-        { layers: [MAP_LAYERS.cameras] },
+        { layers: [MAP_LAYERS.assets, MAP_LAYERS.cameras] },
       );
     });
 
@@ -608,6 +847,7 @@ describe('CampusMap', () => {
       act(() => {
         useConsole.getState().toggleLayer('incidents');
         useConsole.getState().toggleLayer('cameras');
+        useConsole.getState().toggleLayer('assets');
       });
       map.queryRenderedFeatures.mockClear();
 
@@ -729,11 +969,18 @@ describe('CampusMap', () => {
       expect(order.indexOf(MAP_LAYERS.assets)).toBeLessThan(order.indexOf(MAP_LAYERS.incidents));
     });
 
-    // The click handler reads any hit as an incident or a camera; nothing handles an asset until
-    // V2-10.4, which lists the layer together with its click and hover.
-    it('is not a layer a click or a hover acts on yet', () => {
-      expect(INTERACTIVE_LAYERS).not.toContain(MAP_LAYERS.assets);
-      expect(HOVER_LAYERS).not.toContain(MAP_LAYERS.assets);
+    // V2-10.4: an asset is hit after the incident layers and the clusters, so what is drawn over it
+    // wins a click, and before the cameras it is drawn over. The rings take no pointer event.
+    it('is a layer a click and a hover act on, below the incidents and above the cameras', () => {
+      const lists: (readonly string[])[] = [INTERACTIVE_LAYERS, HOVER_LAYERS];
+      for (const list of lists) {
+        const at = (id: string) => list.indexOf(id);
+        expect(at(MAP_LAYERS.assets)).toBeGreaterThan(at(MAP_LAYERS.incidents));
+        expect(at(MAP_LAYERS.assets)).toBeGreaterThan(at(MAP_LAYERS.clusters));
+        expect(at(MAP_LAYERS.assets)).toBeLessThan(at(MAP_LAYERS.cameras));
+        expect(list).not.toContain(MAP_LAYERS.assetHover);
+        expect(list).not.toContain(MAP_LAYERS.assetSelected);
+      }
     });
 
     it('draws each asset at its own position, `GEN-01` outside its zone included', async () => {

@@ -6,6 +6,8 @@ import { INTERACTIVE_LAYERS, MAP_LAYERS } from './mapLayers';
 export type HoverTarget =
   | { kind: 'incident'; id: string; lngLat: LngLat }
   | { kind: 'camera'; id: string; lngLat: LngLat }
+  /** An asset is named by its `code`, the operators' tag: its feature has no `id`. */
+  | { kind: 'asset'; code: string; lngLat: LngLat }
   | {
       kind: 'cluster';
       clusterId: number;
@@ -37,6 +39,11 @@ export function hoverTargetOf(
     return { kind: layerId === MAP_LAYERS.cameras ? 'camera' : 'incident', id, lngLat };
   }
 
+  if (layerId === MAP_LAYERS.assets) {
+    const code = properties?.code;
+    return typeof code === 'string' ? { kind: 'asset', code, lngLat } : null;
+  }
+
   if (layerId === MAP_LAYERS.clusters) {
     const { cluster_id: clusterId, point_count: count, sevRank } = properties ?? {};
     if (typeof clusterId !== 'number' || typeof count !== 'number' || typeof sevRank !== 'number')
@@ -58,6 +65,8 @@ export function sameTarget(a: HoverTarget | null, b: HoverTarget | null): boolea
     case 'incident':
     case 'camera':
       return b.kind === a.kind && b.id === a.id;
+    case 'asset':
+      return b.kind === 'asset' && b.code === a.code;
     case 'cluster':
       return b.kind === 'cluster' && b.clusterId === a.clusterId && b.count === a.count;
   }

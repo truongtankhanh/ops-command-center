@@ -1,8 +1,11 @@
-import type { Camera, Incident, Zone } from '@occ/contracts';
+import type { Asset, Camera, Incident, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, screen, waitFor } from '@testing-library/react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { queryKeys } from '../api/queries';
 import { MAP_LAYERS } from '../lib/mapLayers';
+import { formatReading } from '../lib/readings';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { MapTooltip } from './MapTooltip';
@@ -91,12 +94,14 @@ function renderTooltip(
     incidents = [] as Incident[],
     cameras = [] as Camera[],
     zones = [zone],
-  }: { incidents?: Incident[]; cameras?: Camera[]; zones?: Zone[] } = {},
+    assets = [] as Asset[],
+  }: { incidents?: Incident[]; cameras?: Camera[]; zones?: Zone[]; assets?: Asset[] } = {},
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.cameras, cameras);
   client.setQueryData(queryKeys.zones, zones);
+  client.setQueryData(queryKeys.assets, assets);
   return renderWithQueryClient(<MapTooltip map={map as unknown as MapLibreMap | null} />, client);
 }
 
@@ -112,8 +117,80 @@ function hover(map: FakeMap, ...hits: unknown[]) {
  */
 const tooltip = () => document.querySelector<HTMLElement>('[data-placement]');
 
+const point = (key: string, label: string, unit: string): TelemetryPoint => ({
+  key,
+  label,
+  unit,
+  kind: 'number',
+  min: null,
+  max: null,
+  enumValues: null,
+  expectedIntervalS: 1,
+  headline: 1,
+});
+
+const FAN = point('fanSpeedRpm', 'Fan speed', 'rpm');
+const MOTOR = point('motorTempC', 'Motor temperature', '°C');
+
+/** A cooling tower in the library: its state point is `running`, which the telemetry carries. */
+const asset = (overrides: Partial<Asset> = {}): Asset => ({
+  id: 'asset-ct-01',
+  code: 'CT-01',
+  name: 'Cooling tower 1',
+  class: {
+    id: 'class-cooling-tower',
+    code: 'cooling_tower',
+    name: 'Cooling tower',
+    modelUrl: null,
+    footprintM: { width: 1, depth: 1, height: 1 },
+  },
+  zoneId: 'z1',
+  position: POSITION,
+  elevationM: 0,
+  headingDeg: 0,
+  headline: [FAN, MOTOR],
+  ...overrides,
+});
+
+/**
+ * What the console holds of an asset, with the API's clock anchored now, so `ageSeconds` is how old
+ * the latest reading reads. Set before the tooltip renders: `useServerNow` reads the clock once.
+ */
+function holdTelemetry(
+  entries: Record<string, Partial<AssetTelemetryState> & { ageSeconds?: number }>,
+) {
+  const at = Date.now();
+  act(() =>
+    useTelemetryStore.setState({
+      view: {
+        state: {
+          ...initialTelemetryState,
+          serverClock: { at, mono: performance.now() },
+          assets: Object.fromEntries(
+            Object.entries(entries).map(([code, { ageSeconds = 3, ...rest }]) => [
+              code,
+              {
+                online: true,
+                receivedAt: new Date(at - ageSeconds * 1000).toISOString(),
+                headline: {},
+                values: { fanSpeedRpm: 1420, motorTempC: 62.5, running: true },
+                keyReceivedAt: {},
+                ...rest,
+              } satisfies AssetTelemetryState,
+            ]),
+          ),
+        },
+        series: new Map(),
+      },
+    }),
+  );
+}
+
 describe('MapTooltip', () => {
-  beforeEach(() => resetStore(useConsole));
+  beforeEach(() => {
+    resetStore(useConsole);
+    resetStore(useTelemetryStore);
+  });
 
   it('describes the incident under the pointer', () => {
     const map = fakeMap();
@@ -252,6 +329,244 @@ describe('MapTooltip', () => {
     expect(map.canvas.style.cursor).toBe('');
   });
 
+  // V2-10.4: frame 14's asset tooltip, from what the console already holds (no watch).
+  describe('an asset', () => {
+    const overAsset = (map: FakeMap, code = 'CT-01') =>
+      hover(map, hit(MAP_LAYERS.assets, { code }));
+
+    it('names the asset and its code, and says where a click leads', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Cooling tower 1');
+      expect(tooltip()).toHaveTextContent('CT-01');
+      expect(tooltip()).toHaveTextContent('Click to inspect · Library');
+    });
+
+    it('says the state in the list’s words', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Running');
+    });
+
+    it('shows the two headline readings from the overview, formatted as the list does', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Fan speed');
+      expect(tooltip()).toHaveTextContent(formatReading(FAN, 1420));
+      expect(tooltip()).toHaveTextContent('Motor temperature');
+      expect(tooltip()).toHaveTextContent(formatReading(MOTOR, 62.5));
+    });
+
+    it('draws a dash for a reading it has no value for', () => {
+      holdTelemetry({ 'CT-01': { values: { fanSpeedRpm: 1420 } } });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Motor temperature—');
+    });
+
+    // One age for the asset, not one per reading (V2-08.3): a steady reading would read "old".
+    it('says how old the latest reading is, once, while it is live', () => {
+      holdTelemetry({ 'CT-01': { ageSeconds: 3 } });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()?.textContent?.match(/Updated 3 s ago/g)).toHaveLength(1);
+    });
+
+    it('says no data with its age, and dims the last values, when the reading is old', () => {
+      holdTelemetry({ 'CT-01': { ageSeconds: 90 } });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('No data · 1 min');
+      expect(tooltip()).toHaveTextContent('1 min 30 s old');
+      expect(tooltip()?.querySelector('dd')).toHaveAttribute('data-stale', 'true');
+    });
+
+    it('says offline when the device’s last will fired', () => {
+      holdTelemetry({ 'CT-01': { online: false, ageSeconds: 30 } });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Offline · 30 s');
+    });
+
+    it('says a fault with the incident code, even when the reading is old', () => {
+      holdTelemetry({ 'CT-01': { ageSeconds: 600 } });
+      const map = fakeMap();
+      renderTooltip(map, {
+        assets: [asset()],
+        incidents: [incident({ id: 'inc', code: 'INC-000108', assetId: 'asset-ct-01' })],
+      });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('Fault · INC-000108');
+    });
+
+    it('says only what it knows for an asset nothing was received about', () => {
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent('No data');
+      expect(tooltip()).not.toHaveTextContent('Updated');
+      expect(tooltip()).toHaveTextContent('Fan speed—');
+    });
+
+    it('leaves the zone out of the foot when the zone is unknown', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset({ zoneId: 'gone' })] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveTextContent(/Click to inspect$/);
+    });
+
+    it('anchors at the marker where the map projects it, and shows a pointer', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(map.project).toHaveBeenCalledWith(POSITION);
+      expect(map.canvas.style.cursor).toBe('pointer');
+    });
+
+    it('says nothing about an asset the catalogue does not hold', () => {
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map, 'NOT-THERE');
+
+      expect(tooltip()).toBeNull();
+    });
+
+    it('is hidden from assistive tech like the others', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+
+      overAsset(map);
+
+      expect(tooltip()).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    describe('the row that mirrors it', () => {
+      it('tells the console which asset is hovered, once, and clears it when the pointer leaves', () => {
+        holdTelemetry({ 'CT-01': {} });
+        const map = fakeMap();
+        renderTooltip(map, { assets: [asset()] });
+
+        overAsset(map);
+        expect(useConsole.getState().hoveredAssetCode).toBe('CT-01');
+
+        act(() => map.fire('mouseout'));
+        expect(useConsole.getState().hoveredAssetCode).toBeNull();
+      });
+
+      it('clears it when the pointer moves on to something that is not an asset', () => {
+        holdTelemetry({ 'CT-01': {} });
+        const map = fakeMap();
+        renderTooltip(map, { assets: [asset()], incidents: [incident()] });
+        overAsset(map);
+
+        hover(map, hit(MAP_LAYERS.incidents, { id: 'a' }));
+
+        expect(useConsole.getState().hoveredAssetCode).toBeNull();
+      });
+
+      it('moves it from one asset to the next without a gap', () => {
+        holdTelemetry({ 'CT-01': {}, 'CT-02': {} });
+        const map = fakeMap();
+        renderTooltip(map, {
+          assets: [asset(), asset({ id: 'asset-ct-02', code: 'CT-02', name: 'Cooling tower 2' })],
+        });
+        overAsset(map, 'CT-01');
+
+        overAsset(map, 'CT-02');
+
+        expect(useConsole.getState().hoveredAssetCode).toBe('CT-02');
+      });
+
+      it('does not clear a hover that a row took over meanwhile', () => {
+        holdTelemetry({ 'CT-01': {} });
+        const map = fakeMap();
+        renderTooltip(map, { assets: [asset()] });
+        overAsset(map);
+
+        // The pointer reached a row in the list, which sets its own asset, then the map sees it leave.
+        act(() => useConsole.getState().hoverAsset('CT-02'));
+        act(() => map.fire('mouseout'));
+
+        expect(useConsole.getState().hoveredAssetCode).toBe('CT-02');
+      });
+
+      it('sets nothing while the report location is picked', () => {
+        holdTelemetry({ 'CT-01': {} });
+        const map = fakeMap();
+        renderTooltip(map, { assets: [asset()] });
+        act(() => useConsole.getState().setPicking(true));
+
+        overAsset(map);
+
+        expect(tooltip()).toBeNull();
+        expect(useConsole.getState().hoveredAssetCode).toBeNull();
+        expect(map.canvas.style.cursor).toBe('');
+      });
+
+      it('lets go of the value when the map goes', () => {
+        holdTelemetry({ 'CT-01': {} });
+        const map = fakeMap();
+        const { unmount } = renderTooltip(map, { assets: [asset()] });
+        overAsset(map);
+
+        unmount();
+
+        expect(useConsole.getState().hoveredAssetCode).toBeNull();
+      });
+    });
+
+    it('is not asked about while the Assets layer is hidden', () => {
+      holdTelemetry({ 'CT-01': {} });
+      const map = fakeMap();
+      renderTooltip(map, { assets: [asset()] });
+      act(() => useConsole.getState().toggleLayer('assets'));
+
+      hover(map);
+
+      const [, options] = map.queryRenderedFeatures.mock.lastCall as unknown as [
+        unknown,
+        { layers: string[] },
+      ];
+      expect(options.layers).not.toContain(MAP_LAYERS.assets);
+    });
+  });
+
   // V2-10.2: a layer the operator has hidden is not asked about, so it points out nothing.
   describe('layers the operator has hidden', () => {
     it('asks the map only about the layers that are shown', () => {
@@ -261,9 +576,10 @@ describe('MapTooltip', () => {
 
       hover(map);
 
+      // Incidents are hidden; the assets and the cameras are not.
       expect(map.queryRenderedFeatures).toHaveBeenLastCalledWith(
         { x: 0, y: 0 },
-        { layers: [MAP_LAYERS.cameras] },
+        { layers: [MAP_LAYERS.assets, MAP_LAYERS.cameras] },
       );
     });
 
@@ -273,6 +589,7 @@ describe('MapTooltip', () => {
       act(() => {
         useConsole.getState().toggleLayer('incidents');
         useConsole.getState().toggleLayer('cameras');
+        useConsole.getState().toggleLayer('assets');
       });
 
       hover(map, hit(MAP_LAYERS.incidents, { id: 'a' }));

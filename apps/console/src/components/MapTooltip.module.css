@@ -82,3 +82,71 @@
   margin-left: var(--space-2);
   color: var(--text-secondary);
 }
+
+/*
+ * An asset's tooltip (frame 14 `.tw-tip`): name and code on one line, the state line (`.line`), the
+ * two readings as a label and a value, the asset's reading age, and a foot with a rule over it that
+ * says where a click leads. Same surface as the others; nothing here takes a pointer event.
+ */
+.assetHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+.assetCode {
+  flex: none;
+  font-weight: var(--weight-regular);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+.readings {
+  display: grid;
+  gap: var(--space-0-5);
+  margin: var(--space-2) 0 0;
+}
+
+.reading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+}
+
+.reading dt {
+  color: var(--text-secondary);
+}
+
+.reading dd {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  color: var(--text-primary);
+}
+
+/* The last known value of an asset that is offline or not updating. */
+.reading dd[data-stale='true'] {
+  color: var(--text-tertiary);
+}
+
+.age {
+  color: var(--text-tertiary);
+}
+
+.foot {
+  padding-top: var(--space-2);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* One selector part more than `.tooltip p + p`, which would otherwise set the margin. */
+.tooltip .foot {
+  margin-top: var(--space-2);
+}

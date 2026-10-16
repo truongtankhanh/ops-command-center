@@ -152,7 +152,8 @@ interface ConsoleState extends ReportLocation {
   setSidePanel(tab: SidePanelTab): void;
   /**
    * Opens `code` in the inspector, which closes the selected incident and the report form (and
-   * the pin, as they do). `null` clears the asset only: it never reopens anything.
+   * the pin, as they do) and shows the Assets layer. `null` clears the asset only: it never
+   * reopens anything.
    */
   selectAsset(code: string | null): void;
   hoverAsset(code: string | null): void;
@@ -261,7 +262,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   clearSeverity: () => set({ severity: null }),
   setSidePanel: (sidePanel) => set({ sidePanel }),
   selectAsset: (code) =>
-    set(
+    set((state) =>
       code === null
         ? { selectedAssetCode: null }
         : {
@@ -269,6 +270,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
             selectedIncidentId: null,
             reporting: false,
             ...NO_REPORT_LOCATION,
+            // The map is about to centre on a marker that must be drawn (as `select` for incidents).
+            layers: shown(state.layers, 'assets'),
           },
     ),
   hoverAsset: (hoveredAssetCode) => set({ hoveredAssetCode }),
