@@ -242,6 +242,51 @@ describe('useLiveIncidents', () => {
       expect(client.getQueryData(queryKeys.incidents)).toEqual([incident]);
       expect(useConsole.getState().fresh.has(incident.id)).toBe(false);
     });
+
+    // The Incidents layer can be hidden by the operator (V2-10.2); a new critical incident is the
+    // one thing that turns it back on without being asked.
+    describe('the incidents layer', () => {
+      const critical: Incident = { ...incident, severity: 'critical' };
+
+      beforeEach(() => useConsole.getState().toggleLayer('incidents'));
+
+      it('is shown again by a new critical incident', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+
+        expect(useConsole.getState().layers.incidents).toBe(true);
+      });
+
+      it('leaves the other layers as the operator set them', () => {
+        useConsole.getState().toggleLayer('cameras');
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+
+        expect(useConsole.getState().layers).toEqual({
+          incidents: true,
+          cameras: false,
+          assets: true,
+        });
+      });
+
+      it('stays hidden for a new incident that is not critical', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, { ...incident, severity: 'high' });
+
+        expect(useConsole.getState().layers.incidents).toBe(false);
+      });
+
+      it('stays hidden for an update of a critical incident', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Updated, critical);
+
+        expect(useConsole.getState().layers.incidents).toBe(false);
+      });
+    });
   });
 
   // A new critical or high incident is announced with a toast (frame 04); critical can also sound.

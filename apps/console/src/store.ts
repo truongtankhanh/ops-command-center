@@ -6,6 +6,7 @@ import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/camer
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/density';
 import type { FeedFilter } from './lib/incidents';
+import type { LayerVisibility, MapLayerKey } from './lib/mapLayers';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
 import { twinCapability } from './lib/twinCapability';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
@@ -121,8 +122,17 @@ interface ConsoleState extends ReportLocation {
    * in this browser, as an explicit choice only (V2-10.1).
    */
   view: ViewChoice;
+  /**
+   * Which map layers are drawn (frame 14's "Show"). Not remembered: a console opens with all three,
+   * so a layer hidden for a while is never found hidden by the next person (Open question 4).
+   * Selecting an incident, and a new critical one arriving, turn Incidents back on.
+   */
+  layers: LayerVisibility;
 
-  /** Selecting an incident (not `null`) also closes the report form and the selected asset. */
+  /**
+   * Selecting an incident (not `null`) also closes the report form and the selected asset, and
+   * shows the Incidents layer: the map is about to centre on a marker that must be drawn.
+   */
   select(id: string | null): void;
   /**
    * Also closes the selected asset: the report form takes the sheet. With a `preset` (a fault
@@ -182,6 +192,9 @@ interface ConsoleState extends ReportLocation {
    * never holds a view the stage cannot show and never remembers a choice it could not honour.
    */
   setView(view: ViewChoice): void;
+  toggleLayer(key: MapLayerKey): void;
+  /** Turns a layer on and does nothing when it is. There is no "hide": only the toggle hides. */
+  showLayer(key: MapLayerKey): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -208,13 +221,21 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   density: readDensity(),
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
+  layers: { incidents: true, cameras: true, assets: true },
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
     set((state) => {
       const closed = { selectedIncidentId: id, reporting: false, ...NO_REPORT_LOCATION };
       // Closing the incident (`null`) is not "deselect the asset": only a new selection takes the sheet.
-      const next = id === null ? closed : { ...closed, selectedAssetCode: null };
+      const next =
+        id === null
+          ? closed
+          : {
+              ...closed,
+              selectedAssetCode: null,
+              layers: shown(state.layers, 'incidents'),
+            };
       return id === null || !state.fresh.has(id)
         ? next
         : { ...next, fresh: without(state.fresh, id) };
@@ -312,7 +333,16 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     writeViewChoice(view);
     set({ view });
   },
+  toggleLayer: (key) =>
+    set((state) => ({ layers: { ...state.layers, [key]: !state.layers[key] } })),
+  showLayer: (key) =>
+    set((state) => (state.layers[key] ? state : { layers: shown(state.layers, key) })),
 }));
+
+/** `layers` with `key` on; the same object when it already is, so nothing re-renders for it. */
+function shown(layers: LayerVisibility, key: MapLayerKey): LayerVisibility {
+  return layers[key] ? layers : { ...layers, [key]: true };
+}
 
 /**
  * `connecting` is the first connect only, before any data could be stale; a refused first connect

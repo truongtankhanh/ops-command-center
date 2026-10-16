@@ -14,6 +14,7 @@ import {
   groundLayers,
   HOVER_LAYERS,
   INTERACTIVE_LAYERS,
+  LAYER_GROUPS,
   MAP_LAYERS,
   MAP_SOURCES,
   zoneOverlayLayers,
@@ -90,6 +91,7 @@ const fake = vi.hoisted(() => {
     fitBounds = vi.fn();
     resize = vi.fn();
     setPaintProperty = vi.fn();
+    setLayoutProperty = vi.fn();
     setFilter = vi.fn();
     zoomIn = vi.fn();
     zoomOut = vi.fn();
@@ -507,6 +509,136 @@ describe('CampusMap', () => {
 
     expect(map.remove).toHaveBeenCalled();
     expect(map.removeLayer).not.toHaveBeenCalled();
+  });
+
+  // V2-10.2: the operator's "Show" toggles hide a kind of marker, and only that. What is hidden
+  // cannot be hit, and the DOM tag of the selected incident goes with its layers.
+  describe('layer toggles', () => {
+    const fired = (map: InstanceType<typeof fake.FakeMap>) =>
+      map.setLayoutProperty.mock.calls as [string, string, string][];
+    const idsSet = (map: InstanceType<typeof fake.FakeMap>, visibility: string) =>
+      fired(map)
+        .filter(([, , value]) => value === visibility)
+        .map(([id]) => id);
+
+    it('touches no layer while everything is shown', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+
+      expect(map.setLayoutProperty).not.toHaveBeenCalled();
+    });
+
+    it('hides the incident layers together and no others', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+
+      act(() => useConsole.getState().toggleLayer('incidents'));
+
+      expect(idsSet(map, 'none').sort()).toEqual([...LAYER_GROUPS.incidents].sort());
+      expect(fired(map).every(([, property]) => property === 'visibility')).toBe(true);
+    });
+
+    it('shows them again, and only them', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+      act(() => useConsole.getState().toggleLayer('incidents'));
+      map.setLayoutProperty.mockClear();
+
+      act(() => useConsole.getState().toggleLayer('incidents'));
+
+      expect(idsSet(map, 'visible').sort()).toEqual([...LAYER_GROUPS.incidents].sort());
+      expect(idsSet(map, 'none')).toEqual([]);
+    });
+
+    it('hides a camera marker together with its view', async () => {
+      const { map } = await renderMap([], { cameras: [] });
+
+      act(() => useConsole.getState().toggleLayer('cameras'));
+
+      expect(idsSet(map, 'none').sort()).toEqual([...LAYER_GROUPS.cameras].sort());
+      expect(idsSet(map, 'none')).toEqual(
+        expect.arrayContaining([MAP_LAYERS.cameras, MAP_LAYERS.cameraViewFill]),
+      );
+    });
+
+    it('hides the asset layer alone', async () => {
+      const { map } = await renderMap([]);
+
+      act(() => useConsole.getState().toggleLayer('assets'));
+
+      expect(idsSet(map, 'none')).toEqual([MAP_LAYERS.assets]);
+    });
+
+    it('never hides the ground, the zone outline or highlight', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+
+      for (const key of ['incidents', 'cameras', 'assets'] as const) {
+        act(() => useConsole.getState().toggleLayer(key));
+      }
+
+      const touched = fired(map).map(([id]) => id);
+      for (const id of [
+        ...groundLayers(0).map((l) => l.id),
+        MAP_LAYERS.zoneOutline,
+        MAP_LAYERS.zoneHighlight,
+      ]) {
+        expect(touched).not.toContain(id);
+      }
+    });
+
+    it('applies a toggle made before the map had loaded, once the layers exist', async () => {
+      useConsole.getState().toggleLayer('cameras');
+
+      const { map } = await renderMap([incident({ id: 'a' })]);
+
+      expect(idsSet(map, 'none').sort()).toEqual([...LAYER_GROUPS.cameras].sort());
+    });
+
+    it('asks the map only about the layers that are shown when a marker is clicked', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+      act(() => useConsole.getState().toggleLayer('incidents'));
+
+      click(map, null);
+
+      expect(map.queryRenderedFeatures).toHaveBeenLastCalledWith(
+        { x: 0, y: 0 },
+        { layers: [MAP_LAYERS.cameras] },
+      );
+    });
+
+    it('selects nothing and asks nothing when every clickable layer is hidden', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+      act(() => {
+        useConsole.getState().toggleLayer('incidents');
+        useConsole.getState().toggleLayer('cameras');
+      });
+      map.queryRenderedFeatures.mockClear();
+
+      click(map, { layer: { id: MAP_LAYERS.incidents }, properties: { id: 'a' } });
+
+      expect(map.queryRenderedFeatures).not.toHaveBeenCalled();
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+
+    it('takes the selected incident’s code tag away with the incidents, and brings it back', async () => {
+      const { map } = await renderMap([incident({ id: 'a', code: 'INC-000007' })]);
+      act(() => useConsole.getState().select('a'));
+      expect(document.body).toHaveTextContent('INC-000007');
+
+      act(() => useConsole.getState().toggleLayer('incidents'));
+      expect(document.body).not.toHaveTextContent('INC-000007');
+
+      act(() => useConsole.getState().showLayer('incidents'));
+      expect(document.body).toHaveTextContent('INC-000007');
+      expect(map.layers).toContain(MAP_LAYERS.incidents);
+    });
+
+    it('selecting an incident shows the hidden incidents layer again', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+      act(() => useConsole.getState().toggleLayer('incidents'));
+      map.setLayoutProperty.mockClear();
+
+      act(() => useConsole.getState().select('a'));
+
+      expect(idsSet(map, 'visible').sort()).toEqual([...LAYER_GROUPS.incidents].sort());
+    });
   });
 
   // V2-10.3: the equipment, drawn under the incidents and over the cameras, from the catalogue and

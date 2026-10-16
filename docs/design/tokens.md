@@ -291,6 +291,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-low`         | `--tw-alarm-top`                          | 3.54  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
 | `--tw-stale-edge`   | `--tw-stale-top`                          | 1.68  | 3       | reported only: dim on purpose; the dash, stopped motion and value ages carry stale         |
 | `--tw-stale-edge`   | `map ground`                              | 2.35  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
+| `--tw-stale-edge`   | `--surface-1`                             | 2.12  | 3       | reported only: dim on purpose; the dash and the words carry no data                        |
 | `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |

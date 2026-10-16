@@ -32,13 +32,14 @@ const RETRY_MAX_MS = 30_000;
  * the server refused the handshake: this hook retries those.
  *
  * A new incident is marked fresh, and a critical or high one is announced with a toast (plus the
- * sound for a critical one, when it is on). An incident that is no longer open stops being fresh.
+ * sound for a critical one, when it is on); a critical one also shows the map's Incidents layer
+ * again if it was hidden. An incident that is no longer open stops being fresh.
  */
 export function useLiveIncidents(): void {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const { setConnection, markAlive, markFresh, forgetFresh } = useConsole.getState();
+    const { setConnection, markAlive, markFresh, forgetFresh, showLayer } = useConsole.getState();
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(EVENTS_NAMESPACE, {
       transports: ['websocket'],
       // A function, so every reconnect sends the token that is current at that moment.
@@ -115,6 +116,10 @@ export function useLiveIncidents(): void {
     socket.on(IncidentEvents.Created, (incident) => {
       apply(incident);
       markFresh(incident.id);
+      // A layer toggle must not hide the one thing that cannot wait: a new critical incident
+      // turns the Incidents layer back on (V2-10.2). An update, or one found by a reconnect's
+      // refetch, does not: neither is "new".
+      if (incident.severity === 'critical') showLayer('incidents');
       announce(incident);
     });
     socket.on(IncidentEvents.Updated, (incident) => {

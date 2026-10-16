@@ -172,6 +172,14 @@ const PAIRS: Pair[] = [
     min: UI,
     reportOnly: 'dim on purpose; the dash carries no data, and the Assets tab says it too',
   },
+  // V2-10.2: the legend's `Asset no data` swatch is the same dim dashed edge, on the legend's
+  // `--surface-1`. Dim on purpose, as the marker's: the dash and the words beside it carry no data.
+  {
+    fg: '--tw-stale-edge',
+    bg: '--surface-1',
+    min: UI,
+    reportOnly: 'dim on purpose; the dash and the words carry no data',
+  },
   // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground.
   { fg: '--text-secondary', bg: '--tw-ground', min: TEXT },
   // The heat ramp's ends on the ground: lightness carries the value, not a boundary.
