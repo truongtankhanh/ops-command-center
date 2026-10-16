@@ -43,7 +43,7 @@ describe('StageView', () => {
     expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
   });
 
-  // Until V2-12.4 the store never holds `3d` (see `effectiveView`), so what is stored cannot change
+  // The preview gate is closed under Vitest (V2-12.4), so the store never holds `3d` here (see `effectiveView`): what is stored cannot change
   // what is drawn: the stage keeps showing the map and the switch shows 2D pressed.
   it('still draws the map when a 3D choice was stored by a later build', () => {
     localStorage.setItem('occ.console.view', '3d');
@@ -94,6 +94,19 @@ describe('StageView', () => {
       expect(CampusMap).not.toHaveBeenCalled();
       expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
       expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+    });
+
+    it('puts the map back when the context is lost, with the switch still there', async () => {
+      render(<StageView />);
+      show3d();
+      await screen.findByText('3D stage');
+      vi.mocked(CampusMap).mockClear();
+
+      act(() => useConsole.getState().markTwinLost());
+
+      expect(CampusMap).toHaveBeenCalled();
+      expect(screen.queryByText('3D stage')).not.toBeInTheDocument();
+      expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
     });
 
     it('mounts the map again when the view goes back to 2D', async () => {

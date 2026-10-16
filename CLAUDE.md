@@ -105,6 +105,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 pnpm docker:up                              # postgres :15432, keycloak :18081 (loopback); also docker:down, docker:restart
 pnpm dev                                    # API :13000 (metrics :9464), console :15173
+                                            # the 3D view is on in `pnpm dev`; elsewhere only with ?twin=1 until V2-19.8
 
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm build
                                             # build also fails if the 3D twin's lazy chunk is over its gzip budget (ADR-0020)

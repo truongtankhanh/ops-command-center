@@ -3,6 +3,7 @@ import { render, type RenderResult } from '@testing-library/react';
 import axe from 'axe-core';
 import type { ReactElement, ReactNode } from 'react';
 import type { StoreApi } from 'zustand';
+import { forgetWebgl2Probe } from './lib/twinCapability';
 
 /** A fresh client per test, without retries, so a failing request fails the test at once. */
 export function createTestQueryClient(): QueryClient {
@@ -112,4 +113,25 @@ export async function expectNoAxeViolations(
     )
     .join('\n\n');
   throw new Error(`${violations.length} axe violation(s):\n\n${report}`);
+}
+
+/**
+ * Makes the 3D twin available to the code under test: the preview gate open (`MODE` is
+ * `development`) and a WebGL 2 context that can be created, jsdom having none. Returns the spy on the
+ * context's release. Undo it with `unstubTwin()` (and `vi.restoreAllMocks()`), so the next case sees
+ * the production-like answer, `not-built`.
+ */
+export function stubTwinAvailable(): { loseContext: ReturnType<typeof vi.fn> } {
+  const loseContext = vi.fn();
+  vi.stubEnv('MODE', 'development');
+  forgetWebgl2Probe();
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    getExtension: () => ({ loseContext }),
+  } as never);
+  return { loseContext };
+}
+
+export function unstubTwin(): void {
+  vi.unstubAllEnvs();
+  forgetWebgl2Probe();
 }
