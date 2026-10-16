@@ -40,7 +40,9 @@
   --row-edge: var(--sev-low-border);
 }
 
-.row:hover {
+/* `data-hovered`: the pointer is on this asset's marker on the map (V2-10.4). */
+.row:hover,
+.row[data-hovered='true'] {
   background: var(--surface-2);
 }
 

@@ -11,6 +11,12 @@ const incident = (id: string, lngLat: [number, number] = [108.44, 11.95]): Hover
   lngLat,
 });
 
+const asset = (code: string, lngLat: [number, number] = [108.44, 11.95]): HoverTarget => ({
+  kind: 'asset',
+  code,
+  lngLat,
+});
+
 const cluster = (clusterId: number, count: number): HoverTarget => ({
   kind: 'cluster',
   clusterId,
@@ -42,6 +48,24 @@ describe('hoverTargetOf', () => {
       id: 'c1',
       lngLat: [108.44, 11.95],
     });
+  });
+
+  it('reads an asset by its code, at the point it is drawn', () => {
+    expect(hoverTargetOf(MAP_LAYERS.assets, { code: 'CT-01' }, point(108.441, 11.951))).toEqual({
+      kind: 'asset',
+      code: 'CT-01',
+      lngLat: [108.441, 11.951],
+    });
+  });
+
+  it('needs a string code for an asset, not an id', () => {
+    expect(hoverTargetOf(MAP_LAYERS.assets, { id: 'CT-01' }, point())).toBeNull();
+    expect(hoverTargetOf(MAP_LAYERS.assets, { code: 7 }, point())).toBeNull();
+  });
+
+  it('does not read a ring layer as an asset', () => {
+    expect(hoverTargetOf(MAP_LAYERS.assetSelected, { code: 'CT-01' }, point())).toBeNull();
+    expect(hoverTargetOf(MAP_LAYERS.assetHover, { code: 'CT-01' }, point())).toBeNull();
   });
 
   it.each<[number, IncidentSeverity]>([
@@ -96,6 +120,16 @@ describe('hoverTargetOf', () => {
 });
 
 describe('sameTarget', () => {
+  it('keeps an asset while its code holds, wherever it is drawn', () => {
+    expect(sameTarget(asset('CT-01'), asset('CT-01', [108.45, 11.96]))).toBe(true);
+    expect(sameTarget(asset('CT-01'), asset('CT-02'))).toBe(false);
+  });
+
+  it('tells an asset from an incident or a camera with the same string', () => {
+    expect(sameTarget(asset('a'), incident('a'))).toBe(false);
+    expect(sameTarget(incident('a'), asset('a'))).toBe(false);
+  });
+
   it('treats two empty hovers as the same', () => {
     expect(sameTarget(null, null)).toBe(true);
   });
@@ -128,14 +162,22 @@ describe('sameTarget', () => {
 });
 
 describe('isClickable', () => {
-  it.each([MAP_LAYERS.selected, MAP_LAYERS.incidents, MAP_LAYERS.clusters, MAP_LAYERS.cameras])(
-    'acts on %s',
-    (layer) => {
-      expect(isClickable(layer)).toBe(true);
-    },
-  );
+  it.each([
+    MAP_LAYERS.selected,
+    MAP_LAYERS.incidents,
+    MAP_LAYERS.clusters,
+    MAP_LAYERS.assets,
+    MAP_LAYERS.cameras,
+  ])('acts on %s', (layer) => {
+    expect(isClickable(layer)).toBe(true);
+  });
 
-  it.each([MAP_LAYERS.clusterCount, MAP_LAYERS.zoneFill])('does nothing on %s', (layer) => {
+  it.each([
+    MAP_LAYERS.clusterCount,
+    MAP_LAYERS.zoneFill,
+    MAP_LAYERS.assetHover,
+    MAP_LAYERS.assetSelected,
+  ])('does nothing on %s', (layer) => {
     expect(isClickable(layer)).toBe(false);
   });
 });

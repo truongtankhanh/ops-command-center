@@ -46,6 +46,8 @@ export const MAP_LAYERS = {
   zoneHighlight: 'zone-highlight',
   cameras: 'cameras',
   assets: 'assets',
+  assetHover: 'asset-hover',
+  assetSelected: 'asset-selected',
   pulseStatic: 'pulse-static',
   pulseWave: 'pulse-wave',
   selectedPulseStatic: 'selected-pulse-static',
@@ -62,14 +64,16 @@ export const MAP_LAYERS = {
  * Layers a click can hit, topmost first: an incident selects, a cluster zooms in, a camera opens the
  * viewer (UI-13). Cameras are drawn under the incidents, so a marker over a camera still wins.
  *
- * The asset layer is not here yet: it is drawn (V2-10.3) but nothing handles a click or a hover on
- * it until V2-10.4, which lists it with them. Listed alone it would turn the pointer into a hand
- * over a marker that does nothing, and the click handler would read an asset as an incident.
+ * An asset selects and shows its tooltip (V2-10.4). It sits **after the incident layers and the
+ * clusters**, so an incident or a cluster drawn over an asset is hit first (topmost wins), and
+ * before the cameras it is drawn over. The rings that mark the hovered and the selected asset are
+ * not here: they are decoration and take no pointer event.
  */
 export const INTERACTIVE_LAYERS = [
   MAP_LAYERS.selected,
   MAP_LAYERS.incidents,
   MAP_LAYERS.clusters,
+  MAP_LAYERS.assets,
   MAP_LAYERS.cameras,
 ];
 
@@ -110,7 +114,7 @@ export const LAYER_GROUPS: Record<MapLayerKey, readonly string[]> = {
     MAP_LAYERS.cameraViewLine,
     MAP_LAYERS.cameraViewLineOffline,
   ],
-  assets: [MAP_LAYERS.assets],
+  assets: [MAP_LAYERS.assets, MAP_LAYERS.assetHover, MAP_LAYERS.assetSelected],
 };
 
 /**
@@ -218,6 +222,10 @@ function metricWidth(metres: number, lat: number): ExpressionSpecification {
     metresToPixels(metres, high, lat),
   ];
 }
+
+/** Rings the asset with this code on the asset source; `null` rings none. */
+export const assetRingFilter = (code: string | null): FilterSpecification =>
+  code === null ? false : ['==', ['get', 'code'], code];
 
 /** Outlines the zone with this id; `null` outlines none. */
 export const zoneHighlightFilter = (zoneId: string | null): FilterSpecification =>
@@ -389,8 +397,24 @@ export function cameraLayers(): LayerSpecification[] {
  * an incident raised at an asset's position stays on top. Add after `cameraLayers()` and before
  * `incidentLayers()`; that order is the draw order. Like the others it never hides a marker to make
  * room for another.
+ *
+ * The two rings are filters over the same source, set by `assetRingFilter`: the hovered asset gets a
+ * thin accent ring and the selected one the 10 px accent ring of frame 14, both at the marker as it
+ * is drawn (a fanned-out asset included). Neither ring takes a pointer event.
  */
 export function assetLayers(): LayerSpecification[] {
+  const ring = (id: string, radius: number, width: number): LayerSpecification => ({
+    id,
+    type: 'circle',
+    source: MAP_SOURCES.assets,
+    filter: assetRingFilter(null),
+    paint: {
+      'circle-radius': radius,
+      'circle-opacity': 0,
+      'circle-stroke-width': width,
+      'circle-stroke-color': mapColors.accent,
+    },
+  });
   return [
     {
       id: MAP_LAYERS.assets,
@@ -398,6 +422,8 @@ export function assetLayers(): LayerSpecification[] {
       source: MAP_SOURCES.assets,
       layout: { ...ICON_PLACEMENT, 'icon-image': ['get', 'image'] },
     },
+    ring(MAP_LAYERS.assetHover, 9, 1),
+    ring(MAP_LAYERS.assetSelected, 10, 2.5),
   ];
 }
 

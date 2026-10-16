@@ -16,11 +16,13 @@ import {
   assetFeatures,
   cameraFeatures,
   cameraViewFeatures,
+  fanOutAssets,
   incidentFeatures,
 } from '../lib/mapFeatures';
 import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
 import {
   assetLayers,
+  assetRingFilter,
   assetSource,
   cameraLayers,
   cameraSource,
@@ -110,7 +112,10 @@ export function CampusMap() {
   const reportZoneId = useConsole((s) => s.reportZoneId);
   const picking = useConsole((s) => s.picking);
   const layers = useConsole((s) => s.layers);
-  const sheetOpen = selectedId !== null || reporting;
+  const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
+  const reducedMotion = usePrefersReducedMotion();
+  // The inspector is a sheet too: the view keeps clear of it as of the incident's and the form's.
+  const sheetOpen = selectedId !== null || selectedAssetCode !== null || reporting;
   /** What the view frames; read by `useSiteLayers` when the ground is (re)drawn. */
   const focusRef = useRef<ViewTarget>({ point: null, sheetOpen: false });
 
@@ -169,10 +174,22 @@ export function CampusMap() {
   // out from its true position); show the whole campus when nothing is selected. The view moves when
   // the selection or the sheet changes, and once the selected marker is first known — not when the
   // fan-out shifts it a few metres because another incident arrived at the same spot.
-  const selectedPoint = features?.selected.features[0]?.geometry.coordinates;
+  //
+  // The same for the inspected asset, at the point it is drawn (`fanOutAssets`: assets on one spot
+  // are spread). The store keeps the incident, the asset and the report form exclusive, so at most
+  // one of the two points applies. Under reduced motion the view jumps (`duration` 0) instead of
+  // easing over `FOCUS_MS`; MapLibre would skip the ease too, but that is stated here.
+  const assetPoint = useMemo(
+    () => (selectedAssetCode && assets ? fanOutAssets(assets).get(selectedAssetCode) : undefined),
+    [assets, selectedAssetCode],
+  );
+  const selectedPoint = features?.selected.features[0]?.geometry.coordinates ?? assetPoint;
   const pointRef = useRef<number[] | undefined>(undefined);
+  const focusMs = reducedMotion ? 0 : FOCUS_MS;
+  const focusMsRef = useRef(focusMs);
   useEffect(() => {
     pointRef.current = selectedPoint;
+    focusMsRef.current = focusMs;
   });
   const hasSelectedPoint = selectedPoint !== undefined;
   useEffect(() => {
@@ -181,8 +198,8 @@ export function CampusMap() {
       point: point ? [point[0]!, point[1]!] : null,
       sheetOpen,
     };
-    if (map) focus(map, focusRef.current, FOCUS_MS);
-  }, [map, selectedId, hasSelectedPoint, sheetOpen]);
+    if (map) focus(map, focusRef.current, focusMsRef.current);
+  }, [map, selectedId, selectedAssetCode, hasSelectedPoint, sheetOpen]);
 
   const selected = incidents?.find((i) => i.id === selectedId);
 
@@ -230,7 +247,7 @@ export function CampusMap() {
       )}
       <MapTooltip map={map} />
       <MapLegend />
-      <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, FOCUS_MS)} />
+      <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, focusMs)} />
     </section>
   );
 }
@@ -379,7 +396,9 @@ function useCameraLayer(map: maplibregl.Map | null, cameras: Camera[] | undefine
  * change. Instead the derived list is compared with the one last sent, and `setData` is called
  * only when it differs: a tick that changes no asset's state sends nothing.
  *
- * Not interactive yet: the layer is not in `INTERACTIVE_LAYERS` until V2-10.4 (see `mapLayers`).
+ * It is interactive (V2-10.4): a click selects the asset in the shared handler of
+ * `useIncidentLayers`, and the hovered and the selected asset get a ring, which this hook sets as a
+ * layer filter from the store without re-rendering the map.
  */
 function useAssetLayers(
   map: maplibregl.Map | null,
@@ -427,6 +446,30 @@ function useAssetLayers(
       clearInterval(timer);
     };
   }, [map, assets, incidents]);
+
+  // The rings follow the store's hovered and selected asset. Read imperatively, so a hover (which
+  // can come from a row of the list or from this map) does not render `CampusMap`; a filter is set
+  // only when its asset changes.
+  useEffect(() => {
+    if (!map) return;
+    let selected: string | null = null;
+    let hovered: string | null = null;
+    const apply = () => {
+      // The map may have been removed since: its style is gone and every style call throws.
+      if (!map.style) return;
+      const state = useConsole.getState();
+      if (state.selectedAssetCode !== selected) {
+        selected = state.selectedAssetCode;
+        map.setFilter(MAP_LAYERS.assetSelected, assetRingFilter(selected));
+      }
+      if (state.hoveredAssetCode !== hovered) {
+        hovered = state.hoveredAssetCode;
+        map.setFilter(MAP_LAYERS.assetHover, assetRingFilter(hovered));
+      }
+    };
+    apply();
+    return useConsole.subscribe(apply);
+  }, [map]);
 }
 
 /**
@@ -470,6 +513,15 @@ function useIncidentLayers(
       if (!hit) return;
       if (hit.layer.id === MAP_LAYERS.clusters) {
         expandCluster(map, hit);
+        return;
+      }
+      // An asset selects (the inspector opens) and a second click on it deselects, as an incident.
+      // It has a `code`, not an `id`, so it is read before the id below.
+      if (hit.layer.id === MAP_LAYERS.assets) {
+        const code: unknown = hit.properties.code;
+        if (typeof code !== 'string') return;
+        const { selectAsset, selectedAssetCode } = useConsole.getState();
+        selectAsset(code === selectedAssetCode ? null : code);
         return;
       }
       const id = String(hit.properties.id);

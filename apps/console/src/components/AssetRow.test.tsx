@@ -311,6 +311,30 @@ describe('AssetRow', () => {
       expect(useConsole.getState().hoveredAssetCode).toBeNull();
     });
 
+    // The map's hover over this asset's marker (V2-10.4): the row says so, and moves nothing.
+    it('is marked hovered while the map hovers its asset, and no other row is', () => {
+      render(<Row />);
+      expect(row()).not.toHaveAttribute('data-hovered');
+
+      act(() => useConsole.getState().hoverAsset('CT-01'));
+      expect(row()).toHaveAttribute('data-hovered', 'true');
+
+      act(() => useConsole.getState().hoverAsset('CT-02'));
+      expect(row()).not.toHaveAttribute('data-hovered');
+
+      act(() => useConsole.getState().hoverAsset(null));
+      expect(row()).not.toHaveAttribute('data-hovered');
+    });
+
+    it('takes no focus and selects nothing when it is only marked hovered', () => {
+      render(<Row />);
+
+      act(() => useConsole.getState().hoverAsset('CT-01'));
+
+      expect(row()).not.toHaveFocus();
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
     it('does not set the hovered asset on keyboard focus', () => {
       render(<Row />);
 
