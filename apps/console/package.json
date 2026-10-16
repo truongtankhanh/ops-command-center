@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/chunk-budget.ts",
     "preview": "vite preview",
     "lint": "eslint src scripts && node scripts/contrast.ts --check",
     "typecheck": "tsc --noEmit",

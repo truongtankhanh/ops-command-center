@@ -107,6 +107,7 @@ pnpm docker:up                              # postgres :15432, keycloak :18081 (
 pnpm dev                                    # API :13000 (metrics :9464), console :15173
 
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm build
+                                            # build also fails if the 3D twin's lazy chunk is over its gzip budget (ADR-0020)
 pnpm test                                   # unit: Jest (API), Vitest (console, camera-adapter)
 pnpm test:e2e                               # API against real PostgreSQL
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
