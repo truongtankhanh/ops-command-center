@@ -4,13 +4,17 @@ import type {
   IncidentEvent,
   TelemetryPoint,
   TelemetryRule,
+  Zone,
 } from '@occ/contracts';
 import { act, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 import {
   createTestQueryClient,
   expectNoAxeViolations,
@@ -81,11 +85,22 @@ const asset = (overrides: Partial<AssetDetail>): AssetDetail => ({
   ...overrides,
 });
 
+const ZONE: Zone = {
+  id: 'zone-dc',
+  code: 'BLD-DC',
+  name: 'Data Center',
+  kind: 'building',
+  heightM: 14,
+  polygon: [],
+  center: [108.44, 11.95],
+};
+
 const COOLING_TOWER = asset({});
 const LEAK_SENSOR = asset({
   id: 'asset-lks-b3',
   code: 'LKS-B3',
   name: 'Leak sensor, level 3',
+  elevationM: 8,
   headline: [LEAK],
   points: [LEAK],
   rules: [
@@ -186,6 +201,8 @@ function renderBlock(
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.assets, catalogue);
+  // The link names the place: cached, so it asks for nothing of its own.
+  client.setQueryData(queryKeys.zones, [ZONE]);
   for (const cached of details) client.setQueryData(queryKeys.asset(cached.code), cached);
   return renderWithQueryClient(<IncidentEvidence incident={detail} />, client);
 }
@@ -200,6 +217,8 @@ const readingRow = (label: string): HTMLElement => {
 describe('IncidentEvidence', () => {
   beforeEach(() => {
     resetStore(useTelemetryStore);
+    resetStore(useConsole);
+    resetStore(useSession);
     fetchMock.mockReset().mockImplementation(() => new Promise<Response>(() => {}));
     vi.stubGlobal('fetch', fetchMock);
     vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
@@ -441,6 +460,108 @@ describe('IncidentEvidence', () => {
 
       expect(screen.getByText('Raised at 92')).toBeInTheDocument();
       expect(screen.queryByText('Live')).toBeNull();
+    });
+  });
+
+  describe('the link to the asset', () => {
+    const OPEN_CT = { name: 'Open asset CT-01' };
+
+    it('names the asset, its part and where it stands, with a way to open it', () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+
+      renderBlock(incident());
+
+      expect(screen.getByText('CT-01 · Cooling tower 1')).toBeInTheDocument();
+      expect(screen.getByText('Part: fan motor · Data Center · roof')).toBeInTheDocument();
+      const open = screen.getByRole('button', OPEN_CT);
+      expect(open).toHaveTextContent('Open asset');
+    });
+
+    it('names the place alone for a class with no part table', () => {
+      hold({ assets: { 'LKS-B3': entry({ leakDetected: true }) }, afterMs: 400 });
+
+      renderBlock(leakIncident());
+
+      expect(screen.getByText('LKS-B3 · Leak sensor, level 3')).toBeInTheDocument();
+      expect(screen.getByText('Data Center · level 3')).toBeInTheDocument();
+    });
+
+    it('opens the inspector of that asset in place of the incident', async () => {
+      useConsole.setState({ selectedIncidentId: 'incident-1' });
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', OPEN_CT));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+    });
+
+    it('is the same for a viewer, who only reads', async () => {
+      useSession.getState().signedIn({ displayName: 'A viewer', roles: ['viewer'] });
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', OPEN_CT));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+    });
+
+    it.each([
+      ['stale', 72_000, true],
+      ['not yet read', 400, false],
+    ] as const)('stays while the reading is %s', (_name, afterMs, received) => {
+      hold({ assets: received ? { 'CT-01': entry({ motorTempC: 92 }) } : {}, afterMs });
+
+      renderBlock(incident());
+
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+    });
+
+    it('stays once the incident is resolved', () => {
+      renderBlock(incident({ status: 'resolved', resolvedAt: RECEIVED }));
+
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+    });
+
+    it('stays when the asset’s rules could not be loaded', async () => {
+      fetchMock.mockResolvedValue(json({ statusCode: 500, message: 'Boom' }, 500));
+
+      renderBlock(incident(), { details: [] });
+
+      expect(await screen.findByText('Rule details could not be loaded.')).toBeInTheDocument();
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+    });
+
+    it('is not drawn for an asset the catalogue does not have', () => {
+      renderBlock(incident(), { catalogue: [], details: [] });
+
+      expect(screen.queryByRole('button', { name: /^Open asset/ })).toBeNull();
+      expect(screen.queryByText('CT-01 · Cooling tower 1')).toBeNull();
+      expect(screen.queryByText('Rule details could not be loaded.')).toBeNull();
+    });
+
+    it('is not drawn for an asset the API says is gone', async () => {
+      fetchMock.mockResolvedValue(json({ statusCode: 404, message: 'Not found' }, 404));
+
+      renderBlock(incident(), { details: [] });
+
+      expect(await screen.findByText('Raised at 92')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Open asset/ })).toBeNull();
+    });
+
+    it('is not drawn while the block loads', () => {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.assets, [COOLING_TOWER]);
+      renderWithQueryClient(<IncidentEvidence incident={incident()} />, client);
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading evidence…');
+      expect(screen.queryByRole('button', { name: /^Open asset/ })).toBeNull();
+    });
+
+    it('has no accessibility violation', async () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+      renderBlock(incident());
+
+      await expectNoAxeViolations();
     });
   });
 

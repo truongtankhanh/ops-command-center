@@ -4,6 +4,7 @@ import {
   canPin,
   feedState,
   formatCameraTime,
+  incidentCameras,
   PIN_LIMIT,
   prioritise,
   readPinnedCameras,
@@ -193,6 +194,100 @@ describe('stripSubject', () => {
 
   it('is nothing when nothing is selected', () => {
     expect(stripSubject(undefined, undefined)).toBeUndefined();
+  });
+});
+
+describe('incidentCameras', () => {
+  const ASSET: LngLat = [108.44, 11.95];
+  const asset = { position: ASSET };
+  const incident = { zoneId: 'z1' };
+  const codes = (list: { cameras: Camera[] }) => list.cameras.map((c) => c.code);
+
+  /** 20 m south of the asset and facing north: the asset is in its 90°, 50 m sector. */
+  const seeing = (code: string, zoneId: string, online = true): Camera => ({
+    ...cam(code, zoneId, online),
+    position: offsetM(ASSET, 0, -20),
+    fieldOfView: { heading: 0, angle: 90, range: 50 },
+  });
+
+  it('is the incident zone’s first two cameras, in list order, with no asset', () => {
+    const cameras = [cam('C', 'z1'), cam('A', 'z2'), cam('B', 'z1'), cam('D', 'z1')];
+
+    const picked = incidentCameras(cameras, incident, undefined);
+
+    expect(codes(picked)).toEqual(['C', 'B']);
+    expect(picked.onAsset).toBe(false);
+  });
+
+  it('puts the cameras that see the asset first, then its zone’s, two in all', () => {
+    const cameras = [cam('A', 'z1'), cam('B', 'z1'), seeing('S', 'z2')];
+
+    const picked = incidentCameras(cameras, incident, asset);
+
+    expect(codes(picked)).toEqual(['S', 'A']);
+    expect(picked.onAsset).toBe(true);
+  });
+
+  it('shows a camera of another zone when it sees the asset', () => {
+    const picked = incidentCameras([seeing('S', 'z9')], incident, asset);
+
+    expect(codes(picked)).toEqual(['S']);
+    expect(picked.onAsset).toBe(true);
+  });
+
+  it('is the zone’s cameras, as with no asset, when none sees it', () => {
+    const cameras = [cam('C', 'z1'), cam('A', 'z2'), cam('B', 'z1')];
+
+    const picked = incidentCameras(cameras, incident, asset);
+
+    expect(codes(picked)).toEqual(['C', 'B']);
+    expect(picked.onAsset).toBe(false);
+  });
+
+  it('never shows a camera of another zone that does not see the asset', () => {
+    const picked = incidentCameras([cam('A', 'z2'), cam('B', 'z3')], incident, asset);
+
+    expect(picked.cameras).toEqual([]);
+    expect(picked.onAsset).toBe(false);
+  });
+
+  it('does not say "on the asset" when online zone cameras push the covering one out', () => {
+    // The camera that sees it is offline, so it comes after two online cameras of the zone.
+    const cameras = [cam('A', 'z1'), cam('B', 'z1'), seeing('S', 'z2', false)];
+
+    const picked = incidentCameras(cameras, incident, asset);
+
+    expect(codes(picked)).toEqual(['A', 'B']);
+    expect(picked.onAsset).toBe(false);
+  });
+
+  it('says "on the asset" when an offline camera that sees it still fits', () => {
+    const picked = incidentCameras([cam('A', 'z1'), seeing('S', 'z2', false)], incident, asset);
+
+    expect(codes(picked)).toEqual(['A', 'S']);
+    expect(picked.onAsset).toBe(true);
+  });
+
+  it('treats a camera without a field of view as the zone’s', () => {
+    const picked = incidentCameras([cam('Q', 'z1')], incident, asset);
+
+    expect(codes(picked)).toEqual(['Q']);
+    expect(picked.onAsset).toBe(false);
+  });
+
+  it('takes as many cameras as asked', () => {
+    const cameras = [seeing('A', 'z1'), seeing('B', 'z1'), seeing('C', 'z1')];
+
+    expect(incidentCameras(cameras, incident, asset, 3).cameras).toHaveLength(3);
+    expect(incidentCameras(cameras, incident, asset, 1).cameras).toHaveLength(1);
+  });
+
+  it('leaves its input alone', () => {
+    const cameras = [cam('B', 'z1'), seeing('A', 'z2')];
+
+    incidentCameras(cameras, incident, asset);
+
+    expect(codes({ cameras })).toEqual(['B', 'A']);
   });
 });
 

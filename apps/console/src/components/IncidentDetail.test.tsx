@@ -1,5 +1,6 @@
 import type {
   AssetDetail,
+  Camera,
   IncidentDetail as Detail,
   IncidentEvent,
   Role,
@@ -12,9 +13,12 @@ import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
+import { offsetM } from '../lib/geo';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { SheetHost } from '../ui/Sheet';
+import { AssetInspector } from './AssetInspector';
 import { IncidentDetail } from './IncidentDetail';
 
 // The session module is tested on its own; here it only decides which token the client sends.
@@ -426,17 +430,40 @@ describe('IncidentDetail', () => {
         ...overrides,
       });
 
-    /** The catalogue and the asset are cached too, so the block is drawn at once. */
-    function renderTelemetry(incident: Detail) {
+    /**
+     * The catalogue and the asset are cached too, so the block is drawn at once. `withCatalogue:
+     * false` leaves the catalogue unloaded, which the camera section then waits for.
+     */
+    function renderTelemetry(
+      incident: Detail,
+      { cameras = [], withCatalogue = true }: { cameras?: Camera[]; withCatalogue?: boolean } = {},
+    ) {
       const client = createTestQueryClient();
       client.setQueryData(queryKeys.incident(incident.id), incident);
       client.setQueryData(queryKeys.zones, [zone]);
       client.setQueryData(queryKeys.incidents, []);
-      client.setQueryData(queryKeys.cameras, []);
-      client.setQueryData(queryKeys.assets, [TOWER]);
+      client.setQueryData(queryKeys.cameras, cameras);
+      if (withCatalogue) client.setQueryData(queryKeys.assets, [TOWER]);
       client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
       return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
     }
+
+    /** Offline, so a tile draws no stream and no canvas (jsdom has none). */
+    const camera = (code: string, name: string, zoneId: string): Camera => ({
+      id: code,
+      code,
+      name,
+      zoneId,
+      position: [0, 0],
+      online: false,
+      fieldOfView: null,
+    });
+    /** 20 m south of the asset and facing north: the asset is in its 90°, 50 m sector. */
+    const seeingTower = (code: string, name: string, zoneId: string): Camera => ({
+      ...camera(code, name, zoneId),
+      position: offsetM(TOWER.position, 0, -20),
+      fieldOfView: { heading: 0, angle: 90, range: 50 },
+    });
 
     beforeEach(() => {
       resetStore(useTelemetryStore);
@@ -488,6 +515,102 @@ describe('IncidentDetail', () => {
       renderTelemetry(raisedByRule());
       expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
       expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+    });
+
+    it('titles the cameras after the asset and lists those that see it first', () => {
+      renderTelemetry(raisedByRule(), {
+        cameras: [
+          camera('CAM-Z', 'Library door', zone.id),
+          camera('CAM-F', 'Car park', 'another-zone'),
+          seeingTower('CAM-S', 'Roof camera', 'another-zone'),
+        ],
+      });
+
+      expect(screen.getByRole('heading', { name: 'Cameras on CT-01' })).toBeInTheDocument();
+      const sees = screen.getByText('Roof camera');
+      const inZone = screen.getByText('Library door');
+      expect(sees.compareDocumentPosition(inZone) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(screen.queryByText('Car park')).toBeNull();
+      // The title says it; the tiles carry no tag of their own (frame 10).
+      expect(screen.queryByText('On this asset')).toBeNull();
+      expect(screen.queryByText('In zone')).toBeNull();
+    });
+
+    it('keeps the zone’s title and cameras when none sees the asset', () => {
+      renderTelemetry(raisedByRule(), {
+        cameras: [camera('CAM-Z', 'Library door', zone.id), camera('CAM-F', 'Car park', 'other')],
+      });
+
+      expect(screen.getByRole('heading', { name: 'Cameras in Library' })).toBeInTheDocument();
+      expect(screen.getByText('Library door')).toBeInTheDocument();
+      expect(screen.queryByText('Car park')).toBeNull();
+    });
+
+    it('waits for the catalogue before it names the cameras', () => {
+      renderTelemetry(raisedByRule(), { withCatalogue: false });
+
+      expect(screen.getByText('Loading cameras…')).toHaveAttribute('role', 'status');
+      expect(screen.getByRole('heading', { name: 'Cameras in Library' })).toBeInTheDocument();
+    });
+
+    it('titles an operator’s incident after its zone, as before', () => {
+      renderDetail();
+
+      expect(screen.getByRole('heading', { name: 'Cameras in Library' })).toBeInTheDocument();
+    });
+
+    describe('opening the asset', () => {
+      /** What `App` does with the sheet: the incident, or the inspector, whichever is selected. */
+      function Sheets() {
+        const incidentId = useConsole((s) => s.selectedIncidentId);
+        const assetCode = useConsole((s) => s.selectedAssetCode);
+        return (
+          <SheetHost>
+            {assetCode ? (
+              <AssetInspector key={assetCode} code={assetCode} />
+            ) : incidentId ? (
+              <IncidentDetail key={incidentId} id={incidentId} />
+            ) : null}
+          </SheetHost>
+        );
+      }
+
+      function renderSheets(incident: Detail) {
+        const client = createTestQueryClient();
+        client.setQueryData(queryKeys.incident(incident.id), incident);
+        client.setQueryData(queryKeys.incidents, [incident]);
+        client.setQueryData(queryKeys.zones, [zone]);
+        client.setQueryData(queryKeys.cameras, []);
+        client.setQueryData(queryKeys.assets, [TOWER]);
+        client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
+        useConsole.setState({ selectedIncidentId: incident.id });
+        return renderWithQueryClient(<Sheets />, client);
+      }
+
+      it('replaces the incident with the inspector, which has the focus and the way back', async () => {
+        renderSheets(raisedByRule());
+
+        await userEvent.click(screen.getByRole('button', { name: 'Open asset CT-01' }));
+
+        const inspector = await screen.findByRole('complementary', { name: 'Asset CT-01' });
+        expect(screen.queryByRole('complementary', { name: 'Incident INC-000042' })).toBeNull();
+        expect(inspector).toHaveFocus();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Open INC-000042' }));
+
+        expect(
+          await screen.findByRole('complementary', { name: 'Incident INC-000042' }),
+        ).toHaveFocus();
+      });
+
+      it('does the same for a viewer', async () => {
+        signInAs('viewer');
+        renderSheets(raisedByRule());
+
+        await userEvent.click(screen.getByRole('button', { name: 'Open asset CT-01' }));
+
+        expect(await screen.findByRole('complementary', { name: 'Asset CT-01' })).toHaveFocus();
+      });
     });
 
     it('shows a technician the block with the scope footer when the incident is out of scope', () => {

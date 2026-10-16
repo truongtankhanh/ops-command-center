@@ -1,7 +1,8 @@
-import type { IncidentDetail as Detail } from '@occ/contracts';
+import type { Camera, IncidentDetail as Detail } from '@occ/contracts';
 import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { ApiRequestError, isRateLimited } from '../api/client';
-import { useCameras, useIncident, useZones } from '../api/queries';
+import { useAssets, useCameras, useIncident, useZones } from '../api/queries';
+import { incidentCameras } from '../lib/cameras';
 import { categoryLabel, categoryOfType, typeLabel } from '../lib/incidents';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
@@ -175,9 +176,7 @@ function DetailBody({
   closeButton: ReactNode;
 }) {
   const { data: zones = [] } = useZones();
-  const { data: cameras, isPending: camerasPending } = useCameras();
   const zone = zones.find((z) => z.id === incident.zoneId);
-  const zoneCameras = (cameras ?? []).filter((c) => c.zoneId === incident.zoneId).slice(0, 2);
   const reporter =
     incident.source === 'simulator' || incident.source === 'telemetry' ? 'system' : 'user';
   // A type this console does not know has no category to show (ADR-0021, rolling deploys).
@@ -235,32 +234,87 @@ function DetailBody({
         <IncidentTimeline timeline={incident.timeline} />
       </section>
 
-      <section className={styles.section}>
-        <h3>Cameras in {zone?.name ?? 'this zone'}</h3>
-        {camerasPending ? (
-          <div className={styles.cameras} aria-busy="true">
-            <p role="status" className={styles.hidden}>
-              Loading cameras…
-            </p>
-            <Skeleton className={styles.skeletonCamera} />
-            <Skeleton className={styles.skeletonCamera} />
-          </div>
-        ) : !cameras ? (
-          // The camera strip offers the Retry for this same query; the sheet only says why it is empty.
-          <p className={`${text.muted} ${styles.noCameras}`}>Cameras could not be loaded.</p>
-        ) : zoneCameras.length === 0 ? (
-          <p className={`${text.muted} ${styles.noCameras}`}>No cameras cover this zone.</p>
-        ) : (
-          <div className={styles.cameras}>
-            {zoneCameras.map((camera) => (
-              <CameraTile key={camera.id} camera={camera} variant="compact" />
-            ))}
-          </div>
-        )}
-      </section>
+      {/* Only a telemetry incident has an asset to look at: the others add no query (V2-11.3). */}
+      {incident.source === 'telemetry' && incident.assetId ? (
+        <AssetCameras incident={incident} zoneName={zone?.name} />
+      ) : (
+        <ZoneCameras incident={incident} zoneName={zone?.name} />
+      )}
 
       {/* Last drawn content of the sheet: the footer sticks to its bottom. */}
       <IncidentResponse incident={incident} kept={kept} />
     </>
+  );
+}
+
+/** The cameras of the incident's zone: what the sheet has always shown. */
+function ZoneCameras({ incident, zoneName }: { incident: Detail; zoneName: string | undefined }) {
+  const { data: cameras, isPending } = useCameras();
+  return (
+    <CameraSection
+      title={`Cameras in ${zoneName ?? 'this zone'}`}
+      cameras={cameras && incidentCameras(cameras, incident, undefined).cameras}
+      pending={isPending}
+    />
+  );
+}
+
+/**
+ * The cameras of a telemetry incident (frame 10, V2-11.3): those that see its asset first, then its
+ * zone's, titled "Cameras on CT-01" only when a camera shown sees it, else as the zone's. Its own
+ * component because it needs the catalogue, which an operator's incident never asks for. While the
+ * catalogue loads the section is its skeleton; a catalogue that failed, or that lacks the asset,
+ * leaves the zone's cameras.
+ */
+function AssetCameras({ incident, zoneName }: { incident: Detail; zoneName: string | undefined }) {
+  const { data: cameras, isPending: camerasPending } = useCameras();
+  const { data: assets, isPending: cataloguePending } = useAssets();
+  const asset = assets?.find((candidate) => candidate.id === incident.assetId);
+  const picked = cameras && incidentCameras(cameras, incident, asset);
+  const title =
+    picked?.onAsset && asset ? `Cameras on ${asset.code}` : `Cameras in ${zoneName ?? 'this zone'}`;
+  return (
+    <CameraSection
+      title={title}
+      cameras={picked?.cameras}
+      pending={camerasPending || cataloguePending}
+    />
+  );
+}
+
+/** `cameras` is `undefined` when the list could not be loaded. */
+function CameraSection({
+  title,
+  cameras,
+  pending,
+}: {
+  title: string;
+  cameras: Camera[] | undefined;
+  pending: boolean;
+}) {
+  return (
+    <section className={styles.section}>
+      <h3>{title}</h3>
+      {pending ? (
+        <div className={styles.cameras} aria-busy="true">
+          <p role="status" className={styles.hidden}>
+            Loading cameras…
+          </p>
+          <Skeleton className={styles.skeletonCamera} />
+          <Skeleton className={styles.skeletonCamera} />
+        </div>
+      ) : !cameras ? (
+        // The camera strip offers the Retry for this same query; the sheet only says why it is empty.
+        <p className={`${text.muted} ${styles.noCameras}`}>Cameras could not be loaded.</p>
+      ) : cameras.length === 0 ? (
+        <p className={`${text.muted} ${styles.noCameras}`}>No cameras cover this zone.</p>
+      ) : (
+        <div className={styles.cameras}>
+          {cameras.map((camera) => (
+            <CameraTile key={camera.id} camera={camera} variant="compact" />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
