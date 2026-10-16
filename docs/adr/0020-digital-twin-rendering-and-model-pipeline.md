@@ -71,6 +71,19 @@ their author, checked in CI, and served by nginx as immutable files.
   sign-in screens never download it. The chunk budget is 350 KB gzipped including three.js; the CI build reports it
   and fails above it. That number is a budget to confirm in V2-12, not a measurement. No bundle check exists today:
   CI runs `pnpm build`, and Vite only warns above 1,200 KB minified (`chunkSizeWarningLimit`).
+  - Settled in V2-12.3, without changing the decision: `pnpm build` now ends with `scripts/chunk-budget.ts`, which reads
+    Vite's manifest and fails above the budget. It counts the zlib level 9 size of the twin chunk's `.js` and `.css`
+    and of the chunks only it imports, with 1 KB = 1,000 bytes (350,000 bytes); Vite's own reporter prints about 1 %
+    more for the same chunk. It also fails when the twin chunk is in the static import graph of `index.html`, when a
+    statically loaded chunk holds `WebGLRenderer`, `BufferGeometry` and `Object3D` together (a heuristic for three.js
+    pulled out of the lazy chunk), and when the manifest or the twin chunk is missing. After a pass it deletes
+    `dist/.vite/`, so the console image never serves the manifest.
+  - Measured on 2026-10-16 (`main` after V2-12.2): the empty shell (R3F `Canvas`) is 238,918 bytes gzipped, 111 KB under
+    the budget; with the helpers the plan names (`CameraControls`, `Bvh`, and the `KTX2Loader`, `GLTFLoader` and
+    Meshopt decoder of three's examples) it is 307,060 bytes, 42,940 bytes under. The budget stands, but the scene, the
+    picking, the labels and the model loading of V2-12.6 – V2-15 have to fit in the remaining ~13 %. A static
+    `import * as THREE from 'three'` in the entry shrinks the twin chunk (to 142,859 bytes) and passes the size
+    check, which is why the graph check exists: it fails that build.
 - **Capability check.** The console renders the twin only if a WebGL 2 context can be created. Otherwise, and after
   a `webglcontextlost` that does not restore within 5 s, it shows the 2D map with the reason (brief, frame 07). The
   viewer's last choice of 2D or 3D is a per-browser convenience in `localStorage`.

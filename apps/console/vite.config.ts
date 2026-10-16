@@ -19,6 +19,9 @@ export default defineConfig({
     },
   },
   build: {
+    // `scripts/chunk-budget.ts` (run by `pnpm build` after `vite build`) reads the manifest to size the
+    // 3D twin's lazy chunk against ADR-0020's budget, then deletes it so the image never serves it.
+    manifest: true,
     // MapLibre alone is ~800 kB minified; the console is an internal app on a LAN, not a landing page.
     chunkSizeWarningLimit: 1200,
   },
