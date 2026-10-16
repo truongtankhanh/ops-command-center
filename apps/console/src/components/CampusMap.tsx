@@ -1,4 +1,4 @@
-import type { Camera, LngLat, SitePlan, Zone } from '@occ/contracts';
+import type { Asset, Camera, Incident, LngLat, SitePlan, Zone } from '@occ/contracts';
 import type { Point } from 'geojson';
 import maplibregl, {
   type GeoJSONSource,
@@ -9,11 +9,19 @@ import maplibregl, {
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { isRateLimited } from '../api/client';
-import { useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
+import { useAssets, useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
+import { assetStates } from '../lib/assets';
 import { zoneAt } from '../lib/geo';
-import { cameraFeatures, cameraViewFeatures, incidentFeatures } from '../lib/mapFeatures';
+import {
+  assetFeatures,
+  cameraFeatures,
+  cameraViewFeatures,
+  incidentFeatures,
+} from '../lib/mapFeatures';
 import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
 import {
+  assetLayers,
+  assetSource,
   cameraLayers,
   cameraSource,
   cameraViewLayers,
@@ -31,7 +39,9 @@ import {
 } from '../lib/mapLayers';
 import { startPulse } from '../lib/mapPulse';
 import { siteBounds } from '../lib/sitePlan';
+import { serverNow } from '../lib/telemetryFreshness';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { mapColors, mapMotion } from '../styles/tokens';
 import { Icon } from '../ui/Icon';
@@ -57,6 +67,8 @@ const OFFLINE_STYLE: StyleSpecification = {
 const MAX_ZOOM = 20;
 /** About 1.4 zoom levels out from the fitted campus (≈ 16.4): the plan stays recognisable. */
 const MIN_ZOOM = 15;
+/** How often the asset markers are re-derived: stale is a function of the clock, so a quiet site ticks. */
+const ASSET_SYNC_MS = 1000;
 /** `easeTo` / `fitBounds` duration when the view follows a selection or the Fit campus button. */
 const FOCUS_MS = 600;
 /** Space kept around the campus when it is framed. */
@@ -87,6 +99,7 @@ export function CampusMap() {
   } = useZones();
   const { data: sitePlan } = useSitePlan();
   const { data: cameras } = useCameras();
+  const { data: assets } = useAssets();
   const { data: incidents } = useIncidents();
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const reporting = useConsole((s) => s.reporting);
@@ -139,6 +152,8 @@ export function CampusMap() {
   );
   useSiteLayers(map, zones, sitePlan, focusRef);
   useCameraLayer(map, cameras);
+  // Between the cameras and the incidents: layers added later are drawn higher (see the hook).
+  useAssetLayers(map, assets, incidents);
   useIncidentLayers(map, features);
   useReportPick(map, zones);
 
@@ -342,6 +357,68 @@ function useCameraLayer(map: maplibregl.Map | null, cameras: Camera[] | undefine
     map.getSource<GeoJSONSource>(MAP_SOURCES.cameras)?.setData(cameraFeatures(cameras));
     map.getSource<GeoJSONSource>(MAP_SOURCES.cameraViews)?.setData(cameraViewFeatures(cameras));
   }, [map, cameras]);
+}
+
+/**
+ * Asset markers (V2-10.3): one source and layer per map, **drawn above the cameras and below the
+ * incidents**, so an incident raised at an asset's position stays on top. Layers are drawn in the
+ * order they were added and effects run in the order the hooks are called, so this hook is called
+ * between `useCameraLayer` and `useIncidentLayers`; do not move it.
+ *
+ * The data is derived here, not in the component. An asset's state depends on the telemetry
+ * overview, which changes several times a second, and on the API's clock, which moves every
+ * second; reading either through a hook would re-render the whole map for markers that rarely
+ * change. Instead the derived list is compared with the one last sent, and `setData` is called
+ * only when it differs: a tick that changes no asset's state sends nothing.
+ *
+ * Not interactive yet: the layer is not in `INTERACTIVE_LAYERS` until V2-10.4 (see `mapLayers`).
+ */
+function useAssetLayers(
+  map: maplibregl.Map | null,
+  assets: Asset[] | undefined,
+  incidents: Incident[] | undefined,
+) {
+  /** The features last sent, as text; reset when a new source is added, which starts empty. */
+  const sent = useRef('');
+
+  useEffect(() => {
+    if (!map) return;
+    const [sourceId, source] = assetSource();
+    const layers = assetLayers();
+    sent.current = '';
+    map.addSource(sourceId, source);
+    // Under the incidents if they are somehow already drawn; the hook order gives the same.
+    const below = firstLayer(map, [MAP_LAYERS.pulseStatic]);
+    layers.forEach((layer) => map.addLayer(layer, below));
+    return () =>
+      removeLayers(
+        map,
+        layers.map((layer) => layer.id),
+        [sourceId],
+      );
+  }, [map]);
+
+  useEffect(() => {
+    // Nothing is drawn until the catalogue is known; an empty one clears the source.
+    if (!map || !assets) return;
+    const sync = () => {
+      const { state } = useTelemetryStore.getState().view;
+      const now = serverNow(state.serverClock, performance.now());
+      const known = incidents ?? [];
+      const features = assetFeatures(assets, assetStates(assets, known, state.assets, now), known);
+      const next = JSON.stringify(features);
+      if (next === sent.current) return;
+      sent.current = next;
+      map.getSource<GeoJSONSource>(MAP_SOURCES.assets)?.setData(features);
+    };
+    sync();
+    const stop = useTelemetryStore.subscribe(sync);
+    const timer = setInterval(sync, ASSET_SYNC_MS);
+    return () => {
+      stop();
+      clearInterval(timer);
+    };
+  }, [map, assets, incidents]);
 }
 
 /**

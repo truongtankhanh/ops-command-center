@@ -51,6 +51,8 @@ export const mapColors = {
   severity,
   /** `--surface-1` */
   surface1: '#13222d',
+  /** `--surface-2` */
+  surface2: '#1a2d3a',
   /** `--surface-3` */
   surface3: '#223848',
   /** `--accent` */
@@ -63,6 +65,8 @@ export const mapColors = {
   textSecondary: '#a6b8c5',
   /** `--text-tertiary` */
   textTertiary: '#91a5b4',
+  /** `--tw-stale-edge`: the dashed edge of an asset with no data (frame 14 `.is-stale`). */
+  staleEdge: '#4a555c',
 };
 
 /** Map animation timing, copied from `tokens.css` for the same reason and drift-checked the same way. */

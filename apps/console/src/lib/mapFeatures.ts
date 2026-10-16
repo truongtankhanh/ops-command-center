@@ -1,4 +1,5 @@
 import {
+  type Asset,
   type Camera,
   type CameraFieldOfView,
   type Incident,
@@ -8,6 +9,7 @@ import {
   severityRank,
 } from '@occ/contracts';
 import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
+import { type AssetState, openIncidentOf } from './assets';
 import { distanceM, offsetM } from './geo';
 import { isActive, isKnownType } from './incidents';
 
@@ -19,6 +21,13 @@ import { isActive, isKnownType } from './incidents';
 const GROUP_DISTANCE_M = 3.5;
 /** Distance between neighbours on a fan-out ring: ≈ 30 px at zoom 20. */
 const SPACING_M = 4.4;
+/**
+ * Assets closer than this share a ring. A marker is 8 px (≈ 1.2 m at zoom 20), so only assets that
+ * would sit on top of each other are moved (`PMP-S1` and `ICS-STU` stand on the same point).
+ */
+const ASSET_GROUP_DISTANCE_M = 0.5;
+/** Distance between neighbours on an asset ring, which is also its least radius: about 4 m. */
+const ASSET_SPACING_M = 4;
 
 export interface IncidentProperties {
   id: string;
@@ -42,6 +51,17 @@ export interface CameraViewProperties {
   id: string;
   /** An offline camera's view is drawn muted. */
   online: boolean;
+}
+
+export interface AssetProperties {
+  code: string;
+  name: string;
+  /** The state word the Assets tab shows (`assetStates`); the marker's look follows it. */
+  state: AssetState;
+  /** The severity of the asset's open incident while it is a fault, else `null`. */
+  severity: IncidentSeverity | null;
+  /** Map image id, see `assetImageId`. */
+  image: string;
 }
 
 /** No segment of a view's arc spans more than this: 18 for a 90° view, 72 for a full circle. */
@@ -75,6 +95,33 @@ export const incidentImageId = ({
 export const cameraImageId = (online: boolean): string =>
   online ? 'camera-online' : 'camera-offline';
 
+/** How an asset marker looks: three forms, the fault one in the hue of its incident's severity. */
+export type AssetLook = 'normal' | 'nodata' | 'fault';
+
+/**
+ * `fault` is a fault; `nodata` and `offline` are the list's "No data" filter and draw alike; every
+ * other state, a state word that has none (`unknown`) and any state added later draw as normal, so
+ * a marker never has no image.
+ */
+export function assetLookOf(state: AssetState): AssetLook {
+  switch (state) {
+    case 'fault':
+      return 'fault';
+    case 'nodata':
+    case 'offline':
+      return 'nodata';
+    default:
+      return 'normal';
+  }
+}
+
+/**
+ * A fault with no known severity draws as medium, frame 14's fault hue, rather than as a missing
+ * image. `severity` is ignored for the other looks.
+ */
+export const assetImageId = (look: AssetLook, severity: IncidentSeverity | null): string =>
+  look === 'fault' ? `asset-fault-${severity ?? 'medium'}` : `asset-${look}`;
+
 export const CLUSTER_COUNT_PREFIX = 'cluster-count-';
 /** Above this a cluster shows "9+". */
 export const CLUSTER_COUNT_MAX = 9;
@@ -90,6 +137,43 @@ const isPulsing = (incident: Incident) =>
   incident.severity === 'critical' && incident.status === 'open';
 
 /**
+ * Spreads markers that would overlap on a ring around the first of them. `ordered` decides who is
+ * first and the order round the ring (first at north, then clockwise), so the caller picks an order
+ * that does not change when something else about a member does. Anything within `groupDistanceM`
+ * of a group's first member joins it; a lone member keeps its position. The ring is at least
+ * `spacingM` in radius and grows so that neighbours stay `spacingM` apart.
+ */
+function spreadOnRings<T>(
+  ordered: readonly T[],
+  member: { id: (item: T) => string; position: (item: T) => LngLat },
+  { groupDistanceM, spacingM }: { groupDistanceM: number; spacingM: number },
+): Map<string, LngLat> {
+  const groups: { anchor: LngLat; members: T[] }[] = [];
+  for (const item of ordered) {
+    const group = groups.find((g) => distanceM(g.anchor, member.position(item)) < groupDistanceM);
+    if (group) group.members.push(item);
+    else groups.push({ anchor: member.position(item), members: [item] });
+  }
+
+  const positions = new Map<string, LngLat>();
+  for (const { anchor, members } of groups) {
+    if (members.length === 1) {
+      positions.set(member.id(members[0]!), member.position(members[0]!));
+      continue;
+    }
+    const radius = Math.max(spacingM, (members.length * spacingM) / (2 * Math.PI));
+    members.forEach((item, i) => {
+      const angle = (2 * Math.PI * i) / members.length;
+      positions.set(
+        member.id(item),
+        offsetM(anchor, radius * Math.sin(angle), radius * Math.cos(angle)),
+      );
+    });
+  }
+  return positions;
+}
+
+/**
  * Where each incident is drawn. Incidents within `GROUP_DISTANCE_M` of a group's first member are
  * spread on a ring around it, first at north, then clockwise; a lone incident keeps its position.
  *
@@ -102,29 +186,31 @@ export function fanOut(incidents: readonly Incident[]): Map<string, LngLat> {
       Date.parse(a.reportedAt) - Date.parse(b.reportedAt) ||
       (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   );
-  const groups: { anchor: LngLat; members: Incident[] }[] = [];
-  for (const incident of ordered) {
-    const group = groups.find((g) => distanceM(g.anchor, incident.position) < GROUP_DISTANCE_M);
-    if (group) group.members.push(incident);
-    else groups.push({ anchor: incident.position, members: [incident] });
-  }
+  return spreadOnRings(
+    ordered,
+    { id: (incident) => incident.id, position: (incident) => incident.position },
+    { groupDistanceM: GROUP_DISTANCE_M, spacingM: SPACING_M },
+  );
+}
 
-  const positions = new Map<string, LngLat>();
-  for (const { anchor, members } of groups) {
-    if (members.length === 1) {
-      positions.set(members[0]!.id, members[0]!.position);
-      continue;
-    }
-    const radius = Math.max(SPACING_M, (members.length * SPACING_M) / (2 * Math.PI));
-    members.forEach((incident, i) => {
-      const angle = (2 * Math.PI * i) / members.length;
-      positions.set(
-        incident.id,
-        offsetM(anchor, radius * Math.sin(angle), radius * Math.cos(angle)),
-      );
-    });
-  }
-  return positions;
+/** Asset codes are unique, so ordering by them is a total order that no state change disturbs. */
+const byCode = <T extends { code: string }>(a: T, b: T) =>
+  a.code < b.code ? -1 : a.code > b.code ? 1 : 0;
+
+/**
+ * Where each asset is drawn, by asset **code**: its own position, except that assets within
+ * `ASSET_GROUP_DISTANCE_M` of one another are spread on a ring of about 4 m, first by code at
+ * north, then clockwise, so each stays visible and pickable. An asset outside its zone is drawn
+ * where it stands; elevation plays no part in 2D.
+ */
+export function fanOutAssets(
+  assets: readonly Pick<Asset, 'code' | 'position'>[],
+): Map<string, LngLat> {
+  return spreadOnRings(
+    [...assets].sort(byCode),
+    { id: (asset) => asset.code, position: (asset) => asset.position },
+    { groupDistanceM: ASSET_GROUP_DISTANCE_M, spacingM: ASSET_SPACING_M },
+  );
 }
 
 /**
@@ -179,6 +265,38 @@ export function cameraFeatures(
       geometry: { type: 'Point', coordinates: camera.position },
       properties: { id: camera.id, image: cameraImageId(camera.online) },
     })),
+  };
+}
+
+/**
+ * One point per asset, ordered by code so the same catalogue always gives the same list (the map
+ * compares lists to decide whether to redraw). `states` is `assetStates`' answer; an asset it lacks
+ * has `unknown` and draws as normal. The severity is the open incident's, only for a fault.
+ */
+export function assetFeatures(
+  assets: readonly Asset[],
+  states: ReadonlyMap<string, AssetState>,
+  incidents: readonly Incident[],
+): FeatureCollection<Point, AssetProperties> {
+  const positions = fanOutAssets(assets);
+  return {
+    type: 'FeatureCollection',
+    features: [...assets].sort(byCode).map((asset): Feature<Point, AssetProperties> => {
+      const state = states.get(asset.code) ?? 'unknown';
+      const severity =
+        state === 'fault' ? (openIncidentOf(asset, incidents)?.severity ?? null) : null;
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: positions.get(asset.code) ?? asset.position },
+        properties: {
+          code: asset.code,
+          name: asset.name,
+          state,
+          severity,
+          image: assetImageId(assetLookOf(state), severity),
+        },
+      };
+    }),
   };
 }
 

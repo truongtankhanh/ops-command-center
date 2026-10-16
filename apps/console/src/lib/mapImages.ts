@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { mapColors } from '../styles/tokens';
 import { cameraIcon, type Glyph, incidentTypeIcon, severityIcon, unknownIcon } from '../ui/icons';
 import {
+  assetImageId,
   cameraImageId,
   CLUSTER_COUNT_PREFIX,
   clusterSeverityImageId,
@@ -31,11 +32,23 @@ export type MarkerForm =
     }
   | { kind: 'resolved'; type: MarkerType }
   | { kind: 'camera'; online: boolean }
-  | { kind: 'cluster-severity'; severity: IncidentSeverity };
+  | { kind: 'cluster-severity'; severity: IncidentSeverity }
+  // A diamond with no glyph (frame 14 `.pl-asset`); a fault takes its incident's severity.
+  | { kind: 'asset'; look: 'normal' | 'nodata' }
+  | { kind: 'asset'; look: 'fault'; severity: IncidentSeverity };
+
+/** A form that carries a glyph; the asset diamond does not. */
+type GlyphForm = Exclude<MarkerForm, { kind: 'asset' }>;
 
 /** Incident images are drawn in a square of this many CSS px, centred on the feature. */
 const MARKER_BOX = 28;
 const CAMERA_BOX = 14;
+/** The asset diamond: 8 px square turned 45° (11.3 px across) plus its 1.5 px stroke. */
+const ASSET_BOX = 14;
+const ASSET_SIDE = 8;
+const ASSET_STROKE = 1.5;
+/** Frame 14 `.is-fault`: the severity at 30 % over the asset's surface. */
+const ASSET_FAULT_TINT = 0.3;
 /** The cluster's severity badge: a small severity disc with its glyph, on the cluster's ring. */
 const BADGE_BOX = 16;
 const BADGE = { radius: 7, glyph: 10 };
@@ -67,7 +80,7 @@ interface GlyphStyle {
 const typeGlyph = (type: MarkerType): Glyph =>
   type === UNKNOWN_TYPE_IMAGE ? unknownIcon : incidentTypeIcon(type);
 
-export function glyphStyle(form: MarkerForm): GlyphStyle {
+export function glyphStyle(form: GlyphForm): GlyphStyle {
   switch (form.kind) {
     case 'camera':
       return {
@@ -111,6 +124,8 @@ export function imageIdOf(form: MarkerForm): string {
       return incidentImageId(form);
     case 'cluster-severity':
       return clusterSeverityImageId(form.severity);
+    case 'asset':
+      return assetImageId(form.look, form.look === 'fault' ? form.severity : null);
   }
 }
 
@@ -121,13 +136,19 @@ export function imageIdOf(form: MarkerForm): string {
 export function markerSvg(form: MarkerForm, glyphMarkup: string, pixelRatio: number): string {
   const box = boxOf(form);
   const centre = box / 2;
-  const glyphAt = centre - glyphStyle(form).size / 2;
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${box * pixelRatio}" height="${box * pixelRatio}" viewBox="0 0 ${box} ${box}">`,
     shapeSvg(form, centre),
-    `<g transform="translate(${glyphAt} ${glyphAt})">${glyphMarkup}</g>`,
+    glyphSvg(form, glyphMarkup, centre),
     '</svg>',
   ].join('');
+}
+
+/** The glyph centred on the shape; the asset diamond has none, so `glyphMarkup` is not placed. */
+function glyphSvg(form: MarkerForm, glyphMarkup: string, centre: number): string {
+  if (form.kind === 'asset') return '';
+  const at = centre - glyphStyle(form).size / 2;
+  return `<g transform="translate(${at} ${at})">${glyphMarkup}</g>`;
 }
 
 function boxOf(form: MarkerForm): number {
@@ -136,6 +157,8 @@ function boxOf(form: MarkerForm): number {
       return CAMERA_BOX;
     case 'cluster-severity':
       return BADGE_BOX;
+    case 'asset':
+      return ASSET_BOX;
     default:
       return MARKER_BOX;
   }
@@ -159,6 +182,38 @@ function shapeSvg(form: MarkerForm, centre: number): string {
     case 'cluster-severity':
       // Ground-coloured edge, like an open marker, so the badge stands off the cluster's ring.
       return disc(centre, BADGE.radius, mapColors.severity[form.severity], mapColors.ground, 1.5);
+    case 'asset':
+      return diamond(centre, form);
+  }
+}
+
+/**
+ * The asset's look is fill, edge and dash, so no colour is the only cue: normal is a light edge, a
+ * fault is the incident's severity (a tint and an edge in that hue), no data is a dim dashed edge
+ * (frame 14 `.is-stale`; stale is the dash, not a brighter outline).
+ */
+function diamond(centre: number, form: Extract<MarkerForm, { kind: 'asset' }>): string {
+  const half = ASSET_SIDE / 2;
+  const turn = `transform="translate(${centre} ${centre}) rotate(45)"`;
+  const rect = (attributes: string) =>
+    `<rect x="${-half}" y="${-half}" width="${ASSET_SIDE}" height="${ASSET_SIDE}" rx="1.5" ${turn} ${attributes}/>`;
+  const edge = (colour: string, extra = '') =>
+    `stroke="${colour}" stroke-width="${ASSET_STROKE}"${extra}`;
+  switch (form.look) {
+    case 'normal':
+      return rect(`fill="${mapColors.surface2}" ${edge(mapColors.textSecondary)}`);
+    case 'nodata':
+      return rect(
+        `fill="${mapColors.surface2}" ${edge(mapColors.staleEdge, ' stroke-dasharray="2 2"')}`,
+      );
+    case 'fault': {
+      const hue = mapColors.severity[form.severity];
+      // The tint is drawn over the surface, which `fill-opacity` cannot do on its own.
+      return (
+        rect(`fill="${mapColors.surface2}"`) +
+        rect(`fill="${hue}" fill-opacity="${ASSET_FAULT_TINT}" ${edge(hue)}`)
+      );
+    }
   }
 }
 
@@ -167,7 +222,8 @@ const disc = (centre: number, radius: number, fill: string, stroke: string, widt
 
 /**
  * Every form the map can draw: 4 severities × 2 statuses for each of `INCIDENT_TYPES`, one resolved
- * form per type, the same 9 for an unknown type, 2 cameras, 4 cluster badges (231 with 24 types).
+ * form per type, the same 9 for an unknown type, 2 cameras, 4 cluster badges, 6 asset diamonds
+ * (normal, no data, a fault per severity): 237 with 24 types.
  * The unknown-type forms are registered up front with the others, not on `styleimagemissing`: that
  * event needs the image added synchronously, and glyph images decode asynchronously.
  */
@@ -188,6 +244,13 @@ function markerForms(): MarkerForm[] {
     { kind: 'camera', online: true },
     { kind: 'camera', online: false },
     ...INCIDENT_SEVERITIES.map((severity): MarkerForm => ({ kind: 'cluster-severity', severity })),
+    { kind: 'asset', look: 'normal' },
+    { kind: 'asset', look: 'nodata' },
+    ...INCIDENT_SEVERITIES.map((severity): MarkerForm => ({
+      kind: 'asset',
+      look: 'fault',
+      severity,
+    })),
   ];
 }
 
@@ -203,6 +266,7 @@ export async function registerMapImages(map: MapLibreMap, signal: AbortSignal): 
   let svgs: [id: string, svg: string][];
   try {
     svgs = markerForms().map((form) => {
+      if (form.kind === 'asset') return [imageIdOf(form), markerSvg(form, '', ratio)];
       const { glyph, ...props } = glyphStyle(form);
       return [imageIdOf(form), markerSvg(form, renderer.render(glyph, props), ratio)];
     });
