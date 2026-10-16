@@ -20,7 +20,11 @@
     "docker:down": "docker compose down",
     "docker:restart": "docker compose up -d --force-recreate postgres keycloak",
     "docker:stack": "docker compose up --build",
-    "docker:stack:replicas": "docker compose up --build --scale api=2"
+    "docker:stack:replicas": "docker compose up --build --scale api=2",
+    "ci:local": "bash scripts/ci-local.sh",
+    "ci:off": "bash scripts/ci-toggle.sh off",
+    "ci:on": "bash scripts/ci-toggle.sh on",
+    "ci:status": "bash scripts/ci-toggle.sh status"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

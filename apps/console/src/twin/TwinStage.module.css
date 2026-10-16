@@ -1,0 +1,5 @@
+/* R3F's canvas takes the size of its parent, so the parent gets the stage's whole box. */
+.fill {
+  width: 100%;
+  height: 100%;
+}

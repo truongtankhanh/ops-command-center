@@ -65,6 +65,7 @@ Design in full: `docs/architecture.md`; decisions: the ADR table in `README.md`.
 | `apps/console/src/components/`                 | Feature components, each with its `.module.css`                                                                                                                                         |
 | `apps/console/src/ui/`                         | Primitives (Button, Dialog, Sheet, Toast …) and the icon map `icons.ts`                                                                                                                 |
 | `apps/console/src/lib/`                        | Pure logic and small hooks (map, incidents, shortcuts, density …)                                                                                                                       |
+| `apps/console/src/twin/`                       | The 3D twin (three.js, R3F): the only code that imports them, loaded lazily (ADR-0020)                                                                                                  |
 | `apps/console/src/{api,realtime,auth,styles}/` | REST client + query keys, socket hooks, OIDC, tokens and global CSS                                                                                                                     |
 | `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                    |
 | `packages/contracts/src/`                      | `domain.ts`, `api.ts`, `events.ts`, `auth.ts`                                                                                                                                           |
@@ -111,6 +112,8 @@ pnpm test:e2e                               # API against real PostgreSQL
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)
+pnpm ci:local [--fast|--skip-e2e|...]       # ci.yml's steps on this machine (own Compose project, throttled)
+pnpm ci:off | ci:on | ci:status              # switch GitHub Actions CI with the CI_ENABLED variable (needs gh or a token)
 ```
 
 - **e2e prerequisites:** `cp apps/api/.env.test.example apps/api/.env.test` and a database whose name ends in

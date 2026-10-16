@@ -242,6 +242,61 @@ docker compose exec postgres createdb -U postgres ops_test
 
 CI runs all of the above on every push and pull request, then builds both Docker images, boots the stack with two API replicas and checks that both are healthy behind nginx, that each serves metrics on a port the edge cannot reach, that nginx rate-limits the edge, and that each replica stays live but reports not ready while the database is stopped.
 
+### Running CI on your machine, and switching GitHub's CI off
+
+#### Prerequisites
+
+| Tool                   | Needed for                               | Install (macOS / Debian-Ubuntu)                                                    |
+| ---------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| Node 24 and pnpm       | every step (`.nvmrc`; `corepack enable`) | `nvm install` / `corepack enable`                                                  |
+| Docker with Compose v2 | e2e and the images job                   | Docker Desktop / `apt install docker.io docker-compose-v2`                         |
+| `curl`, `jq`           | the images job's probes                  | `brew install jq` / `apt install curl jq`                                          |
+| GitHub CLI (`gh`)      | `pnpm ci:off`, `ci:on`, `ci:status`      | `brew install gh` / [cli.github.com](https://cli.github.com), then `gh auth login` |
+
+`gh` is optional: without it, `scripts/ci-toggle.sh` uses `GH_TOKEN` / `GITHUB_TOKEN`, or tells you where to set the variable by hand (below). `pnpm ci:local --fast` needs only Node and pnpm.
+
+`pnpm ci:local` runs the steps of `.github/workflows/ci.yml` locally, in the same order, so a pull request does not have to wait for GitHub's runners. `scripts/ci-local.sh` is the source; when the workflow changes, change the script in the same pull request.
+
+```bash
+pnpm ci:local --fast          # format, lint, typecheck and unit tests only
+pnpm ci:local --skip-images   # everything except the Docker job (needs Docker for e2e)
+pnpm ci:local                 # the whole workflow: verify job, then the images job
+```
+
+| Option                                        | Effect                                                                          |
+| --------------------------------------------- | ------------------------------------------------------------------------------- |
+| `--fast`                                      | No install, e2e, build or images                                                |
+| `--only verify` / `--only images`             | One job                                                                         |
+| `--skip-e2e`, `--skip-images`, `--no-install` | Leave one part out                                                              |
+| `--jobs N`                                    | Turbo concurrency and test workers (default 2)                                  |
+| `--keep-going`                                | Run every step after a failure                                                  |
+| `--keep`                                      | Leave the Postgres container and the Compose stack running                      |
+| `--fresh`                                     | Ignore Turborepo's cache (`--force`), as on a GitHub runner                     |
+| `--clean`                                     | Afterwards delete the Compose images (`down -v --rmi local`) and `.turbo/cache` |
+
+**Caches.** Turborepo's local cache (`.turbo/`, git-ignored) makes a repeat run fast: lint, typecheck, test and build are skipped when their inputs are unchanged, and the log says `cache hit`. GitHub's runner starts with no cache, so use `--fresh` for the last run before a merge. Docker's build cache and the pnpm store cache mount are shared with `pnpm docker:stack` and are never pruned by the script (`docker builder prune` does it by hand). The throwaway Postgres container, the Compose containers and volumes and the script's temporary log folder are always removed; `--clean` also removes the images and `.turbo/cache`. `dist/`, `.turbo/` and `coverage/` are in `.gitignore` and `.dockerignore`.
+
+It ends with a table of every step, its time, the commit tested and whether the working tree was clean. Two things differ from GitHub on purpose:
+
+- **e2e** runs against a throwaway Postgres container (`occ-ci-local-pg`, port 55432, database `ops_test`) through environment variables, so it never reads or changes `apps/api/.env.test`. Set `CI_LOCAL_PG_PORT` if that port is taken.
+- **The images job** runs under its own Compose project, `occ-ci-local`, with its own ports (`CI_LOCAL_COMPOSE_PG_PORT`, default 15433; `CI_LOCAL_COMPOSE_KC_PORT`, default 18082), so its `docker compose down -v` cannot touch the volumes of `pnpm docker:up`. The console's port 18080 is fixed by `docker-compose.yml`: stop `pnpm docker:stack` first, or the job stops at its first step and says so.
+
+#### Switching GitHub's CI off and on
+
+Both jobs of `ci.yml` carry `if: ${{ vars.CI_ENABLED != 'false' }}`. The repository variable `CI_ENABLED` is the switch; unset means CI runs.
+
+```bash
+pnpm ci:off      # CI_ENABLED=false: both jobs are skipped
+pnpm ci:on       # CI_ENABLED=true
+pnpm ci:status
+```
+
+`scripts/ci-toggle.sh` sets the variable with the GitHub CLI (`brew install gh && gh auth login`) or, without it, with the REST API and `GH_TOKEN` / `GITHUB_TOKEN` (a token that may edit Actions variables). With neither it prints where to set it by hand: **Settings → Secrets and variables → Actions → Variables → `CI_ENABLED`**.
+
+- **The switch works only where the workflow file has the `if`.** A pull request runs the workflow as it is on its own branch, so a branch cut before that change must merge or rebase `main` first.
+- **A skipped job counts as passed for a required status check**, so branch protection does not block a merge while CI is off. Run `pnpm ci:local` (at least `--skip-images`) before merging, and turn CI back on afterwards.
+- For one push only, put `[skip ci]` in the commit message; no variable is involved.
+
 ## Roadmap
 
 M1 delivers the full loop with synthetic data. Since then, OIDC sign-in with roles and an audited timeline (OCC-21, OCC-22), structured logging with correlation IDs (OCC-23) and Prometheus metrics with a Grafana dashboard (OCC-24) have landed. Next: real video through MediaMTX and a heatmap layer (M2), a read-only video-wall app (M3), and an end-to-end console smoke test and SLA escalation (M4). Ticket-level breakdown in [docs/roadmap.md](docs/roadmap.md).

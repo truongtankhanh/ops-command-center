@@ -428,7 +428,8 @@ is the source. The V2-03.6 row (report form copy and fields) is not redrawn eith
 source.
 
 Rows from V2-08 on are differences found while building the 2D console (Phase 3): each names its task, and the built
-console is the source until the frame is redrawn.
+console is the source until the frame is redrawn. The V2-12 rows are decisions taken before building the 3D stage
+(ADR-0020 § Scene): the written decision wins over the frame.
 
 | Frame                                | Change                                                                                                                                                                                                                                                                 | Decision                         |
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
@@ -452,6 +453,12 @@ console is the source until the frame is redrawn.
 | 04 Equipment alarm                   | The toast's place reads "Data Center · roof"; its reading ("92 °C for 60 s, limit 85 °C") arrives after the toast, in the same toast; "Fly to" and "Open incident" are not drawn until V2-16, the one action is "View incident"                                        | V2-11.4                          |
 | 14 2D with assets                    | The tooltip's "Wet since 15:17" reads the value and the reading's age: the overview does not carry the time the value changed                                                                                                                                          | V2-10.4 (Open question 7)        |
 | 07, 14 3D unavailable                | While the twin is not built, the banner reads "3D view isn't available in this version" over "The 2D map shows the same incidents, cameras and assets."; frame 07's wording is used only for the WebGL reasons                                                         | V2-10.1 (Open question 3)        |
+| 01 – 15 Buildings in 3D              | Shells are the 2D footprints (the zone inset 8 m) extruded to the zone's height, 12 m when it has none, not the raw zone polygon                                                                                                                                       | V2-12.1 (ADR-0020)               |
+| 01, 02, 04, 10, 14 (Layers)          | In 3D the layers are Incidents and Cameras (Heat from V2-17, Inside at building level); frame 01's "Asset" legend entry reads "Asset — hover for readings" and there is no Assets toggle: equipment is the scene                                                       | V2-12.1 (ADR-0020)               |
+| 06 Scene loading                     | The card lists the site plan, the 3D code and the equipment models only: no building rows ("Innovation Hub, Library 1.9 MB"), because buildings have no models                                                                                                         | V2-12.1 (ADR-0020)               |
+| 12 Building level                    | No rack rows inside the Data Center: no asset class or site-plan feature describes them                                                                                                                                                                                | V2-12.1 (ADR-0020)               |
+| 00 Foundations V2 (camera limits)    | "Never goes below 8° above the ground" is a drawing note; the written limit is 78° from vertical (12° above the ground)                                                                                                                                                | V2-12.1 (ADR-0020)               |
+| TwinScene (prototype)                | The substation, the utility yard label and the gate posts are not drawn: no zone, asset or site-plan feature describes them                                                                                                                                            | V2-12.1 (ADR-0020)               |
 
 Implementation tickets, their order, dependencies and which ticket builds each frame:
 [implementation-order.md](implementation-order.md).
