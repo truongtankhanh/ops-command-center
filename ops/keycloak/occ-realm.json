@@ -60,6 +60,34 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "telemetry-pipeline",
+      "name": "iot-telemetry-pipeline (service)",
+      "description": "Raises and resolves incidents from telemetry alerts. Client credentials only; demo secret.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "occ-demo-telemetry-pipeline",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocolMappers": [
+        {
+          "name": "occ-api audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "occ-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -102,6 +130,12 @@
       "lastName": "Viewer",
       "credentials": [{ "type": "password", "value": "viewer", "temporary": false }],
       "realmRoles": ["viewer"]
+    },
+    {
+      "username": "service-account-telemetry-pipeline",
+      "enabled": true,
+      "serviceAccountClientId": "telemetry-pipeline",
+      "realmRoles": ["technician"]
     }
   ]
 }

@@ -92,6 +92,10 @@ Keycloak in Compose, behind nginx on the console's origin; the API is an OAuth 2
   - The access token goes in the `Authorization` header and in the socket's `auth` callback. A refused socket is retried with backoff (1 s doubling to 30 s, with jitter); `Unauthorized` first renews the token.
   - Sign-out closes the socket, clears the query cache and ends the Keycloak session.
 
+**Amendment (OCC-29).** The realm gains a second client, for a machine: `telemetry-pipeline`, used by [iot-telemetry-pipeline](https://github.com/truongtankhanh/iot-telemetry-pipeline) to raise and resolve incidents from its alerts. It is confidential (`client-secret`), allows the client-credentials grant only (standard flow, implicit and password grants off), carries the same `occ-api` audience mapper, and its service account `service-account-telemetry-pipeline` holds the realm role `technician` — so it may report any incident and acknowledge or resolve only Facilities and Environment ones (ADR-0021). The API needs no change: the token is verified like any other, and timeline entries name the service account. The secret in the realm file is a demo value, like the demo passwords; a real deployment supplies its own.
+
+Considered: the password grant with a regular user (deprecated, and a person's account doing a machine's job) and an API-key mechanism in the API (a second credential type to verify and audit).
+
 ## Consequences
 
 - **Every route but the health probes needs a token.** A client without one gets `401`, the console must sign in, and the simulator and seed are unaffected because they call services in-process.
