@@ -5,6 +5,7 @@ import {
   matchRule,
   parseEvidence,
   type RuleEvidence,
+  summariseEvidence,
 } from './telemetryEvidence';
 
 /*
@@ -485,5 +486,72 @@ describe('describeEvidence', () => {
 
     expect(description.reading).toBe('7.5 mm/s');
     expect(description.rule).toBe('above 7.1 mm/s for 2 min');
+  });
+});
+
+describe('summariseEvidence', () => {
+  const evidence = (note: string) => parseEvidence(note)!;
+
+  it('says CT-01’s breach in one line, as frame 04 does', () => {
+    expect(summariseEvidence(evidence('motorTempC 92 > 85 for 60 s'), MOTOR_TEMP)).toBe(
+      '92 °C for 60 s, limit 85 °C',
+    );
+  });
+
+  it('says a below rule with the same words, the dwell as an age past two minutes', () => {
+    expect(summariseEvidence(evidence('batteryPct 18 < 20 for 3600 s'), BATTERY)).toBe(
+      '18 % for 1 h, limit 20 %',
+    );
+    expect(summariseEvidence(evidence('batteryPct 22 < 25 for 300 s'), BATTERY)).toBe(
+      '22 % for 5 min, limit 25 %',
+    );
+  });
+
+  it('writes a dwell up to 119 s in seconds and the next in minutes', () => {
+    expect(summariseEvidence(evidence('batteryPct 18 < 20 for 119 s'), BATTERY)).toBe(
+      '18 % for 119 s, limit 20 %',
+    );
+    expect(summariseEvidence(evidence('batteryPct 18 < 20 for 120 s'), BATTERY)).toBe(
+      '18 % for 2 min, limit 20 %',
+    );
+  });
+
+  it('leaves out a dwell of 0', () => {
+    expect(summariseEvidence(evidence('busVoltageKv 19 < 19.8 for 0 s'), BUS)).toBe(
+      '19 kV, limit 19.8 kV',
+    );
+  });
+
+  it('says a boolean point in its word and the dwell, with no limit', () => {
+    expect(summariseEvidence(evidence('leakDetected 1 > 0.5 for 10 s'), LEAK)).toBe('Wet for 10 s');
+  });
+
+  it('has no unit without the point, which is less and not wrong', () => {
+    expect(summariseEvidence(evidence('motorTempC 92 > 85 for 60 s'), undefined)).toBe(
+      '92 for 60 s, limit 85',
+    );
+  });
+
+  it('keeps one decimal at most, as the rest of the console writes a reading', () => {
+    const vibration: PointShape = {
+      key: 'vibrationMms',
+      label: 'Vibration',
+      kind: 'number',
+      unit: 'mm/s',
+    };
+
+    expect(summariseEvidence(evidence('vibrationMms 7.46 > 7.1 for 120 s'), vibration)).toBe(
+      '7.5 mm/s for 2 min, limit 7.1 mm/s',
+    );
+  });
+
+  it('agrees with describeEvidence on the reading', () => {
+    const motor = evidence('motorTempC 92 > 85 for 60 s');
+
+    expect(
+      summariseEvidence(motor, MOTOR_TEMP).startsWith(
+        describeEvidence(motor, null, MOTOR_TEMP).reading,
+      ),
+    ).toBe(true);
   });
 });

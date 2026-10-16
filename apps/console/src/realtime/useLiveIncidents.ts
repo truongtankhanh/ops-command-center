@@ -1,9 +1,12 @@
 import {
+  type Asset,
+  type AssetDetail,
   type ClientToServerEvents,
   EVENTS_NAMESPACE,
   EventsConnectErrors,
   type EventsHandshakeAuth,
   type Incident,
+  type IncidentDetail,
   IncidentEvents,
   type ServerToClientEvents,
   type Zone,
@@ -11,13 +14,14 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import { queryKeys } from '../api/queries';
+import { incidentQuery, queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
-import { incidentToast } from '../lib/attention';
+import { incidentToast, type IncidentToastContext } from '../lib/attention';
 import { playCriticalCue } from '../lib/criticalCue';
 import { upsertIncident } from '../lib/incidents';
+import { evidenceOfTimeline, summariseEvidence } from '../lib/telemetryEvidence';
 import { useConsole } from '../store';
-import { hasToast, showToast } from '../ui/toasts';
+import { hasToast, showToast, updateToast } from '../ui/toasts';
 
 /** Retries after a refused handshake: from 1 s, doubling up to 30 s, with Socket.IO's ±50 % jitter. */
 const RETRY_FIRST_MS = 1000;
@@ -34,6 +38,10 @@ const RETRY_MAX_MS = 30_000;
  * A new incident is marked fresh, and a critical or high one is announced with a toast (plus the
  * sound for a critical one, when it is on); a critical one also shows the map's Incidents layer
  * again if it was hidden. An incident that is no longer open stops being fresh.
+ *
+ * The event carries an `Incident`, not its timeline, so the toast of an incident a telemetry rule
+ * raised is shown at once with what is cached and gets the reading afterwards, from one fetch of
+ * the incident's detail (V2-11.4): the same toast, with new words.
  */
 export function useLiveIncidents(): void {
   const queryClient = useQueryClient();
@@ -64,19 +72,60 @@ export function useLiveIncidents(): void {
       });
     };
 
+    /** The zone and, for a telemetry incident, the asset, as the cache has them right now. */
+    const contextOf = (incident: Incident): IncidentToastContext & { asset?: Asset } => {
+      const zones = queryClient.getQueryData<Zone[]>(queryKeys.zones);
+      const assets = queryClient.getQueryData<Asset[]>(queryKeys.assets);
+      return {
+        zone: zones?.find((zone) => zone.id === incident.zoneId),
+        asset: incident.assetId
+          ? assets?.find((asset) => asset.id === incident.assetId)
+          : undefined,
+      };
+    };
+
     // A toast already keyed to it is the reporter's own "Reported …": no second toast, no sound.
     const announce = (incident: Incident) => {
       if (hasToast(incident.id)) return;
-      const zones = queryClient.getQueryData<Zone[]>(queryKeys.zones);
-      const zoneName = zones?.find((zone) => zone.id === incident.zoneId)?.name;
-      const toast = incidentToast(incident, zoneName, () =>
-        useConsole.getState().select(incident.id),
-      );
+      const onView = () => useConsole.getState().select(incident.id);
+      const toast = incidentToast(incident, contextOf(incident), onView);
       if (!toast) return;
       showToast(toast);
       if (incident.severity === 'critical' && useConsole.getState().criticalSound) {
         playCriticalCue();
       }
+      if (incident.source === 'telemetry') void addReading(incident, onView);
+    };
+
+    // The reading is the rule's own note on the incident's first timeline entry. It changes words of
+    // the toast already shown and nothing else: no second toast, no second sound, and the view does
+    // not move (brief § Principle 4). Whatever goes wrong, the first toast stays as it is.
+    const addReading = async (incident: Incident, onView: () => void) => {
+      let detail: IncidentDetail;
+      try {
+        detail = await queryClient.fetchQuery(incidentQuery(incident.id));
+      } catch {
+        return;
+      }
+      // Gone while waiting: the hook was torn down, or the operator sent the toast away.
+      if (disposed || !hasToast(incident.id)) return;
+      const evidence = evidenceOfTimeline(detail.timeline);
+      if (evidence === null) return;
+
+      // The catalogue and the zones may have loaded since the event: ask the cache again. The unit
+      // is the asset's point; the cached detail has all of them, the catalogue its headline ones.
+      const context = contextOf(incident);
+      const points =
+        (context.asset &&
+          queryClient.getQueryData<AssetDetail>(queryKeys.asset(context.asset.code))?.points) ||
+        context.asset?.headline;
+      const point = points?.find((candidate) => candidate.key === evidence.key);
+      const next = incidentToast(
+        incident,
+        { ...context, evidence: summariseEvidence(evidence, point) },
+        onView,
+      );
+      if (next) updateToast(incident.id, { detail: next.detail });
     };
 
     const retryRefused = async (reason: string) => {

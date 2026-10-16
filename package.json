@@ -15,7 +15,12 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docker:up": "docker compose up -d postgres keycloak",
+    "docker:down": "docker compose down",
+    "docker:restart": "docker compose up -d --force-recreate postgres keycloak",
+    "docker:stack": "docker compose up --build",
+    "docker:stack:replicas": "docker compose up --build --scale api=2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

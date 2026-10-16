@@ -102,7 +102,7 @@ Specs sit next to the code they test (`*.spec.ts` in the API, `*.test.ts(x)` els
 ```bash
 pnpm install
 cp apps/api/.env.example apps/api/.env
-docker compose up -d postgres keycloak      # DB :15432, Keycloak :18081 (loopback)
+pnpm docker:up                              # postgres :15432, keycloak :18081 (loopback); also docker:down, docker:restart
 pnpm dev                                    # API :13000 (metrics :9464), console :15173
 
 pnpm format:check && pnpm lint && pnpm typecheck && pnpm build
@@ -110,7 +110,7 @@ pnpm test                                   # unit: Jest (API), Vitest (console,
 pnpm test:e2e                               # API against real PostgreSQL
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
-docker compose up --build                   # whole stack on :18080
+pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)
 ```
 
 - **e2e prerequisites:** `cp apps/api/.env.test.example apps/api/.env.test` and a database whose name ends in

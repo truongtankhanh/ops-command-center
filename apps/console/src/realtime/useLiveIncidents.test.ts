@@ -1,8 +1,12 @@
 import {
+  type Asset,
+  type AssetDetail,
   EVENTS_NAMESPACE,
   EventsConnectErrors,
   type Incident,
+  type IncidentDetail,
   IncidentEvents,
+  type TelemetryPoint,
   type Zone,
 } from '@occ/contracts';
 import type { QueryClient } from '@tanstack/react-query';
@@ -16,7 +20,7 @@ import { playCriticalCue } from '../lib/criticalCue';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
 import { ToastRegion } from '../ui/Toast';
-import { showToast, useToasts } from '../ui/toasts';
+import { dismissToast, showToast, useToasts } from '../ui/toasts';
 import { useLiveIncidents } from './useLiveIncidents';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
@@ -383,6 +387,247 @@ describe('useLiveIncidents', () => {
 
       expect(toasts()).toEqual([expect.objectContaining({ title: 'Reported INC-000042' })]);
       expect(playCriticalCue).not.toHaveBeenCalled();
+    });
+
+    // The event has no timeline, so the toast of a telemetry incident gets its reading afterwards,
+    // from the incident's detail (V2-11.4): the same toast, no second sound.
+    describe('a telemetry incident', () => {
+      const MOTOR: TelemetryPoint = {
+        key: 'motorTempC',
+        label: 'Motor temperature',
+        unit: '°C',
+        kind: 'number',
+        min: -40,
+        max: 150,
+        enumValues: null,
+        expectedIntervalS: 1,
+        headline: 2,
+      };
+      const VIBRATION: TelemetryPoint = {
+        ...MOTOR,
+        key: 'vibrationMms',
+        label: 'Vibration',
+        unit: 'mm/s',
+        headline: null,
+      };
+      /** The catalogue's entry: it has the headline points only. */
+      const tower = {
+        id: 'asset-ct-01',
+        code: 'CT-01',
+        name: 'Cooling tower 1',
+        elevationM: 0,
+        headline: [MOTOR],
+      } as unknown as Asset;
+
+      const raised: Incident = {
+        ...incident,
+        type: 'equipment_fault',
+        severity: 'critical',
+        source: 'telemetry',
+        assetId: tower.id,
+        title: 'Motor over-temperature — Cooling tower 1',
+      };
+      const detailWith = (note: string | null): IncidentDetail => ({
+        ...raised,
+        timeline: [
+          {
+            id: 'event-1',
+            kind: 'reported',
+            note,
+            at: '2026-10-01T08:00:00.000Z',
+            actor: { kind: 'system', subject: 'telemetry', displayName: 'Telemetry rule' },
+          },
+        ],
+      });
+
+      const fetchMock = vi.fn<typeof fetch>();
+      const answer = (detail: IncidentDetail) =>
+        fetchMock.mockImplementation(() => Promise.resolve(new Response(JSON.stringify(detail))));
+      /**
+       * Lets the detail request come back: `fetchQuery` settles on microtasks, and reading the body
+       * of a `Response` takes a few turns of the event loop, which the fake clock yields to.
+       */
+      const settle = () =>
+        act(async () => {
+          for (let turn = 0; turn < 5; turn++) await vi.advanceTimersByTimeAsync(0);
+        });
+
+      beforeEach(() => {
+        fetchMock.mockReset();
+        answer(detailWith('motorTempC 92 > 85 for 60 s'));
+        vi.stubGlobal('fetch', fetchMock);
+        client.setQueryData(queryKeys.assets, [tower]);
+      });
+
+      afterEach(() => vi.unstubAllGlobals());
+
+      it('shows the toast at once, with the asset and no reading yet', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, raised);
+
+        expect(toasts()).toEqual([
+          expect.objectContaining({
+            key: 'incident-1',
+            urgent: true,
+            severity: 'critical',
+            kicker: 'Critical · raised by telemetry rule',
+            title: 'Motor over-temperature — Cooling tower 1',
+            detail: 'CT-01 · Main Gate',
+            action: expect.objectContaining({ label: 'View incident' }),
+          }),
+        ]);
+      });
+
+      it('adds the reading to the same toast, with one request and without moving the view', async () => {
+        renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+        const [first] = toasts();
+
+        await settle();
+
+        expect(toasts()).toEqual([
+          { ...first, detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C' },
+        ]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(String(fetchMock.mock.calls[0]![0])).toMatch(/\/incidents\/incident-1$/);
+        expect(useConsole.getState().selectedIncidentId).toBeNull();
+      });
+
+      it('plays the sound once, not again when the reading arrives', async () => {
+        useConsole.setState({ criticalSound: true });
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, raised);
+        await settle();
+
+        expect(playCriticalCue).toHaveBeenCalledTimes(1);
+      });
+
+      it('enriches a high incident too, which stays a polite toast without a sound', async () => {
+        useConsole.setState({ criticalSound: true });
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, { ...raised, severity: 'high' });
+        await settle();
+
+        expect(toasts()).toEqual([
+          expect.objectContaining({
+            kicker: 'High · raised by telemetry rule',
+            urgent: false,
+            detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C',
+          }),
+        ]);
+        expect(playCriticalCue).not.toHaveBeenCalled();
+      });
+
+      it('names the zone and the incident while the catalogue is not loaded, and still adds the reading', async () => {
+        client.removeQueries({ queryKey: queryKeys.assets });
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, raised);
+        expect(toasts()[0]!.detail).toBe('Main Gate · INC-000042');
+        await settle();
+
+        expect(toasts()[0]!.detail).toBe('Main Gate · INC-000042 · 92 for 60 s, limit 85');
+      });
+
+      it('uses the catalogue when it loaded while the detail was on its way', async () => {
+        client.removeQueries({ queryKey: queryKeys.assets });
+        renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+
+        client.setQueryData(queryKeys.assets, [tower]);
+        await settle();
+
+        expect(toasts()[0]!.detail).toBe('CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C');
+      });
+
+      it('takes the unit of a point the catalogue does not carry from a cached asset detail', async () => {
+        answer(detailWith('vibrationMms 7.4 > 7.1 for 120 s'));
+        client.setQueryData(queryKeys.asset('CT-01'), {
+          ...tower,
+          points: [MOTOR, VIBRATION],
+          rules: [],
+        } as unknown as AssetDetail);
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, raised);
+        await settle();
+
+        expect(toasts()[0]!.detail).toBe('CT-01 · Main Gate · 7.4 mm/s for 2 min, limit 7.1 mm/s');
+      });
+
+      it('leaves the first toast when the detail cannot be loaded', async () => {
+        fetchMock.mockImplementation(() =>
+          Promise.resolve(new Response(JSON.stringify({ message: 'Boom' }), { status: 500 })),
+        );
+        renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+        const [first] = toasts();
+
+        await settle();
+
+        expect(toasts()).toEqual([first]);
+      });
+
+      it.each([
+        ['an operator’s note', 'Technician on the way'],
+        ['no note', null],
+      ])('leaves the first toast when the first entry holds %s', async (_name, note) => {
+        answer(detailWith(note));
+        renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+        const [first] = toasts();
+
+        await settle();
+
+        expect(toasts()).toEqual([first]);
+      });
+
+      it('does not bring the toast back when the operator dismissed it meanwhile', async () => {
+        renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+
+        dismissToast(toasts()[0]!.id);
+        await settle();
+
+        expect(toasts()).toEqual([]);
+      });
+
+      it('adds nothing once the hook is gone', async () => {
+        const { unmount } = renderLive();
+        socket.fire(IncidentEvents.Created, raised);
+        const [first] = toasts();
+
+        unmount();
+        await settle();
+
+        expect(toasts()).toEqual([first]);
+      });
+
+      it('asks for nothing for an incident a person reported', async () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, { ...raised, source: 'operator', assetId: null });
+        await settle();
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(toasts()[0]).toMatchObject({
+          kicker: 'New critical · Equipment fault',
+          detail: 'Main Gate · INC-000042 · just now',
+        });
+      });
+
+      it('asks for nothing for an incident that gets no toast', async () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, { ...raised, severity: 'medium' });
+        await settle();
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(toasts()).toEqual([]);
+      });
     });
 
     describe('sound', () => {

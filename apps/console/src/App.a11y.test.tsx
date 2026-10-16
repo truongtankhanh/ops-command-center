@@ -548,7 +548,15 @@ describe('the console', () => {
     it('a critical incident toast', async () => {
       renderConsole();
 
-      act(() => showToast(incidentToast(INCIDENTS[0]!, 'Library', () => {})!));
+      act(() =>
+        showToast(
+          incidentToast(
+            INCIDENTS[0]!,
+            { zone: { name: 'Library', kind: 'building', heightM: null } },
+            () => {},
+          )!,
+        ),
+      );
 
       const notifications = screen.getByRole('region', { name: 'Notifications' });
       expect(within(notifications).getByText('Smoke in the stairwell')).toBeInTheDocument();

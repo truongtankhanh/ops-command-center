@@ -146,6 +146,28 @@ function dwell(forS: number): string {
 }
 
 /**
+ * What the evidence's point is, and the reading as an operator reads it. `point` is the asset's
+ * point of the evidence's key, or `undefined` when the console does not have it: the key stands in
+ * for its label and the number has no unit, so nothing is invented. The producer writes a boolean as
+ * the 1 or 0 it compared, against 0.5: it is read back as the value the word table speaks of
+ * (`leakDetected` true -> "Wet").
+ */
+function readingOf(
+  evidence: RuleEvidence,
+  point: PointShape | undefined,
+): { shape: PointShape; boolean: boolean; reading: string } {
+  const shape: PointShape = point ?? {
+    key: evidence.key,
+    label: evidence.key,
+    kind: 'number',
+    unit: null,
+  };
+  const boolean = shape.kind === 'boolean';
+  const value: TelemetryValue = boolean ? evidence.value > 0.5 : evidence.value;
+  return { shape, boolean, reading: formatReading(shape, value) };
+}
+
+/**
  * The words for frame 10's block. `rule` is the match from `matchRule` (or `null`) and `point` the
  * asset's point of the evidence's key (or `undefined` when the console does not have it): both are
  * optional on purpose, so an evidence that cannot be matched is still described, from itself alone,
@@ -156,17 +178,7 @@ export function describeEvidence(
   rule: RuleShape | null,
   point: PointShape | undefined,
 ): EvidenceDescription {
-  const shape: PointShape = point ?? {
-    key: evidence.key,
-    label: evidence.key,
-    kind: 'number',
-    unit: null,
-  };
-  const boolean = shape.kind === 'boolean';
-  // The producer writes a boolean as the 1 or 0 it compared, against 0.5: read it back as the
-  // value the word table speaks of (`leakDetected` true → "Wet").
-  const valueOf = (n: number): TelemetryValue => (boolean ? n > 0.5 : n);
-  const reading = formatReading(shape, valueOf(evidence.value));
+  const { shape, boolean, reading } = readingOf(evidence, point);
 
   const condition = boolean
     ? reading
@@ -189,4 +201,17 @@ export function describeEvidence(
     limit,
     ruleName: rule?.name ?? null,
   };
+}
+
+/**
+ * The reading in one line for the new-incident toast (frame 04, V2-11.4): "92 °C for 60 s, limit
+ * 85 °C". A boolean point is its word and the dwell ("Wet for 10 s"): its 0.5 is an encoding, not a
+ * limit an operator reads. Without the point there is no unit ("92 for 60 s, limit 85"), which is
+ * less, not wrong. Built from the note alone, so it says what was breached when the incident was
+ * raised, whatever the rule says now.
+ */
+export function summariseEvidence(evidence: RuleEvidence, point: PointShape | undefined): string {
+  const { shape, boolean, reading } = readingOf(evidence, point);
+  const limit = boolean ? '' : `, limit ${formatReading(shape, evidence.limit)}`;
+  return `${reading}${dwell(evidence.forS)}${limit}`;
 }
