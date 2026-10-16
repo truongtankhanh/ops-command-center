@@ -1,5 +1,6 @@
 import { useId } from 'react';
-import { TWIN_UNAVAILABLE_COPY, twinCapability } from '../lib/twinCapability';
+import { TWIN_UNAVAILABLE_COPY } from '../lib/twinCapability';
+import { useTwinCapability } from '../lib/useTwinCapability';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Box, MapIcon } from '../ui/icons';
@@ -14,7 +15,7 @@ export const VIEW_SWITCH_3D_ID = 'view-switch-3d';
 /**
  * Frame 14's `3D / 2D` switch: two toggle buttons in a group, the view in effect pressed.
  *
- * While the twin cannot be drawn (`twinCapability`) the 3D option is `aria-disabled`, not
+ * While the twin cannot be drawn (`useTwinCapability`) the 3D option is `aria-disabled`, not
  * `disabled`: a disabled button drops keyboard focus, and the switch must stay reachable for
  * keyboard and screen reader users, who then hear why. The reason is a visually hidden line that is
  * always rendered, so it is still read after the banner that says the same is dismissed. A press on
@@ -25,7 +26,7 @@ export const VIEW_SWITCH_3D_ID = 'view-switch-3d';
 export function ViewSwitch() {
   const view = useConsole((s) => s.view);
   const setView = useConsole((s) => s.setView);
-  const capability = twinCapability();
+  const capability = useTwinCapability();
   const reasonId = useId();
 
   return (

@@ -1,6 +1,6 @@
 import type { ReportPreset } from './lib/assetReport';
 import { FRESH_LIMIT, useConsole } from './store';
-import { resetStore } from './test-utils';
+import { resetStore, stubTwinAvailable, unstubTwin } from './test-utils';
 
 const state = () => useConsole.getState();
 
@@ -633,7 +633,7 @@ describe('useConsole', () => {
 
     beforeEach(() => localStorage.clear());
 
-    // The twin is not built (V2-10.1), so every view in effect is 2D until V2-12.
+    // The preview gate is closed under Vitest (V2-12.4), so every view in effect is 2D here.
     it('is 2D by default', () => {
       expect(useConsole.getInitialState().view).toBe('2d');
     });
@@ -660,6 +660,72 @@ describe('useConsole', () => {
 
       expect(state().view).toBe('2d');
       expect(localStorage.getItem(KEY)).toBe('2d');
+    });
+
+    // The twin is offered (gate open, WebGL 2 stubbed), as in `pnpm dev`.
+    describe('where the twin can be drawn', () => {
+      beforeEach(() => {
+        stubTwinAvailable();
+      });
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+        unstubTwin();
+      });
+
+      it('starts in 3D when no choice was made', async () => {
+        vi.resetModules();
+
+        const { useConsole: fresh } = await import('./store');
+
+        expect(fresh.getState().view).toBe('3d');
+        expect(fresh.getState().twinFault).toBeNull();
+      });
+
+      it('goes to 3D when asked, and remembers it', () => {
+        state().setView('3d');
+
+        expect(state().view).toBe('3d');
+        expect(localStorage.getItem(KEY)).toBe('3d');
+      });
+
+      it('puts the stage on 2D when the context is lost, and leaves the stored choice', () => {
+        state().setView('3d');
+
+        state().markTwinLost();
+
+        expect(state().twinFault).toBe('context-lost');
+        expect(state().view).toBe('2d');
+        expect(localStorage.getItem(KEY)).toBe('3d');
+      });
+
+      it('does not go to 3D while the fault stands, and remembers nothing', () => {
+        state().markTwinLost();
+
+        state().setView('3d');
+
+        expect(state().view).toBe('2d');
+        expect(localStorage.getItem(KEY)).toBeNull();
+      });
+
+      it('returns to the stored choice when the fault is cleared', () => {
+        state().setView('3d');
+        state().markTwinLost();
+
+        state().clearTwinLost();
+
+        expect(state().twinFault).toBeNull();
+        expect(state().view).toBe('3d');
+      });
+
+      it('stays on 2D after the fault is cleared when 2D was chosen', () => {
+        state().setView('2d');
+        state().markTwinLost();
+
+        state().clearTwinLost();
+
+        expect(state().view).toBe('2d');
+      });
     });
   });
 

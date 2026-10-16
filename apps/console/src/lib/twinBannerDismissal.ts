@@ -5,7 +5,7 @@ const STORAGE_KEY = 'occ.console.twinBannerDismissed';
 
 /**
  * Whether the operator dismissed the banner for this reason in this tab. The reason is what is
- * stored, so a different reason (V2-12's `no-webgl2` after a `not-built` dismissal) shows again.
+ * stored, so a different reason (`context-lost` after a `no-webgl2` dismissal) shows again.
  * Unavailable storage reads as "not dismissed": the banner shows, which is the safe side.
  */
 export function readTwinBannerDismissed(reason: TwinUnavailableReason): boolean {

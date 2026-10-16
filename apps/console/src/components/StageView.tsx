@@ -18,7 +18,8 @@ const loadTwinStage = () => import('../twin/TwinStage');
  * What the map stage draws, with the controls that sit over it (frames 07 and 14).
  *
  * The 2D map, or the lazy 3D stage when the store's `view` is `3d`. `view` is `2d` until the twin can
- * be drawn (`twinCapability`, V2-12.4), so today the 3D branch is only reached by a test. The map is
+ * be drawn (`useTwinCapability`): in `pnpm dev` and with `?twin=1` until the preview gate goes
+ * (V2-19.8), and by tests; a lost WebGL context puts it back on `2d` (V2-12.4). The map is
  * not mounted while 3D shows: two WebGL contexts at once would be wasted, and switching back remounts it.
  *
  * The tools are siblings of the map, not children: the map's own box clips and stacks what is

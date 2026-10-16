@@ -8,7 +8,7 @@ import { type Density, readDensity, writeDensity } from './lib/density';
 import type { FeedFilter } from './lib/incidents';
 import type { LayerVisibility, MapLayerKey } from './lib/mapLayers';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
-import { twinCapability } from './lib/twinCapability';
+import { type TwinFault, twinCapability } from './lib/twinCapability';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
 
 /**
@@ -123,6 +123,12 @@ interface ConsoleState extends ReportLocation {
    */
   view: ViewChoice;
   /**
+   * Why the twin stopped working in this session, or `null`. Set by the 3D stage when its WebGL
+   * context is lost and does not come back (V2-12.11); `useTwinCapability` reads it, so every
+   * reader of the capability follows. Not remembered: a reload tries 3D again.
+   */
+  twinFault: TwinFault | null;
+  /**
    * Which map layers are drawn (frame 14's "Show"). Not remembered: a console opens with all three,
    * so a layer hidden for a while is never found hidden by the next person (Open question 4).
    * Selecting an incident, and a new critical one arriving, turn Incidents back on.
@@ -193,6 +199,16 @@ interface ConsoleState extends ReportLocation {
    * never holds a view the stage cannot show and never remembers a choice it could not honour.
    */
   setView(view: ViewChoice): void;
+  /**
+   * The twin failed during this session: records the fault and puts the stage on the 2D map. The
+   * operator's stored choice is left as it is, so a reload or a restore goes back to it.
+   */
+  markTwinLost(): void;
+  /**
+   * The twin works again: forgets the fault and returns to the view the stored choice and the
+   * device allow. Nothing calls it yet; a context that restores in time never raises the fault.
+   */
+  clearTwinLost(): void;
   toggleLayer(key: MapLayerKey): void;
   /** Turns a layer on and does nothing when it is. There is no "hide": only the toggle hides. */
   showLayer(key: MapLayerKey): void;
@@ -222,6 +238,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   density: readDensity(),
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
+  twinFault: null,
   layers: { incidents: true, cameras: true, assets: true },
   ...NO_REPORT_LOCATION,
 
@@ -332,10 +349,13 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     set({ density });
   },
   setView: (view) => {
-    if (view === '3d' && !twinCapability().available) return;
+    if (view === '3d' && !twinCapability(get().twinFault).available) return;
     writeViewChoice(view);
     set({ view });
   },
+  markTwinLost: () => set({ twinFault: 'context-lost', view: '2d' }),
+  clearTwinLost: () =>
+    set({ twinFault: null, view: effectiveView(readViewChoice(), twinCapability()) }),
   toggleLayer: (key) =>
     set((state) => ({ layers: { ...state.layers, [key]: !state.layers[key] } })),
   showLayer: (key) =>

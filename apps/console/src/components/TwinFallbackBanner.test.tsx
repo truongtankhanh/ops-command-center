@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as CapabilityModule from '../lib/twinCapability';
 import { twinCapability, type TwinCapability } from '../lib/twinCapability';
@@ -7,8 +7,8 @@ import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { TwinFallbackBanner } from './TwinFallbackBanner';
 import { ViewSwitch } from './ViewSwitch';
 
-// The capability is a constant until V2-12; the cases that need another answer set it here. It keeps
-// the real answer by default: the store reads it when its module is first imported.
+// The cases that need another answer set it here. It keeps the real answer by default (the gate is
+// closed under Vitest): the store reads it when its module is first imported.
 vi.mock('../lib/twinCapability', async (importOriginal) => {
   const actual = await importOriginal<typeof CapabilityModule>();
   return { ...actual, twinCapability: vi.fn(actual.twinCapability) };
@@ -77,6 +77,46 @@ describe('TwinFallbackBanner', () => {
     render(<TwinFallbackBanner />);
 
     expect(screen.getByRole('status')).toHaveTextContent("isn't available in this version");
+  });
+
+  // The capability follows the store's fault, as the real one does; the twin is fine until it is lost.
+  describe('when the context is lost during the session', () => {
+    beforeEach(() => {
+      vi.mocked(twinCapability).mockImplementation((fault) =>
+        fault ? { available: false, reason: fault } : { available: true },
+      );
+    });
+
+    const lose = () => act(() => useConsole.getState().markTwinLost());
+
+    it('appears with the words of a lost context', () => {
+      render(<TwinFallbackBanner />);
+      expect(screen.queryByRole('status')).toBeNull();
+
+      lose();
+
+      const banner = screen.getByRole('status');
+      expect(banner).toHaveTextContent('3D view stopped working');
+      expect(banner).toHaveTextContent('The graphics context was lost and did not come back.');
+    });
+
+    it('shows again after a dismissal for another reason', () => {
+      sessionStorage.setItem(KEY, 'no-webgl2');
+      render(<TwinFallbackBanner />);
+
+      lose();
+
+      expect(screen.getByRole('status')).toHaveTextContent('3D view stopped working');
+    });
+
+    it('stays closed when this reason was dismissed earlier in the tab', () => {
+      sessionStorage.setItem(KEY, 'context-lost');
+      render(<TwinFallbackBanner />);
+
+      lose();
+
+      expect(screen.queryByRole('status')).toBeNull();
+    });
   });
 
   it('hands focus to the 3D option when it is dismissed', async () => {
