@@ -613,6 +613,68 @@ describe('IncidentDetail', () => {
       });
     });
 
+    // V2-11.5: brief § Viewer in V2 and ADR-0021, for every incident type a telemetry rule can raise.
+    // The block and the link are reading, so every role has them; only the footer differs. The types
+    // come from the category table: Facilities and Environment are a technician's, Security is not.
+    describe('by role', () => {
+      const ACTS_ON = ['equipment_fault', 'power_outage', 'water_leak', 'flooding'] as const;
+      const expectReadable = () => {
+        expect(screen.getByRole('heading', { name: 'Why it was raised' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Open asset CT-01' })).toBeInTheDocument();
+      };
+
+      describe.each(['operator', 'supervisor', 'technician'] as const)('%s', (role) => {
+        it.each(ACTS_ON)('acts on a telemetry incident of type %s', (type) => {
+          signInAs(role);
+
+          renderTelemetry(raisedByRule({ type }));
+
+          expectReadable();
+          expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+          expect(screen.queryByRole('note')).toBeNull();
+        });
+      });
+
+      it.each(['operator', 'supervisor'] as const)(
+        'lets %s act on a telemetry incident of type intrusion as well',
+        (role) => {
+          signInAs(role);
+
+          renderTelemetry(raisedByRule({ type: 'intrusion' }));
+
+          expectReadable();
+          expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+        },
+      );
+
+      it('gives a technician the scope note, not the form, on a Security type', () => {
+        signInAs('technician');
+
+        renderTelemetry(raisedByRule({ type: 'intrusion' }));
+
+        expectReadable();
+        expect(screen.getByRole('note')).toHaveAttribute('data-footer', 'out-of-scope');
+        expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+      });
+
+      it.each([...ACTS_ON, 'intrusion'] as const)(
+        'gives a viewer the view-only note on type %s, with the block and the link',
+        (type) => {
+          signInAs('viewer');
+
+          renderTelemetry(raisedByRule({ type }));
+
+          expectReadable();
+          const note = screen.getByRole('note');
+          expect(note).toHaveAttribute('data-footer', 'view-only');
+          expect(note).toHaveTextContent('View only');
+          expect(screen.queryByRole('form', RESPONSE)).toBeNull();
+          expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+          expect(screen.queryByRole('button', { name: 'Resolve' })).toBeNull();
+        },
+      );
+    });
+
     it('shows a technician the block with the scope footer when the incident is out of scope', () => {
       signInAs('technician');
 

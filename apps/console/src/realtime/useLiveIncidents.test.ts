@@ -15,6 +15,7 @@ import { createElement } from 'react';
 import { io } from 'socket.io-client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
+import { useSession } from '../auth/store';
 import type * as CriticalCue from '../lib/criticalCue';
 import { playCriticalCue } from '../lib/criticalCue';
 import { useConsole } from '../store';
@@ -605,6 +606,53 @@ describe('useLiveIncidents', () => {
 
         expect(toasts()).toEqual([first]);
       });
+
+      // V2-11.5. Today the toast does not depend on the role: every role gets the same one with one
+      // "View incident" action, which only opens the sheet (reading, not acting). The viewer's own toast
+      // ("Fly to" and "Open incident" only, brief § Viewer in V2) is V2-16's: this table is the one to
+      // change then, on purpose.
+      describe.each(['operator', 'supervisor', 'technician', 'viewer'] as const)(
+        'for a %s',
+        (role) => {
+          beforeEach(() => {
+            useSession.getState().signedIn({ displayName: 'Signed-in user', roles: [role] });
+            useConsole.setState({ criticalSound: true });
+          });
+
+          afterEach(() => resetStore(useSession));
+
+          it('shows the same toast, with the one "View incident" action and no "Fly to"', async () => {
+            renderLive();
+
+            socket.fire(IncidentEvents.Created, raised);
+            await settle();
+
+            expect(toasts()).toEqual([
+              expect.objectContaining({
+                kicker: 'Critical · raised by telemetry rule',
+                urgent: true,
+                detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C',
+                action: { label: 'View incident', onAction: expect.any(Function) },
+              }),
+            ]);
+            expect(playCriticalCue).toHaveBeenCalledTimes(1);
+          });
+
+          it('opens the incident from the toast and nothing else', async () => {
+            renderLive();
+            socket.fire(IncidentEvents.Created, raised);
+            await settle();
+
+            toasts()[0]!.action!.onAction();
+
+            expect(useConsole.getState()).toMatchObject({
+              selectedIncidentId: 'incident-1',
+              selectedAssetCode: null,
+              reporting: false,
+            });
+          });
+        },
+      );
 
       it('asks for nothing for an incident a person reported', async () => {
         renderLive();
