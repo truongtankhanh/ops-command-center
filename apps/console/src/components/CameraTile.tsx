@@ -1,7 +1,7 @@
 import type { Camera } from '@occ/contracts';
 import { useId } from 'react';
 import { useCameras, useStream, useZones } from '../api/queries';
-import { canPin, feedState, PIN_LIMIT } from '../lib/cameras';
+import { canPin, type CameraLink, feedState, PIN_LIMIT } from '../lib/cameras';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -12,20 +12,30 @@ import styles from './CameraTile.module.css';
 
 const STRIP_FULL = `You can pin ${PIN_LIMIT} cameras to the strip. Unpin one first.`;
 
+/** The word of the tag, by why the camera is tied to the selection (frames 02, 03). */
+const LINK_TAG: Readonly<Record<CameraLink, string>> = {
+  asset: 'On this asset',
+  zone: 'In zone',
+};
+
 /**
- * A camera with the chrome of frames 01 / 02 / 06: LIVE, the code or an "In zone" tag, a pinned
- * badge, the name, zone and time, and two actions shown on hover or focus — open in the viewer and
- * pin to the strip. `compact` is the detail sheet's tile: LIVE and the name only (frames 02 / 06).
+ * A camera with the chrome of frames 01 / 02 / 03 / 06: LIVE, the code or a tag, a pinned badge,
+ * the name, zone and time, and two actions shown on hover or focus — open in the viewer and pin to
+ * the strip. `compact` is the detail sheet's tile: LIVE and the name only (frames 02 / 06).
  */
 export function CameraTile({
   camera,
   variant = 'strip',
-  linked = false,
+  link,
 }: {
   camera: Camera;
   variant?: 'strip' | 'compact';
-  /** In the selected incident's zone: accent ring and "In zone" tag (frame 02). */
-  linked?: boolean;
+  /**
+   * Why the camera is tied to the selection: it is in the selected incident's zone, or the selected
+   * asset's (`zone`: "In zone", frame 02), or it sees the selected asset (`asset`: "On this asset",
+   * frame 03). Either draws the accent ring. Absent: an ordinary tile.
+   */
+  link?: CameraLink;
 }) {
   const stream = useStream(camera);
   const { data: zones = [] } = useZones();
@@ -42,10 +52,10 @@ export function CameraTile({
   const pinned = pinnedIds.includes(camera.id);
   const pinnable = canPin(pinnedIds, camera.id, knownIds);
   // The tag takes the code's place, so the code moves to the zone line (frame 02).
-  const zoneLine = [zoneName, linked ? camera.code : null].filter(Boolean).join(' · ');
+  const zoneLine = [zoneName, link ? camera.code : null].filter(Boolean).join(' · ');
 
   return (
-    <figure className={styles.tile} data-linked={linked || undefined}>
+    <figure className={styles.tile} data-linked={link}>
       <CameraFeed camera={camera} />
 
       <div className={styles.top}>
@@ -57,8 +67,8 @@ export function CameraTile({
             </span>
           )}
         </span>
-        {linked ? (
-          <span className={styles.tag}>In zone</span>
+        {link ? (
+          <span className={styles.tag}>{LINK_TAG[link]}</span>
         ) : (
           !(compact && live) && <span className={styles.pill}>{camera.code}</span>
         )}

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { isRateLimited } from '../api/client';
-import { useCameras, useIncidents } from '../api/queries';
-import { stripCameras, stripSize } from '../lib/cameras';
+import { useAssets, useCameras, useIncidents } from '../api/queries';
+import { cameraLink, stripCameras, stripSize, stripSubject } from '../lib/cameras';
 import { useDisplayMode } from '../lib/useDisplayMode';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
@@ -12,16 +12,25 @@ import { LoadFailed, RateLimited } from './LoadStates';
 
 /**
  * One row of tiles — four, six on a wall, eight on a 4K wall (`stripSize`): pinned cameras first,
- * then the selected incident's zone, then the rest of the campus.
- * Tiles in that zone are marked as linked to the incident (frame 02). While the camera list loads,
- * placeholder tiles hold the strip's height; if it cannot be loaded, the strip says so with a Retry.
+ * then the selected incident's zone or the selected asset's cameras, then the rest of the campus.
+ * For an asset the cameras that see it come before those in its zone, and each tile says which it is
+ * ("On this asset", "In zone", frames 02 / 03); for an incident only its zone counts. While the
+ * camera list loads, placeholder tiles hold the strip's height; if it cannot be loaded, the strip
+ * says so with a Retry.
  */
 export function CameraStrip() {
   const { data: cameras, error, failureReason, isPending, isFetching, refetch } = useCameras();
   const { data: incidents = [] } = useIncidents();
+  // The catalogue is cached for the shift (the Assets tab holds it); until it is loaded there is no
+  // asset subject and the strip orders as with nothing selected.
+  const { data: assets } = useAssets();
   const selectedId = useConsole((s) => s.selectedIncidentId);
+  const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
   const pinnedIds = useConsole((s) => s.pinnedCameraIds);
-  const zoneId = incidents.find((i) => i.id === selectedId)?.zoneId;
+  const incidentZoneId = incidents.find((i) => i.id === selectedId)?.zoneId;
+  const asset =
+    selectedAssetCode === null ? undefined : assets?.find((a) => a.code === selectedAssetCode);
+  const subject = stripSubject(incidentZoneId, asset);
   const loading = isPending && !isRateLimited(failureReason);
   const size = stripSize(useDisplayMode());
   // The column count follows the tile count; CSS still makes it two columns on a tablet.
@@ -56,8 +65,12 @@ export function CameraStrip() {
       ) : cameras.length === 0 ? (
         <p className={`${text.muted} ${styles.message}`}>No cameras are set up on this site.</p>
       ) : (
-        stripCameras(cameras, zoneId, pinnedIds, size).map((camera) => (
-          <CameraTile key={camera.id} camera={camera} linked={camera.zoneId === zoneId} />
+        stripCameras(cameras, subject, pinnedIds, size).map((camera) => (
+          <CameraTile
+            key={camera.id}
+            camera={camera}
+            link={cameraLink(camera, subject) ?? undefined}
+          />
         ))
       )}
     </section>

@@ -1,16 +1,20 @@
-import type { Camera } from '@occ/contracts';
+import type { Camera, LngLat } from '@occ/contracts';
 import {
+  cameraLink,
   canPin,
   feedState,
   formatCameraTime,
   PIN_LIMIT,
   prioritise,
   readPinnedCameras,
+  type StripSubject,
   stripCameras,
   stripSize,
+  stripSubject,
   togglePinned,
   writePinnedCameras,
 } from '../lib/cameras';
+import { offsetM } from '../lib/geo';
 
 const cam = (code: string, zoneId: string, online = true): Camera => ({
   id: code,
@@ -22,11 +26,13 @@ const cam = (code: string, zoneId: string, online = true): Camera => ({
   fieldOfView: null,
 });
 
+const zone = (zoneId: string): StripSubject => ({ kind: 'zone', zoneId });
+
 describe('prioritise', () => {
   it('puts online cameras of the selected zone first and offline cameras last', () => {
     const cameras = [cam('A', 'z1'), cam('B', 'z2', false), cam('C', 'z2'), cam('D', 'z1', false)];
 
-    expect(prioritise(cameras, 'z2').map((c) => c.code)).toEqual(['C', 'A', 'B', 'D']);
+    expect(prioritise(cameras, zone('z2')).map((c) => c.code)).toEqual(['C', 'A', 'B', 'D']);
   });
 });
 
@@ -42,21 +48,26 @@ describe('stripCameras', () => {
   const codes = (list: Camera[]) => list.map((c) => c.code);
 
   it('fills the strip in prioritise order when nothing is pinned', () => {
-    expect(codes(stripCameras(cameras, 'z2', [], 4))).toEqual(
-      codes(prioritise(cameras, 'z2').slice(0, 4)),
+    expect(codes(stripCameras(cameras, zone('z2'), [], 4))).toEqual(
+      codes(prioritise(cameras, zone('z2')).slice(0, 4)),
     );
   });
 
   it('puts pinned cameras first, in pin order, before the zone', () => {
-    expect(codes(stripCameras(cameras, 'z2', ['F', 'B'], 4))).toEqual(['F', 'B', 'C', 'A']);
+    expect(codes(stripCameras(cameras, zone('z2'), ['F', 'B'], 4))).toEqual(['F', 'B', 'C', 'A']);
   });
 
   it('skips a pin whose camera is gone, so it takes no slot', () => {
-    expect(codes(stripCameras(cameras, 'z2', ['gone', 'F'], 4))).toEqual(['F', 'C', 'A', 'E']);
+    expect(codes(stripCameras(cameras, zone('z2'), ['gone', 'F'], 4))).toEqual([
+      'F',
+      'C',
+      'A',
+      'E',
+    ]);
   });
 
   it('fills a larger strip with the pins first, then the prioritised rest', () => {
-    expect(codes(stripCameras(cameras, 'z2', ['F', 'B'], 6))).toEqual([
+    expect(codes(stripCameras(cameras, zone('z2'), ['F', 'B'], 6))).toEqual([
       'F',
       'B',
       'C',
@@ -64,6 +75,124 @@ describe('stripCameras', () => {
       'E',
       'D',
     ]);
+  });
+});
+
+describe('with an asset selected', () => {
+  /** The selected asset, in zone `z1`. */
+  const ASSET: LngLat = [108.44, 11.95];
+  const subject: StripSubject = { kind: 'asset', position: ASSET, zoneId: 'z1' };
+
+  /** 20 m south of the asset and facing north: the asset is in its 90°, 50 m sector. */
+  const seeing = (code: string, zoneId: string, online = true): Camera => ({
+    ...cam(code, zoneId, online),
+    position: offsetM(ASSET, 0, -20),
+    fieldOfView: { heading: 0, angle: 90, range: 50 },
+  });
+  const codes = (list: Camera[]) => list.map((c) => c.code);
+
+  const cameras = [
+    cam('A', 'z1'),
+    seeing('B', 'z2'),
+    cam('C', 'z2'),
+    seeing('D', 'z2', false),
+    cam('E', 'z1', false),
+  ];
+
+  it('puts the cameras that see it first, then its zone, then the rest', () => {
+    expect(codes(prioritise(cameras, subject).slice(0, 3))).toEqual(['B', 'A', 'C']);
+  });
+
+  it('puts every offline camera after every online one, in the same tiers', () => {
+    expect(codes(prioritise(cameras, subject))).toEqual(['B', 'A', 'C', 'D', 'E']);
+  });
+
+  it('keeps the pins first, in pin order', () => {
+    expect(codes(stripCameras(cameras, subject, ['C', 'E'], 4))).toEqual(['C', 'E', 'B', 'A']);
+  });
+
+  it('orders by code within a tier, so the strip does not reshuffle', () => {
+    const tied = [seeing('Z', 'z2'), seeing('M', 'z2'), seeing('A', 'z3')];
+
+    expect(codes(prioritise(tied, subject))).toEqual(['A', 'M', 'Z']);
+  });
+
+  it('falls back to the zone for a camera without a field of view', () => {
+    expect(codes(prioritise([cam('Q', 'z2'), cam('P', 'z1')], subject))).toEqual(['P', 'Q']);
+  });
+
+  it('is the incident order, unchanged, for a zone subject', () => {
+    // The cameras that would see an asset count for nothing when only a zone is selected.
+    expect(codes(prioritise(cameras, zone('z1')))).toEqual(['A', 'B', 'C', 'E', 'D']);
+  });
+
+  it('is the old order with nothing selected: online by code, then offline by code', () => {
+    expect(codes(prioritise(cameras, undefined))).toEqual(['A', 'B', 'C', 'D', 'E']);
+  });
+});
+
+describe('cameraLink', () => {
+  const ASSET: LngLat = [108.44, 11.95];
+  const subject: StripSubject = { kind: 'asset', position: ASSET, zoneId: 'z1' };
+  const seeing = (zoneId: string): Camera => ({
+    ...cam('S', zoneId),
+    position: offsetM(ASSET, 0, -20),
+    fieldOfView: { heading: 0, angle: 90, range: 50 },
+  });
+
+  it('says a camera that sees the asset is on it, whichever zone it is in', () => {
+    expect(cameraLink(seeing('z2'), subject)).toBe('asset');
+    expect(cameraLink(seeing('z1'), subject)).toBe('asset');
+  });
+
+  it('says a camera in the asset’s zone that does not see it is in the zone', () => {
+    const away = { ...seeing('z1'), fieldOfView: { heading: 180, angle: 90, range: 50 } };
+
+    expect(cameraLink(away, subject)).toBe('zone');
+  });
+
+  it('says nothing of a camera in another zone that does not see it', () => {
+    expect(cameraLink(cam('X', 'z2'), subject)).toBeNull();
+  });
+
+  it('counts the zone only for a zone subject', () => {
+    expect(cameraLink(seeing('z2'), zone('z2'))).toBe('zone');
+    expect(cameraLink(seeing('z2'), zone('z1'))).toBeNull();
+  });
+
+  it('says nothing with no subject', () => {
+    expect(cameraLink(seeing('z1'), undefined)).toBeNull();
+  });
+
+  it('falls back to the zone for a camera from an API without a field of view', () => {
+    const old = { ...cam('O', 'z1') } as Partial<Camera>;
+    delete old.fieldOfView;
+
+    expect(cameraLink(old as Camera, subject)).toBe('zone');
+  });
+});
+
+describe('stripSubject', () => {
+  const asset = { position: [108.44, 11.95] as LngLat, zoneId: 'z1' };
+
+  it('is the incident’s zone when an incident is selected', () => {
+    expect(stripSubject('z2', undefined)).toEqual({ kind: 'zone', zoneId: 'z2' });
+  });
+
+  it('keeps the incident when an asset is somehow selected too', () => {
+    expect(stripSubject('z2', asset)).toEqual({ kind: 'zone', zoneId: 'z2' });
+  });
+
+  it('is the asset, with its position and zone, when only an asset is selected', () => {
+    expect(stripSubject(undefined, asset)).toEqual({
+      kind: 'asset',
+      position: asset.position,
+      zoneId: 'z1',
+    });
+  });
+
+  it('is nothing when nothing is selected', () => {
+    expect(stripSubject(undefined, undefined)).toBeUndefined();
   });
 });
 

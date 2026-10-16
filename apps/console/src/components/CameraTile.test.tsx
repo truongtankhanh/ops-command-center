@@ -92,7 +92,7 @@ describe('CameraTile', () => {
     });
 
     it("marks a tile in the selected incident's zone", () => {
-      renderTile({ linked: true });
+      renderTile({ link: 'zone' });
 
       expect(screen.getByText('In zone')).toBeInTheDocument();
       // The tag takes the code's place, so the code moves to the zone line (frame 02).
@@ -142,8 +142,25 @@ describe('CameraTile', () => {
       );
     });
 
+    it('marks a tile that sees the selected asset, and moves the code to the zone line', () => {
+      renderTile({ link: 'asset' });
+
+      expect(screen.getByText('On this asset')).toBeInTheDocument();
+      expect(screen.queryByText('In zone')).toBeNull();
+      expect(screen.getByText('Library · CAM-L01')).toBeInTheDocument();
+      expect(screen.getByRole('figure')).toHaveAttribute('data-linked', 'asset');
+    });
+
+    it('draws no tag and no ring for an ordinary tile', () => {
+      renderTile();
+
+      expect(screen.queryByText('On this asset')).toBeNull();
+      expect(screen.queryByText('In zone')).toBeNull();
+      expect(screen.getByRole('figure')).not.toHaveAttribute('data-linked');
+    });
+
     it('shows the code alone on the zone line before the zones arrive', () => {
-      renderTile({ linked: true }, { zones: null });
+      renderTile({ link: 'zone' }, { zones: null });
 
       expect(screen.getByText('In zone')).toBeInTheDocument();
       expect(screen.getByText('CAM-L01')).toBeInTheDocument();
