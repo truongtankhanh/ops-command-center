@@ -1,4 +1,5 @@
 import type {
+  Asset,
   AssetDetail,
   IncidentDetail as Detail,
   TelemetryPoint,
@@ -6,7 +7,7 @@ import type {
 } from '@occ/contracts';
 import { type ReactNode, useMemo } from 'react';
 import { ApiRequestError } from '../api/client';
-import { useAsset, useAssets } from '../api/queries';
+import { useAsset, useAssets, useZones } from '../api/queries';
 import {
   drawnSeries,
   encodedLatest,
@@ -15,6 +16,7 @@ import {
   readingIsStale,
   SPARKLINE_WINDOW_MS,
 } from '../lib/assetInspector';
+import { assetLinkLines } from '../lib/assetLink';
 import { isActive } from '../lib/incidents';
 import { formatReading } from '../lib/readings';
 import {
@@ -26,7 +28,11 @@ import {
 } from '../lib/telemetryEvidence';
 import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
 import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 import text from '../styles/text.module.css';
+import { Button } from '../ui/Button';
+import { Icon } from '../ui/Icon';
+import { assetClassIcon } from '../ui/icons';
 import { SheetSection } from '../ui/SheetSection';
 import { Skeleton } from '../ui/Skeleton';
 import { Sparkline } from '../ui/Sparkline';
@@ -48,6 +54,10 @@ const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
  * A resolved incident has no live reading, only "Raised at 92 °C" from the evidence. An asset the
  * catalogue no longer has, or whose rules could not be loaded, is described from the evidence alone
  * and never with a limit or a clear level the console cannot vouch for.
+ *
+ * The card ends with the way to the asset (V2-11.3, `AssetLink`), for every state in which the
+ * catalogue has the asset: the link needs the catalogue entry, not the rules. It is not drawn for an
+ * asset the catalogue lacks or the API says is gone (a 404), so it never leads to "no longer exists".
  */
 export function IncidentEvidence({ incident }: { incident: Detail }) {
   const evidence = evidenceOfTimeline(incident.timeline);
@@ -63,6 +73,12 @@ function EvidenceBlock({ incident, evidence }: { incident: Detail; evidence: Rul
 
   if (cataloguePending || (asset !== undefined && detailPending)) return <EvidenceSkeleton />;
 
+  // Built once and handed down: `LiveEvidence` renders every second, and an element that is the same
+  // object as last time is not rendered again.
+  const gone = error instanceof ApiRequestError && error.status === 404;
+  const link =
+    asset !== undefined && !gone ? <AssetLink asset={asset} evidenceKey={evidence.key} /> : null;
+
   if (detail === undefined) {
     // No asset to read: gone (not in the catalogue, or a 404) is a fact; anything else is a failure
     // the operator should know the missing lines come from.
@@ -72,7 +88,7 @@ function EvidenceBlock({ incident, evidence }: { incident: Detail; evidence: Rul
     const bare = describeEvidence(evidence, null, undefined);
     return (
       <Section>
-        <Card ruleName={null} condition={bare.rule}>
+        <Card ruleName={null} condition={bare.rule} link={link}>
           <Reading label={bare.label} limit={null} value={<Raised reading={bare.reading} />} />
         </Card>
         {failed && (
@@ -82,17 +98,19 @@ function EvidenceBlock({ incident, evidence }: { incident: Detail; evidence: Rul
     );
   }
 
-  return <LoadedEvidence incident={incident} evidence={evidence} detail={detail} />;
+  return <LoadedEvidence incident={incident} evidence={evidence} detail={detail} link={link} />;
 }
 
 function LoadedEvidence({
   incident,
   evidence,
   detail,
+  link,
 }: {
   incident: Detail;
   evidence: RuleEvidence;
   detail: AssetDetail;
+  link: ReactNode;
 }) {
   const rule = matchRule(evidence, detail.rules, incident.title);
   const point = detail.points.find((candidate) => candidate.key === evidence.key);
@@ -104,7 +122,7 @@ function LoadedEvidence({
   if (!isActive(incident) || point === undefined) {
     return (
       <Section>
-        <Card ruleName={description.ruleName} condition={condition}>
+        <Card ruleName={description.ruleName} condition={condition} link={link}>
           <Reading
             label={description.label}
             limit={description.limit}
@@ -124,6 +142,7 @@ function LoadedEvidence({
       point={point}
       description={description}
       condition={condition}
+      link={link}
     />
   );
 }
@@ -141,6 +160,7 @@ function LiveEvidence({
   point,
   description,
   condition,
+  link,
 }: {
   incident: Detail;
   evidence: RuleEvidence;
@@ -149,6 +169,7 @@ function LiveEvidence({
   point: TelemetryPoint;
   description: EvidenceDescription;
   condition: string;
+  link: ReactNode;
 }) {
   const entry = useAssetState(detail.code);
   const serverNow = useServerNow();
@@ -187,7 +208,7 @@ function LiveEvidence({
 
   return (
     <Section aside={chip}>
-      <Card ruleName={description.ruleName} condition={condition}>
+      <Card ruleName={description.ruleName} condition={condition} link={link}>
         <Reading
           label={description.label}
           limit={description.limit}
@@ -232,14 +253,16 @@ function Section({ aside, children }: { aside?: ReactNode; children: ReactNode }
   );
 }
 
-/** Frame 10's `.evidence`: the rule line, then the reading row. */
+/** Frame 10's `.evidence`: the rule line, the reading row, then the way to the asset. */
 function Card({
   ruleName,
   condition,
+  link,
   children,
 }: {
   ruleName: string | null;
   condition: string;
+  link: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -257,6 +280,45 @@ function Card({
         <span>{condition}</span>
       </p>
       {children}
+      {link}
+    </div>
+  );
+}
+
+/**
+ * Frame 10's `.asset-link` (V2-11.3): the asset, the part the rule watches and where it stands, and
+ * the way to its inspector. Opening is reading, not acting, so every role has it. `selectAsset`
+ * replaces this sheet with the inspector, and the inspector's "Incident raised by this asset" row
+ * is the way back while the incident is unresolved. Focus moves on its own: this button goes with
+ * the sheet, and the inspector's sheet takes focus when it is lost (`Sheet`).
+ *
+ * A `div` with a real button, not frame 10's button around a button, which is invalid markup and
+ * two tab stops. The accessible name says which asset; it contains the visible words (WCAG 2.5.3).
+ */
+function AssetLink({ asset, evidenceKey }: { asset: Asset; evidenceKey: string }) {
+  const { data: zones } = useZones();
+  const selectAsset = useConsole((s) => s.selectAsset);
+  const zone = zones?.find((candidate) => candidate.id === asset.zoneId);
+  const { heading, detail } = assetLinkLines(asset, zone, evidenceKey);
+  return (
+    <div className={styles.assetLink}>
+      <span className={styles.assetGlyph}>
+        <Icon glyph={assetClassIcon(asset.class.code)} size={20} />
+      </span>
+      <span className={styles.assetText}>
+        <b className={styles.assetName}>{heading}</b>
+        {detail !== null && <small className={styles.assetDetail}>{detail}</small>}
+      </span>
+      {/* V2-16's "Show in 3D" (F) goes beside this button, in this cell: no layout change then. */}
+      <div className={styles.assetActions}>
+        <Button
+          size="sm"
+          aria-label={`Open asset ${asset.code}`}
+          onClick={() => selectAsset(asset.code)}
+        >
+          Open asset
+        </Button>
+      </div>
     </div>
   );
 }

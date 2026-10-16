@@ -1,4 +1,4 @@
-import type { Asset, Camera, LngLat } from '@occ/contracts';
+import type { Asset, Camera, Incident, LngLat } from '@occ/contracts';
 import { isInView } from './geo';
 import type { DisplayMode } from './useDisplayMode';
 
@@ -89,6 +89,42 @@ export function stripCameras(
     subject,
   );
   return [...pinned, ...rest].slice(0, size);
+}
+
+/** The tiles of an incident's sheet (frame 02 / 10). */
+const INCIDENT_CAMERAS = 2;
+
+/**
+ * The cameras on an incident's sheet (V2-11.3). Without an asset, or when no camera shown sees
+ * it, they are the incident's zone's, in the camera list's order, as the sheet has always shown
+ * them. With an asset, the cameras that see it come first, then those in the incident's zone, in the
+ * strip's order (`prioritise`: an offline camera behind every online one).
+ *
+ * `onAsset` says that a **shown** camera sees the asset, which is what lets the sheet title the
+ * section "Cameras on CT-01". A camera that sees it but is offline can be pushed out of the tiles by
+ * online ones of the zone, and the title then stays the zone's rather than claim a coverage that is
+ * not on screen.
+ */
+export function incidentCameras(
+  cameras: Camera[],
+  incident: Pick<Incident, 'zoneId'>,
+  asset: Pick<Asset, 'position'> | undefined,
+  limit: number = INCIDENT_CAMERAS,
+): { cameras: Camera[]; onAsset: boolean } {
+  const inZone = cameras.filter((camera) => camera.zoneId === incident.zoneId).slice(0, limit);
+  if (asset === undefined) return { cameras: inZone, onAsset: false };
+  const subject: StripSubject = {
+    kind: 'asset',
+    position: asset.position,
+    zoneId: incident.zoneId,
+  };
+  const shown = prioritise(
+    cameras.filter((camera) => cameraLink(camera, subject) !== null),
+    subject,
+  ).slice(0, limit);
+  return shown.some((camera) => cameraLink(camera, subject) === 'asset')
+    ? { cameras: shown, onAsset: true }
+    : { cameras: inZone, onAsset: false };
 }
 
 /** Pins whose camera still exists. */

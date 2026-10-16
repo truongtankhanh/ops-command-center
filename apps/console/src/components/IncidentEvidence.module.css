@@ -113,6 +113,56 @@
   color: var(--text-tertiary);
 }
 
+/*
+ * Frame 10's `.asset-link` (V2-11.3): glyph, the asset and where it stands, and the actions. The
+ * text column shrinks (ellipsis), so a long name never pushes the button off the sheet.
+ */
+.assetLink {
+  display: grid;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+}
+
+.assetGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.assetText {
+  display: grid;
+  min-width: 0;
+}
+
+.assetName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: var(--type-l);
+  font-weight: var(--weight-semibold);
+}
+
+.assetDetail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.assetActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 /* What the evidence recorded, not a live value: quieter than one. */
 .raised {
   font-size: var(--type-m);
