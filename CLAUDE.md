@@ -112,6 +112,8 @@ pnpm test:e2e                               # API against real PostgreSQL
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)
+pnpm ci:local [--fast|--skip-e2e|...]       # ci.yml's steps on this machine (own Compose project, throttled)
+pnpm ci:off | ci:on | ci:status              # switch GitHub Actions CI with the CI_ENABLED variable (needs gh or a token)
 ```
 
 - **e2e prerequisites:** `cp apps/api/.env.test.example apps/api/.env.test` and a database whose name ends in
