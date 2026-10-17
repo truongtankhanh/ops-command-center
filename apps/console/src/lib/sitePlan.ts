@@ -20,7 +20,8 @@ export interface ZoneProperties {
   kind: Zone['kind'];
 }
 
-interface Box {
+/** An axis-aligned box in degrees; every seed zone is one. */
+export interface Box {
   west: number;
   east: number;
   south: number;
@@ -93,12 +94,22 @@ export function siteBounds(
   ];
 }
 
-function footprint(zone: Zone): Feature<Polygon, SiteProperties>[] {
+/**
+ * A building's footprint: its zone's bounding box inset `FOOTPRINT_INSET_M` on every side, as a closed
+ * ring, or `null` when the zone is too small to inset. The 3D twin extrudes this same rectangle into
+ * the building's shell (ADR-0020, V2-12.1), so the two views draw one building.
+ */
+export function footprintRing(zone: Zone): LngLat[] | null {
   const box = boundsOf(zone.polygon);
   const [west, south] = offsetM([box.west, box.south], FOOTPRINT_INSET_M, FOOTPRINT_INSET_M);
   const [east, north] = offsetM([box.east, box.north], -FOOTPRINT_INSET_M, -FOOTPRINT_INSET_M);
-  if (west >= east || south >= north) return [];
-  return [polygon('footprint', rect({ west, east, south, north }))];
+  if (west >= east || south >= north) return null;
+  return rect({ west, east, south, north });
+}
+
+function footprint(zone: Zone): Feature<Polygon, SiteProperties>[] {
+  const ring = footprintRing(zone);
+  return ring === null ? [] : [polygon('footprint', ring)];
 }
 
 function parkingRows(zone: Zone): Feature<LineString, SiteProperties>[] {
@@ -116,7 +127,8 @@ function parkingRows(zone: Zone): Feature<LineString, SiteProperties>[] {
   return rows;
 }
 
-function boundsOf(points: readonly LngLat[]): Box {
+/** The smallest box around `points`. */
+export function boundsOf(points: readonly LngLat[]): Box {
   const lngs = points.map(([lng]) => lng);
   const lats = points.map(([, lat]) => lat);
   return {
