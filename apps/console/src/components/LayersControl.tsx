@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { MAP_LAYER_KEYS, type MapLayerKey } from '../lib/mapLayers';
+import type { ViewChoice } from '../lib/viewChoice';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import styles from './LayersControl.module.css';
@@ -8,6 +9,16 @@ const LABELS: Record<MapLayerKey, string> = {
   incidents: 'Incidents',
   cameras: 'Cameras',
   assets: 'Assets',
+};
+
+/**
+ * The layers each view offers. The 3D stage has no Assets toggle: equipment is the scene, not a layer on it
+ * (ADR-0020, V2-12.1), so `layers.assets` is left alone there and is as it was when the view goes back to 2D.
+ * Heat joins the 3D list with V2-17.4.
+ */
+const LAYERS_OF: Record<ViewChoice, readonly MapLayerKey[]> = {
+  '2d': MAP_LAYER_KEYS,
+  '3d': ['incidents', 'cameras'],
 };
 
 /**
@@ -23,7 +34,7 @@ const LABELS: Record<MapLayerKey, string> = {
  *
  * The toggle's state is `aria-pressed`, and the tick beside the name is only a drawing of it.
  */
-export function LayersControl() {
+export function LayersControl({ view = '2d' }: { view?: ViewChoice }) {
   const layers = useConsole((s) => s.layers);
   const toggleLayer = useConsole((s) => s.toggleLayer);
   const noteId = useId();
@@ -31,7 +42,7 @@ export function LayersControl() {
   return (
     <div role="group" aria-label="Layers" className={styles.layers}>
       <span className={styles.label}>Show</span>
-      {MAP_LAYER_KEYS.map((key) => (
+      {LAYERS_OF[view].map((key) => (
         <Button
           key={key}
           variant="ghost"

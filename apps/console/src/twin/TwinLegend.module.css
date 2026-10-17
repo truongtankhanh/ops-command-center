@@ -1,0 +1,89 @@
+/*
+ * Frame 01's `.tw-legend`: the 2D legend's look (`MapLegend.module.css`), bottom-left of the 3D stage. It wraps
+ * instead of running under the camera controls at the bottom-right (40 px wide with their border, `--space-3`
+ * from the edge), which sit beside the open sheet (`--sheet-inset`, set on the stage).
+ */
+.legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px * var(--ui-scale));
+  padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  box-shadow: var(--shadow-2);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+.toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  height: calc(28px * var(--ui-scale));
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-s);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* Only arrival, selection and escalation animate: the chevron turns without a transition. */
+.toggle[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* `display` only while shown, so the `hidden` attribute keeps hiding the closed list. */
+.entries:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entries li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.swatch {
+  flex: none;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+  border-radius: 50%;
+}
+
+.open {
+  background: var(--text-secondary);
+}
+
+.handled {
+  border: 2px solid var(--text-secondary);
+}
+
+/* An asset (frame 01 `.lg-dev`, the 2D legend's diamond): small, on `--surface-2`, with a light edge. */
+.asset {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(10px * var(--ui-scale));
+  height: calc(10px * var(--ui-scale));
+  margin: 0 calc(1px * var(--ui-scale));
+  border: calc(1.5px * var(--ui-scale)) solid var(--text-secondary);
+  border-radius: calc(1.5px * var(--ui-scale));
+  background: var(--surface-2);
+  transform: rotate(45deg);
+}

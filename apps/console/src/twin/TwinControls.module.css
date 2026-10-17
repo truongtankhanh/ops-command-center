@@ -1,0 +1,83 @@
+/*
+ * Frame 01's `.scene-ctrl`: the compass over the camera buttons, bottom-right of the 3D stage. Out of the flow
+ * (the stage box is `position: relative`), and beside the open sheet like the 2D map's controls:
+ * `--sheet-inset` is set on the stage (App.module.css) and inherited.
+ */
+.cluster {
+  position: absolute;
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
+  bottom: var(--space-3);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: end;
+}
+
+/*
+ * A round button holding the needle. Its rotation (an inline `transform` on the SVG) and its name are written
+ * by `CompassSync` from the canvas's frame loop.
+ */
+.compass {
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.compass:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.needle {
+  /* The camera turns it; no transition, so it never lags the view. */
+  transition: none;
+}
+
+.north {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.south {
+  fill: var(--text-tertiary);
+  stroke: none;
+}
+
+/*
+ * The five camera buttons, the box of `MapControls.module.css`: no `overflow: hidden` (it would clip the focus
+ * ring), the end buttons round their own corners, hairlines between.
+ */
+.group {
+  display: grid;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+}
+
+/* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
+.group .button {
+  width: calc(38px * var(--ui-scale));
+  height: calc(38px * var(--ui-scale));
+  padding: 0;
+  border-radius: 0;
+}
+
+.group .button:first-child {
+  border-radius: calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px) 0 0;
+}
+
+.group .button:last-child {
+  border-radius: 0 0 calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px);
+}
+
+.group .button + .button {
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}

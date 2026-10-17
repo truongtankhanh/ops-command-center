@@ -1,6 +1,7 @@
 import {
   CAMERA_LIMITS,
   clampTarget,
+  compassLabel,
   ease,
   fitDistance,
   FLY_MS,
@@ -12,10 +13,12 @@ import {
   HOME_YAW_DEG,
   homeView,
   limitPose,
+  normalizeYaw,
   type Pose,
   poseToPosition,
   positionToPose,
   viewOffset,
+  yawOfDirection,
 } from './twinCamera';
 import { type Bounds, panBounds } from './twinScene';
 
@@ -307,5 +310,70 @@ describe('viewOffset', () => {
   it('is no offset for a stage with no size', () => {
     expect(viewOffset(0, 900, 100)).toBeNull();
     expect(viewOffset(1440, 0, 100)).toBeNull();
+  });
+});
+
+describe('normalizeYaw', () => {
+  it('wraps into −180 … 180 and keeps 180 as 180', () => {
+    expect(normalizeYaw(190)).toBe(-170);
+    expect(normalizeYaw(-190)).toBe(170);
+    expect(normalizeYaw(360)).toBe(0);
+    expect(normalizeYaw(725)).toBe(5);
+    expect(normalizeYaw(180)).toBe(180);
+    expect(normalizeYaw(-180)).toBe(180);
+    expect(normalizeYaw(45)).toBe(45);
+  });
+});
+
+describe('yawOfDirection', () => {
+  const SQRT_HALF = Math.SQRT1_2;
+
+  it('reads looking north as 0 and looking south as 180', () => {
+    expect(yawOfDirection(0, -1)).toBeCloseTo(0, 9);
+    expect(yawOfDirection(0, 1)).toBeCloseTo(180, 9);
+  });
+
+  it('reads a camera east of its target, looking west, as 90, and one west of it as −90', () => {
+    expect(yawOfDirection(-1, 0)).toBeCloseTo(90, 9);
+    expect(yawOfDirection(1, 0)).toBeCloseTo(-90, 9);
+  });
+
+  it('reads the home view, from the south-east looking north-west, as 45', () => {
+    expect(yawOfDirection(-SQRT_HALF, -SQRT_HALF)).toBeCloseTo(45, 9);
+  });
+
+  it('agrees with the pose: the yaw the camera stands at is the yaw it reads', () => {
+    for (const yaw of [-170, -60, 0, 45, 120, 180]) {
+      const target = {
+        target: [0, 0, 0] as [number, number, number],
+        distance: 100,
+        yaw,
+        tilt: 55,
+      };
+      const [x, , z] = poseToPosition(target);
+
+      // The forward vector points from the camera to the target.
+      expect(normalizeYaw(yawOfDirection(-x, -z) - yaw)).toBeCloseTo(0, 6);
+    }
+  });
+
+  it('is 0 for a camera that looks straight down, which has no direction on the ground', () => {
+    expect(yawOfDirection(0, 0)).toBe(0);
+  });
+});
+
+describe('compassLabel', () => {
+  it('says "Face north" when the view faces north to the whole degree', () => {
+    expect(compassLabel(0)).toBe('Face north');
+    expect(compassLabel(0.4)).toBe('Face north');
+    expect(compassLabel(359.6)).toBe('Face north');
+    expect(compassLabel(-0.4)).toBe('Face north');
+  });
+
+  it('says how far the view is rotated, in whole degrees and without a sign', () => {
+    expect(compassLabel(45)).toBe('Face north — the view is rotated 45°');
+    expect(compassLabel(-60)).toBe('Face north — the view is rotated 60°');
+    expect(compassLabel(60.4)).toBe('Face north — the view is rotated 60°');
+    expect(compassLabel(180)).toBe('Face north — the view is rotated 180°');
   });
 });

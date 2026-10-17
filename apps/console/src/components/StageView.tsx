@@ -34,7 +34,7 @@ export function StageView() {
       {view === '3d' ? <LazyTwinStage /> : <CampusMap />}
       <div className={styles.tools} data-view={view}>
         <ViewSwitch />
-        <LayersControl />
+        <LayersControl view={view} />
       </div>
     </>
   );

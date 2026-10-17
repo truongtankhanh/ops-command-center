@@ -1,5 +1,5 @@
 import type { LngLat, SitePlan, Zone } from '@occ/contracts';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { queryKeys } from '../api/queries';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
 import { createTestQueryClient, renderWithQueryClient } from '../test-utils';
@@ -97,6 +97,23 @@ describe('TwinStage', () => {
     );
 
     expect(screen.getAllByText(/^Lawn \d+$/)).toHaveLength(MAX_ZONE_LABELS);
+  });
+
+  it('draws the stage chrome over the canvas: the camera controls, the legend and the drag hint', () => {
+    renderStage([zone(0, 'building', 'Library')]);
+
+    const camera = screen.getByRole('group', { name: 'Camera' });
+    expect(within(camera).getAllByRole('button')).toHaveLength(5);
+    expect(screen.getByRole('button', { name: 'Face north' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+    expect(screen.getByText(/Drag to rotate/)).toBeInTheDocument();
+  });
+
+  it('draws the chrome even before the scene has anything to show', () => {
+    renderStage([]);
+
+    expect(screen.getByRole('group', { name: 'Camera' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
   });
 
   it('has no label without zones', () => {
