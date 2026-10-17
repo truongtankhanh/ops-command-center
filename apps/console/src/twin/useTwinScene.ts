@@ -4,8 +4,6 @@ import { useCameras, useSitePlan, useZones } from '../api/queries';
 import {
   type Bounds,
   type Frame,
-  type InterimView,
-  interimView,
   type LabelAnchor,
   labelAnchors,
   sceneBounds,
@@ -21,8 +19,6 @@ export interface TwinScene {
   cameras: readonly Camera[];
   frame: Frame;
   bounds: Bounds;
-  /** The fixed camera of V2-12.6; V2-12.9's rig replaces it. */
-  view: InterimView;
   anchors: LabelAnchor[];
 }
 
@@ -31,8 +27,8 @@ const NO_CAMERAS: Camera[] = [];
 
 /**
  * The scene of the 3D stage (V2-12.7, V2-12.8): the zones, the site plan and the cameras the 2D map
- * reads (the same queries, no new request), the frame they are drawn in, the box around them, the
- * camera that frames it and the anchors of the zone labels. One hook, read once by `TwinStage`, so
+ * reads (the same queries, no new request), the frame they are drawn in, the box around them and the
+ * anchors of the zone labels. One hook, read once by `TwinStage`, so
  * the canvas and the DOM labels are made from the same frame and cannot disagree.
  *
  * `null` while there is nothing to draw: the zones are not there yet (or failed: the 2D map has a
@@ -56,7 +52,6 @@ export function useTwinScene(): TwinScene | null {
       cameras: cameras ?? NO_CAMERAS,
       frame,
       bounds,
-      view: interimView(bounds),
       anchors: labelAnchors(list, frame),
     };
   }, [plan, zones, cameras]);

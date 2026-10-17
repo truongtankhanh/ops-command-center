@@ -203,56 +203,6 @@ export function panBounds(bounds: Bounds): Bounds {
   };
 }
 
-/** A fixed camera pose in scene metres: `y` is up. */
-export interface InterimView {
-  position: [x: number, y: number, z: number];
-  target: [x: number, y: number, z: number];
-  fov: number;
-  near: number;
-  far: number;
-}
-
-/** The interim camera's vertical field of view, in degrees. */
-const INTERIM_FOV_DEG = 50;
-/**
- * Where the interim camera stands: 55° from vertical, from the south-east. That is the prototype's yaw
- * 45° (`TwinScene.dc.html` `basis`) and V2-12.9's home view, and from there the faces seen are the top,
- * the south and the east: the three face tokens.
- */
-const INTERIM_TILT_RAD = (55 * Math.PI) / 180;
-/** South-east on the ground: east is +x and south is +z. */
-const INTERIM_HEADING: Local = [Math.SQRT1_2, Math.SQRT1_2];
-/** The least distance, so a tiny or empty box still gets a usable pose (brief § Camera limits: campus 60 m). */
-const INTERIM_MIN_DISTANCE_M = 60;
-
-/**
- * A fixed overview of `bounds`, so the ground is visible before the camera rig exists. It is a stand-in:
- * V2-12.9's `Rig` and `homeView` replace it and this function goes with them. The target is the box's
- * centre on the ground; the distance fits the box's bounding circle in the vertical field of view, which
- * fits any landscape stage. The numbers are tuned by eye (`unverified`).
- */
-export function interimView(bounds: Bounds): InterimView {
-  const targetX = (bounds.minX + bounds.maxX) / 2;
-  const targetZ = (bounds.minZ + bounds.maxZ) / 2;
-  const radius = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
-  const distance = Math.max(
-    INTERIM_MIN_DISTANCE_M,
-    radius / Math.sin((INTERIM_FOV_DEG * Math.PI) / 360),
-  );
-  const [headingX, headingZ] = INTERIM_HEADING;
-  return {
-    position: [
-      targetX + distance * Math.sin(INTERIM_TILT_RAD) * headingX,
-      distance * Math.cos(INTERIM_TILT_RAD),
-      targetZ + distance * Math.sin(INTERIM_TILT_RAD) * headingZ,
-    ],
-    target: [targetX, 0, targetZ],
-    fov: INTERIM_FOV_DEG,
-    near: 1,
-    far: Math.max(1500, distance * 2),
-  };
-}
-
 /**
  * The most zone labels the scene shows (ADR-0020: "a hard cap on their number"). The demo has 20 zones;
  * the cap keeps a site with thousands of zones from creating thousands of elements that are projected

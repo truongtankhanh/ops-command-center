@@ -1,0 +1,254 @@
+import type { Bounds } from './twinScene';
+
+/*
+ * The 3D stage's camera as plain arithmetic (V2-12.9): its limits, the pose it is described by, the home view
+ * that fits the campus, the fly-to path and the sheet's view offset. No `three` and no WebGL, so the numbers
+ * the rig depends on are tested without them (ADR-0020). `twin/Rig.tsx` is the one thing that talks to the
+ * camera controls; everything it needs to decide is decided here.
+ *
+ * A pose is where the camera looks and from where: `target`, `distance`, `yaw` and `tilt`, in **degrees**
+ * (the brief and the prototype speak degrees; radians appear only where `camera-controls` is called). The
+ * camera stands at `target + distance · (sin(tilt)·sin(yaw), cos(tilt), sin(tilt)·cos(yaw))` in scene axes
+ * (x east, y up, z south): `yaw` is the controls' azimuth and `tilt` their polar angle, measured from the
+ * vertical. Yaw 0 puts the camera south of the target looking north, so north is up on the screen; yaw 45° is
+ * south-east, the home view (TwinScene `initialCam()`, frame 01).
+ */
+
+export type Vec3 = [x: number, y: number, z: number];
+
+export interface Pose {
+  target: Vec3;
+  /** Metres from the target to the camera. */
+  distance: number;
+  /** Degrees; 0 is south of the target, 90 is east of it. */
+  yaw: number;
+  /** Degrees from the vertical: 0 looks straight down, 90 looks along the ground. */
+  tilt: number;
+}
+
+/** The lens, shared by the canvas and the home fit so they cannot disagree. */
+export const HOME_FOV_DEG = 50;
+export const HOME_YAW_DEG = 45;
+export const HOME_TILT_DEG = 55;
+/** How much of the view's half-size is left empty around the campus at home. */
+export const HOME_MARGIN = 0.08;
+
+/** A fly-to lasts this long (brief § Camera limits); under reduced motion it lasts no time. */
+export const FLY_MS = 600;
+
+/** Brief § Camera limits. */
+export const CAMERA_LIMITS = {
+  campus: { minDistance: 60, maxDistance: 900 },
+  /** Recomputed from the asset's bounds by V2-15.6; the campus limits apply until then. */
+  asset: { minDistance: 4, maxDistance: 40 },
+  /** Never under the ground, never flat (V2-12.1: 78° from vertical is 12° above the ground). */
+  minTiltDeg: 20,
+  maxTiltDeg: 78,
+  /**
+   * How high the camera's target may be. The pan box (`panBounds`) is a rectangle on the ground; a roof
+   * (24 m for the tallest demo building, equipment a few metres more) must be reachable. `unverified`.
+   */
+  targetMaxHeightM: 60,
+} as const;
+
+const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+const toDegrees = (radians: number) => (radians * 180) / Math.PI;
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** Where the camera stands for `pose`. */
+export function poseToPosition({ target, distance, yaw, tilt }: Pose): Vec3 {
+  const horizontal = distance * Math.sin(toRadians(tilt));
+  return [
+    target[0] + horizontal * Math.sin(toRadians(yaw)),
+    target[1] + distance * Math.cos(toRadians(tilt)),
+    target[2] + horizontal * Math.cos(toRadians(yaw)),
+  ];
+}
+
+/** The pose of a camera standing at `position` and looking at `target`; `yaw` in (−180, 180]. */
+export function positionToPose(position: Vec3, target: Vec3): Pose {
+  const [dx, dy, dz] = [position[0] - target[0], position[1] - target[1], position[2] - target[2]];
+  const distance = Math.hypot(dx, dy, dz);
+  return {
+    target: [...target],
+    distance,
+    yaw: toDegrees(Math.atan2(dx, dz)),
+    tilt: distance === 0 ? 0 : toDegrees(Math.acos(clamp(dy / distance, -1, 1))),
+  };
+}
+
+/**
+ * The smallest distance at which the four ground corners of `bounds` all sit inside the view with `margin`
+ * of its half-size to spare, for a camera looking at the middle of the box from `angles`. This is the
+ * prototype's `fitScale` (it fits the projected corners, not a circle around them): at a 55° tilt the ground
+ * is foreshortened, so a corner fit is closer than a bounding circle and fills the stage. `aspect` is the
+ * width over the height of the part of the stage that shows the campus (the sheet leaves less of it).
+ * Found by bisection on a pinhole projection; `Infinity` for an aspect that is not positive.
+ */
+export function fitDistance(
+  bounds: Bounds,
+  fov: number,
+  aspect: number,
+  angles: { yaw: number; tilt: number } = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG },
+  margin: number = HOME_MARGIN,
+): number {
+  if (!(aspect > 0) || !(fov > 0)) return Infinity;
+  const centre: Vec3 = [(bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2];
+  const corners: Vec3[] = [
+    [bounds.minX, 0, bounds.minZ],
+    [bounds.maxX, 0, bounds.minZ],
+    [bounds.maxX, 0, bounds.maxZ],
+    [bounds.minX, 0, bounds.maxZ],
+  ];
+  const tanV = Math.tan(toRadians(fov) / 2);
+  const tanH = tanV * aspect;
+  const yaw = toRadians(angles.yaw);
+  // Screen-right on the ground for this yaw (x east at yaw 0), and the camera's own axes.
+  const right: Vec3 = [Math.cos(yaw), 0, -Math.sin(yaw)];
+
+  const fits = (distance: number): boolean => {
+    const position = poseToPosition({
+      target: centre,
+      distance,
+      yaw: angles.yaw,
+      tilt: angles.tilt,
+    });
+    const length = Math.hypot(...centre.map((c, i) => c - position[i]!));
+    const forward = centre.map((c, i) => (c - position[i]!) / length) as Vec3;
+    // up = right × forward
+    const up: Vec3 = [
+      right[1] * forward[2] - right[2] * forward[1],
+      right[2] * forward[0] - right[0] * forward[2],
+      right[0] * forward[1] - right[1] * forward[0],
+    ];
+    return corners.every((corner) => {
+      const v = corner.map((c, i) => c - position[i]!) as Vec3;
+      const depth = v[0] * forward[0] + v[1] * forward[1] + v[2] * forward[2];
+      if (depth <= 0) return false;
+      const x = v[0] * right[0] + v[1] * right[1] + v[2] * right[2];
+      const y = v[0] * up[0] + v[1] * up[1] + v[2] * up[2];
+      return (
+        Math.abs(x) / (depth * tanH) <= 1 - margin && Math.abs(y) / (depth * tanV) <= 1 - margin
+      );
+    });
+  };
+
+  let near = 0;
+  let far = 1;
+  while (!fits(far)) {
+    near = far;
+    far *= 2;
+    if (far > 1e7) return Infinity;
+  }
+  for (let step = 0; step < 60; step += 1) {
+    const middle = (near + far) / 2;
+    if (fits(middle)) far = middle;
+    else near = middle;
+  }
+  return far;
+}
+
+/**
+ * The first view, and Home: the middle of the campus on the ground, seen from the south-east at 55°, from
+ * as close as shows all of it, held within the campus limits. A stage too narrow for the campus is clamped
+ * at 900 m and cuts it, as the brief's ceiling says.
+ */
+export function homeView(bounds: Bounds, aspect: number): Pose {
+  const { minDistance, maxDistance } = CAMERA_LIMITS.campus;
+  return {
+    target: [(bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2],
+    distance: clamp(fitDistance(bounds, HOME_FOV_DEG, aspect), minDistance, maxDistance),
+    yaw: HOME_YAW_DEG,
+    tilt: HOME_TILT_DEG,
+  };
+}
+
+/** `target` held inside `pan` (x and z) and between the ground and `targetMaxHeightM` (y). */
+export function clampTarget(target: Vec3, pan: Bounds): Vec3 {
+  return [
+    clamp(target[0], pan.minX, pan.maxX),
+    clamp(target[1], 0, CAMERA_LIMITS.targetMaxHeightM),
+    clamp(target[2], pan.minZ, pan.maxZ),
+  ];
+}
+
+/**
+ * `pose` brought inside what the camera can do at campus level: the target inside the pan box, the distance
+ * between 60 and 900 m, the tilt between 20° and 78°. A command aims where it likes; this is what keeps the
+ * fly-to from heading for a place a drag could never reach, so the tween ends exactly where the controls will
+ * leave it (they clamp the same way).
+ */
+export function limitPose(pose: Pose, pan: Bounds): Pose {
+  const { minDistance, maxDistance } = CAMERA_LIMITS.campus;
+  return {
+    target: clampTarget(pose.target, pan),
+    distance: clamp(pose.distance, minDistance, maxDistance),
+    yaw: pose.yaw,
+    tilt: clamp(pose.tilt, CAMERA_LIMITS.minTiltDeg, CAMERA_LIMITS.maxTiltDeg),
+  };
+}
+
+/** Cubic ease-out: quick at first, settling at the end. */
+export const ease = (t: number): number => 1 - (1 - clamp(t, 0, 1)) ** 3;
+
+/** The signed shortest turn from `from` to `to`, in degrees, in (−180, 180]. */
+const shortestTurn = (from: number, to: number): number => {
+  const turn = ((((to - from) % 360) + 540) % 360) - 180;
+  return turn === -180 ? 180 : turn;
+};
+
+/**
+ * Where the camera is `t` (0 … 1) of the way from `from` to `to`: the target and the distance move in a
+ * straight line, the yaw takes the shortest way round, all with the ease-out. At `t = 1` it is exactly `to`.
+ */
+export function flyPath(from: Pose, to: Pose, t: number): Pose {
+  if (t >= 1) return { ...to, target: [...to.target] };
+  const e = ease(t);
+  return {
+    target: [
+      from.target[0] + (to.target[0] - from.target[0]) * e,
+      from.target[1] + (to.target[1] - from.target[1]) * e,
+      from.target[2] + (to.target[2] - from.target[2]) * e,
+    ],
+    distance: from.distance + (to.distance - from.distance) * e,
+    yaw: from.yaw + shortestTurn(from.yaw, to.yaw) * e,
+    tilt: from.tilt + (to.tilt - from.tilt) * e,
+  };
+}
+
+/** How far a fly-to of `durationMs` has got after `elapsedMs`, 0 … 1; a fly-to of no time is done. */
+export const flyProgress = (elapsedMs: number, durationMs: number): number =>
+  durationMs <= 0 ? 1 : clamp(elapsedMs / durationMs, 0, 1);
+
+/** The arguments of `PerspectiveCamera.setViewOffset`. */
+export interface ViewOffset {
+  fullWidth: number;
+  fullHeight: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Shifts the picture left by half of `sheetInset` px, so the point the camera looks at sits in the middle of
+ * the part of the stage the open sheet leaves visible, `(width − inset) / 2` from the left. `null` for no
+ * offset: no sheet, or one that covers the whole stage (the phone layout).
+ */
+export function viewOffset(
+  stageWidth: number,
+  stageHeight: number,
+  sheetInset: number,
+): ViewOffset | null {
+  if (!(stageWidth > 0) || !(stageHeight > 0) || !(sheetInset > 0) || sheetInset >= stageWidth) {
+    return null;
+  }
+  return {
+    fullWidth: stageWidth,
+    fullHeight: stageHeight,
+    x: sheetInset / 2,
+    y: 0,
+    width: stageWidth,
+    height: stageHeight,
+  };
+}
