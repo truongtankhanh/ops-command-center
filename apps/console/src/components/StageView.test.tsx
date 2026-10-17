@@ -1,7 +1,17 @@
-import { act, render, screen, within } from '@testing-library/react';
+import type { SitePlan } from '@occ/contracts';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { api } from '../api/client';
+import { queryKeys } from '../api/queries';
+import { TWIN_UNAVAILABLE_COPY } from '../lib/twinCapability';
 import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import {
+  createTestQueryClient,
+  renderWithQueryClient,
+  resetStore,
+  stubTwinAvailable,
+  unstubTwin,
+} from '../test-utils';
 import { CampusMap } from './CampusMap';
 import { StageView } from './StageView';
 
@@ -10,13 +20,27 @@ vi.mock('./CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
 
 // The 3D chunk, stood in for: R3F needs WebGL too. A mock factory runs when the module is first
 // imported, so `twin.evaluated` says whether anything asked for the chunk, and `twin.fail` makes
-// that import fail (a chunk that cannot be fetched).
+// that import fail (a chunk that cannot be fetched). The factory stays synchronous: the registry then
+// forgets a failed import, so a Retry runs it again.
 const twin = vi.hoisted(() => ({ evaluated: 0, fail: false }));
 vi.mock('../twin/TwinStage', () => {
   twin.evaluated += 1;
   if (twin.fail) throw new Error('chunk failed to load');
   return { default: () => <div>3D stage</div> };
 });
+
+const PLAN: SitePlan = { id: 'plan-1', code: 'P', name: 'Plan', center: [0, 0], features: [] };
+
+/** The site's reference data already in the cache, as it is once the 2D map has loaded. */
+function seededClient() {
+  const client = createTestQueryClient();
+  client.setQueryData(queryKeys.zones, []);
+  client.setQueryData(queryKeys.sitePlan, PLAN);
+  return client;
+}
+
+/** The stage inside a query provider: the 3D branch reads the zones and the site plan for its card. */
+const renderStage = (client = seededClient()) => renderWithQueryClient(<StageView />, client);
 
 const show3d = () => act(() => useConsole.setState({ view: '3d' }));
 
@@ -27,6 +51,11 @@ describe('StageView', () => {
     vi.mocked(CampusMap).mockClear();
     twin.evaluated = 0;
     twin.fail = false;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    unstubTwin();
   });
 
   it('draws the 2D map with the view switch over it', () => {
@@ -65,8 +94,9 @@ describe('StageView', () => {
     expect(screen.getByRole('button', { name: '2D' })).toHaveAttribute('aria-pressed', 'true');
     expect(localStorage.getItem('occ.console.view')).toBe('3d');
   });
-  // These cases are in order on purpose: the module registry keeps a chunk that loaded, so the case
-  // that needs it not to have been loaded yet comes first.
+  // These cases are in order on purpose: the module registry keeps a chunk that loaded, and so does
+  // `StageView` (it remembers the chunk came in), so the case that needs the first import to fail comes
+  // before the ones that load it.
   describe('the 3D branch', () => {
     it('does not ask for the 3D chunk while the 2D map is shown', () => {
       render(<StageView />);
@@ -74,12 +104,13 @@ describe('StageView', () => {
       expect(twin.evaluated).toBe(0);
     });
 
+    // The first import of the chunk fails here; Retry then loads it, which also shows the card with the code step
+    // on its way (the site plan is in the cache) and drops it once the stage is there.
     it('keeps the switch and the 2D choice when the chunk cannot be loaded, and Retry tries again', async () => {
-      const user = userEvent.setup();
       twin.fail = true;
       // The boundary logs the failure, as it does for any region that breaks.
       const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      render(<StageView />);
+      renderStage();
 
       show3d();
 
@@ -87,14 +118,66 @@ describe('StageView', () => {
       expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
 
       twin.fail = false;
-      await user.click(screen.getByRole('button', { name: 'Retry' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      const busy = screen.getByRole('region', { name: 'Campus 3D view, loading' });
+      expect(busy).toHaveAttribute('aria-busy', 'true');
+      expect(
+        within(within(busy).getByRole('status'))
+          .getAllByRole('listitem')
+          .map((row) => row.getAttribute('data-state')),
+      ).toEqual(['done', 'active']);
 
       expect(await screen.findByText('3D stage')).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+      expect(screen.getByRole('region', { name: 'Campus 3D view' })).toHaveAttribute(
+        'aria-busy',
+        'false',
+      );
       logged.mockRestore();
     });
 
+    it('shows the card again, with the code done, while only the site plan is on its way', async () => {
+      vi.spyOn(api, 'get').mockReturnValue(new Promise(() => undefined));
+      renderStage(createTestQueryClient());
+
+      show3d();
+
+      expect(await screen.findByText('3D stage')).toBeInTheDocument();
+      const card = screen.getByRole('status');
+      expect(
+        within(card)
+          .getAllByRole('listitem')
+          .map((row) => row.getAttribute('data-state')),
+      ).toEqual(['active', 'done']);
+      expect(screen.getByRole('region', { name: 'Campus 3D view, loading' })).toHaveAttribute(
+        'aria-busy',
+        'true',
+      );
+    });
+
+    it('keeps the failed step on the card with a Retry, no longer busy, and draws the scene after it', async () => {
+      const get = vi.spyOn(api, 'get').mockRejectedValue(new Error('down'));
+      const user = userEvent.setup();
+      renderStage(createTestQueryClient());
+
+      show3d();
+
+      expect(await screen.findByText('The 3D view is not ready')).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Campus 3D view' })).toHaveAttribute(
+        'aria-busy',
+        'false',
+      );
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+
+      get.mockResolvedValue([]);
+      await user.click(screen.getByRole('button', { name: 'Retry' }));
+
+      await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+    });
+
     it('draws the 3D stage in place of the map, with the tools still over it', async () => {
-      render(<StageView />);
+      renderStage();
       // The first render was the 2D map; what matters is that it is not drawn again in 3D.
       vi.mocked(CampusMap).mockClear();
 
@@ -108,7 +191,7 @@ describe('StageView', () => {
     });
 
     it('offers Incidents and Cameras only while the 3D stage shows, and Assets again in 2D', async () => {
-      render(<StageView />);
+      renderStage();
 
       show3d();
       await screen.findByText('3D stage');
@@ -129,7 +212,7 @@ describe('StageView', () => {
     });
 
     it('puts the map back when the context is lost, with the switch still there', async () => {
-      render(<StageView />);
+      renderStage();
       show3d();
       await screen.findByText('3D stage');
       vi.mocked(CampusMap).mockClear();
@@ -141,8 +224,27 @@ describe('StageView', () => {
       expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
     });
 
+    // The fault is the session's, not the operator's choice: the stored `3d` stays, so a reload tries 3D again,
+    // and the switch says why the 3D option is off.
+    it('keeps the stored choice on a fault, and says why 3D is off', async () => {
+      // The preview gate is closed under Vitest; open it, so the reason shown is the fault and not `not-built`.
+      stubTwinAvailable();
+      localStorage.setItem('occ.console.view', '3d');
+      renderStage();
+      show3d();
+      await screen.findByText('3D stage');
+
+      act(() => useConsole.getState().markTwinLost());
+
+      expect(localStorage.getItem('occ.console.view')).toBe('3d');
+      expect(screen.getByRole('button', { name: '3D' })).toHaveAttribute('aria-disabled', 'true');
+      expect(screen.getByRole('button', { name: '3D' })).toHaveAccessibleDescription(
+        TWIN_UNAVAILABLE_COPY['context-lost'].title,
+      );
+    });
+
     it('mounts the map again when the view goes back to 2D', async () => {
-      render(<StageView />);
+      renderStage();
       show3d();
       await screen.findByText('3D stage');
       vi.mocked(CampusMap).mockClear();

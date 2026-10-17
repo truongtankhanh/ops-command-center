@@ -1,0 +1,98 @@
+/*
+ * Frame 06's `.load-card`, bottom-left of the 3D stage (`left: 12px; bottom: 12px`). The stage box is
+ * `position: relative; isolation: isolate` (`StageView.module.css .twin`), so the card is under the tools, the
+ * banners and the open sheet without a z-index. It leaves the camera cluster at the bottom-right clear (40 px wide
+ * with its border, `--space-3` from the edge) and follows the sheet (`--sheet-inset`, set on the stage).
+ */
+.card {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
+  box-sizing: border-box;
+  width: calc(360px * var(--ui-scale));
+  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px * var(--ui-scale));
+  padding: var(--space-4) var(--space-4) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+}
+
+.title {
+  display: block;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  color: var(--text-primary);
+}
+
+.note {
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+/* The share of steps done: the width is state, not motion, so there is no transition. */
+.bar {
+  height: calc(6px * var(--ui-scale));
+  border-radius: 999px;
+  background: var(--surface-0);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.steps {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* A step is told by its shape (check, cross, dot) and its words as well as by these tones. */
+.steps li[data-state='done'] {
+  color: var(--text-primary);
+}
+
+.steps li[data-state='done'] .icon {
+  color: var(--success);
+}
+
+.steps li[data-state='failed'] .icon {
+  color: var(--danger);
+}
+
+.steps li[data-state='queued'] .icon {
+  color: var(--text-tertiary);
+}
+
+.steps b {
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

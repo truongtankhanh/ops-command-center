@@ -1,10 +1,12 @@
 import { lazy, Suspense, useState } from 'react';
+import { useTwinLoading } from '../lib/useTwinLoading';
 import { useConsole } from '../store';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { CampusMap } from './CampusMap';
 import { LayersControl } from './LayersControl';
 import { RegionFallback } from './LoadStates';
 import styles from './StageView.module.css';
+import { TwinLoading } from './TwinLoading';
 import { ViewSwitch } from './ViewSwitch';
 
 /**
@@ -13,6 +15,22 @@ import { ViewSwitch } from './ViewSwitch';
  * download three.js.
  */
 const loadTwinStage = () => import('../twin/TwinStage');
+
+/**
+ * Whether the twin chunk has been fetched in this page's life. A later visit to 3D then starts with the code
+ * step done, instead of showing the loading card for the tick an already loaded import takes to resolve.
+ */
+let twinChunkLoaded = false;
+
+/** The lazy 3D stage; `onLoaded` runs when its chunk has arrived, so the card can tick the code step off. */
+const lazyStage = (onLoaded: () => void) =>
+  lazy(() =>
+    loadTwinStage().then((module) => {
+      twinChunkLoaded = true;
+      onLoaded();
+      return module;
+    }),
+  );
 
 /**
  * What the map stage draws, with the controls that sit over it (frames 07 and 14).
@@ -41,13 +59,22 @@ export function StageView() {
 }
 
 /**
- * The 3D stage while its chunk loads or if it cannot: a hidden status while loading (the loading
- * card is V2-12.11's) and, if the chunk fails (network, or a console release that replaced it), a
- * fallback in the stage's place with a Retry. `React.lazy` keeps a rejected promise, so Retry makes a
- * new lazy component to try the import again; a boundary retry alone would show the same failure.
+ * The 3D stage and what it waits for (V2-12.11, frame 06). While the 3D code or the site plan is on its way, the
+ * loading card (`TwinLoading`) is over the stage, on the dark ground (the 2D map is not mounted in 3D), with a
+ * step for each; the section is named "Campus 3D view, loading" and `aria-busy` as long as anything is on its
+ * way. The incidents, the cameras and the actions stay usable around it. A step that failed (the site plan) stays
+ * on the card with a Retry and is no longer "busy".
+ *
+ * If the chunk itself cannot be fetched (network, or a console release that replaced it), a fallback in the
+ * stage's place with a Retry. `React.lazy` keeps a rejected promise, so Retry makes a new lazy component to try
+ * the import again; a boundary retry alone would show the same failure. The card is main-chunk code on purpose:
+ * it has to show before the twin chunk and its CSS have arrived.
  */
 function LazyTwinStage() {
-  const [Stage, setStage] = useState(() => lazy(loadTwinStage));
+  const [codeLoaded, setCodeLoaded] = useState(twinChunkLoaded);
+  const [Stage, setStage] = useState(() => lazyStage(() => setCodeLoaded(true)));
+  const load = useTwinLoading(codeLoaded);
+  const waiting = load.steps.some((step) => step.state !== 'done');
   return (
     <ErrorBoundary
       region="3D view"
@@ -57,22 +84,24 @@ function LazyTwinStage() {
           message="The 3D view stopped working."
           className={styles.twin}
           retry={() => {
-            setStage(() => lazy(loadTwinStage));
+            setCodeLoaded(false);
+            setStage(() => lazyStage(() => setCodeLoaded(true)));
             retry();
           }}
         />
       )}
     >
-      <section className={styles.twin} aria-label="Campus 3D view">
-        <Suspense
-          fallback={
-            <p role="status" className={styles.hidden}>
-              Loading the 3D view…
-            </p>
-          }
-        >
+      <section
+        className={styles.twin}
+        aria-label={load.loading ? 'Campus 3D view, loading' : 'Campus 3D view'}
+        aria-busy={load.loading}
+      >
+        <Suspense fallback={null}>
           <Stage />
         </Suspense>
+        {waiting && (
+          <TwinLoading steps={load.steps} onRetry={load.retry} retrying={load.retrying} />
+        )}
       </section>
     </ErrorBoundary>
   );
