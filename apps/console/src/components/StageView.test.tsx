@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
@@ -34,6 +34,17 @@ describe('StageView', () => {
 
     expect(CampusMap).toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+  });
+
+  it('offers the 2D map the three layers', () => {
+    render(<StageView />);
+
+    const layers = screen.getByRole('group', { name: 'Layers' });
+    expect(
+      within(layers)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Incidents', 'Cameras', 'Assets']);
   });
 
   it('offers the layers control beside the view switch', () => {
@@ -94,6 +105,27 @@ describe('StageView', () => {
       expect(CampusMap).not.toHaveBeenCalled();
       expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
       expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+    });
+
+    it('offers Incidents and Cameras only while the 3D stage shows, and Assets again in 2D', async () => {
+      render(<StageView />);
+
+      show3d();
+      await screen.findByText('3D stage');
+      const layers = screen.getByRole('group', { name: 'Layers' });
+      expect(
+        within(layers)
+          .getAllByRole('button')
+          .map((b) => b.textContent),
+      ).toEqual(['Incidents', 'Cameras']);
+
+      act(() => useConsole.setState({ view: '2d' }));
+
+      expect(
+        within(screen.getByRole('group', { name: 'Layers' })).getByRole('button', {
+          name: 'Assets',
+        }),
+      ).toBeInTheDocument();
     });
 
     it('puts the map back when the context is lost, with the switch still there', async () => {

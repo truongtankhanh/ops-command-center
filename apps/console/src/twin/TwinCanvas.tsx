@@ -4,6 +4,7 @@ import { HOME_FOV_DEG } from '../lib/twinCamera';
 import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
+import { CompassSync } from './CompassSync';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
@@ -22,6 +23,8 @@ interface TwinCanvasProps {
   scene: TwinScene | null;
   /** The DOM label layer `ZoneLabels` renders, whose labels `LabelProjector` places. */
   labelLayer: RefObject<HTMLDivElement | null>;
+  /** The compass button `TwinControls` renders, which `CompassSync` turns and renames from the camera. */
+  compassRef: RefObject<HTMLButtonElement | null>;
 }
 
 /**
@@ -34,6 +37,8 @@ interface TwinCanvasProps {
  *   labels beside the canvas need the same frame.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
+ * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
+ *   drawn frame, through a ref.
  * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
  *   that touches them, placing them from the camera on each drawn frame.
  * - `frameloop="demand"`: a frame is drawn only when something asks for one (a moving part, an
@@ -43,7 +48,7 @@ interface TwinCanvasProps {
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
  */
-export function TwinCanvas({ scene, labelLayer }: TwinCanvasProps) {
+export function TwinCanvas({ scene, labelLayer, compassRef }: TwinCanvasProps) {
   return (
     <Canvas camera={LENS} frameloop="demand" dpr={[1, 1.5]} flat>
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
@@ -56,6 +61,7 @@ export function TwinCanvas({ scene, labelLayer }: TwinCanvasProps) {
           <Buildings zones={scene.zones} frame={scene.frame} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
+          <CompassSync compassRef={compassRef} />
         </>
       )}
     </Canvas>

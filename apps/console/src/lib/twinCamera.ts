@@ -55,6 +55,32 @@ const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 const toDegrees = (radians: number) => (radians * 180) / Math.PI;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+/** `degrees` as an angle in (−180, 180]: 190 is −170, −180 is 180. */
+export function normalizeYaw(degrees: number): number {
+  const wrapped = ((((degrees + 180) % 360) + 360) % 360) - 180;
+  return wrapped === -180 ? 180 : wrapped;
+}
+
+/**
+ * The yaw of a camera that looks along the ground direction `(x, z)` (the horizontal part of its forward
+ * vector): north (−z) is 0, west is 90, south is 180. A camera looking straight down has no direction on
+ * the ground and reads as 0. This is what the compass shows, and it needs no target.
+ */
+export function yawOfDirection(x: number, z: number): number {
+  if (x === 0 && z === 0) return 0;
+  return normalizeYaw(toDegrees(Math.atan2(-x, -z)));
+}
+
+/**
+ * The compass's accessible name for a view rotated `yaw` degrees: "Face north" when it already faces north
+ * (to the whole degree), else it says by how much it is turned (frame 00: "Face north — the view is rotated
+ * 60°"). Without a direction word, as the frame has it.
+ */
+export function compassLabel(yaw: number): string {
+  const whole = Math.round(normalizeYaw(yaw));
+  return whole === 0 ? 'Face north' : `Face north — the view is rotated ${Math.abs(whole)}°`;
+}
+
 /** Where the camera stands for `pose`. */
 export function poseToPosition({ target, distance, yaw, tilt }: Pose): Vec3 {
   const horizontal = distance * Math.sin(toRadians(tilt));

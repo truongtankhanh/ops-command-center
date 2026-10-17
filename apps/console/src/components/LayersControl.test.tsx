@@ -107,4 +107,65 @@ describe('LayersControl', () => {
     rerender(<LayersControl />);
     await expectNoAxeViolations();
   });
+
+  describe('in the 3D view', () => {
+    it('offers Incidents and Cameras, and no Assets', () => {
+      render(<LayersControl view="3d" />);
+
+      expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+      expect(toggle('Incidents')).toHaveAttribute('aria-pressed', 'true');
+      expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.queryByRole('button', { name: 'Assets' })).toBeNull();
+    });
+
+    it('is the 2D control when no view is given', () => {
+      render(<LayersControl />);
+
+      expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+        'Incidents',
+        'Cameras',
+        'Assets',
+      ]);
+    });
+
+    it('hides the cameras through the same store as the 2D map', async () => {
+      const user = userEvent.setup();
+      render(<LayersControl view="3d" />);
+
+      await user.click(toggle('Cameras'));
+
+      expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
+      expect(layers()).toEqual({ incidents: true, cameras: false, assets: true });
+    });
+
+    it('leaves the Assets layer as it was, and offers it again in 2D', async () => {
+      const user = userEvent.setup();
+      act(() => useConsole.getState().toggleLayer('assets'));
+      const { rerender } = render(<LayersControl view="3d" />);
+
+      await user.click(toggle('Cameras'));
+      expect(layers().assets).toBe(false);
+
+      rerender(<LayersControl view="2d" />);
+
+      expect(toggle('Assets')).toHaveAttribute('aria-pressed', 'false');
+      expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('still says in words that the incidents are hidden', async () => {
+      const user = userEvent.setup();
+      render(<LayersControl view="3d" />);
+
+      await user.click(toggle('Incidents'));
+
+      expect(screen.getByText('Incidents hidden')).toBeInTheDocument();
+      expect(toggle('Incidents')).toHaveAccessibleDescription('Incidents hidden');
+    });
+
+    it('has no accessibility violations', async () => {
+      render(<LayersControl view="3d" />);
+
+      await expectNoAxeViolations();
+    });
+  });
 });

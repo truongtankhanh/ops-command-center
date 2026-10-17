@@ -1,26 +1,20 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
+import { useLegendOpen } from '../lib/useLegendOpen';
 import { Icon } from '../ui/Icon';
 import { cameraIcon, ChevronDown } from '../ui/icons';
 import styles from './MapLegend.module.css';
-
-/** Per browser, like any view preference; nothing else reads it. */
-const STORAGE_KEY = 'occ.console.mapLegendOpen';
 
 /**
  * Frame 01's legend, bottom-left. Status is shape (filled = open, ring = being handled), not
  * colour, so the swatches are neutral; the hue is severity, said in words as the last entry.
  * The three asset entries (frame 14) are the marker's three looks, each a shape and its words: the
  * light edge, the severity tint and edge, the dim dashed edge.
- * Open by default; an operator who closes it keeps it closed after a reload.
+ * Open by default; an operator who closes it keeps it closed after a reload (`useLegendOpen`, shared with
+ * the 3D stage's legend).
  */
 export function MapLegend() {
   const entriesId = useId();
-  const [open, setOpen] = useState(readOpen);
-
-  const toggle = () => {
-    setOpen(!open);
-    writeOpen(!open);
-  };
+  const [open, toggle] = useLegendOpen();
 
   return (
     <div className={styles.legend}>
@@ -77,23 +71,4 @@ export function MapLegend() {
       </ul>
     </div>
   );
-}
-
-// Storage can be missing or throw (private window, blocked site data): the legend then opens and
-// toggles as usual, it is just not remembered.
-
-function readOpen(): boolean {
-  try {
-    return localStorage.getItem(STORAGE_KEY) !== 'false';
-  } catch {
-    return true;
-  }
-}
-
-function writeOpen(open: boolean): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, String(open));
-  } catch {
-    // Not remembered; see above.
-  }
 }
