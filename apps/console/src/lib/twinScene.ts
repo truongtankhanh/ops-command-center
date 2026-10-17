@@ -214,10 +214,14 @@ export interface InterimView {
 
 /** The interim camera's vertical field of view, in degrees. */
 const INTERIM_FOV_DEG = 50;
-/** Where the interim camera stands: 55° from vertical, from the south-west (V2-12.9's home view is yaw 45°). */
+/**
+ * Where the interim camera stands: 55° from vertical, from the south-east. That is the prototype's yaw
+ * 45° (`TwinScene.dc.html` `basis`) and V2-12.9's home view, and from there the faces seen are the top,
+ * the south and the east: the three face tokens.
+ */
 const INTERIM_TILT_RAD = (55 * Math.PI) / 180;
-/** South-west on the ground: west is −x and south is +z. */
-const INTERIM_HEADING: Local = [-Math.SQRT1_2, Math.SQRT1_2];
+/** South-east on the ground: east is +x and south is +z. */
+const INTERIM_HEADING: Local = [Math.SQRT1_2, Math.SQRT1_2];
 /** The least distance, so a tiny or empty box still gets a usable pose (brief § Camera limits: campus 60 m). */
 const INTERIM_MIN_DISTANCE_M = 60;
 
@@ -247,4 +251,56 @@ export function interimView(bounds: Bounds): InterimView {
     near: 1,
     far: Math.max(1500, distance * 2),
   };
+}
+
+/**
+ * The most zone labels the scene shows (ADR-0020: "a hard cap on their number"). The demo has 20 zones;
+ * the cap keeps a site with thousands of zones from creating thousands of elements that are projected
+ * on every frame. Buildings come first, so the cap drops the least informative labels.
+ */
+export const MAX_ZONE_LABELS = 64;
+
+/** A roof label floats this far above the roof (TwinScene: height + 9). */
+const LABEL_ROOF_OFFSET_M = 9;
+/** A label of a flat zone floats this far above the ground (TwinScene: 2 m; `unverified`). */
+const LABEL_GROUND_HEIGHT_M = 2;
+
+/** Where a zone's label is attached in the scene, in metres. */
+export interface LabelAnchor {
+  zoneId: string;
+  name: string;
+  kind: Zone['kind'];
+  position: [x: number, y: number, z: number];
+}
+
+/**
+ * The anchor of every zone's label, buildings first and then the rest in the zones' order, at most
+ * `MAX_ZONE_LABELS`. A building that has a shell is labelled above the middle of its roof; any other zone
+ * (a building too small to inset included) at its centre, just above the ground.
+ */
+export function labelAnchors(zones: readonly Zone[], frame: Frame): LabelAnchor[] {
+  const shells = new Map(buildingShells(zones, frame).map((shell) => [shell.zoneId, shell]));
+  const roofs: LabelAnchor[] = [];
+  const flats: LabelAnchor[] = [];
+  for (const { id, name, kind, center } of zones) {
+    const shell = shells.get(id);
+    if (shell) {
+      const xs = shell.ring.map(([x]) => x);
+      const zs = shell.ring.map(([, z]) => z);
+      roofs.push({
+        zoneId: id,
+        name,
+        kind,
+        position: [
+          (Math.min(...xs) + Math.max(...xs)) / 2,
+          shell.heightM + LABEL_ROOF_OFFSET_M,
+          (Math.min(...zs) + Math.max(...zs)) / 2,
+        ],
+      });
+    } else {
+      const [x, z] = frame.toLocal(center);
+      flats.push({ zoneId: id, name, kind, position: [x, LABEL_GROUND_HEIGHT_M, z] });
+    }
+  }
+  return [...roofs, ...flats].slice(0, MAX_ZONE_LABELS);
 }

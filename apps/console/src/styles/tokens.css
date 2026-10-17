@@ -63,9 +63,10 @@
   --danger-tint: color-mix(in srgb, var(--danger) 12%, transparent);
 
   /*
-   * Digital twin (V2, frame 00). Unused until the 3D scene lands: WebGL reads a copy in tokens.ts,
-   * added with its first consumer. Parts are three faces (top, south, east) of one neutral material,
-   * lit from the north-west; only severity is loud (brief § Principles 2).
+   * Digital twin (V2, frame 00). WebGL cannot read these: the scene reads the copies in `twinColors`
+   * (tokens.ts), checked for drift on lint. Parts are three faces (top, south, east) of one neutral
+   * material, seen from the south-east and lit by one key light from the west-south-west
+   * (twin/Lights.tsx); only severity is loud (brief § Principles 2).
    */
   --tw-top: #2a4658;
   --tw-south: #1f3748;

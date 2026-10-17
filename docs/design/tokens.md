@@ -71,20 +71,20 @@ The 3D scene's tokens, from the V2 brief's [New tokens](v2/brief.md#new-tokens) 
 Added in V2-02.1, before any component uses them. WebGL cannot read custom properties either: the scene's copy is
 `twinColors` in `tokens.ts` (V2-12.6, with the ground, the first consumer), checked for drift like `mapColors`.
 
-| Token                                          | Value                                                        | Use                                                      |
-| ---------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| `--tw-top` / `-south` / `-east`                | `#2a4658` / `#1f3748` / `#172b3a`                            | Part material, idle: three faces lit from the north-west |
-| `--tw-edge`, `--tw-blade`                      | `#3e5a6e`, `#4d6a80`                                         | Part outline; fan blades                                 |
-| `--tw-ground`, `--tw-grid`, `--tw-road`        | `#0f1d27`, `#14242f`, `#182a36`                              | Campus ground, its grid, roads                           |
-| `--tw-steel-top` / `-south` / `-east`          | `#435766` / `#334553` / `#273745`                            | Motors, pumps, pipes, valves, cabinets                   |
-| `--tw-concrete-top` / `-south` / `-east`       | `#363c41` / `#2b3034` / `#22262a`                            | Basins, plinths, skids                                   |
-| `--tw-rail`                                    | `#8199aa`                                                    | Handrails, ladders, fan guard mesh                       |
-| `--tw-hover-top` / `-south` / `-east`          | 30 % `--accent` into the material                            | Hover and selection; the edge is `--accent`              |
-| `--tw-alarm-mix`, `--tw-alarm-top` / … `-east` | 35 %; `--tw-alarm-mix` of `--sev-critical` into the material | A part with an open incident it raised; edge in severity |
-| `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                        |
-| `--tw-stale-edge`                              | `#4a555c`, dashed                                            | No recent data: the edge                                 |
-| `--tw-ghost-opacity`                           | `0.18`                                                       | The rest of the campus while one asset is isolated       |
-| `--heat-0` … `--heat-5`                        | `#1f2a4d` → `#b3bdff`                                        | Telemetry overlay: sequential, the accent's hue          |
+| Token                                          | Value                                                        | Use                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `--tw-top` / `-south` / `-east`                | `#2a4658` / `#1f3748` / `#172b3a`                            | Part material, idle: three faces under one key light from the west-south-west |
+| `--tw-edge`, `--tw-blade`                      | `#3e5a6e`, `#4d6a80`                                         | Part outline; fan blades                                                      |
+| `--tw-ground`, `--tw-grid`, `--tw-road`        | `#0f1d27`, `#14242f`, `#182a36`                              | Campus ground, its grid, roads                                                |
+| `--tw-steel-top` / `-south` / `-east`          | `#435766` / `#334553` / `#273745`                            | Motors, pumps, pipes, valves, cabinets                                        |
+| `--tw-concrete-top` / `-south` / `-east`       | `#363c41` / `#2b3034` / `#22262a`                            | Basins, plinths, skids                                                        |
+| `--tw-rail`                                    | `#8199aa`                                                    | Handrails, ladders, fan guard mesh                                            |
+| `--tw-hover-top` / `-south` / `-east`          | 30 % `--accent` into the material                            | Hover and selection; the edge is `--accent`                                   |
+| `--tw-alarm-mix`, `--tw-alarm-top` / … `-east` | 35 %; `--tw-alarm-mix` of `--sev-critical` into the material | A part with an open incident it raised; edge in severity                      |
+| `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                                             |
+| `--tw-stale-edge`                              | `#4a555c`, dashed                                            | No recent data: the edge                                                      |
+| `--tw-ghost-opacity`                           | `0.18`                                                       | The rest of the campus while one asset is isolated                            |
+| `--heat-0` … `--heat-5`                        | `#1f2a4d` → `#b3bdff`                                        | Telemetry overlay: sequential, the accent's hue                               |
 
 - **Alarm per severity.** Only the critical faces are tokens (frame 00's reference). The scene mixes
   `--tw-alarm-mix` of the incident's severity into the material itself, rather than 12 more tokens here.
@@ -295,6 +295,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--tw-stale-edge`   | `map ground`                              | 2.35  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
 | `--tw-stale-edge`   | `--surface-1`                             | 2.12  | 3       | reported only: dim on purpose; the dash and the words carry no data                        |
 | `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--tw-top`                                | 4.86  | 4.5     | pass                                                                                       |
 | `--tw-edge`         | `--tw-ground`                             | 2.36  | 3       | reported only: decorative outline; the face tones carry the shape                          |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |

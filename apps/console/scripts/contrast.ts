@@ -186,8 +186,11 @@ const PAIRS: Pair[] = [
     min: UI,
     reportOnly: 'dim on purpose; the dash and the words carry no data',
   },
-  // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground.
+  // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground, and (V2-12.7)
+  // over a building: a roof label floats above its shell, so the lightest idle face is what it can
+  // sit on. The halo is the glyphs' actual background (8.80:1), so this is the margin, not the rule.
   { fg: '--text-secondary', bg: '--tw-ground', min: TEXT },
+  { fg: '--text-secondary', bg: '--tw-top', min: TEXT },
   // V2-12.6: the idle outline of a part and of a building is the same neutral as its faces, a little
   // lighter. It draws the shape; it carries no state (hover, selection and alarm have their own edge
   // colours, held to 3:1 above), so it is measured and published, never failed on.
