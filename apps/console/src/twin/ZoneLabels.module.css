@@ -1,0 +1,32 @@
+/*
+ * The label layer covers the stage and takes no pointer event; `ZoneLabels.tsx`. The stage clips and
+ * stacks it (`StageView.module.css .twin`), so no z-index is needed to stay under the tools and the sheet.
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/*
+ * One zone name. Placed by `LabelProjector` with a `transform` that centres it on its point, so it
+ * sits at the origin until then, and hidden until it has a place (a camera that has not drawn yet, a
+ * label behind the camera). The look is the 2D map's zone label (`CampusMap.module.css .zoneLabel`):
+ * the console's UI font, `--text-secondary`, a 3 px `--surface-0` halo painted under the glyphs; at 12 px
+ * (TwinScene), growing with the wall modes' `--ui-scale`.
+ */
+.label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  font-weight: 500;
+  color: var(--text-secondary);
+  -webkit-text-stroke: 3px var(--surface-0);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  will-change: transform;
+}

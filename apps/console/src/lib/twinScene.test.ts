@@ -7,8 +7,11 @@ import {
   DEFAULT_BUILDING_HEIGHT_M,
   flatZones,
   interimView,
+  type LabelAnchor,
+  labelAnchors,
   type Local,
   makeFrame,
+  MAX_ZONE_LABELS,
   PAN_MARGIN_M,
   panBounds,
   sceneBounds,
@@ -335,14 +338,16 @@ describe('interimView', () => {
     expect(interimView(CAMPUS).target).toEqual([-27, 0, 15]);
   });
 
-  it('stands above the ground, south-west of the target, 55° from vertical', () => {
+  it('stands above the ground, south-east of the target, 55° from vertical', () => {
     const view = interimView(CAMPUS);
 
     expect(view.position[1]).toBeGreaterThan(0);
-    expect(view.position[0]).toBeLessThan(view.target[0]);
+    // East is +x and south is +z: the camera sees the south and east faces, the top and the two tones
+    // of the tokens' three-face material.
+    expect(view.position[0]).toBeGreaterThan(view.target[0]);
     expect(view.position[2]).toBeGreaterThan(view.target[2]);
-    // West and south are equally far: south-west.
-    expect(view.target[0] - view.position[0]).toBeCloseTo(view.position[2] - view.target[2], 6);
+    // East and south are equally far: south-east.
+    expect(view.position[0] - view.target[0]).toBeCloseTo(view.position[2] - view.target[2], 6);
     expect(Math.acos(view.position[1] / distanceOf(view)) * (180 / Math.PI)).toBeCloseTo(55, 6);
   });
 
@@ -371,5 +376,73 @@ describe('interimView', () => {
     const point: Bounds = { minX: 5, maxX: 5, minZ: 5, maxZ: 5 };
 
     expect(distanceOf(interimView(point))).toBeCloseTo(60, 6);
+  });
+});
+
+describe('labelAnchors', () => {
+  const HUB = zone('hub', 'building', box(-165, -75, 30, 90), 24);
+  const LAWN = zone('lawn', 'outdoor', box(-55, 55, -35, 35));
+  const names = (anchors: LabelAnchor[]) => anchors.map(({ zoneId }) => zoneId);
+
+  it('floats a building label 9 m above the middle of its roof', () => {
+    const [anchor] = labelAnchors([HUB], frame);
+
+    expect(anchor).toMatchObject({ zoneId: 'hub', name: 'hub', kind: 'building' });
+    // TwinScene.dc.html: Innovation Hub x −157 … −83, y −82 … −38, 24 m high: label at (−120, 24 + 9, −60).
+    expect(anchor!.position[0]).toBeCloseTo(-120, 1);
+    expect(anchor!.position[1]).toBe(33);
+    expect(anchor!.position[2]).toBeCloseTo(-60, 1);
+  });
+
+  it('uses the default height for a building that has none', () => {
+    const [anchor] = labelAnchors([zone('b', 'building', box(0, 60, 0, 60), null)], frame);
+
+    expect(anchor!.position[1]).toBe(DEFAULT_BUILDING_HEIGHT_M + 9);
+  });
+
+  it('puts the label of a flat zone at its centre, 2 m above the ground', () => {
+    const [anchor] = labelAnchors([LAWN], frame);
+
+    expect(anchor).toMatchObject({ zoneId: 'lawn', kind: 'outdoor' });
+    expect(anchor!.position[0]).toBeCloseTo(frame.toLocal(LAWN.center)[0], 6);
+    expect(anchor!.position[1]).toBe(2);
+    expect(anchor!.position[2]).toBeCloseTo(frame.toLocal(LAWN.center)[1], 6);
+  });
+
+  it('labels a building too small to inset at its centre, on the ground', () => {
+    const tiny = zone('tiny', 'building', box(-7, 7, 0, 40), 6);
+
+    const [anchor] = labelAnchors([tiny], frame);
+
+    expect(anchor).toMatchObject({ zoneId: 'tiny', kind: 'building' });
+    expect(anchor!.position[1]).toBe(2);
+  });
+
+  it('gives every zone one label, buildings first and the rest in order', () => {
+    const zones = [
+      zone('lot', 'parking', box(100, 190, -35, 35)),
+      HUB,
+      LAWN,
+      zone('hall', 'building', box(0, 60, 0, 60), 12),
+    ];
+
+    expect(names(labelAnchors(zones, frame))).toEqual(['hub', 'hall', 'lot', 'lawn']);
+  });
+
+  it('stops at the cap and keeps the buildings', () => {
+    const lawns = Array.from({ length: MAX_ZONE_LABELS + 10 }, (_, i) =>
+      zone(`lawn-${i}`, 'outdoor', box(i * 5, i * 5 + 4, 0, 4)),
+    );
+
+    const anchors = labelAnchors([...lawns, HUB], frame);
+
+    expect(MAX_ZONE_LABELS).toBe(64);
+    expect(anchors).toHaveLength(MAX_ZONE_LABELS);
+    expect(anchors[0]!.zoneId).toBe('hub');
+    expect(anchors.at(-1)!.zoneId).toBe(`lawn-${MAX_ZONE_LABELS - 2}`);
+  });
+
+  it('has nothing to label without zones', () => {
+    expect(labelAnchors([], frame)).toEqual([]);
   });
 });

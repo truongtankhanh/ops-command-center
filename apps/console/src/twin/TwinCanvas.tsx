@@ -1,20 +1,16 @@
 import { Canvas, useThree } from '@react-three/fiber';
-import { useLayoutEffect, useMemo } from 'react';
+import { type RefObject, useLayoutEffect } from 'react';
 import { PerspectiveCamera } from 'three';
-import { useSitePlan, useZones } from '../api/queries';
-import {
-  type Frame,
-  type InterimView,
-  interimView,
-  sceneBounds,
-  sceneFrame,
-} from '../lib/twinScene';
+import type { InterimView } from '../lib/twinScene';
 import { mapColors } from '../styles/tokens';
+import { Buildings } from './Buildings';
 import { Ground } from './Ground';
+import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
+import type { TwinScene } from './useTwinScene';
 
 /**
- * A fixed overview, so the ground can be seen before the camera rig exists (V2-12.9 replaces this
+ * A fixed overview, so the scene can be seen before the camera rig exists (V2-12.9 replaces this
  * component with `Rig` and the view with `homeView`). Placed once per view; `frameloop="demand"`
  * draws nothing unless asked, hence `invalidate`.
  */
@@ -36,16 +32,22 @@ function InterimCamera({ view }: { view: InterimView }) {
   return null;
 }
 
-const NO_ZONES: never[] = [];
+interface TwinCanvasProps {
+  /** What to draw, from `useTwinScene`; `null` while there is nothing (the canvas stays empty). */
+  scene: TwinScene | null;
+  /** The DOM label layer `ZoneLabels` renders, whose labels `LabelProjector` places. */
+  labelLayer: RefObject<HTMLDivElement | null>;
+}
 
 /**
- * The WebGL canvas of the 3D twin (ADR-0020): the lit campus ground. Buildings arrive with V2-12.7,
- * cameras with V2-12.8, the camera rig with V2-12.9, the loading card and context loss with V2-12.11.
+ * The WebGL canvas of the 3D twin (ADR-0020): the lit campus, its ground and its buildings. Cameras
+ * arrive with V2-12.8, the camera rig with V2-12.9, the loading card and context loss with V2-12.11.
  *
- * - The zones and the site plan come from the queries the 2D map uses, read here and passed down:
- *   `<Canvas>` renders in its own reconciler, so its children are not a safe place for a query hook.
- *   Reference data, no new request. With no zones the canvas stays empty; with a plan that is not
- *   served (404) the zones draw alone, as on the 2D map.
+ * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`): `<Canvas>`
+ *   renders in its own reconciler, so its children are not a safe place for a query hook, and the DOM
+ *   labels beside the canvas need the same frame.
+ * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
+ *   that touches them, placing them from the camera on each drawn frame.
  * - `frameloop="demand"`: a frame is drawn only when something asks for one (a moving part, an
  *   easing value, the camera), so an idle scene costs nothing.
  * - `dpr={[1, 1.5]}`: the pixel ratio never exceeds 1.5 (brief § Performance); V2-19.3 steps it down.
@@ -53,17 +55,7 @@ const NO_ZONES: never[] = [];
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
  */
-export function TwinCanvas() {
-  const { data: zones } = useZones();
-  const { data: plan } = useSitePlan();
-
-  const scene = useMemo(() => {
-    const list = zones ?? NO_ZONES;
-    const frame: Frame | null = sceneFrame(plan, list);
-    const bounds = frame && sceneBounds(plan, list, frame);
-    return frame && bounds ? { frame, zones: list, view: interimView(bounds) } : null;
-  }, [plan, zones]);
-
+export function TwinCanvas({ scene, labelLayer }: TwinCanvasProps) {
   return (
     <Canvas frameloop="demand" dpr={[1, 1.5]} flat>
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
@@ -72,7 +64,9 @@ export function TwinCanvas() {
         <>
           <InterimCamera view={scene.view} />
           <Lights />
-          <Ground plan={plan} zones={scene.zones} frame={scene.frame} />
+          <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
+          <Buildings zones={scene.zones} frame={scene.frame} />
+          <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
         </>
       )}
     </Canvas>
