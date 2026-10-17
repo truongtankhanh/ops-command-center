@@ -68,8 +68,8 @@ From the brief's surface rules:
 ## Digital twin (V2)
 
 The 3D scene's tokens, from the V2 brief's [New tokens](v2/brief.md#new-tokens) and frame 00 (`v2/mockups/twin.css`).
-Added in V2-02.1, before any component uses them. WebGL cannot read custom properties either: the scene's copy goes
-in `tokens.ts` with its first consumer, checked for drift like `mapColors`.
+Added in V2-02.1, before any component uses them. WebGL cannot read custom properties either: the scene's copy is
+`twinColors` in `tokens.ts` (V2-12.6, with the ground, the first consumer), checked for drift like `mapColors`.
 
 | Token                                          | Value                                                        | Use                                                      |
 | ---------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
@@ -91,6 +91,8 @@ in `tokens.ts` with its first consumer, checked for drift like `mapColors`.
 - **Edges.** A hovered, selected or alarmed part's edge is held to 3:1 on `--tw-top` (an idle neighbour) and on
   `--tw-ground`. On the part's own hover or alarm face it falls below 3:1 (it only draws the shape there), so those
   pairs are reported only.
+- **The idle outline is decorative.** `--tw-edge` on `--tw-ground` is 2.36:1 and on `--tw-top` 1.37:1: it draws the
+  shape of a part or building and carries no state, so the pair is reported only (the face tones carry the shape).
 - **Stale is dim on purpose.** `--tw-stale-edge` stays below 3:1: stale is carried by the dash, the stopped motion and
   the age on every value (V2 brief § Principles 3), not by a brighter outline that would outshine live parts.
 - **Heat ramp.** Lightness carries the value; the legend and the Assets tab carry the number (V2 brief § Principles
@@ -293,6 +295,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--tw-stale-edge`   | `map ground`                              | 2.35  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
 | `--tw-stale-edge`   | `--surface-1`                             | 2.12  | 3       | reported only: dim on purpose; the dash and the words carry no data                        |
 | `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
+| `--tw-edge`         | `--tw-ground`                             | 2.36  | 3       | reported only: decorative outline; the face tones carry the shape                          |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 
@@ -314,6 +317,37 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
 | `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
 | `mapColors.staleEdge` (src/styles/tokens.ts)         | #4a555c                   | #4a555c                   | match  |
+| `twinColors.ground` (src/styles/tokens.ts)           | #0f1d27                   | #0f1d27                   | match  |
+| `twinColors.grid` (src/styles/tokens.ts)             | #14242f                   | #14242f                   | match  |
+| `twinColors.road` (src/styles/tokens.ts)             | #182a36                   | #182a36                   | match  |
+| `twinColors.edge` (src/styles/tokens.ts)             | #3e5a6e                   | #3e5a6e                   | match  |
+| `twinColors.rail` (src/styles/tokens.ts)             | #8199aa                   | #8199aa                   | match  |
+| `twinColors.idle.top` (src/styles/tokens.ts)         | #2a4658                   | #2a4658                   | match  |
+| `twinColors.idle.south` (src/styles/tokens.ts)       | #1f3748                   | #1f3748                   | match  |
+| `twinColors.idle.east` (src/styles/tokens.ts)        | #172b3a                   | #172b3a                   | match  |
+| `twinColors.steel.top` (src/styles/tokens.ts)        | #435766                   | #435766                   | match  |
+| `twinColors.steel.south` (src/styles/tokens.ts)      | #334553                   | #334553                   | match  |
+| `twinColors.steel.east` (src/styles/tokens.ts)       | #273745                   | #273745                   | match  |
+| `twinColors.concrete.top` (src/styles/tokens.ts)     | #363c41                   | #363c41                   | match  |
+| `twinColors.concrete.south` (src/styles/tokens.ts)   | #2b3034                   | #2b3034                   | match  |
+| `twinColors.concrete.east` (src/styles/tokens.ts)    | #22262a                   | #22262a                   | match  |
+| `twinColors.hover.top` (src/styles/tokens.ts)        | #47608a                   | #47608a                   | match  |
+| `twinColors.hover.south` (src/styles/tokens.ts)      | #40557f                   | #40557f                   | match  |
+| `twinColors.hover.east` (src/styles/tokens.ts)       | #3a4d75                   | #3a4d75                   | match  |
+| `twinColors.alarm.top` (src/styles/tokens.ts)        | #754d55                   | #754d55                   | match  |
+| `twinColors.alarm.south` (src/styles/tokens.ts)      | #6d434a                   | #6d434a                   | match  |
+| `twinColors.alarm.east` (src/styles/tokens.ts)       | #683b41                   | #683b41                   | match  |
+| `twinColors.stale.top` (src/styles/tokens.ts)        | #2b3338                   | #2b3338                   | match  |
+| `twinColors.stale.south` (src/styles/tokens.ts)      | #22292e                   | #22292e                   | match  |
+| `twinColors.stale.east` (src/styles/tokens.ts)       | #1b2125                   | #1b2125                   | match  |
+| `twinColors.staleEdge` (src/styles/tokens.ts)        | #4a555c                   | #4a555c                   | match  |
+| `twinColors.heat[0]` (src/styles/tokens.ts)          | #1f2a4d                   | #1f2a4d                   | match  |
+| `twinColors.heat[1]` (src/styles/tokens.ts)          | #2b3a72                   | #2b3a72                   | match  |
+| `twinColors.heat[2]` (src/styles/tokens.ts)          | #3d4f99                   | #3d4f99                   | match  |
+| `twinColors.heat[3]` (src/styles/tokens.ts)          | #5868c4                   | #5868c4                   | match  |
+| `twinColors.heat[4]` (src/styles/tokens.ts)          | #7b8af0                   | #7b8af0                   | match  |
+| `twinColors.heat[5]` (src/styles/tokens.ts)          | #b3bdff                   | #b3bdff                   | match  |
+| `twinColors.ghostOpacity` (src/styles/tokens.ts)     | 0.18                      | 0.18                      | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |
 | `breakpoints.wall4k` (src/styles/tokens.ts)          | 3200px                    | 3200px                    | match  |

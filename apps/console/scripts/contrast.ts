@@ -12,7 +12,13 @@
  * WCAG 2.x relative-luminance formula.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
-import { breakpoints, faviconMark, mapColors, mapMotion } from '../src/styles/tokens.ts';
+import {
+  breakpoints,
+  faviconMark,
+  mapColors,
+  mapMotion,
+  twinColors,
+} from '../src/styles/tokens.ts';
 
 interface Rgba {
   r: number;
@@ -182,6 +188,15 @@ const PAIRS: Pair[] = [
   },
   // 3D labels (`--text-secondary`, haloed with `--surface-0`) over the campus ground.
   { fg: '--text-secondary', bg: '--tw-ground', min: TEXT },
+  // V2-12.6: the idle outline of a part and of a building is the same neutral as its faces, a little
+  // lighter. It draws the shape; it carries no state (hover, selection and alarm have their own edge
+  // colours, held to 3:1 above), so it is measured and published, never failed on.
+  {
+    fg: '--tw-edge',
+    bg: '--tw-ground',
+    min: UI,
+    reportOnly: 'decorative outline; the face tones carry the shape',
+  },
   // The heat ramp's ends on the ground: lightness carries the value, not a boundary.
   ...['--heat-0', '--heat-5'].map((fg) => ({
     fg,
@@ -359,12 +374,54 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
     ['textTertiary', mapColors.textTertiary, '--text-tertiary'],
     ['staleEdge', mapColors.staleEdge, '--tw-stale-edge'],
   ];
+  const faces = (
+    material: 'steel' | 'concrete' | 'hover' | 'alarm' | 'stale',
+  ): [string, string, string][] =>
+    (['top', 'south', 'east'] as const).map((face) => [
+      `${material}.${face}`,
+      twinColors[material][face],
+      `--tw-${material}-${face}`,
+    ]);
+  const idleFaces = (['top', 'south', 'east'] as const).map((face): [string, string, string] => [
+    `idle.${face}`,
+    twinColors.idle[face],
+    `--tw-${face}`,
+  ]);
+  const twinCopies: [copy: string, value: string, token: string][] = [
+    ['ground', twinColors.ground, '--tw-ground'],
+    ['grid', twinColors.grid, '--tw-grid'],
+    ['road', twinColors.road, '--tw-road'],
+    ['edge', twinColors.edge, '--tw-edge'],
+    ['rail', twinColors.rail, '--tw-rail'],
+    ...idleFaces,
+    ...faces('steel'),
+    ...faces('concrete'),
+    ...faces('hover'),
+    ...faces('alarm'),
+    ...faces('stale'),
+    ['staleEdge', twinColors.staleEdge, '--tw-stale-edge'],
+    ...twinColors.heat.map((value, i): [string, string, string] => [
+      `heat[${i}]`,
+      value,
+      `--heat-${i}`,
+    ]),
+  ];
   return [
     ...mapCopies.map(([copy, value, token]) => ({
       copy: `\`mapColors.${copy}\` (src/styles/tokens.ts)`,
       actual: normalise(value),
       expected: hexOf(resolve(token)),
     })),
+    ...twinCopies.map(([copy, value, token]) => ({
+      copy: `\`twinColors.${copy}\` (src/styles/tokens.ts)`,
+      actual: normalise(value),
+      expected: hexOf(resolve(token)),
+    })),
+    {
+      copy: '`twinColors.ghostOpacity` (src/styles/tokens.ts)',
+      actual: String(twinColors.ghostOpacity),
+      expected: css.get('--tw-ghost-opacity') ?? 'missing',
+    },
     {
       copy: '`mapMotion.pulseMs` (src/styles/tokens.ts)',
       actual: `${mapMotion.pulseMs}ms`,

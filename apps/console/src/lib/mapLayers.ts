@@ -10,7 +10,7 @@ import type {
 import { mapColors } from '../styles/tokens';
 import { metresToPixels } from './geo';
 import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX, clusterSeverityImageId } from './mapFeatures';
-import { type SitePart, siteFeatures, zoneFeatures } from './sitePlan';
+import { ROAD_WIDTH_M, type SitePart, siteFeatures, zoneFeatures } from './sitePlan';
 
 /*
  * Sources and layers for the site plan, zones, camera views, cameras, assets and incidents. Shapes
@@ -188,8 +188,6 @@ const clusterCountImage: ExpressionSpecification = [
   ['concat', CLUSTER_COUNT_PREFIX, ['to-string', ['get', 'point_count']]],
 ];
 
-/** Roads are 9 m wide in frame 01, at every zoom. */
-const ROAD_WIDTH_M = 9;
 /** Zooms between which a metric width is interpolated; exponential base 2 keeps it exact. */
 const METRIC_ZOOMS = [10, 20] as const;
 

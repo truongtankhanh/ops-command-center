@@ -28,6 +28,8 @@ export interface Box {
   north: number;
 }
 
+/** Roads are 9 m wide in frame 01, at every zoom; the 3D ground draws the same width (V2-12.6). */
+export const ROAD_WIDTH_M = 9;
 /** A building's footprint sits this far inside its zone. */
 const FOOTPRINT_INSET_M = 8;
 /** Parking rows run east–west this far inside the zone, `ROW_SPACING_M` apart around its middle. */
