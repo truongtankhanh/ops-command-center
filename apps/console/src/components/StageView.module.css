@@ -27,13 +27,3 @@
   isolation: isolate;
   background: var(--surface-0);
 }
-
-/* Read by assistive tech, not drawn: the loading state (as `CampusMap.module.css .hidden`). */
-.hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}

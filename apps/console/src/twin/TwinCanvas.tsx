@@ -5,6 +5,7 @@ import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
+import { ContextGuard } from './ContextGuard';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
@@ -29,14 +30,16 @@ interface TwinCanvasProps {
 
 /**
  * The WebGL canvas of the 3D twin (ADR-0020): the lit campus, its ground, its buildings and its cameras
- * (screen-sized markers), seen through the camera rig (`Rig`). The loading card and context loss arrive
- * with V2-12.11.
+ * (screen-sized markers), seen through the camera rig (`Rig`). The loading card is `StageView`'s (it shows
+ * before this chunk exists).
  *
  * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`): `<Canvas>`
  *   renders in its own reconciler, so its children are not a safe place for a query hook, and the DOM
  *   labels beside the canvas need the same frame.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
+ * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
+ *   session (V2-12.11).
  * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
  *   drawn frame, through a ref.
  * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
@@ -53,6 +56,8 @@ export function TwinCanvas({ scene, labelLayer, compassRef }: TwinCanvasProps) {
     <Canvas camera={LENS} frameloop="demand" dpr={[1, 1.5]} flat>
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
       <color attach="background" args={[mapColors.ground]} />
+      {/* Outside the scene: an empty stage has a context to lose too. */}
+      <ContextGuard />
       {scene && (
         <>
           <Rig bounds={scene.bounds} />

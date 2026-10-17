@@ -109,11 +109,13 @@ describe('TwinStage', () => {
     expect(screen.getByText(/Drag to rotate/)).toBeInTheDocument();
   });
 
-  it('draws the chrome even before the scene has anything to show', () => {
+  // The legend explains what is drawn; frame 06 (loading) has none, and it would sit under the loading card.
+  it('draws the camera controls and the hint before the scene has anything to show, but not the legend', () => {
     renderStage([]);
 
     expect(screen.getByRole('group', { name: 'Camera' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+    expect(screen.getByText(/Drag to rotate/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
   });
 
   it('has no label without zones', () => {

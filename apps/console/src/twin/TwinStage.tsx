@@ -32,7 +32,8 @@ export default function TwinStage() {
       <TwinCanvas scene={scene} labelLayer={labelLayer} compassRef={compass} />
       <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} />
       <DragHint />
-      <TwinLegend />
+      {/* The legend explains what is drawn: with no scene there is nothing to explain (frame 06 has none while loading). */}
+      {scene && <TwinLegend />}
       <TwinControls compassRef={compass} />
     </div>
   );
