@@ -6,7 +6,6 @@ import {
   buildingShells,
   DEFAULT_BUILDING_HEIGHT_M,
   flatZones,
-  interimView,
   type LabelAnchor,
   labelAnchors,
   type Local,
@@ -323,59 +322,6 @@ describe('sceneFrame', () => {
 
   it('has no frame without a plan or zones', () => {
     expect(sceneFrame(undefined, [])).toBeNull();
-  });
-});
-
-describe('interimView', () => {
-  // TwinScene.dc.html's campus box.
-  const CAMPUS: Bounds = { minX: -282, maxX: 228, minZ: -247, maxZ: 277 };
-  const radius = Math.hypot(510, 524) / 2;
-
-  const distanceOf = ({ position, target }: ReturnType<typeof interimView>) =>
-    Math.hypot(position[0] - target[0], position[1] - target[1], position[2] - target[2]);
-
-  it('looks at the middle of the box, on the ground', () => {
-    expect(interimView(CAMPUS).target).toEqual([-27, 0, 15]);
-  });
-
-  it('stands above the ground, south-east of the target, 55° from vertical', () => {
-    const view = interimView(CAMPUS);
-
-    expect(view.position[1]).toBeGreaterThan(0);
-    // East is +x and south is +z: the camera sees the south and east faces, the top and the two tones
-    // of the tokens' three-face material.
-    expect(view.position[0]).toBeGreaterThan(view.target[0]);
-    expect(view.position[2]).toBeGreaterThan(view.target[2]);
-    // East and south are equally far: south-east.
-    expect(view.position[0] - view.target[0]).toBeCloseTo(view.position[2] - view.target[2], 6);
-    expect(Math.acos(view.position[1] / distanceOf(view)) * (180 / Math.PI)).toBeCloseTo(55, 6);
-  });
-
-  it('is far enough for the whole box to fit the vertical field of view', () => {
-    const view = interimView(CAMPUS);
-
-    expect(distanceOf(view)).toBeCloseTo(radius / Math.sin((view.fov * Math.PI) / 360), 6);
-  });
-
-  it('keeps the far plane beyond the farthest ground point', () => {
-    const view = interimView(CAMPUS);
-
-    expect(view.far).toBeGreaterThanOrEqual(1500);
-    expect(view.far).toBeGreaterThan(distanceOf(view) + radius);
-    expect(view.near).toBeGreaterThan(0);
-    expect(view.near).toBeLessThan(view.far);
-  });
-
-  it('stands farther from a larger box', () => {
-    const small: Bounds = { minX: 0, maxX: 200, minZ: 0, maxZ: 200 };
-
-    expect(distanceOf(interimView(CAMPUS))).toBeGreaterThan(distanceOf(interimView(small)));
-  });
-
-  it('keeps a usable distance for a box with no size', () => {
-    const point: Bounds = { minX: 5, maxX: 5, minZ: 5, maxZ: 5 };
-
-    expect(distanceOf(interimView(point))).toBeCloseTo(60, 6);
   });
 });
 
