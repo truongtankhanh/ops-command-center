@@ -8,6 +8,7 @@ import {
   type MarkerForm,
   markerSvg,
   registerMapImages,
+  renderMarkerImages,
 } from './mapImages';
 
 const open: MarkerForm = {
@@ -289,5 +290,75 @@ describe('addClusterCountImage', () => {
 
     expect(addClusterCountImage(asMap(map), 'cluster-count-3')).toBe(false);
     expect(map.addImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('renderMarkerImages', () => {
+  /** jsdom does not decode images. */
+  class DecodedImage {
+    src = '';
+    decode = () => Promise.resolve();
+  }
+  /** The SVG behind the `index`th bitmap (the stubbed `Image` keeps its `src`). */
+  const svgAt = (images: Awaited<ReturnType<typeof renderMarkerImages>>['images'], index: number) =>
+    decodeURIComponent((images[index]![1] as unknown as DecodedImage).src.split(',')[1]!);
+
+  const camera: MarkerForm = { kind: 'camera', online: true };
+  const offline: MarkerForm = { kind: 'camera', online: false };
+  const diamond: MarkerForm = { kind: 'asset', look: 'normal' };
+
+  beforeEach(() => {
+    vi.stubGlobal('Image', DecodedImage);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('draws one image per form, named as the map names it, with no map', async () => {
+    const { ratio, images } = await renderMarkerImages([camera, offline, diamond, open]);
+
+    expect(ratio).toBe(1);
+    expect(images.map(([id]) => id)).toEqual([
+      'camera-online',
+      'camera-offline',
+      'asset-normal',
+      imageIdOf(open),
+    ]);
+  });
+
+  it('renders a form that has a glyph with the icon set, and one that has none without', async () => {
+    const { images } = await renderMarkerImages([camera, diamond]);
+
+    // The glyph's own <svg>, rendered by React, inside the marker's; the asset diamond has no glyph.
+    expect(svgAt(images, 0).match(/<svg/g)).toHaveLength(2);
+    expect(svgAt(images, 1).match(/<svg/g)).toHaveLength(1);
+  });
+
+  it('draws the offline camera dashed and the online one solid, so colour is not the only cue', async () => {
+    const { images } = await renderMarkerImages([camera, offline]);
+
+    expect(svgAt(images, 0)).not.toContain('stroke-dasharray');
+    expect(svgAt(images, 1)).toContain('stroke-dasharray="2 2"');
+  });
+
+  it('follows the device pixel ratio, rounded up to whole pixels, and reports it', async () => {
+    const original = window.devicePixelRatio;
+    Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 1.5 });
+    try {
+      const { ratio, images } = await renderMarkerImages([camera]);
+
+      expect(ratio).toBe(2);
+      // The camera's 14 px box is 28 device pixels; the drawing keeps its 14-unit viewBox.
+      const svg = svgAt(images, 0);
+      expect(svg).toContain('width="28"');
+      expect(svg).toContain('viewBox="0 0 14 14"');
+    } finally {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: original });
+    }
+  });
+
+  it('has nothing to draw for no forms', async () => {
+    expect(await renderMarkerImages([])).toEqual({ ratio: 1, images: [] });
   });
 });

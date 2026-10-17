@@ -255,17 +255,20 @@ function markerForms(): MarkerForm[] {
 }
 
 /**
- * Registers every marker image on `map`, then waits for the count font. Call from the map's `load`
- * handler and add the layers only after it resolves: an image that arrives after its layer is
- * missing from the tiles already laid out. Adds nothing when `signal` aborted meanwhile (the map
- * was removed).
+ * The decoded bitmaps of `forms`, one per form and named by `imageIdOf`, drawn at the device pixel
+ * ratio (`ratio`: a bitmap is its CSS size times `ratio` device pixels). It needs no map, so the 3D
+ * stage draws its camera markers from the very same images as the 2D map (V2-12.8). The glyph
+ * renderer is disposed whether or not drawing succeeds.
  */
-export async function registerMapImages(map: MapLibreMap, signal: AbortSignal): Promise<void> {
+export async function renderMarkerImages(forms: readonly MarkerForm[]): Promise<{
+  ratio: number;
+  images: (readonly [id: string, image: HTMLImageElement])[];
+}> {
   const ratio = pixelRatio();
   const renderer = glyphRenderer();
   let svgs: [id: string, svg: string][];
   try {
-    svgs = markerForms().map((form) => {
+    svgs = forms.map((form) => {
       if (form.kind === 'asset') return [imageIdOf(form), markerSvg(form, '', ratio)];
       const { glyph, ...props } = glyphStyle(form);
       return [imageIdOf(form), markerSvg(form, renderer.render(glyph, props), ratio)];
@@ -273,9 +276,21 @@ export async function registerMapImages(map: MapLibreMap, signal: AbortSignal): 
   } finally {
     renderer.dispose();
   }
+  const images = await Promise.all(
+    svgs.map(async ([id, svg]) => [id, await rasterise(svg)] as const),
+  );
+  return { ratio, images };
+}
 
-  const [images] = await Promise.all([
-    Promise.all(svgs.map(async ([id, svg]) => [id, await rasterise(svg)] as const)),
+/**
+ * Registers every marker image on `map`, then waits for the count font. Call from the map's `load`
+ * handler and add the layers only after it resolves: an image that arrives after its layer is
+ * missing from the tiles already laid out. Adds nothing when `signal` aborted meanwhile (the map
+ * was removed).
+ */
+export async function registerMapImages(map: MapLibreMap, signal: AbortSignal): Promise<void> {
+  const [{ ratio, images }] = await Promise.all([
+    renderMarkerImages(markerForms()),
     document.fonts.load(COUNT_FONT),
   ]);
   if (signal.aborted) return;
