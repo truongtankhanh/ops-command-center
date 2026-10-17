@@ -78,6 +78,20 @@ export function makeFrame([centerLng, centerLat]: LngLat): Frame {
 }
 
 /**
+ * The frame the scene is drawn in: the site plan's centre (ADR-0020), or, when the plan is not served
+ * (a 404 or a failure, as the 2D map also tolerates), the middle of the zones' bounding box, or `null`
+ * when there is nothing to draw. Everything placed in the scene goes through this one function, so the
+ * origin is decided once.
+ */
+export function sceneFrame(plan: SitePlan | undefined, zones: readonly Zone[]): Frame | null {
+  if (plan) return makeFrame(plan.center);
+  const corners = siteBounds(undefined, zones);
+  if (corners === null) return null;
+  const [[west, south], [east, north]] = corners;
+  return makeFrame([(west + east) / 2, (south + north) / 2]);
+}
+
+/**
  * The signed area of a ring in m², positive when it runs counter-clockwise on the map (north up, east
  * right), whichever way the viewer's camera looks: the fixed winding the meshes rely on.
  */
@@ -186,5 +200,51 @@ export function panBounds(bounds: Bounds): Bounds {
     maxX: bounds.maxX + PAN_MARGIN_M,
     minZ: bounds.minZ - PAN_MARGIN_M,
     maxZ: bounds.maxZ + PAN_MARGIN_M,
+  };
+}
+
+/** A fixed camera pose in scene metres: `y` is up. */
+export interface InterimView {
+  position: [x: number, y: number, z: number];
+  target: [x: number, y: number, z: number];
+  fov: number;
+  near: number;
+  far: number;
+}
+
+/** The interim camera's vertical field of view, in degrees. */
+const INTERIM_FOV_DEG = 50;
+/** Where the interim camera stands: 55° from vertical, from the south-west (V2-12.9's home view is yaw 45°). */
+const INTERIM_TILT_RAD = (55 * Math.PI) / 180;
+/** South-west on the ground: west is −x and south is +z. */
+const INTERIM_HEADING: Local = [-Math.SQRT1_2, Math.SQRT1_2];
+/** The least distance, so a tiny or empty box still gets a usable pose (brief § Camera limits: campus 60 m). */
+const INTERIM_MIN_DISTANCE_M = 60;
+
+/**
+ * A fixed overview of `bounds`, so the ground is visible before the camera rig exists. It is a stand-in:
+ * V2-12.9's `Rig` and `homeView` replace it and this function goes with them. The target is the box's
+ * centre on the ground; the distance fits the box's bounding circle in the vertical field of view, which
+ * fits any landscape stage. The numbers are tuned by eye (`unverified`).
+ */
+export function interimView(bounds: Bounds): InterimView {
+  const targetX = (bounds.minX + bounds.maxX) / 2;
+  const targetZ = (bounds.minZ + bounds.maxZ) / 2;
+  const radius = Math.hypot(bounds.maxX - bounds.minX, bounds.maxZ - bounds.minZ) / 2;
+  const distance = Math.max(
+    INTERIM_MIN_DISTANCE_M,
+    radius / Math.sin((INTERIM_FOV_DEG * Math.PI) / 360),
+  );
+  const [headingX, headingZ] = INTERIM_HEADING;
+  return {
+    position: [
+      targetX + distance * Math.sin(INTERIM_TILT_RAD) * headingX,
+      distance * Math.cos(INTERIM_TILT_RAD),
+      targetZ + distance * Math.sin(INTERIM_TILT_RAD) * headingZ,
+    ],
+    target: [targetX, 0, targetZ],
+    fov: INTERIM_FOV_DEG,
+    near: 1,
+    far: Math.max(1500, distance * 2),
   };
 }

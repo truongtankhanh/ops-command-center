@@ -6,11 +6,13 @@ import {
   buildingShells,
   DEFAULT_BUILDING_HEIGHT_M,
   flatZones,
+  interimView,
   type Local,
   makeFrame,
   PAN_MARGIN_M,
   panBounds,
   sceneBounds,
+  sceneFrame,
   signedAreaM2,
   siteLines,
 } from './twinScene';
@@ -278,5 +280,96 @@ describe('sceneBounds and panBounds', () => {
     // TwinScene.dc.html: the site [−282…228] × [−247…277] pans within [−322…268] × [−287…317].
     expect(panBounds(bounds)).toEqual({ minX: -322, maxX: 268, minZ: -287, maxZ: 317 });
     expect(bounds).toEqual({ minX: -282, maxX: 228, minZ: -247, maxZ: 277 });
+  });
+});
+
+describe('sceneFrame', () => {
+  it('is centred on the site plan when one is served', () => {
+    const served = sceneFrame(SITE, [zone('far', 'outdoor', box(150, 190, -10, 10))])!;
+
+    expect(served.toLocal(ANCHOR)).toEqual([0, 0]);
+  });
+
+  it('is centred on the plan even when there are no zones', () => {
+    expect(sceneFrame(SITE, [])!.toLocal(ANCHOR)).toEqual([0, 0]);
+  });
+
+  it('falls back to the middle of the zones when the plan is not served', () => {
+    const zones = [
+      zone('a', 'building', box(-40, 20, -20, 10)),
+      zone('b', 'parking', box(40, 60, 20, 40)),
+    ];
+
+    const fallback = sceneFrame(undefined, zones)!;
+
+    // The box around both zones runs −40 … 60 east and −20 … 40 north: its middle is (10, 10).
+    const [lng, lat] = fallback.fromLocal(0, 0);
+    expect(lng).toBeCloseTo(at(10, 10)[0], 7);
+    expect(lat).toBeCloseTo(at(10, 10)[1], 7);
+  });
+
+  it('keeps a zone the same size whichever way the origin was chosen', () => {
+    const zones = [zone('a', 'building', box(0, 60, 0, 60), 12)];
+    const [withPlan] = flatZones(zones, sceneFrame(SITE, zones)!);
+    const [withoutPlan] = flatZones(zones, sceneFrame(undefined, zones)!);
+
+    // Only the origin differs: the ring has the same size. Not to the last digit: each frame takes the cosine of
+    // its own centre's latitude, and the two centres are a few metres apart (here 3.6 mm² in 3,600 m²).
+    expect(signedAreaM2(withPlan!.ring)).toBeCloseTo(signedAreaM2(withoutPlan!.ring), 1);
+  });
+
+  it('has no frame without a plan or zones', () => {
+    expect(sceneFrame(undefined, [])).toBeNull();
+  });
+});
+
+describe('interimView', () => {
+  // TwinScene.dc.html's campus box.
+  const CAMPUS: Bounds = { minX: -282, maxX: 228, minZ: -247, maxZ: 277 };
+  const radius = Math.hypot(510, 524) / 2;
+
+  const distanceOf = ({ position, target }: ReturnType<typeof interimView>) =>
+    Math.hypot(position[0] - target[0], position[1] - target[1], position[2] - target[2]);
+
+  it('looks at the middle of the box, on the ground', () => {
+    expect(interimView(CAMPUS).target).toEqual([-27, 0, 15]);
+  });
+
+  it('stands above the ground, south-west of the target, 55° from vertical', () => {
+    const view = interimView(CAMPUS);
+
+    expect(view.position[1]).toBeGreaterThan(0);
+    expect(view.position[0]).toBeLessThan(view.target[0]);
+    expect(view.position[2]).toBeGreaterThan(view.target[2]);
+    // West and south are equally far: south-west.
+    expect(view.target[0] - view.position[0]).toBeCloseTo(view.position[2] - view.target[2], 6);
+    expect(Math.acos(view.position[1] / distanceOf(view)) * (180 / Math.PI)).toBeCloseTo(55, 6);
+  });
+
+  it('is far enough for the whole box to fit the vertical field of view', () => {
+    const view = interimView(CAMPUS);
+
+    expect(distanceOf(view)).toBeCloseTo(radius / Math.sin((view.fov * Math.PI) / 360), 6);
+  });
+
+  it('keeps the far plane beyond the farthest ground point', () => {
+    const view = interimView(CAMPUS);
+
+    expect(view.far).toBeGreaterThanOrEqual(1500);
+    expect(view.far).toBeGreaterThan(distanceOf(view) + radius);
+    expect(view.near).toBeGreaterThan(0);
+    expect(view.near).toBeLessThan(view.far);
+  });
+
+  it('stands farther from a larger box', () => {
+    const small: Bounds = { minX: 0, maxX: 200, minZ: 0, maxZ: 200 };
+
+    expect(distanceOf(interimView(CAMPUS))).toBeGreaterThan(distanceOf(interimView(small)));
+  });
+
+  it('keeps a usable distance for a box with no size', () => {
+    const point: Bounds = { minX: 5, maxX: 5, minZ: 5, maxZ: 5 };
+
+    expect(distanceOf(interimView(point))).toBeCloseTo(60, 6);
   });
 });
