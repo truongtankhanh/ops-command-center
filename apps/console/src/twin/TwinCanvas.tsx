@@ -4,6 +4,7 @@ import { PerspectiveCamera } from 'three';
 import type { InterimView } from '../lib/twinScene';
 import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
+import { CameraMarkers } from './CameraMarkers';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
@@ -40,8 +41,8 @@ interface TwinCanvasProps {
 }
 
 /**
- * The WebGL canvas of the 3D twin (ADR-0020): the lit campus, its ground and its buildings. Cameras
- * arrive with V2-12.8, the camera rig with V2-12.9, the loading card and context loss with V2-12.11.
+ * The WebGL canvas of the 3D twin (ADR-0020): the lit campus, its ground, its buildings and its cameras
+ * (screen-sized markers). The camera rig arrives with V2-12.9, the loading card and context loss with V2-12.11.
  *
  * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`): `<Canvas>`
  *   renders in its own reconciler, so its children are not a safe place for a query hook, and the DOM
@@ -66,6 +67,7 @@ export function TwinCanvas({ scene, labelLayer }: TwinCanvasProps) {
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <Buildings zones={scene.zones} frame={scene.frame} />
+          <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
         </>
       )}

@@ -44,6 +44,8 @@ function renderStage(zones: Zone[]) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.sitePlan, PLAN);
+  // The stage reads the cameras too; an unseeded query would try to fetch them.
+  client.setQueryData(queryKeys.cameras, []);
   return renderWithQueryClient(<TwinStage />, client);
 }
 
