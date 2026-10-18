@@ -136,6 +136,45 @@ their author, checked in CI, and served by nginx as immutable files.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
+  - Settled in V2-14.1 (2026-10-18, tech lead), without changing the decision. The brief's maths stands
+    (`x += (target − x)·(1 − e^(−λ·dt))`, λ = 8 / s as `EASE_RATE_PER_S`; spin eases the _speed_ and integrates the
+    angle); this block adds what a build needs to start:
+    - **Encoding.** A reading becomes one number with `encodeReading(value, enumValues)` (`lib/ringBuffer.ts`): a
+      number as it is, a boolean 0 / 1, an enum its index in the point's `enumValues`; a value that does not encode
+      is no target, so the part keeps its pose. The layout message the worker posts at the start (V2-14.4) carries
+      `enumValues`, so the reserved `enums` field of the `watch` message stays unused.
+    - **Mapping onto `extras.range`** (`turn` and `slide`): linearly and clamped, from the point's domain (its `min`
+      and `max`; `[0, 1]` for a boolean; `[0, n−1]` for an enum of `n` values, and `range[0]` when `n` is 1) onto
+      `range`. So `switchState` `off` / `auto` / `hand` is −35° / 0° / +35°, `breakerClosed` false / true is 0° / 35°
+      and `valveOpenPct` 0 – 100 is 0° – 90°.
+    - **A spinning part shows a legible speed, not the rotor's.** Visual speed = reading / `range[1]` (clamped to
+      0 – 1) × `MAX_VISUAL_REV_PER_S`, which is 1.5 rev/s: monotonic, zero at zero, about 9° a frame at 60 FPS, so the
+      eye reads faster, slower or stopped and never the wagon-wheel of a real 1,420 rpm rotor. The readings carry the
+      number. Both constants live in `lib/twinMotion.ts` (V2-14.3).
+    - **`tint` shows alarm, not value.** A `tint` node keeps its idle material, and takes the severity of an open
+      incident raised by a rule that watches its bound point (the key comes from the incident's evidence,
+      `lib/telemetryEvidence.ts`) at `--tw-alarm-mix` (35 %). A threshold crossed without an open incident tints
+      nothing: brief Principle 2 ("a part takes a severity colour only while an incident it raised is open") wins, so
+      the colour and the incident list can never disagree. A `tint` bound to a point no rule watches (`controlMode`,
+      `pumpFlowM3h`, …) never changes colour; its value is in the inspector.
+    - **Unwatched assets.** The overview (1 Hz, headline values and the state point) reaches every asset; the 10 Hz
+      frames only the at most `TELEMETRY_WATCH_LIMIT` (4) watched ones. A part follows its bound point, eased, while
+      the console holds that point's reading (`CT-01`'s `FanBlade` and `FanMotor` on the overview; its `Valve`,
+      `Switch` and `Pump`, and `GEN-01`'s `RadiatorFan`, only while watched). Otherwise it sits in the pose the model
+      was authored in, and the inspector and callout read "—" as today. The watch limit is not widened for building
+      focus; revisit it (ADR-0019) only if the video wall needs it.
+    - **Alarm.** An open telemetry incident tints the whole asset at 35 % of its severity into the material at every
+      level (frame 04); at asset level the parts bound to the rule's point also take the severity edge.
+    - **Stale** (an asset is stale by the rule of V2-08.1: 3 × its shortest headline interval, 5 s at least) freezes
+      every part at its last pose, without a run-down that would read as a real stop; faces take `--tw-stale-*` and the
+      edge `--tw-stale-edge` (dashed). A fault is never hidden by a stale reading: an asset in stale _and_ fault keeps
+      the alarm look, with stale-grey faces and the severity edge.
+    - **Snap, not ease**, when a step is larger than the bound's range, on the first value after a model loads, and
+      after a reconnect (brief § Worker).
+    - **Reduced motion** shortens the camera's moves (V2-12.9) and stops the beacon's pulse (V2-16.3). It does not
+      stop a spinning part: the spin is the reading, an essential movement under WCAG 2.2.2.
+    - **A model that fails to load** leaves the asset as its neutral box, with one log line; the asset stays in every
+      list.
 - **Model contract.**
   - glTF 2.0 binary, **one file per asset class**, instanced for every asset of that class.
   - **Node names are part roles, unique within the file** (`FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`), under
@@ -150,6 +189,30 @@ their author, checked in CI, and served by nginx as immutable files.
       from `extras` the inspector's Parts section is a code-owned table in the console (`lib/assetParts.ts`: role,
       label and bound point, from asset-classes.md) for the two modelled classes. V2-14 deletes it, and a class
       without a model has no Parts section.
+    - Settled in V2-13.1 (2026-10-18, tech lead), without changing the decision; `pnpm models:check` and
+      `ops/models/README.md` are its executable form:
+      - **Size.** The model's real outside dimensions are authoritative and `footprint_m` follows them. The target
+        dimensions given to the vendor are the catalogue's (width × depth × height): cooling tower 4.0 × 4.0 × 5.0 m,
+        standby generator 6.0 × 2.5 × 3.0 m. The prototype's larger drawings (tower 8 × 6 × 5 m, generator
+        12 × 3 × 3.8 m) are not data. If a delivery differs, `footprint_m` changes by a reviewed data change (a migration
+        for the two classes' rows), never by the seed and never by the model; it is its own task.
+      - **Trees.** Root `CoolingTower` / `StandbyGenerator` (the class in PascalCase). The tower is `Casing`,
+        `FanStack`, `Pipe`, `Riser`, `ControlPanel` (static) and `FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`
+        (bound; asset-classes.md). The generator is `Enclosure` (static, drawn see-through), `FuelTank`, `Battery`,
+        `Engine`, `Alternator`, `Radiator` (static) › `RadiatorFan` (spin), `ControlPanel` › `Breaker` (turn),
+        `Silencer`, `ExhaustStack` (static).
+      - **Materials by name.** Each glTF material is named for a console material: `Part`, `Steel`, `Concrete`, `Rail`,
+        `Screen`, `Blade`, `Hub`, `Xray`. The console replaces the imported material with its own of that name
+        (colours from `twinColors`), so hover, stale and alarm tint reliably; the vendor supplies baked ambient
+        occlusion textures only. An unknown name falls back to `Part`; the checker rejects one.
+      - **`extras`** as above, plus an optional `label` (the word the Parts row shows), so deleting `lib/assetParts.ts`
+        (V2-14.10) loses nothing. Helper nodes whose names start with `_` are never listed as parts.
+      - **LOD1** is a top-level sibling `<Root>_LOD1` with the root's pivot and no `extras`; the console builds a
+        `LOD` from the pair.
+      - **Counts.** "At most 50,000 triangles" is the class root's (LOD0); LOD1 adds at most a further 25 % of it.
+        Counts come from accessor sizes, so Meshopt-compressed geometry is counted without decoding.
+      - **File name** `<class code>.<first 12 hex of the SHA-256 of the file's bytes>.glb`; `model_key` is that name
+        (`varchar(64)`). A replacement is a new name, never an edit.
   - Each bound node's pivot sits on its axis of motion; +Y up; 1 unit = 1 m; origin at the centre of the footprint.
   - Static nodes are merged at load; only bound nodes stay separate.
 - **Budgets, checked by `pnpm models:check` in CI** (added in V2-13; no such script exists yet) on every `.glb` under
