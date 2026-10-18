@@ -44,6 +44,9 @@ client may cache it for the session. There is no pagination; the catalogue is a 
 
 `headline` points are the same shape as `points` of the detail route, below.
 
+In the demo the seed gives `cooling_tower` and `standby_generator` their `modelUrl`, so `CT-01`, `CT-02` and `GEN-01`
+carry one; every other class is `null` until it has a model.
+
 Source: `apps/api/src/assets/assets.controller.ts:39`
 
 ### Get an asset

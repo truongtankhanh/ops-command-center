@@ -85,6 +85,11 @@ Constraints:
     (ADR-0021, ADR-0018), and tops them up the same way. Since V2-04.3 it also inserts the cameras of the expanded
     campus that are absent, by `code`, with their field of view, and never rewrites a camera that exists;
   - a boot with nothing to add skips the lock.
+  - Settled in V2-13.7, without changing the decision: `asset_class.model_key` is the one value a top-up also
+    writes to a row that exists. It sets it where it is `NULL` or holds a key this seed wrote earlier
+    (`SUPERSEDED_MODEL_KEYS`, by class), so a volume can follow a regenerated stand-in or the vendor's file; any
+    other value was set by an operator and is kept. The lock-free check reads the same rule, so a boot with nothing
+    to add still skips the lock.
 - **Migrations** `SitePlan` (two new tables) and `CameraFieldOfView` (three nullable columns, no default:
   catalog-only) are additive, and their `down` drops what they added.
 

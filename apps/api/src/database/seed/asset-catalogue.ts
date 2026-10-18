@@ -13,7 +13,10 @@ import type {
  *
  * A top-up inserts what is absent and never rewrites a row that exists (ADR-0017), so editing a
  * value here reaches an empty database only. A volume that already has the row keeps its value,
- * which is also how an operator's threshold survives a restart.
+ * which is also how an operator's threshold survives a restart. The one exception is a class's
+ * `model_key`: it is also set when it holds a key this seed wrote earlier
+ * (`SUPERSEDED_MODEL_KEYS`), so a volume can follow a regenerated stand-in or the vendor's file;
+ * a key an operator set is kept.
  */
 
 export interface PointSeed {
@@ -49,7 +52,11 @@ export interface ClassSeed {
   /** Lower snake case: `cooling_tower`. */
   code: string;
   name: string;
-  /** `null` in V2-05 for every class; V2-13 sets it for the modelled ones (asset-classes.md). */
+  /**
+   * The class's model file in `ops/models/` (ADR-0020): `<code>.<12 hex>.glb`, which the API serves
+   * as `/models/<key>`. Set for the two modelled classes (asset-classes.md), `null` for the rest,
+   * which clients draw as a box. `model-files.spec.ts` keeps each key equal to a committed file.
+   */
   modelKey: string | null;
   footprintM: AssetFootprint;
   points: PointSeed[];
@@ -103,7 +110,7 @@ export const ASSET_CLASSES: ClassSeed[] = [
   {
     code: 'cooling_tower',
     name: 'Cooling tower',
-    modelKey: null,
+    modelKey: 'cooling_tower.961e8f9f464e.glb',
     footprintM: { width: 4, depth: 4, height: 5 },
     points: [
       numberPoint({
@@ -233,7 +240,7 @@ export const ASSET_CLASSES: ClassSeed[] = [
   {
     code: 'standby_generator',
     name: 'Standby generator',
-    modelKey: null,
+    modelKey: 'standby_generator.f37bf7611883.glb',
     footprintM: { width: 6, depth: 2.5, height: 3 },
     points: [
       numberPoint({
@@ -936,6 +943,17 @@ export const ASSET_CLASSES: ClassSeed[] = [
 ];
 
 /**
+ * Every `model_key` this seed wrote for a class before its current one, by class code. A top-up
+ * replaces a key that is `NULL` or in this list and keeps any other: a key an operator set is theirs.
+ *
+ * When a stand-in is regenerated (its name carries a hash, so a new design is a new name) or the
+ * vendor's file replaces it, put the old name here first, then change `modelKey`; otherwise a
+ * volume that holds it keeps a key whose file is gone (a `404`). `model-files.spec.ts` fails until
+ * the seed names the committed file and checks this list against the current key.
+ */
+export const SUPERSEDED_MODEL_KEYS: Readonly<Record<string, readonly string[]>> = {};
+
+/**
  * What the database holds of the seed classes, as the three sets `missingFromCatalogue` reads.
  * Built by the caller from a read; this module does no I/O.
  */
@@ -946,12 +964,16 @@ export interface PresentCatalogue {
   points: ReadonlySet<string>;
   /** `ruleRef` of every class rule (no asset) of a seed class that exists. */
   rules: ReadonlySet<string>;
+  /** The current `model_key` (`null` for none) of every seed class that exists, by class code. */
+  modelKeys: ReadonlyMap<string, string | null>;
 }
 
 export interface MissingCatalogue {
   classes: ClassSeed[];
   points: { assetClass: ClassSeed; point: PointSeed }[];
   rules: { assetClass: ClassSeed; rule: RuleSeed }[];
+  /** Classes that exist and whose `model_key` the seed fills: see `missingFromCatalogue`. */
+  modelKeys: ClassSeed[];
 }
 
 // A class code and a point key contain no `:`, so the first one always splits a reference.
@@ -962,9 +984,18 @@ export const ruleRef = (classCode: string, name: string): string => `${classCode
  * The seed rows `present` lacks. Written as a comparison of sets rather than a row count, so a
  * rule or a point added by hand cannot hide a seed one that is missing. The points and rules of a
  * missing class are missing whatever `present` says about them.
+ *
+ * `modelKeys` is the one exception to "never rewritten" (ADR-0017): a class that exists, whose
+ * seed has a model, and whose `model_key` is `NULL` or a key in `superseded` (what this seed wrote
+ * for it before). Any other key was set by an operator and is kept, and a class that does not
+ * exist is inserted whole, key included. Read by the lock-free check and by the filler, so they
+ * cannot disagree.
  */
-export function missingFromCatalogue(present: PresentCatalogue): MissingCatalogue {
-  const missing: MissingCatalogue = { classes: [], points: [], rules: [] };
+export function missingFromCatalogue(
+  present: PresentCatalogue,
+  superseded: Readonly<Record<string, readonly string[]>> = SUPERSEDED_MODEL_KEYS,
+): MissingCatalogue {
+  const missing: MissingCatalogue = { classes: [], points: [], rules: [], modelKeys: [] };
   for (const assetClass of ASSET_CLASSES) {
     const classExists = present.classes.has(assetClass.code);
     if (!classExists) missing.classes.push(assetClass);
@@ -976,6 +1007,12 @@ export function missingFromCatalogue(present: PresentCatalogue): MissingCatalogu
     for (const rule of assetClass.rules) {
       if (!classExists || !present.rules.has(ruleRef(assetClass.code, rule.name))) {
         missing.rules.push({ assetClass, rule });
+      }
+    }
+    if (classExists && assetClass.modelKey !== null) {
+      const current = present.modelKeys.get(assetClass.code) ?? null;
+      if (current === null || (superseded[assetClass.code] ?? []).includes(current)) {
+        missing.modelKeys.push(assetClass);
       }
     }
   }
