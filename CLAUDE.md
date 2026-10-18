@@ -70,7 +70,7 @@ Design in full: `docs/architecture.md`; decisions: the ADR table in `README.md`.
 | `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                    |
 | `packages/contracts/src/`                      | `domain.ts`, `api.ts`, `events.ts`, `auth.ts`                                                                                                                                           |
 | `packages/camera-adapter/src/`                 | `CameraSource` port, mock and MediaMTX implementations                                                                                                                                  |
-| `ops/`                                         | Keycloak realm, Prometheus config, Grafana dashboard                                                                                                                                    |
+| `ops/`                                         | Keycloak realm, Prometheus config, Grafana dashboard, `model-tools/` (the `models:check` CLI and its specs)                                                                             |
 | `docs/`                                        | `adr/`, `api/` (reference + `openapi.json`), `design/`, `architecture.md`, `roadmap.md`                                                                                                 |
 
 Specs sit next to the code they test (`*.spec.ts` in the API, `*.test.ts(x)` elsewhere).
@@ -111,6 +111,7 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm build
                                             # build also fails if the 3D twin's lazy chunk is over its gzip budget (ADR-0020)
 pnpm test                                   # unit: Jest (API), Vitest (console, camera-adapter)
 pnpm test:e2e                               # API against real PostgreSQL
+pnpm models:check                           # every .glb under ops/models against the model contract (ADR-0020); also models:test, models:typecheck
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)

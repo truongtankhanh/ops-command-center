@@ -41,6 +41,7 @@ One validated path (ADR-0006): `config/env.validation.ts`. Touch these together,
   (ADR-0015). CI asserts both.
 - The API image runs `NODE_ENV=production` as user `node`; its `HEALTHCHECK` uses liveness, never readiness
   (ADR-0013).
-- CI order: format, lint, typecheck, test, test:e2e, build, then the `images` job. Keep new checks in the right job
+- CI order: format, lint, typecheck, the model checks (`models:typecheck`, `models:check`, `models:test`), test,
+  test:e2e, build, then the `images` job. Keep new checks in the right job
   and make each failure name itself in the log.
 - `ops/keycloak/occ-realm.json` is re-imported on every start; roles and demo users change there, not at runtime.
