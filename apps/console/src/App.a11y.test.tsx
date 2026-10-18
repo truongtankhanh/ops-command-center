@@ -12,13 +12,14 @@ import type {
   TelemetryValue,
   Zone,
 } from '@occ/contracts';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from './api/queries';
 import { App } from './App';
 import { useSession } from './auth/store';
 import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
+import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
 import { initialTelemetryState } from './lib/telemetryState';
 import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';
@@ -27,6 +28,8 @@ import {
   expectNoAxeViolations,
   renderWithQueryClient,
   resetStore,
+  stubTwinAvailable,
+  unstubTwin,
 } from './test-utils';
 import { showToast, useToasts } from './ui/toasts';
 
@@ -70,6 +73,9 @@ const fake = vi.hoisted(() => {
 
 vi.mock('maplibre-gl', () => ({ default: { Map: fake.FakeMap, Marker: class {} } }));
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
+// R3F needs WebGL too. Only the 3D cases reach the canvas (the preview gate is closed otherwise); the rest of
+// the stage, its group, controls and legend, is the real one.
+vi.mock('./twin/TwinCanvas', () => ({ TwinCanvas: () => <canvas aria-label="3D canvas" /> }));
 // Queries ask for a token; the gate's buttons sign in and out.
 vi.mock('./auth/session', () => ({
   getAccessToken: vi.fn(() => Promise.resolve(null)),
@@ -385,6 +391,7 @@ function renderConsole({
   assets = ASSETS,
   details = [],
   incidentDetails = [],
+  reference = true,
 }: {
   role?: Role;
   incidents?: Incident[];
@@ -392,14 +399,18 @@ function renderConsole({
   details?: AssetDetail[];
   /** Details with a timeline, for the incidents whose evidence a case reads. */
   incidentDetails?: IncidentDetail[];
+  /** `false` leaves the zones and the site plan out of the cache, so they are still loading. */
+  reference?: boolean;
 } = {}) {
   useSession.getState().signedIn({ displayName: 'Demo Operator', roles: [role] });
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.assets, assets);
   for (const detail of details) client.setQueryData(queryKeys.asset(detail.code), detail);
-  client.setQueryData(queryKeys.zones, ZONES);
-  client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
+  if (reference) {
+    client.setQueryData(queryKeys.zones, ZONES);
+    client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
+  }
   client.setQueryData(queryKeys.cameras, CAMERAS);
   for (const item of CAMERAS) {
     if (item.online) client.setQueryData(queryKeys.stream(item.id), hls(item.id));
@@ -783,6 +794,72 @@ describe('the console', () => {
           expect(screen.getByText(entry)).toBeInTheDocument();
         }
         await checkPage();
+      });
+
+      // V2-12.12. The twin is still behind the preview gate, so the cases open it and ask for 3D. The canvas is
+      // the mock above; the group that names it, the controls and the legend are the real ones.
+      describe('the 3D stage', () => {
+        const show3d = () => {
+          stubTwinAvailable();
+          act(() => consoleState().setView('3d'));
+        };
+        const view = () =>
+          screen.findByRole('group', { name: /^3D view of Langbiang Tech Campus/ });
+
+        afterEach(() => unstubTwin());
+
+        it.each<Role>(['operator', 'viewer'])('loaded, as a %s', async (role) => {
+          renderConsole({ role });
+
+          show3d();
+
+          // INCIDENTS holds two active incidents and one resolved.
+          expect(await view()).toHaveAccessibleName(/ with 2 active incidents\. Drag to rotate\. /);
+          // The code step is ticked as the chunk resolves, a tick after the stage is there.
+          await waitFor(() =>
+            expect(screen.getByRole('region', { name: 'Campus 3D view' })).toHaveAttribute(
+              'aria-busy',
+              'false',
+            ),
+          );
+          expect(screen.getByRole('group', { name: 'Camera' })).toBeInTheDocument();
+          expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+          await checkPage();
+        });
+
+        it('loading: the card over the empty stage, while the site plan is on its way', async () => {
+          renderConsole({ reference: false });
+
+          show3d();
+
+          const loading = await screen.findByRole('region', { name: 'Campus 3D view, loading' });
+          expect(loading).toHaveAttribute('aria-busy', 'true');
+          expect(within(loading).getByRole('status')).toHaveTextContent('Loading the 3D view');
+          // The summary is there from the first frame; without a plan it speaks of the campus.
+          expect(
+            await screen.findByRole('group', {
+              name: /^3D view of the campus with 2 active incidents/,
+            }),
+          ).toBeInTheDocument();
+          await checkPage();
+        });
+
+        // Frames 07 / 14: the context did not come back, so the stage is the 2D map again and the banner says why.
+        it('after a lost context: the 2D map, the banner and the disabled 3D option', async () => {
+          renderConsole();
+          show3d();
+          await view();
+
+          act(() => consoleState().markTwinLost());
+
+          const reason = TWIN_UNAVAILABLE_COPY['context-lost'].title;
+          expect(screen.queryByRole('group', { name: /^3D view of/ })).toBeNull();
+          expect(screen.getByRole('region', { name: 'Campus map' })).toBeInTheDocument();
+          // Said twice on purpose: by the banner and as the 3D option's own description.
+          expect(screen.getAllByText(reason)).toHaveLength(2);
+          expect(screen.getByRole('button', { name: '3D' })).toHaveAccessibleDescription(reason);
+          await checkPage();
+        });
       });
 
       it('the header with both pills when telemetry is paused: events live, readings not', async () => {

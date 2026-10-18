@@ -47,7 +47,7 @@ The repository is a **pnpm + Turborepo monorepo**. Apps are deployable units; pa
 ```
 apps/
   api/               NestJS — REST, WebSocket gateway, persistence, simulator
-  console/           React + Vite — operator console (map, feed, detail, camera tiles)
+  console/           React + Vite — operator console (map, 3D stage, feed, detail, camera tiles)
 packages/
   contracts/         Shared types and event names: the API ↔ console contract
   camera-adapter/    CameraSource interface + implementations (mock now, MediaMTX next)
@@ -139,6 +139,16 @@ flowchart LR
 - **One store, read per asset.** The main thread mirrors the client's view into one store (`useTelemetryStore`). A component reads the smallest slice it needs: one asset's latest values, one key's series, the server's clock (re-read once a second) or the pill's status. A reading for one asset therefore does not render another asset's screen, and the ticking clock stays out of the live regions: the state word is announced, the age is not.
 - **The watch set has one owner.** A component that lives as long as the console (`TelemetryWatchSet`) derives what the console wants every reading of: the asset open in the inspector first, then the asset of the open incident while a telemetry rule's incident is unresolved, at most four, sent once it has held still for 200 ms. The incident sheet and the inspector exclude each other in the console's store, so today the set holds one of them; the server delivers both. Whatever reads a reading (the inspector, the evidence block) only reads.
 - **The console describes an incident, it never decides one.** The API's rule evaluation raises it ([ADR-0018](adr/0018-assets-and-telemetry-as-domain-data.md)). The console reads why from the incident's own record, the note of the first timeline entry, over `GET /incidents/:id` and not over this route: the sheet's "Why it was raised" block does, and so does the reading in the new-incident toast (the live event carries no timeline, so the toast is shown at once and gets the reading from one fetch, in place). Incident events and readings stay on their own paths.
+
+### 3D stage
+
+The console's stage is the 2D map or, where the 3D view is in effect, a three.js scene of the campus ([ADR-0020](adr/0020-digital-twin-rendering-and-model-pipeline.md)). It reads no new endpoint: it draws the zones, the site plan and the cameras the 2D map already loads.
+
+- **A lazy chunk behind one import.** `StageView` loads `src/twin/` with a single dynamic `import()`, and only `src/twin/` may import `three` or `@react-three/*`. The 2D view, the fallback and the sign-in screens therefore download none of it, and the build fails if the chunk exceeds its gzip budget.
+- **The main chunk owns the frame around it.** The `Campus 3D view` region, the loading card (the site plan and the 3D code as steps, with a Retry when the site plan fails) and the load-failure fallback are main-chunk code, because they show before the twin chunk exists.
+- **It falls back to the 2D map, and says why.** If WebGL 2 is missing, or the context is lost and does not come back within 5 seconds, the stage is the 2D map again, a banner gives the reason, and the 3D option stays disabled with the same words. The operator's stored choice is kept, so a reload tries 3D again.
+- **A release control keeps it closed.** The 3D view is open only in a development build and, per tab, with `?twin=1`. That is a switch for what is not finished, not a security control: it does not replace server-side authorization.
+- **The Assets tab and the inspector are the accessible twin.** A WebGL canvas is opaque to assistive technology, so the picture is one focusable group with a text summary of the site and its active incidents, the canvas inside it is hidden, and the camera controls and the legend are ordinary buttons with their own tab stops. The summary counts incidents with the same rule as the feed and the KPI tiles.
 
 ## 6. Camera sources
 

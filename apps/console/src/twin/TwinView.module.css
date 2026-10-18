@@ -1,0 +1,17 @@
+/*
+ * The picture's box: the whole stage, so the canvas takes its size from it and the label layer
+ * (`ZoneLabels.module.css .layer`) covers it. The camera controls, the legend and the hint come after it in
+ * the stage and paint over it. `TwinView.tsx`.
+ */
+.view {
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * The ring sits inside the box: the stage clips what is outside it (`StageView.module.css .twin`), and the
+ * base ring's outer offset would be cut on all four sides.
+ */
+.view:focus-visible {
+  outline-offset: calc(var(--focus-offset) * -1);
+}

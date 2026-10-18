@@ -1,6 +1,7 @@
 /*
  * R3F's canvas takes the size of its parent, so the parent gets the stage's whole box. It is also the
- * box the zone labels are placed in (`ZoneLabels.module.css .layer` fills it).
+ * box the zone labels are placed in (`ZoneLabels.module.css .layer` fills the group `TwinView` makes over it, which
+ * has the same box). The canvas has its own `.fill` inside that group.
  */
 .fill {
   position: relative;
