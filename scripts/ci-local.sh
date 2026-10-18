@@ -2,7 +2,7 @@
 #
 # A local stand-in for .github/workflows/ci.yml, so a PR does not wait for GitHub's runners.
 #
-#   verify  (job 1)  install, format:check, lint, typecheck, test, test:e2e, build
+#   verify  (job 1)  install, format:check, lint, typecheck, models (typecheck, check, test), test, test:e2e, build
 #   images  (job 2)  docker compose build, boot with two API replicas, the same probes as CI
 #
 # It keeps CI's order and its checks; when ci.yml changes, change this file in the same PR.
@@ -11,7 +11,7 @@
 # project name with its own ports, so `down -v` can never touch the volumes of `pnpm docker:up`.
 #
 # Usage:  scripts/ci-local.sh [options]      (or: pnpm ci:local [options])
-#   --fast          format, lint, typecheck and unit tests only (no install, e2e, build, images)
+#   --fast          format, lint, typecheck, model checks and unit tests only (no install, e2e, build, images)
 #   --only verify   run job 1 only            --only images   run job 2 only
 #   --skip-e2e      skip test:e2e (the slow one; needs Docker)
 #   --skip-images   skip job 2
@@ -168,6 +168,9 @@ verify_job() {
   run_step "format:check"  pnpm format:check
   run_step "lint"          pnpm exec turbo run lint --concurrency="$JOBS" $FORCE
   run_step "typecheck"     pnpm exec turbo run typecheck --concurrency="$JOBS" $FORCE
+  run_step "models:typecheck" pnpm models:typecheck
+  run_step "models:check"  pnpm models:check
+  run_step "models:test"   pnpm models:test
   run_step "test (unit)"   pnpm exec turbo run test --concurrency="$JOBS" $FORCE -- --maxWorkers="$JOBS"
   [ "$RUN_E2E" -eq 1 ]   && run_step "test:e2e (throwaway Postgres)" e2e
   [ "$RUN_BUILD" -eq 1 ] && run_step "build" pnpm exec turbo run build --concurrency="$JOBS" $FORCE

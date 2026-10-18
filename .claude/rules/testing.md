@@ -17,8 +17,10 @@ paths:
 | API e2e        | Jest, `test/jest-e2e.config.js`    | `*.e2e-spec.ts`, `--runInBand` | `apps/api/test/`        |
 | Console        | Vitest 4 + jsdom + Testing Library | `*.test.ts`, `*.test.tsx`      | beside source in `src/` |
 | camera-adapter | Vitest                             | `src/**/*.test.ts`             | beside source           |
+| Model tools    | `node:test` (no dependency)        | `*.test.ts`                    | `ops/model-tools/`      |
 
-The API uses Jest and everything else Vitest. Do not unify them.
+The API uses Jest and everything else Vitest. Do not unify them. The model tools use Node's own runner and are not part of `pnpm test`: `pnpm models:test`
+runs them (and CI's model-check step), `pnpm models:typecheck` type-checks them.
 
 ## API
 

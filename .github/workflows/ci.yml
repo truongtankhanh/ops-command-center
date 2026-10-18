@@ -47,6 +47,11 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+      - name: Model checks
+        run: |
+          pnpm models:typecheck
+          pnpm models:check
+          pnpm models:test
       - run: pnpm test
       - run: pnpm test:e2e
       - run: pnpm build

@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Not a workspace member (see pnpm-workspace.yaml): this only marks the folder's .ts files as ES modules, so Node runs them without guessing. The checker's dependencies are the root's.",
+  "type": "module"
+}
