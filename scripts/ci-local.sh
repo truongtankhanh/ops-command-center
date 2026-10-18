@@ -228,6 +228,39 @@ images_rate_limit() {
          and has("message") and has("path") and has("timestamp")' "$body"
 }
 
+# /models/ (ADR-0020 § Serving): the same checks as ci.yml's step of that name.
+images_models() {
+  local base=http://localhost:18080 body="$LOG_DIR/models-body" headers="$LOG_DIR/models-headers"
+  local model class code type cache path
+  get() { curl -s -o "$body" -D "$headers" -w '%{http_code}' "$base$1" || true; }
+  header() { grep -i "^$1:" "$headers" | tr -d '\r' | cut -d: -f2- | sed 's/^ *//' || true; }
+  # The Compose mount is ./ops/models, so the checkout holds the names nginx can serve.
+  set -- ops/models/*.glb
+  [ -e "$1" ] || { fail "ops/models holds no .glb to request"; return 1; }
+  model=$(basename "$1")
+  class=${model%%.*}
+
+  code=$(get "/models/$model")
+  [ "$code" = 200 ] || { fail "/models/$model returned $code, want 200"; return 1; }
+  type=$(header content-type)
+  [ "$type" = model/gltf-binary ] || { fail "/models/$model has Content-Type '$type', want model/gltf-binary"; return 1; }
+  cache=$(header cache-control)
+  case "$cache" in *immutable*) ;; *) fail "/models/$model has Cache-Control '$cache', want immutable"; return 1 ;; esac
+  cmp -s "$body" "ops/models/$model" || { fail "/models/$model is not the file in ops/models"; return 1; }
+
+  # A well-formed name of the class with another hash, an unknown name and the directory: 404, not the SPA.
+  for path in "/models/$class.000000000000.glb" /models/nope.000000000000.glb /models/; do
+    code=$(get "$path")
+    [ "$code" = 404 ] || { fail "$path returned $code, want 404"; return 1; }
+    if grep -q 'id="root"' "$body"; then fail "$path answered with the SPA page"; return 1; fi
+  done
+
+  # The console's own routes are unaffected.
+  code=$(get /campus/overview)
+  [ "$code" = 200 ] || { fail "/campus/overview returned $code, want 200"; return 1; }
+  grep -q 'id="root"' "$body" || { fail "/campus/overview did not answer with the SPA page"; return 1; }
+}
+
 images_liveness() {
   # Last: it stops the database. Each replica must stay live and report not ready (ADR-0013).
   docker compose stop postgres || return 1
@@ -246,6 +279,7 @@ images_job() {
   run_step "images: replicas healthy" images_replicas
   run_step "images: metrics stay off the edge" images_metrics
   run_step "images: nginx rate limit" images_rate_limit
+  run_step "images: /models/ served immutably, nothing else" images_models
   run_step "images: liveness survives a DB outage" images_liveness
 }
 
