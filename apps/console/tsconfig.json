@@ -6,7 +6,9 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
-    "noEmit": true
+    "noEmit": true,
+    // `vite.config.ts` imports `./vite.decoders.ts` with its extension, as Vite's native config loader needs.
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "vite.decoders.ts", "vite.decoders.test.ts"]
 }
