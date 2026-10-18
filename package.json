@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "test:e2e": "turbo run test:e2e",
     "models:check": "node ops/model-tools/check.ts",
+    "models:standins": "node ops/model-tools/make-standins.ts",
     "models:test": "node --test \"ops/model-tools/*.test.ts\"",
     "models:typecheck": "tsc --noEmit -p ops/model-tools",
     "format": "prettier --write .",

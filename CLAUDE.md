@@ -112,6 +112,7 @@ pnpm format:check && pnpm lint && pnpm typecheck && pnpm build
 pnpm test                                   # unit: Jest (API), Vitest (console, camera-adapter)
 pnpm test:e2e                               # API against real PostgreSQL
 pnpm models:check                           # every .glb under ops/models against the model contract (ADR-0020); also models:test, models:typecheck
+pnpm models:standins                        # regenerate the demo's placeholder models into ops/models (V2-13.3); never deletes
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)
