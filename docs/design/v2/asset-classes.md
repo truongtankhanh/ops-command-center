@@ -579,9 +579,23 @@ Settled 2026-10-15 (V2-09.10), the foot of the sheet:
    would change ADR-0021; decide in V2-00.8. Until then, gas concentration raises no incident from the console.~~
    **Decided 2026-10-09 (V2-00.8):** no. Gas alarms stay with the gas detection panel; telemetry never raises a
    `fire_safety` type, so `gas_detector` keeps only its fault rule.
-5. **Booleans and enums in bindings.** The worker posts one `Float32Array` of targets (ADR-0020), but `switchState`
+5. ~~**Booleans and enums in bindings.** The worker posts one `Float32Array` of targets (ADR-0020), but `switchState`
    (`enum`) and `breakerClosed` (`boolean`) drive `turn` parts. Neither ADR says how such a value becomes a number
-   (for example 0 / 1, and an enum's index in `enum_values`, mapped onto `range`). Decide in V2-14.
+   (for example 0 / 1, and an enum's index in `enum_values`, mapped onto `range`). Decide in V2-14.~~
+   **Decided 2026-10-18 (V2-14.1)** by the tech lead, as ADR-0020 § State records: a number is posted as it is, a
+   boolean as 0 / 1, an enum as its index in the point's `enumValues`; for `turn` and `slide` that number is mapped
+   linearly (and clamped) from the point's domain onto the bound node's `extras.range`.
+
+   | Bound part                      | Point           | Domain of the point   | Posted value   | `range`   | Pose                    |
+   | ------------------------------- | --------------- | --------------------- | -------------- | --------- | ----------------------- |
+   | `Switch` (`cooling_tower`)      | `switchState`   | `off`, `auto`, `hand` | 0, 1, 2        | [−35, 35] | −35°, 0°, +35°          |
+   | `Valve` (`cooling_tower`)       | `valveOpenPct`  | 0 – 100               | the percentage | [0, 90]   | 0° – 90°                |
+   | `Breaker` (`standby_generator`) | `breakerClosed` | false, true           | 0, 1           | [0, 35]   | 0° (open), 35° (closed) |
+
+   A spinning part (`FanBlade`, `RadiatorFan`) is not mapped this way: its visual speed is the reading over
+   `range[1]` times `MAX_VISUAL_REV_PER_S`; a `tint` part (`FanMotor`, `Pump`, `FuelTank`, `Battery`, `Engine`,
+   `Alternator`, `ControlPanel`) shows alarm only. Both rules are in ADR-0020 § State.
+
 6. ~~**When an asset looks stale.** Freshness is decided per point (ADR-0019), but the twin greys a whole asset
    (brief § Freshness). Which points make the asset stale (any, all, or its headline points) is open; decide in V2-08.~~
    **Decided 2026-10-14 (V2-08.1)** by the tech lead:
