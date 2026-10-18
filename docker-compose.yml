@@ -114,6 +114,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # The models nginx serves at /models/ (ADR-0020 § Serving): the demo's stand-ins from ops/models,
+    # read-only and not part of the image. A real deployment mounts its own directory here and sets
+    # asset_class.model_key to the file names in it.
+    volumes:
+      - ./ops/models:/usr/share/nginx/models:ro
     # Loopback only by default, like postgres and keycloak: the demo users' passwords are their
     # usernames, so a LAN-reachable console lets anyone on the network sign in. To open it from
     # another machine, set CONSOLE_BIND=0.0.0.0 together with OCC_PUBLIC_URL.

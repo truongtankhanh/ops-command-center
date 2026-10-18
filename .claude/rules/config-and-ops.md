@@ -41,6 +41,10 @@ One validated path (ADR-0006): `config/env.validation.ts`. Touch these together,
   (ADR-0015). CI asserts both.
 - The API image runs `NODE_ENV=production` as user `node`; its `HEALTHCHECK` uses liveness, never readiness
   (ADR-0013).
+- The console mounts `ops/models` read-only at `/usr/share/nginx/models`; the image never contains it. nginx serves
+  only `<class>.<12 hex>.glb` from it, immutably, and answers anything else under `/models/` with `404`, never
+  `index.html`. A real deployment mounts its own directory and sets `asset_class.model_key` (ADR-0020). CI asserts
+  this in the `images` job, and `ci-local.sh` mirrors it.
 - CI order: format, lint, typecheck, the model checks (`models:typecheck`, `models:check`, `models:test`), test,
   test:e2e, build, then the `images` job. Keep new checks in the right job
   and make each failure name itself in the log.

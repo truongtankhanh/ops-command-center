@@ -102,6 +102,40 @@ jobs:
           grep -qx 429 /tmp/code
           jq -e '.statusCode == 429 and .error == "TOO_MANY_REQUESTS"
                  and has("message") and has("path") and has("timestamp")' /tmp/body
+      # /models/ (ADR-0020 § Serving): nginx serves only `<class>.<12 hex>.glb` from the mounted ops/models,
+      # immutably, and answers everything else under /models/ with 404, never the SPA's index.html.
+      - name: Check /models/ serves a hashed model immutably and nothing else
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          base=http://localhost:18080
+          # The Compose mount is ./ops/models, so the checkout holds the names nginx can serve.
+          set -- ops/models/*.glb
+          test -e "$1" || fail "ops/models holds no .glb to request"
+          model=$(basename "$1")
+          class=${model%%.*}
+          # `|| true`: an unreachable nginx makes curl exit non-zero; it still prints 000 as the code.
+          get() { curl -s -o /tmp/models-body -D /tmp/models-headers -w '%{http_code}' "$base$1" || true; }
+          header() { grep -i "^$1:" /tmp/models-headers | tr -d '\r' | cut -d: -f2- | sed 's/^ *//' || true; }
+
+          code=$(get "/models/$model")
+          test "$code" = 200 || fail "/models/$model returned $code, want 200"
+          type=$(header content-type)
+          test "$type" = model/gltf-binary || fail "/models/$model has Content-Type '$type', want model/gltf-binary"
+          cache=$(header cache-control)
+          case "$cache" in *immutable*) ;; *) fail "/models/$model has Cache-Control '$cache', want immutable" ;; esac
+          cmp -s /tmp/models-body "ops/models/$model" || fail "/models/$model is not the file in ops/models"
+
+          # A well-formed name of the class with another hash, an unknown name and the directory: 404, not the SPA.
+          for path in "/models/$class.000000000000.glb" /models/nope.000000000000.glb /models/; do
+            code=$(get "$path")
+            test "$code" = 404 || fail "$path returned $code, want 404"
+            ! grep -q 'id="root"' /tmp/models-body || fail "$path answered with the SPA page"
+          done
+
+          # The console's own routes are unaffected.
+          code=$(get /campus/overview)
+          test "$code" = 200 || fail "/campus/overview returned $code, want 200"
+          grep -q 'id="root"' /tmp/models-body || fail "/campus/overview did not answer with the SPA page"
       # Last: it stops the database. Each replica must stay live and report not ready (ADR-0013).
       - name: Liveness survives a database outage
         run: |
