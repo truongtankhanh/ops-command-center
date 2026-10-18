@@ -1,7 +1,7 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CameraFieldOfView } from '@occ/contracts';
-import { DataSource, type EntityManager, In, IsNull } from 'typeorm';
+import { DataSource, type EntityManager, In, IsNull, Or } from 'typeorm';
 import { AssetClassEntity } from '../../assets/asset-class.entity';
 import { AssetEntity } from '../../assets/asset.entity';
 import { TelemetryPointEntity } from '../../assets/telemetry-point.entity';
@@ -22,6 +22,7 @@ import {
   missingFromCatalogue,
   pointRef,
   ruleRef,
+  SUPERSEDED_MODEL_KEYS,
   type ClassSeed,
   type PointSeed,
   type PresentCatalogue,
@@ -150,6 +151,8 @@ interface CatalogueCounts {
   assetClasses: number;
   telemetryPoints: number;
   telemetryRules: number;
+  /** Classes whose `model_key` was filled in (a new class carries its key, so it is not counted). */
+  modelKeys: number;
 }
 
 /** What a fresh seed inserted of the equipment: the catalogue, then the assets standing in it. */
@@ -172,8 +175,9 @@ interface TopUp extends SeededCounts {
  * parts added since (the site plan, camera fields of view, the zones of the expanded campus, the
  * use and height of their buildings and their cameras, the equipment catalogue and the demo
  * assets) into a database seeded before them, so a demo volume upgrades by restarting (ADR-0017).
- * A top-up only fills what is missing — it never changes a value already there — and only on the
- * reference campus.
+ * A top-up only fills what is missing — it never changes a value already there, with one bounded
+ * exception: a class's `model_key` is also replaced when it holds a key this seed wrote earlier
+ * (`SUPERSEDED_MODEL_KEYS`), never one an operator set — and only on the reference campus.
  */
 @Injectable()
 export class SeedService implements OnApplicationBootstrap {
@@ -212,8 +216,8 @@ export class SeedService implements OnApplicationBootstrap {
           `${outcome.zoneHeights} zone heights, ${outcome.cameras} cameras, ` +
           `${outcome.siteFeatures} site plan features, ` +
           `${outcome.fieldsOfView} camera fields of view, ` +
-          `${outcome.assetClasses} asset classes, ${outcome.telemetryPoints} points, ` +
-          `${outcome.telemetryRules} rules, ${outcome.assets} assets`,
+          `${outcome.assetClasses} asset classes, ${outcome.modelKeys} model keys, ` +
+          `${outcome.telemetryPoints} points, ${outcome.telemetryRules} rules, ${outcome.assets} assets`,
       );
     }
   }
@@ -350,21 +354,23 @@ export class SeedService implements OnApplicationBootstrap {
   }
 
   /**
-   * What the database holds of the seed classes: the class codes, and the points and class rules
-   * of those classes as `pointRef` / `ruleRef` keys. `classIds` maps a class code to its row.
+   * What the database holds of the seed classes: the class codes with their current `model_key`,
+   * and the points and class rules of those classes as `pointRef` / `ruleRef` keys. `classIds` maps
+   * a class code to its row.
    * Narrow reads (a few columns of at most 16 classes, 66 points and 22 rules), no relation joins.
    */
   private async readCatalogue(
     manager: EntityManager,
   ): Promise<{ present: PresentCatalogue; classIds: Map<string, string> }> {
     const classes = await manager.find(AssetClassEntity, {
-      select: { id: true, code: true },
+      select: { id: true, code: true, modelKey: true },
       where: { code: In(SEED_CLASS_CODES) },
     });
     const classIds = new Map(classes.map((row) => [row.code, row.id]));
     const points = new Set<string>();
     const rules = new Set<string>();
-    const present = { classes: new Set(classIds.keys()), points, rules };
+    const modelKeys = new Map(classes.map((row) => [row.code, row.modelKey]));
+    const present = { classes: new Set(classIds.keys()), points, rules, modelKeys };
     // No seed class yet: nothing hangs off one, and `In([])` is best not relied on.
     if (classes.length === 0) return { present, classIds };
 
@@ -391,13 +397,23 @@ export class SeedService implements OnApplicationBootstrap {
   private async catalogueIsComplete(manager: EntityManager): Promise<boolean> {
     const { present } = await this.readCatalogue(manager);
     const missing = missingFromCatalogue(present);
-    return missing.classes.length + missing.points.length + missing.rules.length === 0;
+    return (
+      missing.classes.length +
+        missing.points.length +
+        missing.rules.length +
+        missing.modelKeys.length ===
+      0
+    );
   }
 
   /**
    * Inserts the seed classes, points and class rules that are absent. A row that exists is never
    * rewritten, and only absent ones are inserted, so a threshold an operator changed is kept and
    * nothing collides with a unique key. On an empty database that is all of it.
+   *
+   * The one value of an existing row it does write is a class's `model_key`, and only where it is
+   * `NULL` or a key this seed wrote before (`SUPERSEDED_MODEL_KEYS`): the update's `where` repeats
+   * that guard, so a key set between the read and the write is still kept.
    */
   private async addMissingCatalogue(manager: EntityManager): Promise<CatalogueCounts> {
     const { present, classIds } = await this.readCatalogue(manager);
@@ -426,10 +442,26 @@ export class SeedService implements OnApplicationBootstrap {
         ),
       );
     }
+
+    let modelKeys = 0;
+    for (const seed of missing.modelKeys) {
+      // `In([])` is best not relied on, and the list is empty until the first key is superseded.
+      const superseded = SUPERSEDED_MODEL_KEYS[seed.code] ?? [];
+      const result = await manager.update(
+        AssetClassEntity,
+        {
+          code: seed.code,
+          modelKey: superseded.length > 0 ? Or(IsNull(), In(superseded)) : IsNull(),
+        },
+        { modelKey: seed.modelKey },
+      );
+      modelKeys += result.affected ?? 0;
+    }
     return {
       assetClasses: missing.classes.length,
       telemetryPoints: missing.points.length,
       telemetryRules: missing.rules.length,
+      modelKeys,
     };
   }
 

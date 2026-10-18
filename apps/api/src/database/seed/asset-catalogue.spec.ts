@@ -4,6 +4,7 @@ import {
   missingFromCatalogue,
   pointRef,
   ruleRef,
+  SUPERSEDED_MODEL_KEYS,
   type ClassSeed,
 } from './asset-catalogue';
 
@@ -28,6 +29,8 @@ const presentOf = (classes: readonly ClassSeed[] = ASSET_CLASSES) => ({
       assetClass.rules.map((rule) => ruleRef(assetClass.code, rule.name)),
     ),
   ),
+  // A volume that is up to date: every class holds the seed's own key.
+  modelKeys: new Map(classes.map((assetClass) => [assetClass.code, assetClass.modelKey])),
 });
 
 const codeOf = (assetClass: ClassSeed) => assetClass.code;
@@ -75,9 +78,27 @@ describe('asset catalogue seed', () => {
     }
   });
 
-  it('leaves model_key null: V2-13 sets it for the two modelled classes', () => {
+  it('gives a model_key to the two modelled classes only, named for the class', () => {
+    const keyed = ASSET_CLASSES.filter(({ modelKey }) => modelKey !== null).map(codeOf);
+    expect(keyed).toEqual(['cooling_tower', 'standby_generator']);
     for (const { code, modelKey } of ASSET_CLASSES) {
-      expect([code, modelKey]).toEqual([code, null]);
+      if (modelKey === null) continue;
+      // `<class>.<12 hex>.glb` (ADR-0020), and the column is varchar(64).
+      expect([code, modelKey]).toEqual([
+        code,
+        expect.stringMatching(`^${code}\\.[0-9a-f]{12}\\.glb$`),
+      ]);
+      expect([code, modelKey.length <= 64]).toEqual([code, true]);
+    }
+  });
+
+  it('starts with no superseded key, and lists them only for classes of the seed', () => {
+    const codes = new Set(ASSET_CLASSES.map(codeOf));
+    for (const [code, keys] of Object.entries(SUPERSEDED_MODEL_KEYS)) {
+      expect([code, codes.has(code)]).toEqual([code, true]);
+      // A superseded key is a name the seed no longer uses.
+      const current = ASSET_CLASSES.find((assetClass) => assetClass.code === code)!.modelKey;
+      expect([code, keys.includes(current ?? '')]).toEqual([code, false]);
     }
   });
 
@@ -223,7 +244,12 @@ describe('asset catalogue seed', () => {
 
 describe('missingFromCatalogue', () => {
   it('finds nothing missing when every seed row is present', () => {
-    expect(missingFromCatalogue(presentOf())).toEqual({ classes: [], points: [], rules: [] });
+    expect(missingFromCatalogue(presentOf())).toEqual({
+      classes: [],
+      points: [],
+      rules: [],
+      modelKeys: [],
+    });
   });
 
   it('finds everything missing in an empty database', () => {
@@ -231,10 +257,13 @@ describe('missingFromCatalogue', () => {
       classes: new Set(),
       points: new Set(),
       rules: new Set(),
+      modelKeys: new Map(),
     });
     expect(missing.classes).toHaveLength(16);
     expect(missing.points).toHaveLength(66);
     expect(missing.rules).toHaveLength(22);
+    // A class that is not there is inserted whole, its key included: nothing to fill in.
+    expect(missing.modelKeys).toEqual([]);
   });
 
   it('takes the points and the rules of a missing class with it', () => {
@@ -288,5 +317,58 @@ describe('missingFromCatalogue', () => {
     expect(missing.points.map(({ assetClass, point }) => [assetClass.code, point.key])).toEqual([
       ['precision_cooling', 'running'],
     ]);
+  });
+  describe('the model keys', () => {
+    const MODELLED = ['cooling_tower', 'standby_generator'];
+    const keysOf = (missing: ReturnType<typeof missingFromCatalogue>) =>
+      missing.modelKeys.map(codeOf);
+
+    it('fills a model_key that is NULL, for the modelled classes only', () => {
+      const present = presentOf();
+      // A volume seeded before the keys: every class holds NULL.
+      for (const code of present.modelKeys.keys()) {
+        (present.modelKeys as Map<string, string | null>).set(code, null);
+      }
+
+      expect(keysOf(missingFromCatalogue(present))).toEqual(MODELLED);
+    });
+
+    it('keeps a key an operator set', () => {
+      const present = presentOf();
+      (present.modelKeys as Map<string, string | null>).set('cooling_tower', 'hand-made.glb');
+
+      expect(keysOf(missingFromCatalogue(present))).toEqual([]);
+    });
+
+    it('keeps the seed key itself, so an up-to-date boot has nothing to do', () => {
+      expect(keysOf(missingFromCatalogue(presentOf()))).toEqual([]);
+    });
+
+    it('replaces a key the seed wrote earlier, and only for its own class', () => {
+      const present = presentOf();
+      const keys = present.modelKeys as Map<string, string | null>;
+      keys.set('cooling_tower', 'cooling_tower.000000000000.glb');
+      keys.set('standby_generator', 'cooling_tower.000000000000.glb');
+
+      const superseded = { cooling_tower: ['cooling_tower.000000000000.glb'] };
+
+      // The generator holds the same string, but it is not in the generator's list: it is theirs.
+      expect(keysOf(missingFromCatalogue(present, superseded))).toEqual(['cooling_tower']);
+      // Without the list the old key is just another operator's key.
+      expect(keysOf(missingFromCatalogue(present))).toEqual([]);
+    });
+
+    it('does not fill a class that is not there, and never one the seed gives no model', () => {
+      const present = presentOf();
+      present.classes.delete('cooling_tower');
+      (present.modelKeys as Map<string, string | null>).delete('cooling_tower');
+      // A class without a model: whatever it holds is not the seed's business.
+      (present.modelKeys as Map<string, string | null>).set('lift', null);
+
+      const missing = missingFromCatalogue(present);
+
+      expect(missing.classes.map(codeOf)).toEqual(['cooling_tower']);
+      expect(keysOf(missing)).toEqual([]);
+    });
   });
 });

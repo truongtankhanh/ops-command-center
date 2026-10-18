@@ -5,7 +5,7 @@ import { categoryOf, INCIDENT_TYPES } from '@occ/contracts';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
-import { ASSET_CLASSES } from '../src/database/seed/asset-catalogue';
+import { ASSET_CLASSES, SUPERSEDED_MODEL_KEYS } from '../src/database/seed/asset-catalogue';
 import { ASSETS } from '../src/database/seed/assets';
 import { SeedService } from '../src/database/seed/seed.service';
 
@@ -888,6 +888,134 @@ describe('Asset catalogue (e2e)', () => {
         ]);
         await seed.onApplicationBootstrap();
       }
+    });
+
+    // V2-13.7: `model_key` names the stand-in file of the two modelled classes. A fresh database gets
+    // it with the class; a volume seeded before gets it from the top-up, which also takes the seed
+    // lock only when there is something to add.
+    describe('model keys', () => {
+      const SEED_KEYS = Object.fromEntries(
+        ASSET_CLASSES.map((assetClass) => [assetClass.code, assetClass.modelKey]),
+      );
+      const MODELLED = ASSET_CLASSES.filter((assetClass) => assetClass.modelKey !== null).map(
+        (assetClass) => assetClass.code,
+      );
+
+      const modelKeys = async () => {
+        const rows: { code: string; model_key: string | null }[] = await db.query(
+          `SELECT "code", "model_key" FROM "asset_class" WHERE "code" = ANY($1) ORDER BY "code"`,
+          [SEED_CODES],
+        );
+        return Object.fromEntries(rows.map((row) => [row.code, row.model_key]));
+      };
+
+      /** Puts the seed's keys back by hand, as a top-up keeps what is set. */
+      const restoreKeys = async () => {
+        for (const [code, key] of Object.entries(SEED_KEYS)) {
+          await db.query(`UPDATE "asset_class" SET "model_key" = $2 WHERE "code" = $1`, [
+            code,
+            key,
+          ]);
+        }
+      };
+
+      const clearModelled = () =>
+        db.query(`UPDATE "asset_class" SET "model_key" = NULL WHERE "code" = ANY($1)`, [MODELLED]);
+
+      it('gives the two modelled classes their file and the others none, after boot', async () => {
+        expect(MODELLED).toEqual(['cooling_tower', 'standby_generator']);
+        expect(await modelKeys()).toEqual(SEED_KEYS);
+      });
+
+      it('fills the keys of a volume seeded before them, once', async () => {
+        const seed = app.get(SeedService);
+
+        try {
+          await clearModelled();
+          expect(await modelKeys()).not.toEqual(SEED_KEYS);
+
+          await seed.onApplicationBootstrap();
+
+          expect(await modelKeys()).toEqual(SEED_KEYS);
+          // Nothing is left to add, so a further boot changes no row.
+          const settled = await seedRowIds();
+          await seed.onApplicationBootstrap();
+          expect(await seedRowIds()).toEqual(settled);
+          expect(await modelKeys()).toEqual(SEED_KEYS);
+        } finally {
+          await restoreKeys();
+        }
+      });
+
+      it('leaves a key an operator set alone', async () => {
+        const seed = app.get(SeedService);
+
+        try {
+          await db.query(
+            `UPDATE "asset_class" SET "model_key" = 'zz-hand-made.glb' WHERE "code" = 'cooling_tower'`,
+          );
+          await db.query(
+            `UPDATE "asset_class" SET "model_key" = NULL WHERE "code" = 'standby_generator'`,
+          );
+
+          await seed.onApplicationBootstrap();
+
+          // The generator's was missing and is filled; the tower's was set by hand and is kept.
+          expect(await modelKeys()).toEqual({
+            ...SEED_KEYS,
+            cooling_tower: 'zz-hand-made.glb',
+          });
+        } finally {
+          await restoreKeys();
+        }
+      });
+
+      it('replaces a key the seed wrote earlier, and nothing else', async () => {
+        const seed = app.get(SeedService);
+        // The list is empty until the first key is superseded: put one in for this case.
+        const superseded = SUPERSEDED_MODEL_KEYS as unknown as Record<string, string[]>;
+
+        try {
+          superseded.cooling_tower = ['zz-old-stand-in.glb'];
+          await db.query(
+            `UPDATE "asset_class" SET "model_key" = 'zz-old-stand-in.glb' WHERE "code" = 'cooling_tower'`,
+          );
+          await db.query(
+            `UPDATE "asset_class" SET "model_key" = 'zz-old-stand-in.glb' WHERE "code" = 'standby_generator'`,
+          );
+
+          await seed.onApplicationBootstrap();
+
+          // The tower held a key the seed wrote, so it moves on; the generator holds the same string,
+          // which is not in the generator's list, so it is somebody's own and is kept.
+          expect(await modelKeys()).toEqual({
+            ...SEED_KEYS,
+            standby_generator: 'zz-old-stand-in.glb',
+          });
+        } finally {
+          delete superseded.cooling_tower;
+          await restoreKeys();
+        }
+      });
+
+      it('skips the seed lock when there is nothing to add, and takes it to fill a key', async () => {
+        const seed = app.get(SeedService);
+        // The seed lock is taken inside a transaction, which a complete boot never opens.
+        const transaction = jest.spyOn(db, 'transaction');
+
+        try {
+          await seed.onApplicationBootstrap();
+          expect(transaction).not.toHaveBeenCalled();
+
+          await clearModelled();
+          await seed.onApplicationBootstrap();
+          expect(transaction).toHaveBeenCalledTimes(1);
+          expect(await modelKeys()).toEqual(SEED_KEYS);
+        } finally {
+          transaction.mockRestore();
+          await restoreKeys();
+        }
+      });
     });
   });
 });

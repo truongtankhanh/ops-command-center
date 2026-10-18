@@ -14,6 +14,7 @@ import { AppModule } from '../src/app.module';
 import { AssetsService } from '../src/assets/assets.service';
 import { validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { ASSET_CLASSES } from '../src/database/seed/asset-catalogue';
 import { ASSETS } from '../src/database/seed/assets';
 import { bearer, signToken } from './support/tokens';
 
@@ -251,6 +252,27 @@ describe('Assets routes (e2e)', () => {
       }
     });
 
+    it('gives the modelled classes a modelUrl and the others null', async () => {
+      const assets = (await get('/api/assets').expect(200)).body as Asset[];
+      const modelKeyOf = new Map(ASSET_CLASSES.map((c) => [c.code, c.modelKey]));
+
+      for (const seed of ASSETS) {
+        const asset = assets.find((each) => each.code === seed.code)!;
+        const key = modelKeyOf.get(seed.class)!;
+        expect([seed.code, asset.class.modelUrl]).toEqual([
+          seed.code,
+          key === null ? null : `/models/${key}`,
+        ]);
+      }
+      // The three assets of the two modelled classes, and no other.
+      const modelled = assets.filter((asset) => asset.class.modelUrl !== null).map((a) => a.code);
+      expect(modelled.filter((code) => ASSETS.some((seed) => seed.code === code)).sort()).toEqual([
+        'CT-01',
+        'CT-02',
+        'GEN-01',
+      ]);
+    });
+
     it('gives CT-01 its class, zone, place and its two headline points', async () => {
       const zones = (await get('/api/zones').expect(200)).body as Zone[];
       const dataCenter = zones.find((zone) => zone.code === 'BLD-DC')!;
@@ -267,8 +289,8 @@ describe('Assets routes (e2e)', () => {
         class: {
           code: 'cooling_tower',
           name: 'Cooling tower',
-          // No class has a model file yet (V2-13); a class that has one is the fixture case below.
-          modelUrl: null,
+          // The seed gives the cooling tower its stand-in file (V2-13.7).
+          modelUrl: `/models/${ASSET_CLASSES.find((c) => c.code === 'cooling_tower')!.modelKey}`,
           footprintM: { width: 4, depth: 4, height: 5 },
         },
       });

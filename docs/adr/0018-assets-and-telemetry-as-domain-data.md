@@ -175,7 +175,9 @@ null`, `'telemetry'` in `INCIDENT_SOURCES`. A client must read a missing `assetI
 - **Seed.** The demo campus gains its asset classes, assets, points and rules
   ([asset-classes.md](../design/v2/asset-classes.md)) in `database/seed/`. An existing reference campus is topped up
   by `SeedService.topUp` (under `SEED_ON_BOOT`, missing rows only), with `isComplete` extended to check the seed
-  asset codes, the way ADR-0017 added the site plan and the cameras' fields of view.
+  asset codes, the way ADR-0017 added the site plan and the cameras' fields of view. The seed also names the model
+  file (`model_key`, a `.glb` in `ops/models/`) of the two modelled classes, and the top-up fills it into a volume
+  seeded before, under the exception recorded in ADR-0017.
 
 ## Consequences
 
