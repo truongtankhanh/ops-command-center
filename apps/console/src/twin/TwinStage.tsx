@@ -5,6 +5,7 @@ import { TwinCanvas } from './TwinCanvas';
 import { TwinControls } from './TwinControls';
 import { TwinLegend } from './TwinLegend';
 import styles from './TwinStage.module.css';
+import { TwinView } from './TwinView';
 import { useTwinScene } from './useTwinScene';
 import { ZoneLabels } from './ZoneLabels';
 
@@ -21,6 +22,11 @@ const NO_ANCHORS: LabelAnchor[] = [];
  * for what it keeps in step from its frame loop without a React render: the labels' layer (`LabelProjector`,
  * V2-12.7) and the compass (`CompassSync`, V2-12.10).
  *
+ * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
+ * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
+ * twin. The controls, the legend and the hint come after the group, so Tab goes from the view to the
+ * camera controls to the legend and then leaves the stage.
+ *
  * A default export, the console's exception to named exports: `React.lazy` needs one.
  */
 export default function TwinStage() {
@@ -29,8 +35,13 @@ export default function TwinStage() {
   const compass = useRef<HTMLButtonElement>(null);
   return (
     <div className={styles.fill}>
-      <TwinCanvas scene={scene} labelLayer={labelLayer} compassRef={compass} />
-      <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} />
+      <TwinView>
+        {/* The canvas is a picture of what the lists hold; `TwinView` names the group for it. */}
+        <div className={styles.fill} aria-hidden="true">
+          <TwinCanvas scene={scene} labelLayer={labelLayer} compassRef={compass} />
+        </div>
+        <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} />
+      </TwinView>
       <DragHint />
       {/* The legend explains what is drawn: with no scene there is nothing to explain (frame 06 has none while loading). */}
       {scene && <TwinLegend />}
