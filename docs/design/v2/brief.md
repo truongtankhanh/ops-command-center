@@ -322,7 +322,9 @@ interface TelemetryFrame {
   - `spin` parts ease the **speed**, then integrate the angle (`angle += speed · dt`), so a fan never jumps or
     reverses when a reading arrives.
   - `turn` / `slide` parts ease the value and take the shortest path for angles (quaternion slerp).
-  - A step larger than the bound's `range` (a restart, a reconnect) snaps instead of easing.
+  - A step of at least half the bound's span (a restart, a reconnect), and the first value after a model loads,
+    snap instead of easing. The threshold is a fraction because no in-domain step can exceed the whole range; a
+    boolean or an enum always eases by size (ADR-0020 § State).
 
 - **Render on demand**: the loop runs while something moves (a spinning part, an easing value, a camera in motion)
   and sleeps otherwise. A hidden tab stops it.
