@@ -1,10 +1,12 @@
 import type { Zone } from '@occ/contracts';
-import { useEffect, useMemo } from 'react';
-import { BufferGeometry, Float32BufferAttribute } from 'three';
+import { useEffect, useMemo, useRef } from 'react';
+import { BufferGeometry, Float32BufferAttribute, type Mesh } from 'three';
 import { buildShellGeometry } from '../lib/twinBuildings';
 import { GROUND_LAYERS } from '../lib/twinGround';
+import { buildingTable } from '../lib/twinPicking';
 import { buildingShells, type Frame } from '../lib/twinScene';
 import { twinColors } from '../styles/tokens';
+import { usePicker } from './PickContext';
 
 /** After the last ground layer; the faces and then their outline. */
 const FACES_ORDER = GROUND_LAYERS.length;
@@ -25,12 +27,15 @@ interface BuildingsProps {
  * - The faces are pushed back a little (`polygonOffset`) so the outline wins on the borders instead of
  *   z-fighting with them. Unlike the ground, the shells write depth: they occlude what is behind.
  * - The mesh keeps the per-building ranges as `userData.ranges` (`lib/twinBuildings.ts`): the table
- *   that picking (V2-15.3), the see-through look (V2-15.8) and the heat colouring (V2-17.3) read, so
- *   none of them needs a mesh per building.
+ *   that picking, the see-through look (V2-15.8) and the heat colouring (V2-17.3) read, so none of
+ *   them needs a mesh per building. The faces are registered with the picker as they are (V2-15.3): a
+ *   ray is cast at the mesh that is drawn, and a hit's triangle names its building through that table.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
 export function Buildings({ zones, frame }: BuildingsProps) {
+  const picker = usePicker();
+  const faces = useRef<Mesh>(null);
   const shell = useMemo(() => {
     const { positions, normals, indices, edges, ranges } = buildShellGeometry(
       buildingShells(zones, frame),
@@ -53,10 +58,21 @@ export function Buildings({ zones, frame }: BuildingsProps) {
     [shell],
   );
 
+  // The mesh is registered while it is the one drawn: a new shell registers again, and the old one goes.
+  useEffect(() => {
+    if (picker === null || shell === null || faces.current === null) return;
+    return picker.addTable(faces.current, buildingTable(shell.ranges));
+  }, [picker, shell]);
+
   if (shell === null) return null;
   return (
     <>
-      <mesh geometry={shell.faces} renderOrder={FACES_ORDER} userData={{ ranges: shell.ranges }}>
+      <mesh
+        ref={faces}
+        geometry={shell.faces}
+        renderOrder={FACES_ORDER}
+        userData={{ ranges: shell.ranges }}
+      >
         <meshLambertMaterial
           color={twinColors.idle.top}
           polygonOffset
