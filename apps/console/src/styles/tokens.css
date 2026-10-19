@@ -85,6 +85,8 @@
   --tw-concrete-south: #2b3034;
   --tw-concrete-east: #22262a;
   --tw-rail: #8199aa;
+  /* The base of an asset whose class has no model, drawn as a box (frame 15). */
+  --tw-neutral: #4b5d6b;
   /* Hover and selection: 30 % accent into the material, edges in `--accent`. */
   --tw-hover-top: color-mix(in srgb, var(--accent) 30%, var(--tw-top));
   --tw-hover-south: color-mix(in srgb, var(--accent) 30%, var(--tw-south));

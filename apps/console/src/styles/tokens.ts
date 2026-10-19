@@ -102,6 +102,8 @@ export const twinColors = {
   edge: '#3e5a6e',
   /** `--tw-rail`: handrails, ladders and fan guard mesh. */
   rail: '#8199aa',
+  /** `--tw-neutral`: the base of an asset with no model, drawn as a box (frame 15). */
+  neutral: '#4b5d6b',
   /** `--tw-top` / `-south` / `-east`: the idle part material. */
   idle: { top: '#2a4658', south: '#1f3748', east: '#172b3a' } satisfies Faces,
   /** `--tw-steel-*`: motors, pumps, pipes, valves and cabinets. */

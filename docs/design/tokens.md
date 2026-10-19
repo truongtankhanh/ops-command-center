@@ -79,6 +79,7 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
 | `--tw-steel-top` / `-south` / `-east`          | `#435766` / `#334553` / `#273745`                            | Motors, pumps, pipes, valves, cabinets                                        |
 | `--tw-concrete-top` / `-south` / `-east`       | `#363c41` / `#2b3034` / `#22262a`                            | Basins, plinths, skids                                                        |
 | `--tw-rail`                                    | `#8199aa`                                                    | Handrails, ladders, fan guard mesh                                            |
+| `--tw-neutral`                                 | `#4b5d6b`                                                    | An asset with no model: its neutral box (frame 15)                            |
 | `--tw-hover-top` / `-south` / `-east`          | 30 % `--accent` into the material                            | Hover and selection; the edge is `--accent`                                   |
 | `--tw-alarm-mix`, `--tw-alarm-top` / … `-east` | 35 %; `--tw-alarm-mix` of `--sev-critical` into the material | A part with an open incident it raised; edge in severity                      |
 | `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                                             |
@@ -323,6 +324,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.road` (src/styles/tokens.ts)             | #182a36                   | #182a36                   | match  |
 | `twinColors.edge` (src/styles/tokens.ts)             | #3e5a6e                   | #3e5a6e                   | match  |
 | `twinColors.rail` (src/styles/tokens.ts)             | #8199aa                   | #8199aa                   | match  |
+| `twinColors.neutral` (src/styles/tokens.ts)          | #4b5d6b                   | #4b5d6b                   | match  |
 | `twinColors.idle.top` (src/styles/tokens.ts)         | #2a4658                   | #2a4658                   | match  |
 | `twinColors.idle.south` (src/styles/tokens.ts)       | #1f3748                   | #1f3748                   | match  |
 | `twinColors.idle.east` (src/styles/tokens.ts)        | #172b3a                   | #172b3a                   | match  |

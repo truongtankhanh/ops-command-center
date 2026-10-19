@@ -1,6 +1,7 @@
-import type { Camera, SitePlan, Zone } from '@occ/contracts';
+import type { Asset, Camera, SitePlan, Zone } from '@occ/contracts';
 import { useMemo } from 'react';
-import { useCameras, useSitePlan, useZones } from '../api/queries';
+import { useAssets, useCameras, useSitePlan, useZones } from '../api/queries';
+import { type PlacedAsset, placeAssets } from '../lib/twinPlacement';
 import {
   type Bounds,
   type Frame,
@@ -17,6 +18,11 @@ export interface TwinScene {
   zones: readonly Zone[];
   /** Empty while they load or if they fail: the markers appear when they arrive. */
   cameras: readonly Camera[];
+  /**
+   * Every asset placed and posed (V2-14.6), `inside` ones included: which of them a level draws is
+   * `visibleAssets`'s answer. Empty while the catalogue loads or if it fails.
+   */
+  assets: readonly PlacedAsset[];
   frame: Frame;
   bounds: Bounds;
   anchors: LabelAnchor[];
@@ -24,11 +30,13 @@ export interface TwinScene {
 
 const NO_ZONES: Zone[] = [];
 const NO_CAMERAS: Camera[] = [];
+const NO_ASSETS: Asset[] = [];
 
 /**
- * The scene of the 3D stage (V2-12.7, V2-12.8): the zones, the site plan and the cameras the 2D map
- * reads (the same queries, no new request), the frame they are drawn in, the box around them and the
- * anchors of the zone labels. One hook, read once by `TwinStage`, so
+ * The scene of the 3D stage (V2-12.7, V2-12.8, V2-14.6): the zones, the site plan, the cameras and the
+ * assets the 2D map reads (the same queries, no new request), the frame they are drawn in, the box
+ * around them and the anchors of the zone labels. The assets are placed here, not in `AssetBoxes`:
+ * `<Canvas>` renders in its own reconciler, where a query hook has no client. One hook, read once by `TwinStage`, so
  * the canvas and the DOM labels are made from the same frame and cannot disagree.
  *
  * `null` while there is nothing to draw: the zones are not there yet (or failed: the 2D map has a
@@ -40,6 +48,7 @@ export function useTwinScene(): TwinScene | null {
   const { data: zones } = useZones();
   const { data: plan } = useSitePlan();
   const { data: cameras } = useCameras();
+  const { data: assets } = useAssets();
 
   return useMemo(() => {
     const list = zones ?? NO_ZONES;
@@ -50,9 +59,10 @@ export function useTwinScene(): TwinScene | null {
       plan,
       zones: list,
       cameras: cameras ?? NO_CAMERAS,
+      assets: placeAssets(assets ?? NO_ASSETS, list, frame),
       frame,
       bounds,
       anchors: labelAnchors(list, frame),
     };
-  }, [plan, zones, cameras]);
+  }, [plan, zones, cameras, assets]);
 }

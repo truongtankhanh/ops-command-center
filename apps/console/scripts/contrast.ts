@@ -396,6 +396,7 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
     ['road', twinColors.road, '--tw-road'],
     ['edge', twinColors.edge, '--tw-edge'],
     ['rail', twinColors.rail, '--tw-rail'],
+    ['neutral', twinColors.neutral, '--tw-neutral'],
     ...idleFaces,
     ...faces('steel'),
     ...faces('concrete'),
