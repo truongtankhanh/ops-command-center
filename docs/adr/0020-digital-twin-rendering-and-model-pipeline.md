@@ -465,6 +465,56 @@ their author, checked in CI, and served by nginx as immutable files.
     - **By eye, still to do in a browser:** the shell going opaque and the boxes disappearing with no flash or hole when
       Inside is toggled, the roof equipment staying, the hover of an `inside` row on the opaque shell, the draw calls at
       building level with Inside off, and the card's place beside the incident sheet and on a narrow stage.
+  - Settled in V2-15.10 (2026-10-19), without changing the decision: the selected part, its callout and its leader.
+    - **The selected part keeps the accent look, at 1 px.** `lookOf(flags, false, true)` (`selected`) gives the same
+      face and edge as the hover: the part's face takes 30 % of the accent and its outline is the accent. A part is
+      painted in it from the click until it is deselected, over the asset's own look (an alarm or a stale dash stay on
+      the rest of the asset), and a part that is both hovered and selected is one paint. `useModelLooks` takes the
+      selection as a fifth, defaulted argument (`useSelectedPartRef`, the hover ref's twin) and `partsPicked`
+      (`lib/twinHover.ts`) decides which nodes of a model are picked and why. The frames' "2 px accent edge" is not
+      built: the outlines are `LineSegments`, which WebGL draws 1 px wide, and the 2 px of the frames' scene is a
+      canvas stroke. Fat lines (`Line2`) would cost a second geometry and material per part, a draw call and bytes
+      the chunk's budget needs for V2-16 and V2-17; the callout and the leader are the strong cue. A candidate for
+      V2-19 if it is missed.
+    - **The callout is `calloutOf`'s answer** (`lib/twinCallout.ts`), built from what the inspector already holds for
+      the asset (`useAsset`, `useModelParts`, the telemetry store and the server clock; no request of its own).
+      Where the task wrote `calloutOf(asset, binding, …)` it takes the model's **`PartRow`** (`partRows`), the source
+      of the label the Parts rows and the incident link already use. The eyebrow is "CT-01 · FanBlade" (the node as the
+      model names it), then the part's label; the big value is `readingParts` (`lib/readings.ts`: the figure and the
+      unit apart, a word such as "Closed" with no unit); "Limit 85 °C" or "Low at 20 %" comes from `limitLine` for the
+      first rule on the point. The figure is `--type-3xl` and the unit `--type-l` (frame 03's 30 px has no token).
+    - **Stale and unknown readings.** A stale or offline asset reads **"last 1,420 rpm"** (the Parts row's own wording)
+      with the age beside it ("1 min old", `formatAgeCoarse`, two units at most so it does not change every second);
+      a live one reads "Live". A bound part with no reading reads "—" with no age; a node of the model that binds
+      nothing reads "static"; with the asset's detail or the model's tree still on its way the part reads "—" under
+      its node's name in sentence case, and the card opens all the same. Nothing is announced: it is not a live region.
+    - **A named dialog that takes no focus.** `role="dialog"` named for the part, no `aria-modal`, no focus trap and no
+      focus moved on open: it opens from a click on a canvas beside a live scene, and the 3D view is the stage's one tab
+      stop. It comes after the view in the DOM, so Tab reaches its real Close button. Close and Escape pressed inside
+      it close the card only (`selectPart(null)`), keep the asset and its inspector, and give focus back to the 3D view,
+      as the breadcrumb does. **The inspector's own Escape** (with focus in the sheet, today `selectAsset(null)`, which
+      ends the part and the asset together) is **not changed here**: its "part, then asset" step is V2-15.11's, with the
+      rows that make a part reachable from the sheet. The legend at part level is unchanged (the scene's Escape is
+      V2-18.3's; the breadcrumb's back button already names the step).
+    - **The leader is drawn from the frame loop.** An SVG over the stage, `aria-hidden` and under the card, from the
+      card's right edge (measured by the card with a `ResizeObserver` when its box changes, never per frame) to the
+      centre of the part node's world bounds (`Box3.setFromObject`, so a spinning blade's anchor moves with it).
+      `LeaderProjector`, inside the canvas under `Equipment`, projects it as the zone labels are (`stagePoint`) on
+      each **drawn** frame while a part is selected and writes the line and the dot through refs only when the rounded
+      line changed (`leaderLine`, `sameLine`): no React state and no render per frame. It hides when nothing is
+      selected, the card has not been measured, the node is not in the shown instance, or the anchor is behind the
+      camera or off the stage. The stage owns the refs (the overlay's line and dot, and where the line starts) and no
+      child writes to a ref it was handed: the card reports its edge through a callback, and the stage keeps it and asks
+      the on-demand canvas for a frame through the `invalidate` it already holds.
+    - **A card family.** `TwinCallout.module.css` repeats `BuildingSummary.module.css`'s surface: two copies are
+      tolerated and a shared popover surface is extracted when a third appears.
+    - **Tests.** The pure modules (`readings`, `twinCallout`, `twinHover`, `twinLeader`), the painter with real `three`
+      (`useAssetLooks`) and a DOM test of the card; the writer inside the canvas is not unit-tested (no WebGL in jsdom,
+      as for its siblings). jsdom has no `ResizeObserver`, which the card test stubs for itself.
+    - **By eye, still to do in a browser:** the selected blade keeps its tint after the pointer leaves; the leader sticks
+      to a spinning blade while orbiting, hides behind the camera and off the stage, and the canvas draws no frame at
+      rest; the generator's breaker reads "Open" or "Closed"; a stale asset reads "last …" and its age; the card stays
+      clear of the tools row on a narrow stage; Close and Escape in the card leave the inspector open.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

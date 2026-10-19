@@ -1,0 +1,109 @@
+/*
+ * The 3D view's part callout (V2-15.10), frames 03, 08 and 17's `.tw-callout` in the console's tokens (`mockups/twin.css`
+ * is the mockups' stylesheet, not the console's). The surface is `BuildingSummary.module.css`'s (a second copy: the
+ * Rule of Three says tolerate two and extract at the third, which would be a shared popover surface; a comment in each
+ * names the other). It stands top left under the tools row, the building summary's mirror, and never wider than the
+ * stage leaves it beside the open sheet. It comes after the canvas in the stage, so it paints over it without a
+ * z-index (`StageView.module.css .twin`).
+ */
+.card {
+  position: absolute;
+  top: calc(64px * var(--ui-scale));
+  left: var(--space-3);
+  width: calc(248px * var(--ui-scale));
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+  color: var(--text-primary);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1-5) var(--space-2) var(--space-3);
+}
+
+.titles {
+  min-width: 0;
+}
+
+.titles p {
+  margin: 0;
+}
+
+.eyebrow {
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+.name {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+.close {
+  flex: none;
+}
+
+.body {
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.body p {
+  margin: 0;
+}
+
+/* The big value of frame 03 (`.big-val`): the figure large, its unit and "last" small and secondary. */
+.reading {
+  font-family: var(--font-ui);
+  line-height: var(--leading-3xl);
+}
+
+.figure {
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-3xl);
+  color: var(--text-primary);
+}
+
+.unit,
+.secondary {
+  font-size: var(--type-l);
+  color: var(--text-secondary);
+}
+
+.subline,
+.limit {
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-secondary);
+}
+
+/* The leader (frames 03, 08, 17 `.leader`): over the stage, under the card, drawn by `LeaderProjector`. */
+.leader {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.dot {
+  fill: var(--surface-0);
+  stroke: var(--accent);
+  stroke-width: 2;
+}

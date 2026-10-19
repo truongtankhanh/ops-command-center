@@ -5,8 +5,8 @@ import type { PlacedAsset } from './twinPlacement';
  * What the 3D scene makes of the store's hover (V2-15.5), as plain data: no `three` and no WebGL, so the rules
  * are tested without them. The store holds two fields, `hoveredAssetCode` and `hoveredPart`, written by the
  * pointer (V2-15.4) and by the Assets tab's rows; the paint loops (`twin/useAssetLooks.ts`) and the shell's tint
- * (`twin/Buildings.tsx`) ask the questions below. Selection is not here: only a selected *part* has a look
- * (V2-15.10), and an inspected asset keeps its own (frames 03, 08, 15 and 17).
+ * (`twin/Buildings.tsx`) ask the questions below. Only a selected *part* has a look of its own (V2-15.10, the
+ * selection below), and an inspected asset keeps its own (frames 03, 08, 15 and 17).
  */
 
 /** The hovered asset and, when the pointer is on one of its parts, the part's node name. Replaced, never mutated. */
@@ -45,6 +45,57 @@ const WHOLE: AssetHover = Object.freeze({ whole: true, part: null });
 export function assetHover(code: string, hover: HoverState): AssetHover {
   if (hover.asset !== code) return NOT_HOVERED;
   return hover.part === null ? WHOLE : { whole: false, part: hover.part };
+}
+
+/** The selected asset and its selected part's node name, or none: the two store fields of the part level (V2-15.2). */
+export interface SelectedPart {
+  readonly asset: string | null;
+  readonly part: string | null;
+}
+
+export const NO_SELECTION: SelectedPart = Object.freeze({ asset: null, part: null });
+
+/**
+ * The selected part the store says. A part belongs to the selected asset (the store never holds one without), so no
+ * part, or no asset, is no selection: the one shared empty object, which a reader tells apart by identity.
+ */
+export function selectionOf(state: {
+  selectedAssetCode: string | null;
+  selectedPart: string | null;
+}): SelectedPart {
+  if (state.selectedAssetCode === null || state.selectedPart === null) return NO_SELECTION;
+  return { asset: state.selectedAssetCode, part: state.selectedPart };
+}
+
+/** Why a part node of a model is drawn in a look of its own. */
+export type PickedKind = 'hover' | 'selected';
+
+export interface PickedPart {
+  readonly node: string;
+  readonly kind: PickedKind;
+}
+
+/**
+ * The part nodes of the model of `assetCode` that take a look of their own (V2-15.5, V2-15.10), at most two: the part
+ * the pointer is on (`hover`) and the selected part (`selected`), which keeps its look after the pointer leaves and
+ * until it is deselected. A part that is both is `selected` and listed once. `has` says which nodes the model has:
+ * a node it does not have is no part and changes nothing (as with a box, which has none), and a hover or a
+ * selection of another asset is not this one's.
+ */
+export function partsPicked(
+  assetCode: string,
+  hover: HoverState,
+  selection: SelectedPart,
+  has: (node: string) => boolean,
+): PickedPart[] {
+  const picked: PickedPart[] = [];
+  const selected = selection.asset === assetCode ? selection.part : null;
+  if (selected !== null && has(selected)) picked.push({ node: selected, kind: 'selected' });
+  const hovered = hover.asset === assetCode ? hover.part : null;
+  if (hovered !== null && hovered !== selected && has(hovered)) {
+    picked.unshift({ node: hovered, kind: 'hover' });
+  }
+  return picked;
 }
 
 /**

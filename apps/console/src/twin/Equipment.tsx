@@ -1,6 +1,7 @@
 import { useThree } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
+import { type RefObject, useEffect, useMemo } from 'react';
 import type { Binding } from '../lib/twinBindings';
+import type { LeaderStart } from '../lib/twinLeader';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import { presenceMap } from '../lib/twinLevel';
 import type { PlacedAsset } from '../lib/twinPlacement';
@@ -11,10 +12,12 @@ import { instantiate } from './classModel';
 import { usePicker } from './PickContext';
 import type { ClassPoints } from './useClassPoints';
 import { type BoundInstance, useBoundParts } from './useBoundParts';
+import { LeaderProjector } from './LeaderProjector';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
 import { useHoverRef } from './useHoverRef';
 import { useSceneFocus } from './useSceneFocus';
+import { useSelectedPartRef } from './useSelectedPartRef';
 
 interface EquipmentProps {
   /** Every asset, placed (`useTwinScene`). */
@@ -25,6 +28,10 @@ interface EquipmentProps {
   classPoints: ClassPoints;
   /** The telemetry feed the models' bound parts follow; `null` while there is no telemetry client. */
   feed: TwinFeed | null;
+  /** The part callout's leader (V2-15.10): the overlay's line and dot, and where the line starts (the card's edge). */
+  leaderLineRef: RefObject<SVGLineElement | null>;
+  leaderDotRef: RefObject<SVGCircleElement | null>;
+  leaderStartRef: RefObject<LeaderStart | null>;
 }
 
 /**
@@ -52,9 +59,19 @@ interface EquipmentProps {
  * the `inside` ones are left out of its groups, and an instance is made once for every modelled asset (so a bound part
  * keeps its pose) and only mounted, and registered with the picker, while its presence is not `hidden`.
  */
-export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
+export function Equipment({
+  assets,
+  classes,
+  classPoints,
+  feed,
+  leaderLineRef,
+  leaderDotRef,
+  leaderStartRef,
+}: EquipmentProps) {
   const picker = usePicker();
   const hover = useHoverRef();
+  // The selected part (V2-15.10): the selected look's input here, the leader's when it is mounted below.
+  const selection = useSelectedPartRef();
   const focus = useSceneFocus();
   const invalidate = useThree((state) => state.invalidate);
   const ready = useClassModels(classes, classPoints);
@@ -119,13 +136,21 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
   }, [presences, invalidate]);
 
   useBoundParts(feed, bound);
-  // Every model instance, bound or not, takes the look of its asset's flags, hover and fade (V2-14.9, V2-15.5, V2-15.7).
-  useModelLooks(feed, looks, hover, presences);
+  // Every model instance, bound or not, takes the look of its asset's flags, hover and fade (V2-14.9, V2-15.5, V2-15.7),
+  // and its selected part the selected look (V2-15.10).
+  useModelLooks(feed, looks, hover, presences, selection);
 
   return (
     <>
       <AssetBoxes assets={boxes} feed={feed} hover={hover} presences={presences} />
       <AssetModel instances={shown} />
+      <LeaderProjector
+        instances={shown}
+        selection={selection}
+        lineRef={leaderLineRef}
+        dotRef={leaderDotRef}
+        startRef={leaderStartRef}
+      />
     </>
   );
 }

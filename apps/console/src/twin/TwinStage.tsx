@@ -1,10 +1,12 @@
-import { useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { FitBox } from '../lib/twinCamera';
+import type { LeaderStart } from '../lib/twinLeader';
 import { assetBoxes, buildingBoxes } from '../lib/twinLevelCamera';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import type { LabelAnchor } from '../lib/twinScene';
 import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
+import { LeaderOverlay, TwinCallout } from './TwinCallout';
 import { TwinCanvas } from './TwinCanvas';
 import { TwinControls } from './TwinControls';
 import { TwinLegend } from './TwinLegend';
@@ -31,9 +33,10 @@ const NO_INVALIDATE = (): void => undefined;
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
  * bindings of V2-14.7) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
  * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
- * building summary (V2-15.9, at building level only), the camera controls and the hover tooltip (V2-15.5). The
- * canvas gets the same scene and two refs for what it keeps in step from its frame loop without a React render:
- * the labels' layer (`LabelProjector`, V2-12.7) and the compass (`CompassSync`, V2-12.10).
+ * building summary (V2-15.9, at building level only), the part callout (V2-15.10, at part level only), the camera
+ * controls and the hover tooltip (V2-15.5). The canvas gets the same scene and the refs for what it keeps in step
+ * from its frame loop without a React render: the labels' layer (`LabelProjector`, V2-12.7), the compass
+ * (`CompassSync`, V2-12.10) and the part callout's leader (`LeaderProjector`, V2-15.10).
  *
  * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
  * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
@@ -59,6 +62,16 @@ export default function TwinStage() {
   const invalidateRef = useRef<() => void>(NO_INVALIDATE);
   const feed = useTwinFeed({ invalidate: () => invalidateRef.current() });
   const labelLayer = useRef<HTMLDivElement>(null);
+  // The part callout's leader (V2-15.10): the overlay's two elements are drawn into by the canvas's writer, and the card
+  // reports where the line starts. The refs are this stage's, so no child writes to a ref it was handed; the card's
+  // report asks the sleeping canvas for a frame through the `invalidate` it handed back.
+  const leaderLineRef = useRef<SVGLineElement>(null);
+  const leaderDotRef = useRef<SVGCircleElement>(null);
+  const leaderStartRef = useRef<LeaderStart | null>(null);
+  const onLeaderStart = useCallback((start: LeaderStart | null) => {
+    leaderStartRef.current = start;
+    invalidateRef.current();
+  }, []);
   const compass = useRef<HTMLButtonElement>(null);
   return (
     <div className={styles.fill}>
@@ -76,6 +89,9 @@ export default function TwinStage() {
             }}
             labelLayer={labelLayer}
             compassRef={compass}
+            leaderLineRef={leaderLineRef}
+            leaderDotRef={leaderDotRef}
+            leaderStartRef={leaderStartRef}
           />
         </div>
         <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} />
@@ -85,6 +101,9 @@ export default function TwinStage() {
       {scene && <TwinLegend />}
       {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
       {scene && <BuildingSummary />}
+      {/* The leader of the part callout (V2-15.10) under its card, which shows at part level only. */}
+      <LeaderOverlay lineRef={leaderLineRef} dotRef={leaderDotRef} />
+      {scene && <TwinCallout onStart={onLeaderStart} />}
       <TwinControls compassRef={compass} />
       {/* Last, so it paints over the legend and the controls; it draws nothing until a hover rests (V2-15.5). */}
       <TwinTooltip />
