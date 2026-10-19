@@ -1,5 +1,11 @@
-import { useSitePlan, useZones } from '../api/queries';
+import type { Asset, Zone } from '@occ/contracts';
+import { useAssets, useSitePlan, useZones } from '../api/queries';
 import { isLoading, type LoadStep, type SitePlanState, twinLoadSteps } from './twinLoading';
+import { loadTarget, modelClasses, modelSteps } from './twinLoadQueue';
+import { useTwinModelStore } from './twinModelStore';
+
+const NO_ASSETS: Asset[] = [];
+const NO_ZONES: Zone[] = [];
 
 export interface TwinLoading {
   steps: LoadStep[];
@@ -21,6 +27,12 @@ export interface TwinLoading {
  * alone, as on the 2D map). A query that is retrying is still pending, so the step stays active until the
  * client has given up. Retry asks the zones again.
  *
+ * From V2-14.7 one more row per equipment model follows (`modelSteps`): the classes come from the assets the
+ * 2D map reads and their bytes from `useTwinModelStore`, which the twin chunk writes. They are added once the
+ * site plan is ready, never while it is pending or has failed: the models are not asked for before the scene
+ * exists, so a row queued behind a failed plan would keep the stage "busy" for ever. A model that failed is
+ * a finished row (the asset keeps its box), so it never holds the card up.
+ *
  * In `lib/` with the other hooks, and used by `StageView` (main chunk), which has to show the card before the
  * twin chunk exists.
  */
@@ -32,7 +44,16 @@ export function useTwinLoading(codeLoaded: boolean): TwinLoading {
     : zones.isPending || plan.isPending
       ? 'pending'
       : 'ready';
-  const steps = twinLoadSteps({ codeLoaded, sitePlan });
+  const assets = useAssets();
+  const progress = useTwinModelStore((state) => state.byClass);
+  const models =
+    sitePlan === 'ready'
+      ? modelSteps(
+          modelClasses(assets.data ?? NO_ASSETS, loadTarget(plan.data, zones.data ?? NO_ZONES)),
+          progress,
+        )
+      : [];
+  const steps = [...twinLoadSteps({ codeLoaded, sitePlan }), ...models];
 
   return {
     steps,

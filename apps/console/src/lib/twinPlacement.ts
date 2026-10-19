@@ -37,6 +37,8 @@ export interface BoxSize {
 /** An asset ready to draw: everything the canvas needs, and nothing it would have to look up. */
 export interface PlacedAsset {
   code: string;
+  /** `AssetClass.code`: which model, if the class has one, replaces the box (V2-14.7). */
+  classCode: string;
   /** The zone it stands in; a building in focus shows the `inside` assets of this zone (V2-15.8). */
   zoneId: string;
   placement: Placement;
@@ -107,6 +109,7 @@ export function placeAssets(
     .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
     .map((asset) => ({
       code: asset.code,
+      classCode: asset.class.code,
       zoneId: asset.zoneId,
       placement: placementOf(asset, zoneById.get(asset.zoneId)),
       pose: assetPose(asset, frame, drawnAt.get(asset.code)),

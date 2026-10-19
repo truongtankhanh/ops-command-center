@@ -90,16 +90,22 @@ export const useAssets = () =>
   });
 
 /**
+ * The options of one asset's detail, for a reader that asks for several at once (`useQueries`, the 3D
+ * stage's class points) and must share the cache entry with `useAsset`.
+ */
+export const assetQueryOptions = (code: string) =>
+  queryOptions({
+    queryKey: queryKeys.asset(code),
+    queryFn: () => api.get<AssetDetail>(`/assets/${encodeURIComponent(code)}`),
+    ...STATIC,
+  });
+
+/**
  * One asset with all its points and its threshold rules. Reference data like the list: a point or
  * a rule changes by a database change only (ADR-0018). No request is sent without a code.
  */
 export const useAsset = (code: string | null) =>
-  useQuery({
-    queryKey: queryKeys.asset(code ?? ''),
-    queryFn: () => api.get<AssetDetail>(`/assets/${encodeURIComponent(code ?? '')}`),
-    enabled: code !== null,
-    ...STATIC,
-  });
+  useQuery({ ...assetQueryOptions(code ?? ''), enabled: code !== null });
 
 /** A range of an asset's history: ISO 8601 with a zone, at most 1 hour (docs/api/assets.md). */
 export interface AssetHistoryRange {

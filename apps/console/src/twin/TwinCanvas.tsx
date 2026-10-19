@@ -2,15 +2,16 @@ import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { HOME_FOV_DEG } from '../lib/twinCamera';
 import { mapColors } from '../styles/tokens';
-import { AssetBoxes } from './AssetBoxes';
 import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
 import { ContextGuard } from './ContextGuard';
+import { Equipment } from './Equipment';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
 import { Rig } from './Rig';
+import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
 
 /**
@@ -23,6 +24,8 @@ const LENS = { fov: HOME_FOV_DEG, near: 1, far: 2500 };
 interface TwinCanvasProps {
   /** What to draw, from `useTwinScene`; `null` while there is nothing (the canvas stays empty). */
   scene: TwinScene | null;
+  /** Every point of each class that has a model (`useClassPoints`), for the models' bindings. */
+  classPoints: ClassPoints;
   /** The DOM label layer `ZoneLabels` renders, whose labels `LabelProjector` places. */
   labelLayer: RefObject<HTMLDivElement | null>;
   /** The compass button `TwinControls` renders, which `CompassSync` turns and renames from the camera. */
@@ -31,13 +34,13 @@ interface TwinCanvasProps {
 
 /**
  * The WebGL canvas of the 3D twin (ADR-0020): the lit campus, its ground, its buildings, its equipment
- * (neutral boxes until the models arrive, V2-14.6) and its cameras (screen-sized markers), seen through
- * the camera rig (`Rig`). The loading card is `StageView`'s (it shows
+ * (the class models, and neutral boxes for what has no model yet, V2-14.6, V2-14.7) and its cameras
+ * (screen-sized markers), seen through the camera rig (`Rig`). The loading card is `StageView`'s (it shows
  * before this chunk exists).
  *
- * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`): `<Canvas>`
- *   renders in its own reconciler, so its children are not a safe place for a query hook, and the DOM
- *   labels beside the canvas need the same frame.
+ * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`, and the classes'
+ *   points, `useClassPoints`): `<Canvas>` renders in its own reconciler, so its children are not a safe place
+ *   for a query hook, and the DOM labels beside the canvas need the same frame.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
@@ -53,7 +56,7 @@ interface TwinCanvasProps {
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
  */
-export function TwinCanvas({ scene, labelLayer, compassRef }: TwinCanvasProps) {
+export function TwinCanvas({ scene, classPoints, labelLayer, compassRef }: TwinCanvasProps) {
   return (
     <Canvas camera={LENS} frameloop="demand" dpr={[1, 1.5]} flat>
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
@@ -66,7 +69,7 @@ export function TwinCanvas({ scene, labelLayer, compassRef }: TwinCanvasProps) {
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <Buildings zones={scene.zones} frame={scene.frame} />
-          <AssetBoxes assets={scene.assets} />
+          <Equipment assets={scene.assets} classes={scene.classes} classPoints={classPoints} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />

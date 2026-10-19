@@ -80,6 +80,8 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
 | `--tw-concrete-top` / `-south` / `-east`       | `#363c41` / `#2b3034` / `#22262a`                            | Basins, plinths, skids                                                        |
 | `--tw-rail`                                    | `#8199aa`                                                    | Handrails, ladders, fan guard mesh                                            |
 | `--tw-neutral`                                 | `#4b5d6b`                                                    | An asset with no model: its neutral box (frame 15)                            |
+| `--tw-hub`, `--tw-screen`                      | `#5a7488`, `#2b3f66`                                         | Model materials `Hub` and `Screen`                                            |
+| `--tw-xray-opacity`                            | `0.14`                                                       | Model material `Xray`: the idle material, see-through                         |
 | `--tw-hover-top` / `-south` / `-east`          | 30 % `--accent` into the material                            | Hover and selection; the edge is `--accent`                                   |
 | `--tw-alarm-mix`, `--tw-alarm-top` / … `-east` | 35 %; `--tw-alarm-mix` of `--sev-critical` into the material | A part with an open incident it raised; edge in severity                      |
 | `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                                             |
@@ -102,8 +104,7 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
   (`src/styles/tokens.ts`), checked against `--accent` below: `utility` `#1a282e` and `water` `#112833` as twin.css
   draws them, `sports` `#24361e` chosen in V2-03.1 (no frame draws a sports zone; an olive no other fill uses, in the
   same lightness band).
-- **Not tokens yet.** twin.css's other literals (details, louvres, ribs, seams, the blade hover, the see-through
-  shell) land with the scene.
+- **Not tokens yet.** twin.css's other literals (details, louvres, ribs, seams, the blade hover) land with the scene.
 
 ## What may stay a raw value
 
@@ -325,6 +326,9 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.edge` (src/styles/tokens.ts)             | #3e5a6e                   | #3e5a6e                   | match  |
 | `twinColors.rail` (src/styles/tokens.ts)             | #8199aa                   | #8199aa                   | match  |
 | `twinColors.neutral` (src/styles/tokens.ts)          | #4b5d6b                   | #4b5d6b                   | match  |
+| `twinColors.blade` (src/styles/tokens.ts)            | #4d6a80                   | #4d6a80                   | match  |
+| `twinColors.hub` (src/styles/tokens.ts)              | #5a7488                   | #5a7488                   | match  |
+| `twinColors.screen` (src/styles/tokens.ts)           | #2b3f66                   | #2b3f66                   | match  |
 | `twinColors.idle.top` (src/styles/tokens.ts)         | #2a4658                   | #2a4658                   | match  |
 | `twinColors.idle.south` (src/styles/tokens.ts)       | #1f3748                   | #1f3748                   | match  |
 | `twinColors.idle.east` (src/styles/tokens.ts)        | #172b3a                   | #172b3a                   | match  |
@@ -351,6 +355,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.heat[4]` (src/styles/tokens.ts)          | #7b8af0                   | #7b8af0                   | match  |
 | `twinColors.heat[5]` (src/styles/tokens.ts)          | #b3bdff                   | #b3bdff                   | match  |
 | `twinColors.ghostOpacity` (src/styles/tokens.ts)     | 0.18                      | 0.18                      | match  |
+| `twinColors.xrayOpacity` (src/styles/tokens.ts)      | 0.14                      | 0.14                      | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |
 | `breakpoints.wall4k` (src/styles/tokens.ts)          | 3200px                    | 3200px                    | match  |

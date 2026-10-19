@@ -1,6 +1,7 @@
 import type { Asset, Camera, SitePlan, Zone } from '@occ/contracts';
 import { useMemo } from 'react';
 import { useAssets, useCameras, useSitePlan, useZones } from '../api/queries';
+import { loadTarget, type ModelClass, modelClasses } from '../lib/twinLoadQueue';
 import { type PlacedAsset, placeAssets } from '../lib/twinPlacement';
 import {
   type Bounds,
@@ -23,6 +24,11 @@ export interface TwinScene {
    * `visibleAssets`'s answer. Empty while the catalogue loads or if it fails.
    */
   assets: readonly PlacedAsset[];
+  /**
+   * The classes that have a model, nearest the middle of the campus first (V2-14.7): what the stage loads,
+   * in this order, and what the loading card lists (`useTwinLoading` makes the same list from the same data).
+   */
+  classes: readonly ModelClass[];
   frame: Frame;
   bounds: Bounds;
   anchors: LabelAnchor[];
@@ -60,6 +66,7 @@ export function useTwinScene(): TwinScene | null {
       zones: list,
       cameras: cameras ?? NO_CAMERAS,
       assets: placeAssets(assets ?? NO_ASSETS, list, frame),
+      classes: modelClasses(assets ?? NO_ASSETS, loadTarget(plan, list)),
       frame,
       bounds,
       anchors: labelAnchors(list, frame),

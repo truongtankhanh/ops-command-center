@@ -87,6 +87,12 @@
   --tw-rail: #8199aa;
   /* The base of an asset whose class has no model, drawn as a box (frame 15). */
   --tw-neutral: #4b5d6b;
+  /* The model contract's other material names (ADR-0020): `Hub` is a rotor's hub and the edge of the
+     see-through shell; `Screen` is a display. `Blade` is `--tw-blade` above. */
+  --tw-hub: #5a7488;
+  --tw-screen: #2b3f66;
+  /* `Xray`, a see-through shell such as the generator's enclosure: the idle material at this opacity. */
+  --tw-xray-opacity: 0.14;
   /* Hover and selection: 30 % accent into the material, edges in `--accent`. */
   --tw-hover-top: color-mix(in srgb, var(--accent) 30%, var(--tw-top));
   --tw-hover-south: color-mix(in srgb, var(--accent) 30%, var(--tw-south));

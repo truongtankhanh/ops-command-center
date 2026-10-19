@@ -1,4 +1,13 @@
-import type { Asset, Incident, LngLat, Role, SitePlan, Zone } from '@occ/contracts';
+import type {
+  Asset,
+  AssetDetail,
+  Incident,
+  LngLat,
+  Role,
+  SitePlan,
+  TelemetryPoint,
+  Zone,
+} from '@occ/contracts';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
@@ -80,8 +89,33 @@ const asset = (code: string, zoneId: string, position: LngLat, elevationM = 0): 
   headline: [],
 });
 
+/** An asset of a class that has a model, as the catalogue serves it. */
+const modelled = (
+  code: string,
+  zoneId: string,
+  position: LngLat,
+  classCode = 'cooling_tower',
+): Asset => {
+  const base = asset(code, zoneId, position);
+  return {
+    ...base,
+    class: {
+      ...base.class,
+      id: classCode,
+      code: classCode,
+      name: classCode === 'cooling_tower' ? 'Cooling tower' : classCode,
+      modelUrl: `/models/${classCode}.0123456789ab.glb`,
+    },
+  };
+};
+
 /** The stage with the site's reference data already in the cache, as it is once the map has loaded. */
-function renderStage(zones: Zone[], incidents: Incident[] = [], assets: Asset[] = []) {
+function renderStage(
+  zones: Zone[],
+  incidents: Incident[] = [],
+  assets: Asset[] = [],
+  seed?: (client: ReturnType<typeof createTestQueryClient>) => void,
+) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.sitePlan, PLAN);
@@ -89,6 +123,7 @@ function renderStage(zones: Zone[], incidents: Incident[] = [], assets: Asset[] 
   client.setQueryData(queryKeys.cameras, []);
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.assets, assets);
+  seed?.(client);
   return renderWithQueryClient(<TwinStage />, client);
 }
 
@@ -204,6 +239,59 @@ describe('TwinStage', () => {
       renderStage([zone(0, 'building', 'Library')]);
 
       expect(sceneAssets()).toEqual([]);
+    });
+  });
+
+  describe('the models (V2-14.7)', () => {
+    const last = () => vi.mocked(TwinCanvas).mock.lastCall?.[0];
+
+    beforeEach(() => {
+      vi.mocked(TwinCanvas).mockClear();
+    });
+
+    it('hands the canvas the classes that have a model, with how many assets each has, and none for the rest', () => {
+      const zones = [zone(0, 'building', 'Library')];
+      const here = zones[0]!.center;
+      renderStage(
+        zones,
+        [],
+        [
+          modelled('CT-02', 'zone-0', here),
+          modelled('CT-01', 'zone-0', here),
+          asset('UPS-01', 'zone-0', here),
+        ],
+      );
+
+      expect(
+        last()?.scene?.classes.map(({ code, assetCount, representative }) => [
+          code,
+          assetCount,
+          representative,
+        ]),
+      ).toEqual([['cooling_tower', 2, 'CT-01']]);
+      expect(last()?.scene?.assets.map(({ classCode }) => classCode)).toEqual([
+        'cooling_tower',
+        'cooling_tower',
+        'ups',
+      ]);
+    });
+
+    it('hands the canvas no class when no asset has a model', () => {
+      const zones = [zone(0, 'building', 'Library')];
+      renderStage(zones, [], [asset('UPS-01', 'zone-0', zones[0]!.center)]);
+
+      expect(last()?.scene?.classes).toEqual([]);
+      expect(last()?.classPoints).toEqual({});
+    });
+
+    it('hands the canvas the points of a class once its representative’s detail is cached', () => {
+      const zones = [zone(0, 'building', 'Library')];
+      const points = [{ key: 'fanSpeedRpm', kind: 'number' }] as TelemetryPoint[];
+      renderStage(zones, [], [modelled('CT-01', 'zone-0', zones[0]!.center)], (client) =>
+        client.setQueryData(queryKeys.asset('CT-01'), { code: 'CT-01', points } as AssetDetail),
+      );
+
+      expect(last()?.classPoints).toEqual({ cooling_tower: points });
     });
   });
 
