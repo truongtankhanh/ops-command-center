@@ -46,6 +46,34 @@ export const TIE_EPSILON_M = 0.01;
  */
 export const CAMERA_HIT_SIZE_PX = 24;
 
+/**
+ * A press that ends within this many CSS pixels of where it began is a click; further is a drag, which is the
+ * camera's (V2-15.4, TwinScene's threshold). `DragHint` has its own, larger figure for when to stop showing
+ * its instruction: that is a different question.
+ */
+export const CLICK_SLOP_PX = 3;
+
+/** Whether a press at `down` that ends at `up` is a click: it moved at most `CLICK_SLOP_PX`. */
+export function isClick(down: ScreenPoint, up: ScreenPoint): boolean {
+  return Math.hypot(up.x - down.x, up.y - down.y) <= CLICK_SLOP_PX;
+}
+
+/** The canvas's cursor (V2-15.4), by what the pointer is doing; the first that applies wins. */
+export type CanvasCursor = 'crosshair' | 'grabbing' | 'pointer' | 'grab';
+
+export function cursorOf(state: {
+  /** The report location is being picked. */
+  picking: boolean;
+  /** A press has moved further than the click slop: a drag, an orbit or a pan. */
+  dragging: boolean;
+  /** The latest pick is something. */
+  overTarget: boolean;
+}): CanvasCursor {
+  if (state.picking) return 'crosshair';
+  if (state.dragging) return 'grabbing';
+  return state.overTarget ? 'pointer' : 'grab';
+}
+
 /** Kinds that are drawn as screen-sized sprites and so are hit in screen space, not by the ray. */
 const SPRITE_KINDS: ReadonlySet<PickKind> = new Set<PickKind>(['camera']);
 

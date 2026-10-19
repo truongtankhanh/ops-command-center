@@ -1,4 +1,5 @@
 import {
+  createPendingPick,
   lastPick,
   onPick,
   type PickRequester,
@@ -30,7 +31,27 @@ describe('twinPicker', () => {
 
     requestPick({ x: 10, y: 20 });
 
-    expect(canvas.request).toHaveBeenCalledWith({ x: 10, y: 20 });
+    // The completion is the second argument, `undefined` when the caller gave none.
+    expect(canvas.request).toHaveBeenCalledWith({ x: 10, y: 20 }, undefined);
+  });
+
+  it('passes the completion on with the point, and never calls it itself', () => {
+    const canvas = requester();
+    unregister = registerPicker(canvas);
+    const done = vi.fn();
+
+    requestPick({ x: 3, y: 4 }, done);
+
+    expect(canvas.request).toHaveBeenCalledWith({ x: 3, y: 4 }, done);
+    expect(done).not.toHaveBeenCalled();
+  });
+
+  it('does not call a completion for a request no canvas heard', () => {
+    const done = vi.fn();
+
+    requestPick({ x: 3, y: 4 }, done);
+
+    expect(done).not.toHaveBeenCalled();
   });
 
   it('stops passing requests once the canvas is unregistered', () => {
@@ -104,5 +125,49 @@ describe('twinPicker', () => {
 
       expect(heard).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('createPendingPick', () => {
+  it('has nothing to take before a request, and nothing after taking', () => {
+    const pending = createPendingPick();
+    expect(pending.take()).toBeNull();
+
+    pending.request({ x: 1, y: 1 });
+    expect(pending.take()).not.toBeNull();
+
+    expect(pending.take()).toBeNull();
+  });
+
+  it('keeps only the latest point', () => {
+    const pending = createPendingPick();
+
+    pending.request({ x: 1, y: 1 });
+    pending.request({ x: 5, y: 6 });
+
+    expect(pending.take()?.point).toEqual({ x: 5, y: 6 });
+  });
+
+  it('keeps the completions of every request, in order, including replaced ones', () => {
+    const pending = createPendingPick();
+    const first = vi.fn();
+    const second = vi.fn();
+
+    pending.request({ x: 1, y: 1 }, first);
+    pending.request({ x: 2, y: 2 });
+    pending.request({ x: 3, y: 3 }, second);
+
+    expect(pending.take()?.callbacks).toEqual([first, second]);
+  });
+
+  it('starts again after a take', () => {
+    const pending = createPendingPick();
+    const old = vi.fn();
+    pending.request({ x: 1, y: 1 }, old);
+    pending.take();
+
+    pending.request({ x: 2, y: 2 });
+
+    expect(pending.take()?.callbacks).toEqual([]);
   });
 });

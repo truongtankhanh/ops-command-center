@@ -12,9 +12,46 @@ import type { PickRef, ScreenPoint } from './twinPicking';
  * records its point and asks for a frame), so the result is published and read with `onPick` / `lastPick`.
  */
 
+/**
+ * Called with the winner of the ray cast for a request, in the frame that casts it, **whether or not the winner
+ * changed** (V2-15.4): a click needs the answer for its own point, and `onPick` is silent when nothing changed.
+ */
+export type PickDone = (ref: PickRef | null) => void;
+
 /** What the canvas implements: it records `point` and asks for a frame in which to cast the ray. */
 export interface PickRequester {
-  request(point: ScreenPoint): void;
+  request(point: ScreenPoint, done?: PickDone): void;
+}
+
+/** What is waiting for the next frame: the latest point and the completions of every request since the last. */
+export interface PendingPick {
+  point: ScreenPoint;
+  callbacks: PickDone[];
+}
+
+/**
+ * The canvas's bookkeeping for requests that arrive between frames, as plain data so it tests without one. A
+ * new request replaces the pending point (one ray a frame, for the latest point) but **keeps the completions
+ * of the requests it replaced**, so every `done` is called, with the answer for the latest point; the pointer
+ * issues no hover request while a click waits, so a click's answer is for its own point.
+ */
+export function createPendingPick() {
+  let point: ScreenPoint | null = null;
+  let callbacks: PickDone[] = [];
+  return {
+    request(next: ScreenPoint, done?: PickDone): void {
+      point = next;
+      if (done) callbacks.push(done);
+    },
+    /** The pending request, now taken: it is cleared. `null` when nothing is waiting. */
+    take(): PendingPick | null {
+      if (point === null) return null;
+      const taken = { point, callbacks };
+      point = null;
+      callbacks = [];
+      return taken;
+    },
+  };
 }
 
 let registered: PickRequester | null = null;
@@ -36,9 +73,12 @@ export function registerPicker(requester: PickRequester): () => void {
   };
 }
 
-/** Asks the canvas what is under `point` (CSS pixels from its top-left corner). Does nothing without one. */
-export function requestPick(point: ScreenPoint): void {
-  registered?.request(point);
+/**
+ * Asks the canvas what is under `point` (CSS pixels from its top-left corner). Does nothing without one, `done`
+ * included: it is never called for a request no canvas heard.
+ */
+export function requestPick(point: ScreenPoint, done?: PickDone): void {
+  registered?.request(point, done);
 }
 
 const same = (a: PickRef | null, b: PickRef | null): boolean =>

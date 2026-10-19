@@ -536,9 +536,7 @@ function useIncidentLayers(
       if (hit.layer.id === MAP_LAYERS.assets) {
         const code: unknown = hit.properties.code;
         if (typeof code !== 'string') return;
-        const { selectAsset, selectedAssetCode } = useConsole.getState();
-        if (code === selectedAssetCode) selectAsset(null);
-        else selectAsset(code, focusZoneOfRef.current(code));
+        useConsole.getState().toggleAsset(code, focusZoneOfRef.current(code));
         return;
       }
       const id = String(hit.properties.id);

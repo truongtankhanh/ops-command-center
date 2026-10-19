@@ -1,9 +1,9 @@
 import type { Camera } from '@occ/contracts';
 import { useFrame, useThree } from '@react-three/fiber';
-import { type ReactNode, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { cameraMarkers } from '../lib/twinMarkers';
-import { publishPick, registerPicker } from '../lib/twinPicker';
-import { createPickStats, scopeOf, type ScreenPoint } from '../lib/twinPicking';
+import { createPendingPick, publishPick, registerPicker } from '../lib/twinPicker';
+import { createPickStats, scopeOf } from '../lib/twinPicking';
 import type { Frame } from '../lib/twinScene';
 import { useConsole } from '../store';
 import { createPicker } from './picker';
@@ -24,7 +24,10 @@ const TIMED = import.meta.env.MODE === 'development';
  * The picking of the 3D view (V2-15.3, ADR-0020 § Scene): it makes the picker, offers it to what is drawn, and
  * casts **at most one ray per frame**. A request (`requestPick`, from the pointer of V2-15.4) only records its
  * point and asks the on-demand canvas for a frame; the ray is cast in that frame, against the scope the level
- * allows, and the winner is published for whoever listens (`onPick`). A frame with no request casts nothing.
+ * allows, and the winner is published for whoever listens (`onPick`) and handed to the completion of every
+ * request that had one, changed or not (a click needs the answer for its own point). Requests that arrive
+ * between two frames share the frame: the latest point is cast, and all their completions get its answer
+ * (`createPendingPick`). A frame with no request casts nothing.
  *
  * The scope is read from the store at the moment of the frame (`getState`, no subscription), so a selection
  * never re-renders this layer, and the result goes to a plain module, not to React state. It draws nothing.
@@ -35,7 +38,7 @@ const TIMED = import.meta.env.MODE === 'development';
  */
 export function PickLayer({ cameras, frame, children }: PickLayerProps) {
   const picker = useMemo(() => createPicker(), []);
-  const pending = useRef<ScreenPoint | null>(null);
+  const pending = useMemo(() => createPendingPick(), []);
   const invalidate = useThree((state) => state.invalidate);
 
   const markers = useMemo(() => cameraMarkers(cameras, frame), [cameras, frame]);
@@ -44,12 +47,12 @@ export function PickLayer({ cameras, frame, children }: PickLayerProps) {
   useEffect(
     () =>
       registerPicker({
-        request(point) {
-          pending.current = point;
+        request(point, done) {
+          pending.request(point, done);
           invalidate();
         },
       }),
-    [invalidate],
+    [invalidate, pending],
   );
 
   useEffect(() => () => picker.clear(), [picker]);
@@ -67,17 +70,17 @@ export function PickLayer({ cameras, frame, children }: PickLayerProps) {
   );
 
   useFrame(({ camera, size }) => {
-    const point = pending.current;
-    if (point === null) return;
-    pending.current = null;
+    const request = pending.take();
+    if (request === null) return;
     const started = TIMED ? performance.now() : 0;
     const ref = picker.pick(
-      point,
+      request.point,
       { camera, width: size.width, height: size.height },
       scopeOf(useConsole.getState()),
     );
     if (stats !== null) stats.record(performance.now() - started, performance.now());
     publishPick(ref);
+    for (const done of request.callbacks) done(ref);
   });
 
   return <PickContext.Provider value={picker}>{children}</PickContext.Provider>;
