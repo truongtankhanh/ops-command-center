@@ -20,6 +20,16 @@ export interface SeriesData {
   v: Float32Array;
 }
 
+/**
+ * One value the render loop follows: slot *i* of a layout is element *i* of every targets buffer
+ * (V2-14.4). `enumValues` is the point's, for an enum slot (its index is the number posted), else `null`.
+ */
+export interface TargetSlot {
+  assetCode: string;
+  key: string;
+  enumValues: string[] | null;
+}
+
 /** Main thread → worker. */
 export type ToWorker =
   | (Versioned & { type: 'connect' })
@@ -36,6 +46,11 @@ export type ToWorker =
     })
   /** History for a watched asset, merged under the live points. Numeric and boolean keys only. */
   | (Versioned & { type: 'seed'; assetCode: string; series: SeriesData[] })
+  /**
+   * The slots of the targets buffers, in buffer order. `layoutId` rises with every layout the client sets:
+   * the worker echoes it on each buffer, so the client drops a buffer built for an older layout.
+   */
+  | (Versioned & { type: 'layout'; layoutId: number; slots: TargetSlot[] })
   | (Versioned & { type: 'retry' })
   | (Versioned & { type: 'dispose' });
 
@@ -63,18 +78,30 @@ export type FromWorker =
       type: 'series';
       entries: { assetCode: string; key: string; t: Float64Array; v: Float32Array }[];
     })
-  /** Reserved for V2-14's per-frame target buffer. Nothing produces or reads it yet. */
-  | (Versioned & { type: 'targets'; buffer: Float32Array });
+  /**
+   * The current value of every slot of layout `layoutId`, one number each and `NaN` for no value yet, posted at
+   * most once per frame and only when one changed (V2-14.4). The buffer is transferred: never a message per reading.
+   */
+  | (Versioned & { type: 'targets'; layoutId: number; buffer: Float32Array })
+  /** Cumulative counts for the developer HUD, at most once a second and only when they changed (V2-19.1). */
+  | (Versioned & { type: 'stats'; messages: number; targetPosts: number });
 
 const TO_WORKER_TYPES: readonly unknown[] = [
   'connect',
   'token',
   'watch',
   'seed',
+  'layout',
   'retry',
   'dispose',
 ];
-const FROM_WORKER_TYPES: readonly unknown[] = ['tokenRequest', 'state', 'series', 'targets'];
+const FROM_WORKER_TYPES: readonly unknown[] = [
+  'tokenRequest',
+  'state',
+  'series',
+  'targets',
+  'stats',
+];
 
 /** Envelope only: the right version and a known type. The shape behind it is the build's own. */
 function hasEnvelope(data: unknown, types: readonly unknown[]): boolean {

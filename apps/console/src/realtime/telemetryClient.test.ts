@@ -6,11 +6,12 @@ import {
   createTelemetryClient,
   seriesFromHistory,
   seriesKey,
+  type TargetsView,
   type TelemetryClientOptions,
   type WorkerLike,
 } from './telemetryClient';
 import type { AuthCallback, EngineSocket } from './telemetryEngine';
-import { TELEMETRY_PROTOCOL_VERSION } from './telemetryProtocol';
+import { type TargetSlot, TELEMETRY_PROTOCOL_VERSION } from './telemetryProtocol';
 
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 vi.mock('../api/client', async (importOriginal) => ({
@@ -156,6 +157,12 @@ describe('seriesFromHistory', () => {
     expect(seriesFromHistory(history([]))).toEqual([]);
   });
 });
+
+/** Two slots of a cooling tower: a number and an enum. */
+const SLOTS: TargetSlot[] = [
+  { assetCode: 'CT-01', key: 'fanSpeedRpm', enumValues: null },
+  { assetCode: 'CT-01', key: 'switchState', enumValues: ['off', 'auto', 'hand'] },
+];
 
 describe('telemetry client, engine in this thread', () => {
   beforeEach(() => {
@@ -382,6 +389,53 @@ describe('telemetry client, engine in this thread', () => {
   });
 });
 
+describe('telemetry client targets, engine in this thread', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(T0));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('delivers the buffer of the current layout through the engine, as a worker would', async () => {
+    const { client, socket } = await setupInThread();
+    const listener = vi.fn();
+    client.onTargets(listener);
+
+    const id = client.setLayout(SLOTS);
+    await settle();
+    socket.handlers.frames?.(frames('CT-01', BASE + 100, { fanSpeedRpm: 1420 }));
+    await vi.advanceTimersByTimeAsync(20);
+    await settle();
+
+    expect(id).toBe(1);
+    expect(listener).toHaveBeenCalledTimes(1);
+    const received = listener.mock.calls[0]?.[0] as TargetsView;
+    expect(received.layoutId).toBe(1);
+    expect([...received.buffer]).toEqual([1420, Number.NaN]);
+    expect(client.getTargets()).toBe(received);
+  });
+
+  it('does not put targets in the view, and carries the engine’s counts', async () => {
+    const { client, socket } = await setupInThread();
+    const viewListener = vi.fn();
+    client.subscribe(viewListener);
+    client.setLayout(SLOTS);
+    await settle();
+
+    socket.handlers.frames?.(frames('CT-01', BASE + 100, { fanSpeedRpm: 1420 }));
+    await vi.advanceTimersByTimeAsync(1_000);
+    await settle();
+
+    expect(client.getTargets()).not.toBeNull();
+    expect(client.getView().series.size).toBe(0);
+    expect(client.getStats()).toEqual({ messages: 1, targetPosts: 1 });
+  });
+});
+
 describe('telemetry client, worker', () => {
   beforeEach(() => {
     vi.mocked(getAccessToken).mockResolvedValue('token-1');
@@ -507,5 +561,154 @@ describe('telemetry client, worker', () => {
 
     expect(worker.terminate).toHaveBeenCalledTimes(1);
     expect(worker.posted.map((post) => post.message.type)).toEqual(['connect', 'dispose']);
+  });
+
+  describe('targets', () => {
+    const targetsMessage = (layoutId: number, ...numbers: number[]) => ({
+      v,
+      type: 'targets',
+      layoutId,
+      buffer: Float32Array.from(numbers),
+    });
+
+    it('sends the layout to the worker as plain copies, and returns its id', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+
+      const first = client.setLayout(SLOTS);
+      const second = client.setLayout([]);
+
+      expect([first, second]).toEqual([1, 2]);
+      const message = worker.posted[1]?.message;
+      expect(message).toEqual({ v, type: 'layout', layoutId: 1, slots: SLOTS });
+      expect((message?.slots as TargetSlot[])[1]?.enumValues).not.toBe(SLOTS[1]?.enumValues);
+      expect(worker.posted[2]?.message).toEqual({ v, type: 'layout', layoutId: 2, slots: [] });
+    });
+
+    it('gives a buffer of the current layout to every listener, and keeps the latest', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const one = vi.fn();
+      const two = vi.fn();
+      client.onTargets(one);
+      client.onTargets(two);
+      client.setLayout(SLOTS);
+
+      expect(client.getTargets()).toBeNull();
+      worker.emit(targetsMessage(1, 1420, 2));
+
+      expect(one).toHaveBeenCalledTimes(1);
+      expect(two).toHaveBeenCalledTimes(1);
+      const received = one.mock.calls[0]?.[0] as TargetsView;
+      expect(received.layoutId).toBe(1);
+      expect([...received.buffer]).toEqual([1420, 2]);
+      expect(client.getTargets()).toBe(received);
+    });
+
+    it('ignores a buffer built for layout 3 once layout 4 is set', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const listener = vi.fn();
+      client.onTargets(listener);
+      client.setLayout(SLOTS);
+      client.setLayout(SLOTS);
+      client.setLayout(SLOTS);
+
+      worker.emit(targetsMessage(3, 1, 2));
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      expect(client.setLayout(SLOTS)).toBe(4);
+      worker.emit(targetsMessage(3, 5, 6));
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(client.getTargets()).toBeNull();
+
+      worker.emit(targetsMessage(4, 7, 8));
+      expect(listener).toHaveBeenCalledTimes(2);
+      expect(client.getTargets()?.layoutId).toBe(4);
+      expect([...(client.getTargets()?.buffer ?? [])]).toEqual([7, 8]);
+    });
+
+    it('ignores a buffer when no layout has been set', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const listener = vi.fn();
+      client.onTargets(listener);
+
+      worker.emit(targetsMessage(0, 1));
+      worker.emit(targetsMessage(1, 1));
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(client.getTargets()).toBeNull();
+    });
+
+    it('stops calling a listener that has unsubscribed', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const listener = vi.fn();
+      const stop = client.onTargets(listener);
+      client.setLayout(SLOTS);
+
+      stop();
+      worker.emit(targetsMessage(1, 1, 2));
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('never touches the view, its listeners or React: a buffer is not a view change', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const viewListener = vi.fn();
+      client.subscribe(viewListener);
+      client.setLayout(SLOTS);
+      const before = client.getView();
+
+      worker.emit(targetsMessage(1, 1420, 2));
+      worker.emit({ v, type: 'stats', messages: 10, targetPosts: 3 });
+
+      expect(client.getView()).toBe(before);
+      expect(viewListener).not.toHaveBeenCalled();
+    });
+
+    it('keeps the worker’s counts, zeros before the first', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      expect(client.getStats()).toEqual({ messages: 0, targetPosts: 0 });
+
+      worker.emit({ v, type: 'stats', messages: 120, targetPosts: 37 });
+
+      expect(client.getStats()).toEqual({ messages: 120, targetPosts: 37 });
+    });
+
+    it('ignores a targets message of another version', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const listener = vi.fn();
+      client.onTargets(listener);
+      client.setLayout(SLOTS);
+
+      worker.emit({ ...targetsMessage(1, 1), v: v + 1 });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing and calls no one after dispose', () => {
+      const worker = createFakeWorker();
+      const client = createTelemetryClient({ createWorker: () => worker });
+      const listener = vi.fn();
+      client.onTargets(listener);
+      client.setLayout(SLOTS);
+
+      client.dispose();
+      const id = client.setLayout(SLOTS);
+      worker.emit(targetsMessage(1, 1, 2));
+
+      expect(id).toBe(1);
+      expect(listener).not.toHaveBeenCalled();
+      expect(worker.posted.map((post) => post.message.type)).toEqual([
+        'connect',
+        'layout',
+        'dispose',
+      ]);
+    });
   });
 });

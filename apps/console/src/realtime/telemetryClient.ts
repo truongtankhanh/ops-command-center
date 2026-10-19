@@ -8,6 +8,7 @@ import {
   type FromWorker,
   isFromWorker,
   type SeriesData,
+  type TargetSlot,
   TELEMETRY_PROTOCOL_VERSION,
   type ToWorker,
 } from './telemetryProtocol';
@@ -34,6 +35,23 @@ export interface TelemetryView {
 
 export const seriesKey = (assetCode: string, key: string): string => `${assetCode}|${key}`;
 
+/**
+ * The latest targets buffer of the current layout (V2-14.4): one number per slot in layout order, `NaN` for no value
+ * yet. Not part of `TelemetryView`: readings never enter React state, so a render loop reads this directly.
+ */
+export interface TargetsView {
+  layoutId: number;
+  buffer: Float32Array;
+}
+
+/** Cumulative counts from the worker, for the developer HUD (V2-19.1) to turn into rates. */
+export interface TelemetryStats {
+  /** Socket messages the engine received. */
+  messages: number;
+  /** Targets buffers it posted. */
+  targetPosts: number;
+}
+
 /** What the client needs of a `Worker`, so a test can hand it a fake. */
 export interface WorkerLike {
   postMessage(message: unknown, options?: { transfer?: Transferable[] }): void;
@@ -56,6 +74,17 @@ export interface TelemetryClient {
   setWatch(codes: readonly string[]): void;
   /** Reconnects now and sends the watch set again. */
   retry(): void;
+  /**
+   * Sets the slots the worker follows: slot *i* is element *i* of every buffer `onTargets` delivers. Returns the layout's
+   * id; a buffer built for an earlier layout is dropped, and `getTargets()` is `null` until the new layout's first buffer.
+   */
+  setLayout(slots: readonly TargetSlot[]): number;
+  /** Called with each buffer of the current layout, at most once per frame; returns the way to stop. */
+  onTargets(listener: (targets: TargetsView) => void): () => void;
+  /** The latest buffer of the current layout, for a consumer that subscribes after it arrived. */
+  getTargets(): TargetsView | null;
+  /** The worker's latest counts, zeros before the first. */
+  getStats(): TelemetryStats;
   /** Idempotent. */
   dispose(): void;
 }
@@ -110,6 +139,11 @@ export function createTelemetryClient({
   let watched: string[] = [];
   let wasLive = false;
   let hasBeenLive = false;
+  // The targets path: outside `view`, so no reading reaches a subscriber of the view or React.
+  let layoutId = 0;
+  let targets: TargetsView | null = null;
+  const targetListeners = new Set<(targets: TargetsView) => void>();
+  let stats: TelemetryStats = { messages: 0, targetPosts: 0 };
 
   const update = (next: TelemetryView) => {
     view = next;
@@ -193,6 +227,14 @@ export function createTelemetryClient({
     update({ ...view, series });
   }
 
+  /** Only a buffer of the current layout: one built for an older layout has slots that are not the ones read now. */
+  function applyTargets(message: Extract<FromWorker, { type: 'targets' }>) {
+    // No layout set yet (id 0), or one set since: nothing this buffer is for is being read.
+    if (layoutId === 0 || message.layoutId !== layoutId) return;
+    targets = { layoutId, buffer: message.buffer };
+    for (const listener of [...targetListeners]) listener(targets);
+  }
+
   function receive(data: unknown) {
     if (disposed || !isFromWorker(data)) return;
     switch (data.type) {
@@ -206,7 +248,11 @@ export function createTelemetryClient({
         applySeries(data);
         return;
       case 'targets':
-        return; // reserved for V2-14
+        applyTargets(data);
+        return;
+      case 'stats':
+        stats = { messages: data.messages, targetPosts: data.targetPosts };
+        return;
     }
   }
 
@@ -248,6 +294,34 @@ export function createTelemetryClient({
 
     retry: () => send({ v: version, type: 'retry' }),
 
+    setLayout(slots) {
+      if (disposed) return layoutId;
+      layoutId += 1;
+      // The held buffer belongs to the old layout.
+      targets = null;
+      send({
+        v: version,
+        type: 'layout',
+        layoutId,
+        // Plain copies: nothing but these three fields crosses to the worker.
+        slots: slots.map(({ assetCode, key, enumValues }) => ({
+          assetCode,
+          key,
+          enumValues: enumValues === null ? null : [...enumValues],
+        })),
+      });
+      return layoutId;
+    },
+
+    onTargets(listener) {
+      targetListeners.add(listener);
+      return () => void targetListeners.delete(listener);
+    },
+
+    getTargets: () => targets,
+
+    getStats: () => stats,
+
     dispose() {
       if (disposed) return;
       send({ v: version, type: 'dispose' });
@@ -256,6 +330,7 @@ export function createTelemetryClient({
       // nothing; in-thread, the message above is what closes it.
       worker?.terminate();
       listeners.clear();
+      targetListeners.clear();
     },
   };
 }

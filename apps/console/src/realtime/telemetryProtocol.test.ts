@@ -22,6 +22,16 @@ const toWorker: ToWorker[] = [
       { key: 'fanSpeedRpm', t: new Float64Array([1_000, 6_000]), v: new Float32Array([1, 2]) },
     ],
   },
+  {
+    v,
+    type: 'layout',
+    layoutId: 3,
+    slots: [
+      { assetCode: 'CT-01', key: 'fanSpeedRpm', enumValues: null },
+      { assetCode: 'CT-01', key: 'switchState', enumValues: ['off', 'auto', 'hand'] },
+    ],
+  },
+  { v, type: 'layout', layoutId: 4, slots: [] },
   { v, type: 'retry' },
   { v, type: 'dispose' },
 ];
@@ -62,7 +72,8 @@ const fromWorker: FromWorker[] = [
       },
     ],
   },
-  { v, type: 'targets', buffer: new Float32Array([0.5, 1.5]) },
+  { v, type: 'targets', layoutId: 3, buffer: new Float32Array([0.5, 1.5, Number.NaN]) },
+  { v, type: 'stats', messages: 120, targetPosts: 37 },
 ];
 
 /**
@@ -105,10 +116,10 @@ describe('the protocol', () => {
 
   it('covers every message type of both directions', () => {
     expect(new Set(toWorker.map((message) => message.type))).toEqual(
-      new Set(['connect', 'token', 'watch', 'seed', 'retry', 'dispose']),
+      new Set(['connect', 'token', 'watch', 'seed', 'layout', 'retry', 'dispose']),
     );
     expect(new Set(fromWorker.map((message) => message.type))).toEqual(
-      new Set(['tokenRequest', 'state', 'series', 'targets']),
+      new Set(['tokenRequest', 'state', 'series', 'targets', 'stats']),
     );
   });
 
@@ -121,6 +132,18 @@ describe('the protocol', () => {
     expect(Object.prototype.toString.call(copy.entries[0]?.t)).toBe('[object Float64Array]');
     expect([...(copy.entries[0]?.t ?? [])]).toEqual([1_000, 2_000, 3_000]);
     expect(Object.prototype.toString.call(copy.entries[0]?.v)).toBe('[object Float32Array]');
+  });
+
+  it('keeps a targets buffer, NaN included, and its layout id through a clone', () => {
+    const targets = fromWorker.find((message) => message.type === 'targets');
+    if (targets?.type !== 'targets') throw new Error('fixture missing');
+
+    const copy = structuredClone(targets);
+
+    expect(copy.layoutId).toBe(3);
+    expect(Object.prototype.toString.call(copy.buffer)).toBe('[object Float32Array]');
+    expect([...copy.buffer.slice(0, 2)]).toEqual([0.5, 1.5]);
+    expect(Number.isNaN(copy.buffer[2])).toBe(true);
   });
 
   it('refuses a message of another version', () => {
