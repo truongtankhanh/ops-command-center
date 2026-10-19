@@ -21,6 +21,7 @@ import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
 import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
 import { initialTelemetryState } from './lib/telemetryState';
+import type { NodeInfo } from './lib/twinBindings';
 import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';
 import {
@@ -285,7 +286,7 @@ const LEAK: TelemetryPoint = {
   headline: 1,
 };
 
-/** A class with no part table and no model: the inspector draws its neutral box and says so (frame 15). */
+/** A class with no model: the inspector draws its neutral box and says so (frame 15). */
 const LEAK_SENSOR: AssetDetail = {
   id: 'asset-leak',
   code: 'LKS-B3',
@@ -391,6 +392,7 @@ function renderConsole({
   assets = ASSETS,
   details = [],
   incidentDetails = [],
+  models = {},
   reference = true,
 }: {
   role?: Role;
@@ -399,6 +401,8 @@ function renderConsole({
   details?: AssetDetail[];
   /** Details with a timeline, for the incidents whose evidence a case reads. */
   incidentDetails?: IncidentDetail[];
+  /** Node trees of model files by URL, cached as `useModelParts` resolves them (V2-14.10). */
+  models?: Record<string, NodeInfo>;
   /** `false` leaves the zones and the site plan out of the cache, so they are still loading. */
   reference?: boolean;
 } = {}) {
@@ -407,6 +411,7 @@ function renderConsole({
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.assets, assets);
   for (const detail of details) client.setQueryData(queryKeys.asset(detail.code), detail);
+  for (const [url, tree] of Object.entries(models)) client.setQueryData(queryKeys.model(url), tree);
   if (reference) {
     client.setQueryData(queryKeys.zones, ZONES);
     client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
@@ -580,7 +585,26 @@ describe('the console', () => {
     // V2-09.8: an asset takes the sheet. The role cases and the live readings are V2-11.5's and the
     // component's own tests; this is the wiring, and the page checked whole.
     it('an asset in the inspector', async () => {
-      renderConsole({ details: [{ ...ASSETS[0]!, points: [FAN_SPEED], rules: [] }] });
+      // A modelled class, so the page is checked with its Parts tree (read from the model, V2-14.10).
+      const modelUrl = '/models/cooling_tower.961e8f9f464e.glb';
+      const [tower] = ASSETS;
+      renderConsole({
+        details: [
+          { ...tower!, class: { ...tower!.class, modelUrl }, points: [FAN_SPEED], rules: [] },
+        ],
+        models: {
+          [modelUrl]: {
+            name: 'CoolingTower',
+            children: [
+              { name: 'Casing' },
+              {
+                name: 'FanBlade',
+                extras: { bind: 'fanSpeedRpm', motion: 'spin', axis: 'y', range: [0, 1800] },
+              },
+            ],
+          },
+        },
+      });
 
       act(() => consoleState().selectAsset('CT-01'));
 
@@ -591,6 +615,7 @@ describe('the console', () => {
         screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
       ).toBeInTheDocument();
       expect(document.querySelector('[data-sheet="open"]')).not.toBeNull();
+      expect(screen.getByRole('tree', { name: 'Parts of CT-01' })).toBeInTheDocument();
       await checkPage();
     });
 

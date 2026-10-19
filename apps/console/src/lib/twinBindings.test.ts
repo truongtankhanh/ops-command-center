@@ -1,6 +1,6 @@
 import type { TelemetryPoint } from '@occ/contracts';
 // `?raw` (typed by `vite/client`): the files' text, with no `node:fs` and no `@types/node`. The paths are
-// from `apps/console/src/lib` to the repo root, as in `assetParts.test.ts`.
+// from `apps/console/src/lib` to the repo root, as in `modelParts.test.ts`.
 import assetClassesText from '../../../../docs/design/v2/asset-classes.md?raw';
 import catalogueText from '../../../../ops/telemetry-sim/catalogue.json?raw';
 import {

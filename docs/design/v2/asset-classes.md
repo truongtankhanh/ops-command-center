@@ -364,11 +364,18 @@ would read Running: a leak sensor has no state point.
 
 ### Parts of an asset
 
-A code-owned table, `lib/assetParts.ts` in the console, for the two modelled classes only: the part's role, its label
-and the point it is bound to, taken from the Bound part columns above. **It is temporary**: V2-14 removes it when the
-model's `extras` supply the bindings (ADR-0020), and a class without a model has **no Parts section** (frame 15).
-A label is the node name in sentence case; where frames 03 and 08 spell a part otherwise, the table's word stands
-(settled in V2-09.9: frame 08 draws `Battery` and `Main breaker`, the table says "Starter battery" and "Breaker").
+The parts of an asset are the parts of its class's model, read in the console from the model file itself: the JSON
+chunk of the `.glb` (one ranged request, `Range: bytes=0-65535`, then the exact range if the chunk is longer), cached
+as reference data and shared by every asset of the class (ADR-0020 § Model contract). Every named node of the class
+root is a row, in the model's document order, children straight after their parent. A row's label is the bound
+node's `extras.label`, else the node name in sentence case ("FanStack" → "Fan stack"; an acronym stays as written),
+and a row binds the point named by its `extras.bind`. A class with no model has **no Parts section** (frame 15).
+
+The table below is the contract between this document, the delivered models and the tools: it gives the label and the
+point of each **bound** node. The stand-in generator (`pnpm models:standins`) reads it, and the console's tests check
+each stand-in's rows against it, so a label or a binding changed in a model, here or in the catalogue fails a test.
+Where frames 03 and 08 spell a part otherwise, the table's word stands (settled in V2-09.9: frame 08 draws `Battery`
+and `Main breaker`, the table says "Starter battery" and "Breaker").
 
 | Class               | Node (role)    | Label           | Point             | Motion |
 | ------------------- | -------------- | --------------- | ----------------- | ------ |
@@ -388,23 +395,30 @@ A label is the node name in sentence case; where frames 03 and 08 spell a part o
 "Radiator" is frame 08's word, not the node name's; "Starter battery" names what the point is, as `starterBatteryV`
 does.
 
-Settled 2026-10-15 (V2-09.9) by the tech lead: every proposal of the analysis is accepted as written.
+Settled 2026-10-15 (V2-09.9) by the tech lead: every proposal of the analysis is accepted as written. Amended
+2026-10-19 (V2-14.10), when the rows came from the model instead of a code-owned table; the amended points say so.
 
-- **Static parts are rows.** The ones a frame draws are listed with the table's bound parts, in the frames' order,
-  and read "static": `Casing`, `FanStack` and `ControlPanel` on the cooling tower, `Enclosure` on the generator
-  (frame 08's "see-through" describes the 3D view, which the inspector does not have). `Pipe` and `Riser` of the
-  brief's tree are in no frame and have no row. A part another part sits under (`FanStack`, `ControlPanel`) is
-  drawn open, with the children one level in: `FanBlade` under `FanStack`, `Switch` under `ControlPanel` on the
-  tower and `Breaker` under `ControlPanel` on the generator.
+- **Static parts are rows.** Amended in V2-14.10: every named node the model has is a row and reads "static" when it
+  binds nothing, the ones V2-09.9 left out included (`Pipe` and `Riser` on the cooling tower, `Silencer` and
+  `ExhaustStack` on the generator), so the vendor's delivery decides which static parts appear, in the model's order
+  and not the frames'. Not rows: the class root, its `_LOD1` sibling, a `_` helper (its children are listed, under
+  the nearest part above), an unnamed node, and a second node with a name already seen. A part another part sits
+  under is drawn open, with the children one level in: `FanBlade` under `FanStack` and `Switch` under `ControlPanel`
+  on the tower; `RadiatorFan` under `Radiator` and `Breaker` under `ControlPanel` on the generator (frame 08's
+  "see-through" describes the 3D view, which the inspector does not have). The stand-in generator's static `Radiator`
+  and its bound fan, which the table labels "Radiator", read the same twice: the label is the model's.
 - **A part shows its one bound reading**, written as a readings row writes it ("1,420 rpm", "41 °C", "86 %",
-  "Auto", "Open"), "—" while it has none, and "last 1,420 rpm" while the asset is not live. Not built, because
-  there is no single bound reading behind them: frame 08's "stopped · 41 °C" and "fan stopped", frame 03's
-  "71 °C · 18.6 A", "64 % open" and "On · Auto".
+  "Auto", "Open"), "—" while it has none, and "last 1,420 rpm" while the asset is not live. A bound node whose
+  binding the console cannot take (a `bind` that is not a point of the class, a missing axis or range, a `motion` the
+  point cannot follow; `bindingsFromNodes` reports it as a problem) reads "static", like a node with no binding. Not
+  built, because there is no single bound reading behind them: frame 08's "stopped · 41 °C" and "fan stopped",
+  frame 03's "71 °C · 18.6 A", "64 % open" and "On · Auto".
 - **Rows are read, not chosen.** A row is a `treeitem` and not a button until V2-15 makes parts selectable; the
   list has one tab stop and the arrow keys, Home and End move through it.
-- **The section is keyed on the class being in this table**, not on the class's model: `model_key` is `null` for
-  every class until V2-13, so the table says which classes are modelled. A class that is in no table and has a model
-  gets neither the section nor the "No 3D model" note.
+- **The section is keyed on the class having a model** (`model_key`, the class's `modelUrl`). Amended in V2-14.10: it
+  is a skeleton while the file is read, and it is left out, with no message, when the file cannot be read or has no
+  named part below the root; the rest of the sheet works as before. The "No 3D model" note is for a class with no
+  model only, never for one whose model failed to load.
 
 ### Reading rows
 
@@ -530,13 +544,13 @@ inspector sheet says, where the sections above give the rows and the state but n
 
 Settled 2026-10-15 (V2-09.9), the three blocks below the readings:
 
-- **Parts** are § Parts of an asset: the modelled classes only, below the readings.
+- **Parts** are § Parts of an asset: the classes that have a model only, below the readings.
 - **The incident section** lists the asset's unresolved incidents as the feed draws them, most severe first, and is
   titled "Incident raised by this asset" ("Incidents raised …" for several). Nothing resolved is listed, and with
   none open there is no section (the head's "No open incidents" says it). It is not drawn while the incident list
   loads. "Open INC-000108" sits under the first row, in the section, and names the incident the head names;
   opening an incident closes the inspector, and the incident sheet's own footer decides what the user may do.
-- **The no-model note** is for a class that is in no part table and has no model: a "No 3D model" chip in the head
+- **The no-model note** is for a class that has no model: a "No 3D model" chip in the head
   and an "In the twin" section: "This asset class has no model yet, so it is drawn as a 1.4 × 1.4 × 1.4 m neutral
   box at its position. Its readings, states and incident work exactly as for modelled assets." The size is the
   class's footprint, width × depth × height.

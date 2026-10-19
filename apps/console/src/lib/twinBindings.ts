@@ -3,7 +3,7 @@ import type { TelemetryPoint } from '@occ/contracts';
 /*
  * The bindings of a modelled asset class, read from the `extras` of its glTF nodes (V2-14.2). The console
  * builds them from the model, so a new class needs a model and catalogue rows, not code (ADR-0020 § Model
- * contract); this replaces the hand-written copy in `assetParts.ts`, which V2-14.10 deletes. Pure: no
+ * contract); this replaced the hand-written table in `assetParts.ts`, which V2-14.10 deleted. Pure: no
  * `three`, no DOM. The scene (V2-14.7, V2-14.8) and the inspector (V2-14.10) feed it descriptors, built
  * from an `Object3D` or from a GLB's JSON.
  *

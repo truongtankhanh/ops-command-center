@@ -6,12 +6,13 @@ import type {
   TelemetryRule,
   Zone,
 } from '@occ/contracts';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import type { NodeInfo } from '../lib/twinBindings';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -64,6 +65,17 @@ const LEAK = point({
   max: null,
 });
 
+const TOWER_URL = '/models/cooling_tower.961e8f9f464e.glb';
+
+/** The node tree of the tower's model, as `useModelParts` resolves it: a static part and the bound motor. */
+const TOWER_TREE: NodeInfo = {
+  name: 'CoolingTower',
+  children: [
+    { name: 'Casing' },
+    { name: 'FanMotor', extras: { bind: 'motorTempC', motion: 'tint', label: 'Fan motor' } },
+  ],
+};
+
 const asset = (overrides: Partial<AssetDetail>): AssetDetail => ({
   id: 'asset-ct-01',
   code: 'CT-01',
@@ -72,7 +84,7 @@ const asset = (overrides: Partial<AssetDetail>): AssetDetail => ({
     id: 'class-cooling-tower',
     code: 'cooling_tower',
     name: 'Cooling tower',
-    modelUrl: null,
+    modelUrl: TOWER_URL,
     footprintM: { width: 1, depth: 1, height: 1 },
   },
   zoneId: 'zone-dc',
@@ -100,6 +112,13 @@ const LEAK_SENSOR = asset({
   id: 'asset-lks-b3',
   code: 'LKS-B3',
   name: 'Leak sensor, level 3',
+  class: {
+    id: 'class-leak',
+    code: 'leak_sensor',
+    name: 'Leak sensor',
+    modelUrl: null,
+    footprintM: { width: 1.4, depth: 1.4, height: 1.4 },
+  },
   elevationM: 8,
   headline: [LEAK],
   points: [LEAK],
@@ -194,13 +213,26 @@ const fetchMock = vi.fn<typeof fetch>();
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status });
 
-/** The catalogue and the asset's detail are cached, so the first render is the loaded block. */
+/**
+ * The catalogue and the asset's detail are cached, so the first render is the loaded block. The tower's model
+ * is cached too: `model` is another tree, `null` for a file with no class root, `false` for nothing (the file
+ * is on its way).
+ */
 function renderBlock(
   detail: IncidentDetail,
-  { catalogue = [COOLING_TOWER, LEAK_SENSOR], details = [COOLING_TOWER, LEAK_SENSOR] } = {},
+  {
+    catalogue = [COOLING_TOWER, LEAK_SENSOR],
+    details = [COOLING_TOWER, LEAK_SENSOR],
+    model = TOWER_TREE,
+  }: {
+    catalogue?: AssetDetail[];
+    details?: AssetDetail[];
+    model?: NodeInfo | null | false;
+  } = {},
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.assets, catalogue);
+  if (model !== false) client.setQueryData(queryKeys.model(TOWER_URL), model);
   // The link names the place: cached, so it asks for nothing of its own.
   client.setQueryData(queryKeys.zones, [ZONE]);
   for (const cached of details) client.setQueryData(queryKeys.asset(cached.code), cached);
@@ -477,13 +509,67 @@ describe('IncidentEvidence', () => {
       expect(open).toHaveTextContent('Open asset');
     });
 
-    it('names the place alone for a class with no part table', () => {
+    it('names the place alone for a class with no model, asking for no file', () => {
       hold({ assets: { 'LKS-B3': entry({ leakDetected: true }) }, afterMs: 400 });
 
       renderBlock(leakIncident());
 
       expect(screen.getByText('LKS-B3 · Leak sensor, level 3')).toBeInTheDocument();
       expect(screen.getByText('Data Center · level 3')).toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('writes a part the model gives no label as its node name in sentence case', () => {
+      const unlabelled: NodeInfo = {
+        name: 'CoolingTower',
+        children: [{ name: 'MotorHousing', extras: { bind: 'motorTempC', motion: 'tint' } }],
+      };
+
+      renderBlock(incident(), { model: unlabelled });
+
+      expect(screen.getByText('Part: motor housing · Data Center · roof')).toBeInTheDocument();
+    });
+
+    it.each([
+      [
+        'no part bound to the rule’s point',
+        { name: 'CoolingTower', children: [{ name: 'Casing' }] },
+      ],
+      ['no class root', null],
+    ] as const)('names the place alone for a model with %s', (_what, model) => {
+      renderBlock(incident(), { model });
+
+      expect(screen.getByText('CT-01 · Cooling tower 1')).toBeInTheDocument();
+      expect(screen.getByText('Data Center · roof')).toBeInTheDocument();
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+    });
+
+    it('names the place alone while the model is on its way, the way to the asset in place', () => {
+      renderBlock(incident(), { model: false });
+
+      expect(screen.getByText('Data Center · roof')).toBeInTheDocument();
+      expect(screen.queryByText(/^Part:/)).toBeNull();
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(TOWER_URL, { headers: { Range: 'bytes=0-65535' } });
+    });
+
+    it('names the place alone when the model cannot be read', async () => {
+      fetchMock.mockImplementation(async () =>
+        json({ statusCode: 404, message: 'Not found' }, 404),
+      );
+
+      const { client } = renderBlock(incident(), { model: false });
+
+      // `useModelParts` retries once, a second later.
+      await waitFor(
+        () => expect(client.getQueryState(queryKeys.model(TOWER_URL))?.status).toBe('error'),
+        {
+          timeout: 4000,
+        },
+      );
+      expect(screen.getByText('Data Center · roof')).toBeInTheDocument();
+      expect(screen.queryByText(/^Part:/)).toBeNull();
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
     });
 
     it('opens the inspector of that asset in place of the incident', async () => {

@@ -19,7 +19,9 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { fetchGlbJson, nodeInfos } from '../lib/glbJson';
 import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents';
+import type { NodeInfo } from '../lib/twinBindings';
 import { api, ApiRequestError } from './client';
 
 export const queryKeys = {
@@ -30,6 +32,8 @@ export const queryKeys = {
   assets: ['assets'] as const,
   asset: (code: string) => ['assets', code] as const,
   assetHistory: (code: string) => ['assets', code, 'history'] as const,
+  // By URL, not by class: the URL carries the content hash (ADR-0020 § Serving), so a changed file is a new entry.
+  model: (url: string) => ['models', url] as const,
   incidents: ['incidents'] as const,
   incident: (id: string) => ['incidents', id] as const,
   stream: (cameraId: string) => ['cameras', cameraId, 'stream'] as const,
@@ -106,6 +110,32 @@ export const assetQueryOptions = (code: string) =>
  */
 export const useAsset = (code: string | null) =>
   useQuery({ ...assetQueryOptions(code ?? ''), enabled: code !== null });
+
+/**
+ * The options of one model's node tree (V2-14.10): the class root as a `NodeInfo`, read from the `.glb`'s JSON
+ * chunk by a ranged request (`fetchGlbJson`), or `null` when the file has no class root (a query may not resolve
+ * to `undefined`). Reference data like the asset detail: the URL is content-hashed and the file immutable
+ * (ADR-0020 § Serving), so it is cached for the whole shift and shared by every asset of the class.
+ *
+ * A plain `fetch` on the model's own URL, not `api`: models are public static files, not API calls, and carry
+ * no bearer token. `retry: 1` and not the client's two: a model that is not there should show its skeleton for
+ * a few seconds, not for the default's longer back-off, and then say nothing (the inspector works without Parts).
+ */
+export const modelPartsQuery = (modelUrl: string) =>
+  queryOptions({
+    queryKey: queryKeys.model(modelUrl),
+    queryFn: async (): Promise<NodeInfo | null> => nodeInfos(await fetchGlbJson(modelUrl)),
+    ...STATIC,
+    retry: 1,
+  });
+
+/**
+ * The node tree of a class's model, for the Parts list and the incident link. No request is sent without a URL
+ * (a class with no model). `isLoading` is the "on its way" test: a disabled query is pending and idle, so
+ * `isPending` would show a skeleton forever for a class that has no model.
+ */
+export const useModelParts = (modelUrl: string | null) =>
+  useQuery({ ...modelPartsQuery(modelUrl ?? ''), enabled: modelUrl !== null });
 
 /** A range of an asset's history: ISO 8601 with a zone, at most 1 hour (docs/api/assets.md). */
 export interface AssetHistoryRange {

@@ -7,7 +7,7 @@ import type {
   TelemetryRule,
   Zone,
 } from '@occ/contracts';
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
 import { TOO_MANY_REQUESTS } from '../api/client';
@@ -15,6 +15,7 @@ import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import type { NodeInfo } from '../lib/twinBindings';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -83,6 +84,82 @@ const zone: Zone = {
   center: [108.44, 11.95],
 };
 
+const TOWER_URL = '/models/cooling_tower.961e8f9f464e.glb';
+const GENERATOR_URL = '/models/standby_generator.f37bf7611883.glb';
+
+const part = (name: string, extras?: unknown, children?: NodeInfo[]): NodeInfo => ({
+  name,
+  ...(extras === undefined ? {} : { extras }),
+  ...(children === undefined ? {} : { children }),
+});
+
+/** The node trees of the two stand-in models in `ops/models`, as `useModelParts` resolves them. */
+const TOWER_TREE = part('CoolingTower', undefined, [
+  part('Casing'),
+  part('FanStack', undefined, [
+    part('FanBlade', {
+      bind: 'fanSpeedRpm',
+      motion: 'spin',
+      axis: 'y',
+      range: [0, 1800],
+      label: 'Fan blade',
+    }),
+  ]),
+  part('FanMotor', { bind: 'motorTempC', motion: 'tint', label: 'Fan motor' }),
+  part('Pump', { bind: 'pumpFlowM3h', motion: 'tint', label: 'Pump' }),
+  part('Pipe'),
+  part('Riser'),
+  part('Valve', {
+    bind: 'valveOpenPct',
+    motion: 'turn',
+    axis: 'x',
+    range: [0, 90],
+    label: 'Valve',
+  }),
+  part('ControlPanel', undefined, [
+    part('Switch', {
+      bind: 'switchState',
+      motion: 'turn',
+      axis: 'x',
+      range: [-35, 35],
+      label: 'Switch',
+    }),
+  ]),
+]);
+
+const GENERATOR_TREE = part('StandbyGenerator', undefined, [
+  part('Enclosure'),
+  part('FuelTank', { bind: 'fuelLevelPct', motion: 'tint', label: 'Fuel tank' }),
+  part('Battery', { bind: 'starterBatteryV', motion: 'tint', label: 'Starter battery' }),
+  part('Engine', { bind: 'coolantTempC', motion: 'tint', label: 'Engine' }),
+  part('Alternator', { bind: 'alternatorKw', motion: 'tint', label: 'Alternator' }),
+  part('Radiator', undefined, [
+    part('RadiatorFan', {
+      bind: 'engineSpeedRpm',
+      motion: 'spin',
+      axis: 'y',
+      range: [0, 1800],
+      label: 'Radiator',
+    }),
+  ]),
+  part('ControlPanel', { bind: 'controlMode', motion: 'tint', label: 'Control panel' }, [
+    part('Breaker', {
+      bind: 'breakerClosed',
+      motion: 'turn',
+      axis: 'x',
+      range: [0, 35],
+      label: 'Breaker',
+    }),
+  ]),
+  part('Silencer'),
+  part('ExhaustStack'),
+]);
+
+const MODELS: Record<string, NodeInfo> = {
+  [TOWER_URL]: TOWER_TREE,
+  [GENERATOR_URL]: GENERATOR_TREE,
+};
+
 /** Headline: fan speed and motor temperature. Ruled: vibration. The rest is behind "All points". */
 const DETAIL: AssetDetail = {
   id: 'asset-ct-01',
@@ -92,7 +169,7 @@ const DETAIL: AssetDetail = {
     id: 'class-cooling-tower',
     code: 'cooling_tower',
     name: 'Cooling tower',
-    modelUrl: null,
+    modelUrl: TOWER_URL,
     footprintM: { width: 1, depth: 1, height: 1 },
   },
   zoneId: zone.id,
@@ -128,6 +205,7 @@ const INCIDENT: Incident = {
 const FUEL = point({ key: 'fuelLevelPct', label: 'Fuel level', unit: '%', headline: 1 });
 const COOLANT = point({ key: 'coolantTempC', label: 'Coolant temperature', unit: '°C' });
 const BREAKER = point({ key: 'breakerClosed', label: 'Main breaker', unit: null, kind: 'boolean' });
+const ENGINE_SPEED = point({ key: 'engineSpeedRpm', label: 'Engine speed', unit: 'rpm' });
 
 /** The other modelled class: its parts include a parent with a boolean and an enum underneath. */
 const GENERATOR: AssetDetail = {
@@ -139,11 +217,11 @@ const GENERATOR: AssetDetail = {
     id: 'class-generator',
     code: 'standby_generator',
     name: 'Standby generator',
-    modelUrl: null,
+    modelUrl: GENERATOR_URL,
     footprintM: { width: 6, depth: 2.5, height: 3 },
   },
   headline: [FUEL],
-  points: [FUEL, COOLANT, BREAKER, MODE],
+  points: [FUEL, COOLANT, BREAKER, MODE, ENGINE_SPEED],
   rules: [],
 };
 
@@ -163,7 +241,7 @@ const LEAK = point({
   headline: 1,
 });
 
-/** A class with no part table and no model (frame 15). */
+/** A class with no model (frame 15). */
 const SENSOR: AssetDetail = {
   ...DETAIL,
   id: 'asset-lks-b3',
@@ -248,11 +326,24 @@ function renderInspector({
   detail = DETAIL,
   incidents,
   zones = [zone],
-}: { detail?: AssetDetail; incidents?: Incident[]; zones?: Zone[] } = {}) {
+  model,
+}: {
+  detail?: AssetDetail;
+  incidents?: Incident[];
+  zones?: Zone[];
+  /** What the model's query holds: the class's stand-in tree by default, `null` for a file with no class root,
+   * `false` for nothing (the file is on its way). */
+  model?: NodeInfo | null | false;
+} = {}) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.asset(detail.code), detail);
   client.setQueryData(queryKeys.zones, zones);
   if (incidents) client.setQueryData(queryKeys.incidents, incidents);
+  const url = detail.class.modelUrl;
+  const tree = model === undefined ? (url === null ? undefined : MODELS[url]) : model;
+  if (url !== null && tree !== undefined && tree !== false) {
+    client.setQueryData(queryKeys.model(url), tree);
+  }
   return renderWithQueryClient(<AssetInspector code={detail.code} />, client);
 }
 
@@ -261,6 +352,7 @@ function renderUncached() {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, [zone]);
   client.setQueryData(queryKeys.incidents, []);
+  client.setQueryData(queryKeys.model(TOWER_URL), TOWER_TREE);
   return renderWithQueryClient(<AssetInspector code="CT-01" />, client);
 }
 
@@ -568,7 +660,7 @@ describe('AssetInspector', () => {
   describe('parts', () => {
     beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
 
-    it('lists the parts of a modelled class in the frames order, with static ones', () => {
+    it("lists the parts of the class's model in its order, with the static ones", () => {
       renderInspector({ incidents: [] });
 
       expect(screen.getByRole('heading', { level: 3, name: 'Parts' })).toBeInTheDocument();
@@ -580,10 +672,12 @@ describe('AssetInspector', () => {
         'Fan stackstatic',
         'Fan blade1,420 rpm',
         'Fan motor71 °C',
-        'Pump—',
-        'Valve—',
+        'Pumpstatic',
+        'Pipestatic',
+        'Riserstatic',
+        'Valvestatic',
         'Control panelstatic',
-        'Switch—',
+        'Switchstatic',
       ]);
     });
 
@@ -597,11 +691,24 @@ describe('AssetInspector', () => {
       expect(partRow('Casing')).not.toHaveAttribute('aria-expanded');
     });
 
-    it('shows a dash for a part whose point the asset does not have', () => {
+    it('reads a part bound to a point the asset does not have as a static one', () => {
       renderInspector({ incidents: [] });
 
-      // `DETAIL` has no pump flow point; the part stays and says so.
-      expect(partRow('Pump')).toHaveTextContent('—');
+      // `DETAIL` has no pump flow point, so the model's binding cannot be taken (`bindingsFromNodes`
+      // drops it); the part is still the model's, and still listed.
+      expect(partRow('Pump')).toHaveTextContent('static');
+      expect(partRow('Pump')).not.toHaveAttribute('data-stale');
+    });
+
+    it('shows a dash for a bound part whose point has no reading yet', () => {
+      const without = entry();
+      delete (without.values as Record<string, unknown>).fanSpeedRpm;
+      delete (without.headline as Record<string, unknown>).fanSpeedRpm;
+      hold({ assets: { 'CT-01': without }, afterMs: 400 });
+
+      renderInspector({ incidents: [] });
+
+      expect(partRow('Fan blade')).toHaveTextContent('—');
     });
 
     it('reads a generator in the words of its points', () => {
@@ -615,6 +722,42 @@ describe('AssetInspector', () => {
       expect(partRow('Breaker')).toHaveTextContent('Open');
       expect(partRow('Breaker')).toHaveAttribute('aria-level', '2');
       expect(partRow('Enclosure')).toHaveTextContent('static');
+    });
+
+    it("lists the generator's model whole, a static radiator above the fan labelled the same", () => {
+      hold({ assets: { 'GEN-01': generatorEntry() }, afterMs: 400 });
+
+      renderInspector({ detail: GENERATOR, incidents: [] });
+
+      const items = within(screen.getByRole('tree', { name: 'Parts of GEN-01' })).getAllByRole(
+        'treeitem',
+      );
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Enclosurestatic',
+        'Fuel tank86 %',
+        'Batterystatic',
+        'Engine41 °C',
+        'Alternatorstatic',
+        'Radiatorstatic',
+        'Radiator—',
+        'Control panelAuto',
+        'BreakerOpen',
+        'Silencerstatic',
+        'Exhaust stackstatic',
+      ]);
+      expect(items.map((item) => item.getAttribute('aria-level'))).toEqual([
+        '1',
+        '1',
+        '1',
+        '1',
+        '1',
+        '1',
+        '2',
+        '1',
+        '2',
+        '1',
+        '1',
+      ]);
     });
 
     it('is not a control: no button, no selection', () => {
@@ -673,24 +816,70 @@ describe('AssetInspector', () => {
     });
 
     it('shows a dash, not "last —", for a part with no reading while stale', () => {
-      hold({ assets: { 'CT-01': entry() }, afterMs: 72_000 });
+      const without = entry();
+      delete (without.values as Record<string, unknown>).fanSpeedRpm;
+      delete (without.headline as Record<string, unknown>).fanSpeedRpm;
+      hold({ assets: { 'CT-01': without }, afterMs: 72_000 });
 
       renderInspector({ incidents: [] });
 
-      expect(partRow('Pump')).toHaveTextContent('—');
-      expect(partRow('Pump')).not.toHaveTextContent('last');
+      expect(partRow('Fan blade')).toHaveTextContent('—');
+      expect(partRow('Fan blade')).not.toHaveTextContent('last');
     });
 
-    it('has no Parts section for a class that is not in the table, and no error', () => {
+    it('has no Parts section for a class with no model, and no error', () => {
       hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
 
       renderInspector({ detail: SENSOR, incidents: [] });
 
       expect(screen.queryByRole('tree')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+      expect(screen.queryByText('Loading parts…')).toBeNull();
       expect(
         screen.getByRole('heading', { level: 2, name: 'Leak sensor, level 3' }),
       ).toBeInTheDocument();
+      // A class with no model asks for no file.
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('draws the Parts section as a skeleton while the model is read, the rest of the sheet in place', async () => {
+      renderInspector({ incidents: [], model: false });
+
+      expect(screen.getByRole('heading', { level: 3, name: 'Parts' })).toBeInTheDocument();
+      expect(screen.getByText('Loading parts…')).toBeInTheDocument();
+      expect(screen.queryByRole('tree')).toBeNull();
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(TOWER_URL, { headers: { Range: 'bytes=0-65535' } }),
+      );
+    });
+
+    it('draws no Parts section for a model with no class root, and does not say "No 3D model"', () => {
+      renderInspector({ incidents: [], model: null });
+
+      expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+      expect(screen.queryByText('Loading parts…')).toBeNull();
+      expect(screen.queryByText('No 3D model')).toBeNull();
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+    });
+
+    it('leaves the Parts section out when the model cannot be read, the sheet still working', async () => {
+      answers = [() => apiError(404, 'Not found'), () => apiError(404, 'Not found')];
+
+      renderInspector({ incidents: [], model: false });
+      expect(screen.getByText('Loading parts…')).toBeInTheDocument();
+
+      // `useModelParts` retries once, a second later.
+      await waitFor(() => expect(screen.queryByText('Loading parts…')).toBeNull(), {
+        timeout: 4000,
+      });
+      expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+      expect(screen.queryByText('No 3D model')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
     });
   });
 
@@ -721,7 +910,7 @@ describe('AssetInspector', () => {
       expect(screen.getByText(/drawn as a 6 × 1 × 2\.3 m neutral box/)).toBeInTheDocument();
     });
 
-    it('says nothing about a model for a class in the table, whose model_key is still null', () => {
+    it('says nothing about a model for a class that has one', () => {
       hold({ assets: { 'CT-01': entry() }, afterMs: 400 });
 
       renderInspector({ incidents: [] });
@@ -730,13 +919,13 @@ describe('AssetInspector', () => {
       expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
     });
 
-    it('does not claim "No 3D model" for a class that has a model and no table row yet', () => {
+    it('does not claim "No 3D model" for a class that has a model with no named part', () => {
       const modelled: AssetDetail = {
         ...SENSOR,
         class: { ...SENSOR.class, modelUrl: '/models/leak_sensor.0123456789ab.glb' },
       };
 
-      renderInspector({ detail: modelled, incidents: [] });
+      renderInspector({ detail: modelled, incidents: [], model: part('LeakSensor') });
 
       expect(screen.queryByText('No 3D model')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
@@ -990,6 +1179,7 @@ describe('AssetInspector', () => {
       client.setQueryData(queryKeys.asset('CT-01'), DETAIL);
       client.setQueryData(queryKeys.zones, [zone]);
       client.setQueryData(queryKeys.incidents, []);
+      client.setQueryData(queryKeys.model(TOWER_URL), TOWER_TREE);
       renderWithQueryClient(
         <Profiler id="inspector" onRender={onRender}>
           <AssetInspector code="CT-01" />

@@ -49,3 +49,24 @@
 .row[data-stale='true'] .value {
   color: var(--text-tertiary);
 }
+
+/* The section while the model is read (`AssetPartsSkeleton`): rows of a part row's height. */
+.skeletonRows {
+  display: grid;
+  gap: 1px;
+}
+
+.skeletonRow {
+  height: calc(34px * var(--ui-scale));
+  border-radius: var(--radius-s);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
