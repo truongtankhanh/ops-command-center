@@ -188,6 +188,11 @@ interface ConsoleState extends ReportLocation {
    */
   selectAsset(code: null): void;
   selectAsset(code: string, focusZoneId: string | null): void;
+  /**
+   * What a click on an asset does, in the 2D map and in the 3D view (V2-15.4): the selected asset is
+   * deselected (the building stays in focus), any other is selected as `selectAsset(code, focusZoneId)`.
+   */
+  toggleAsset(code: string, focusZoneId: string | null): void;
   hoverAsset(code: string | null): void;
   /**
    * Focuses a building (a click on it, or its crumb): the building level, so the selected asset and part
@@ -342,6 +347,10 @@ export const useConsole = create<ConsoleState>((set, get) => ({
             ...(focusZoneId === state.focusZoneId ? {} : { ...leave(state), focusZoneId }),
           },
     ),
+  toggleAsset: (code, focusZoneId) => {
+    if (get().selectedAssetCode === code) get().selectAsset(null);
+    else get().selectAsset(code, focusZoneId);
+  },
   hoverAsset: (hoveredAssetCode) => set({ hoveredAssetCode }),
   focusBuilding: (zoneId) => {
     if (zoneId === null) {

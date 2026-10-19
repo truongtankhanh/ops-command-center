@@ -485,6 +485,53 @@ describe('useConsole', () => {
     });
   });
 
+  // V2-15.4: the click on an asset, shared by the 2D map and the 3D view.
+  describe('toggling an asset', () => {
+    it('selects an asset that is not selected and focuses its building', () => {
+      state().toggleAsset('CT-01', 'BLD-DC');
+
+      expect(state().selectedAssetCode).toBe('CT-01');
+      expect(state().focusZoneId).toBe('BLD-DC');
+    });
+
+    it('moves the selection to another asset', () => {
+      state().toggleAsset('CT-01', 'BLD-DC');
+
+      state().toggleAsset('CT-02', 'BLD-DC');
+
+      expect(state().selectedAssetCode).toBe('CT-02');
+    });
+
+    it('deselects the selected asset on a second call, keeps its building in focus and opens nothing', () => {
+      state().toggleAsset('CT-01', 'BLD-DC');
+
+      state().toggleAsset('CT-01', 'BLD-DC');
+
+      expect(state().selectedAssetCode).toBeNull();
+      expect(state().focusZoneId).toBe('BLD-DC');
+      expect(state().selectedIncidentId).toBeNull();
+      expect(state().reporting).toBe(false);
+    });
+
+    it('clears the selected part with the asset', () => {
+      state().toggleAsset('CT-01', 'BLD-DC');
+      state().selectPart('FanBlade');
+
+      state().toggleAsset('CT-01', 'BLD-DC');
+
+      expect(state().selectedPart).toBeNull();
+    });
+
+    it('ends the focus for an asset outside every building', () => {
+      state().focusBuilding('BLD-DC');
+
+      state().toggleAsset('TR-01', null);
+
+      expect(state().selectedAssetCode).toBe('TR-01');
+      expect(state().focusZoneId).toBeNull();
+    });
+  });
+
   // The focus writes the Assets filter only for a building click, and takes back only what it wrote.
   describe('building focus and the Assets filter', () => {
     it('is cleared on leaving the building by going up', () => {

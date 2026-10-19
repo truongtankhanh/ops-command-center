@@ -12,6 +12,7 @@ import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
 import { PickLayer } from './PickLayer';
+import { Pointer } from './Pointer';
 import { Rig } from './Rig';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
@@ -56,6 +57,8 @@ interface TwinCanvasProps {
  *   resting stage draws nothing.
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
+ * - `Pointer` listens to the canvas element for hover, click and drag, and asks `PickLayer` what is under it
+ *   (V2-15.4); it renders nothing.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
  *   session (V2-12.11).
  * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
@@ -103,6 +106,7 @@ export function TwinCanvas({
               feed={feed}
             />
           </PickLayer>
+          <Pointer assets={scene.assets} zones={scene.zones} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />

@@ -5,7 +5,9 @@ import {
   cameraHits,
   choose,
   createPickStats,
+  cursorOf,
   entryAt,
+  isClick,
   type PickHit,
   type PickRef,
   type PickScope,
@@ -297,5 +299,41 @@ describe('createPickStats', () => {
     stats.record(1, 10_500);
 
     expect(report).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('isClick', () => {
+  const down = { x: 100, y: 100 };
+
+  it('is a click when the press has not moved, or moved 2 px', () => {
+    expect(isClick(down, { x: 100, y: 100 })).toBe(true);
+    expect(isClick(down, { x: 102, y: 100 })).toBe(true);
+    expect(isClick(down, { x: 100, y: 98 })).toBe(true);
+  });
+
+  it('is a click at exactly the slop, and along a diagonal inside it', () => {
+    expect(isClick(down, { x: 103, y: 100 })).toBe(true);
+    expect(isClick(down, { x: 102, y: 102 })).toBe(true);
+  });
+
+  it('is a drag at 4 px, and along a diagonal outside the slop', () => {
+    expect(isClick(down, { x: 104, y: 100 })).toBe(false);
+    expect(isClick(down, { x: 97, y: 97 })).toBe(false);
+  });
+});
+
+describe('cursorOf', () => {
+  const idle = { picking: false, dragging: false, overTarget: false };
+
+  it('is grab over nothing, pointer over a target, grabbing while dragging, crosshair while picking', () => {
+    expect(cursorOf(idle)).toBe('grab');
+    expect(cursorOf({ ...idle, overTarget: true })).toBe('pointer');
+    expect(cursorOf({ ...idle, dragging: true })).toBe('grabbing');
+    expect(cursorOf({ ...idle, picking: true })).toBe('crosshair');
+  });
+
+  it('puts picking before dragging, and dragging before a target', () => {
+    expect(cursorOf({ picking: true, dragging: true, overTarget: true })).toBe('crosshair');
+    expect(cursorOf({ picking: false, dragging: true, overTarget: true })).toBe('grabbing');
   });
 });

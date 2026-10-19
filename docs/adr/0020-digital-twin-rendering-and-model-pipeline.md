@@ -223,6 +223,32 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Measuring.** In development (`MODE === 'development'`, not `DEV`, which Vitest sets) `PickLayer` logs the count,
       mean and maximum cost of the picks once a second at `console.debug`; the brief's 0.5 ms is read from that on the
       reference laptop. No test asserts it.
+  - Settled in V2-15.4 (2026-10-19), without changing the decision: how the pointer becomes hover, select and drag.
+    - **A click is a press released within 3 px** (`CLICK_SLOP_PX`; 4 px is a drag, which is the camera's). The press
+      is followed on the document once it has begun, as `camera-controls` does, so a release over the inspector sheet
+      still ends it, and it counts as a click only if it is near where it began. Only the primary button clicks; a
+      second pointer down (a pinch) is never a click. `DragHint`'s own 4 px, for when to stop showing its
+      instruction, is a different question and is left as it is.
+    - **A click gets the pick for its own point.** `requestPick(point, done?)` takes a completion that the canvas
+      calls in the frame that casts the ray, whether or not the winner changed (`onPick` is silent when it did not);
+      requests that arrive between two frames share it, the latest point is cast and every completion gets that
+      answer, and the pointer asks for no hover while a click waits. This keeps one ray a frame.
+    - **What a click does.** An asset: `toggleAsset(code, building)` (the selected one is deselected and its building
+      stays in focus, the 2D map's rule, now one store action used by both); the body of the isolated asset at part
+      level: the callout closes and the inspector stays (`unverified`); a part: `selectPart` (the selected one
+      toggles off); a building: `focusBuilding`; a camera marker: `openViewer`. A click on nothing selects and
+      deselects nothing, and while a report location is picked a click does nothing until V2-16.7 adds the ground.
+      The actions are not permission-gated, so viewer, technician and operator behave alike; the inspector's footer
+      and the API decide the rest.
+    - **Hover.** Mouse and pen only, no button down, not while a click waits or a location is picked. An asset writes
+      `hoveredAssetCode`; a part writes it and `hoveredPart`; a building or a camera writes neither (the cursor is
+      their only hover here). The pointer takes back only what it wrote, also when it leaves the canvas, so a hover
+      set by an Assets row is never cleared by it; a tap writes no hover.
+    - **The cursor**, in this order: `crosshair` while a report location is picked, `grabbing` while a press has
+      moved past the slop (any button), `pointer` over a pick, else `grab`.
+    - **Where the code is.** The logic is `lib/twinPointer.ts`, a DOM controller with no `three`, tested with synthetic
+      pointer events; `twin/Pointer.tsx` only wires it. Known gap, left to V2-15.5: when the camera moves under a
+      still pointer no `pointermove` fires, so the hover and the cursor are stale until the next move.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
