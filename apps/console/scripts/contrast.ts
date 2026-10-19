@@ -430,6 +430,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       expected: css.get('--tw-ghost-opacity') ?? 'missing',
     },
     {
+      copy: '`twinColors.alarmMix` (src/styles/tokens.ts)',
+      actual: `${Math.round(twinColors.alarmMix * 100)}%`,
+      expected: css.get('--tw-alarm-mix') ?? 'missing',
+    },
+    {
       copy: '`twinColors.xrayOpacity` (src/styles/tokens.ts)',
       actual: String(twinColors.xrayOpacity),
       expected: css.get('--tw-xray-opacity') ?? 'missing',

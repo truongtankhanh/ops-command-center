@@ -103,6 +103,24 @@ export function openIncidentOf(
   return found;
 }
 
+/**
+ * Whether any asset is drawn as "not live" in 3D (V2-14.9): it has no entry in the overview, its device is
+ * offline, or its latest reading is stale on the server's clock. This is the feed's own rule (`twinFeed.ts`),
+ * not `assetStates`, whose fault-first order would call a stale fault "Fault" and hide the legend entry while
+ * the asset is grey in the scene. No server clock yet cannot judge, and "cannot judge" is not stale.
+ */
+export function hasDimmedAsset(
+  assets: readonly Asset[],
+  overview: TelemetryState['assets'],
+  serverNow: number | null,
+): boolean {
+  return assets.some((asset) => {
+    const entry = overview[asset.code];
+    if (entry === undefined || !entry.online) return true;
+    return serverNow !== null && isStale(entry.receivedAt, staleAfterMs(asset.headline), serverNow);
+  });
+}
+
 /** `zone` is `null` for the assets whose zone this console does not have. */
 export interface AssetGroup {
   zone: Zone | null;

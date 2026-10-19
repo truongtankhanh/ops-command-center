@@ -355,6 +355,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.heat[4]` (src/styles/tokens.ts)          | #7b8af0                   | #7b8af0                   | match  |
 | `twinColors.heat[5]` (src/styles/tokens.ts)          | #b3bdff                   | #b3bdff                   | match  |
 | `twinColors.ghostOpacity` (src/styles/tokens.ts)     | 0.18                      | 0.18                      | match  |
+| `twinColors.alarmMix` (src/styles/tokens.ts)         | 35%                       | 35%                       | match  |
 | `twinColors.xrayOpacity` (src/styles/tokens.ts)      | 0.14                      | 0.14                      | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |

@@ -7,6 +7,7 @@ import { AssetModel, type ModelInstance } from './AssetModel';
 import { instantiate } from './classModel';
 import type { ClassPoints } from './useClassPoints';
 import { type BoundInstance, useBoundParts } from './useBoundParts';
+import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
 
 interface EquipmentProps {
@@ -29,31 +30,34 @@ interface EquipmentProps {
  * becomes ready, so there is never a frame with both, or with neither. Campus level draws the `outdoor` and
  * `roof` assets (`visibleAssets`); a building in focus will add its `inside` assets (V2-15.8).
  *
- * It makes the model instances and gives the same objects to `AssetModel` (which places them) and to
- * `useBoundParts` (which moves their bound parts), and it tells the feed what each ready class binds, so the
- * worker follows those keys. A rebuilt instance starts again from its authored pose and snaps to its first
+ * It makes the model instances and gives the same objects to `AssetModel` (which places them), to
+ * `useBoundParts` (which moves their bound parts) and to `useModelLooks` (which paints stale and alarm), and it
+ * tells the feed what each ready class binds, so the worker follows those keys. The boxes paint their own
+ * looks (`AssetBoxes`). A rebuilt instance starts again from its authored pose and snaps to its first
  * value, which happens when the scene's data changes (the cameras or the assets arrive), not while it runs.
  */
 export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
   const ready = useClassModels(classes, classPoints);
 
-  const { boxes, instances, bound } = useMemo(() => {
+  const { boxes, instances, bound, looks } = useMemo(() => {
     const boxes: PlacedAsset[] = [];
     const modelled: PlacedAsset[] = [];
     for (const asset of assets) (ready.has(asset.classCode) ? modelled : boxes).push(asset);
 
     const instances: ModelInstance[] = [];
     const bound: BoundInstance[] = [];
+    const looks: ModelLookTarget[] = [];
     for (const asset of visibleAssets(modelled)) {
       const entry = ready.get(asset.classCode);
       if (entry === undefined) continue;
       const object = instantiate(entry.template);
       instances.push({ assetCode: asset.code, object, pose: asset.pose });
+      looks.push({ assetCode: asset.code, object, materials: entry.template.materials });
       if (entry.bindings !== null) {
         bound.push({ assetCode: asset.code, object, bindings: entry.bindings });
       }
     }
-    return { boxes, instances, bound };
+    return { boxes, instances, bound, looks };
   }, [assets, ready]);
 
   // The feed's layout is the bound keys of every asset of a class: it follows what the models say.
@@ -65,10 +69,12 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
   }, [feed, ready]);
 
   useBoundParts(feed, bound);
+  // Every model instance, bound or not, takes the look of its asset's flags (V2-14.9).
+  useModelLooks(feed, looks);
 
   return (
     <>
-      <AssetBoxes assets={boxes} />
+      <AssetBoxes assets={boxes} feed={feed} />
       <AssetModel instances={instances} />
     </>
   );

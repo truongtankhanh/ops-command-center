@@ -257,6 +257,24 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Where the feed lives.** `TwinStage` mounts `useTwinFeed` (it reads the query cache, which does not reach the canvas's reconciler) and hands the feed down by
       prop; the canvas gives its `invalidate` back through `onCreated`, which the feed calls through a ref. Slots are looked up once per layout
       (`TwinFeedReader.layout`), because `slotOf` builds a string per call. `Equipment` tells the feed each ready class's bindings (`setBindings`).
+  - Settled in V2-14.9 (2026-10-19), without changing the decision: how stale and alarm are drawn.
+    - **One table decides the look.** `lookOf(flags, hovered, selected)` in `lib/twinMaterials.ts` gives an asset a face, an edge and whether it may move. Face:
+      hovered or selected, then stale or offline, then alarm, then idle. Edge: the accent, then the severity (solid), then the stale dash, then the idle outline.
+      So a stale fault is **grey with a solid severity edge**: "a fault is never hidden by a stale reading" is kept by the edge, not by a coloured face on data
+      that is not live (this reverses the order the task text gave for the face). Offline looks stale. A stale material is one grey for every material.
+    - **The alarm tint is computed.** `--tw-alarm-mix` (35 %, copied as `twinColors.alarmMix` and drift-checked) of the severity is mixed into each material's base
+      with the same arithmetic as the tokens (`mixInto`, `tintFor`); the critical faces of the idle material are the tokens and the test that proves it. No colour
+      appears other than a neutral material, a stale tone, the accent, a severity, or a fixed-weight mix of one into a neutral. The hover weight (30 %) has no
+      token and is a constant checked against `twinColors.hover`.
+    - **Painted from the flags, without React.** `twin/useAssetLooks.ts` reads `feed.read().flags(code)` in a `useFrame` and acts only for an asset whose flags object
+      changed and whose look changed with it. Boxes (one merged mesh) get per-asset vertex colours and two edge layers, a solid and a dashed one, that share their
+      vertices, colours and line distances and differ only in their index; models re-point each mesh at a pooled material per (name, face, severity) and show
+      an outline built once per class (`EdgesGeometry`, hidden by default), so an idle model has no outline and costs no draw call. Hover and selection are
+      not passed until V2-15.
+    - **The part-level edge waits for the asset level.** The severity edge of the part bound to the rule's point, and the incident-detail fetch that gives its key,
+      belong to V2-15, which introduces the asset level; until then the whole asset is tinted at every level (frame 04).
+    - **The legend says it.** "No data — last known state, not live" is listed while any asset has no data, is offline or is stale (`hasDimmedAsset`, the scene's rule,
+      not the Assets list's state word, which calls a stale fault a fault).
 - **Model contract.**
   - glTF 2.0 binary, **one file per asset class**, instanced for every asset of that class.
   - **Node names are part roles, unique within the file** (`FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`), under

@@ -1,19 +1,32 @@
 import {
   type BufferAttribute,
   BufferGeometry,
+  EdgesGeometry,
   Float32BufferAttribute,
   Group,
   type InterleavedBufferAttribute,
+  LineBasicMaterial,
+  LineDashedMaterial,
+  LineSegments,
   type Material,
   type Matrix4,
   Mesh,
   MeshLambertMaterial,
   type Object3D,
   Texture,
+  Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { NodeInfo } from '../lib/twinBindings';
-import { type MaterialName, materialSpec } from '../lib/twinMaterials';
+import {
+  type AssetLook,
+  EDGE_DASH_M,
+  EDGE_GAP_M,
+  edgeColour,
+  faceColour,
+  type MaterialName,
+  materialSpec,
+} from '../lib/twinMaterials';
 
 /*
  * A loaded class model made ready for the scene (V2-14.7, ADR-0020 § Model contract): the vendor's
@@ -26,10 +39,18 @@ import { type MaterialName, materialSpec } from '../lib/twinMaterials';
  * them is a **bound part**, which V2-14.8 will move; every other node is **static**.
  */
 
-/** The console's materials by name, shared by every model that is built with the table. */
+/**
+ * The console's materials by name, shared by every model that is built with the table, and the materials
+ * those take under a look (V2-14.9). A look is a *pool*: one material per (name, face, severity), never one
+ * per instance, so an alarmed tower and an alarmed generator share the alarmed `Steel`.
+ */
 export interface MaterialTable {
   /** The console material for a glTF material's name (`Part` for an unknown one). */
   get(name: string | undefined): MeshLambertMaterial;
+  /** The same material under a look: its colour for the face (`faceColour`), the same opacity. `idle` is `get`. */
+  look(name: string | undefined, look: Pick<AssetLook, 'face' | 'severity'>): MeshLambertMaterial;
+  /** An outline under a look: a solid line, dashed for `stale-dashed`, in the colour of the edge (`edgeColour`). */
+  line(look: Pick<AssetLook, 'edge' | 'severity'>): LineBasicMaterial;
   dispose(): void;
 }
 
@@ -37,31 +58,74 @@ export interface MaterialTable {
  * One `MeshLambertMaterial` per console material, made the first time it is asked for: the colour is the
  * material's top tone, and the scene's two lights give the faces their other tones, as for the shells and
  * the boxes. `Xray` is see-through and does not write depth, so what stands behind the generator's
- * enclosure shows through it.
+ * enclosure shows through it. Every face material is pushed back a little (`polygonOffset`), as the shells
+ * are, so an outline on its edge wins instead of z-fighting with it.
  */
 export function createMaterialTable(): MaterialTable {
-  const made = new Map<MaterialName, MeshLambertMaterial>();
-  return {
+  const made = new Map<string, MeshLambertMaterial>();
+  const lines = new Map<string, LineBasicMaterial>();
+
+  const faceMaterial = (
+    name: MaterialName,
+    color: string,
+    opacity: number,
+  ): MeshLambertMaterial => {
+    const material = new MeshLambertMaterial({
+      color,
+      transparent: opacity < 1,
+      opacity,
+      depthWrite: opacity >= 1,
+      polygonOffset: true,
+      polygonOffsetFactor: 1,
+      polygonOffsetUnits: 1,
+    });
+    material.name = name;
+    return material;
+  };
+
+  const table: MaterialTable = {
     get(name) {
       const { name: resolved, color, opacity } = materialSpec(name);
       let material = made.get(resolved);
       if (material === undefined) {
-        material = new MeshLambertMaterial({
-          color,
-          transparent: opacity < 1,
-          opacity,
-          depthWrite: opacity >= 1,
-        });
-        material.name = resolved;
+        material = faceMaterial(resolved, color, opacity);
         made.set(resolved, material);
+      }
+      return material;
+    },
+    look(name, look) {
+      if (look.face === 'idle') return table.get(name);
+      const { name: resolved, color, opacity } = materialSpec(name);
+      // Only an alarmed face depends on the severity.
+      const key = `${resolved}|${look.face}|${look.face === 'alarm' ? look.severity : ''}`;
+      let material = made.get(key);
+      if (material === undefined) {
+        material = faceMaterial(resolved, faceColour(color, look), opacity);
+        made.set(key, material);
+      }
+      return material;
+    },
+    line(look) {
+      const key = `${look.edge}|${look.edge === 'severity' ? look.severity : ''}`;
+      let material = lines.get(key);
+      if (material === undefined) {
+        const color = edgeColour(look);
+        material =
+          look.edge === 'stale-dashed'
+            ? new LineDashedMaterial({ color, dashSize: EDGE_DASH_M, gapSize: EDGE_GAP_M })
+            : new LineBasicMaterial({ color });
+        lines.set(key, material);
       }
       return material;
     },
     dispose() {
       for (const material of made.values()) material.dispose();
+      for (const material of lines.values()) material.dispose();
       made.clear();
+      lines.clear();
     },
   };
+  return table;
 }
 
 /** A model ready to be placed once per asset. */
@@ -74,7 +138,9 @@ export interface ClassTemplate {
    * class's points are known.
    */
   info: NodeInfo;
-  /** Frees the geometry. The materials belong to the table. */
+  /** The table the template was built with: where an instance finds the pooled materials of a look. */
+  materials: MaterialTable;
+  /** Frees the geometry, the outlines' included. The materials belong to the table. */
   dispose(): void;
 }
 
@@ -91,6 +157,18 @@ const isBound = (object: Object3D): boolean =>
   (object.userData as { bind?: unknown } | undefined)?.bind !== undefined;
 
 const isMesh = (object: Object3D): object is Mesh => (object as Mesh).isMesh === true;
+
+const isLines = (object: Object3D): object is LineSegments =>
+  (object as LineSegments).isLineSegments === true;
+
+/**
+ * The name of the hidden outline every mesh of a template carries (V2-14.9). An outline is drawn only when a
+ * look needs one (a stale dash, a severity, the accent): an idle model has none, so it costs no draw call.
+ */
+export const OUTLINE_NAME = '_edges';
+
+/** Faces that meet at more than this angle make an outline edge; the diagonal of a flat quad is not one. */
+export const OUTLINE_THRESHOLD_DEG = 30;
 
 /** An attribute as plain floats: `getX` undoes a quantised file's normalisation, which a matrix cannot be applied through. */
 function floats(attribute: BufferAttribute | InterleavedBufferAttribute): Float32BufferAttribute {
@@ -120,6 +198,32 @@ function plain(geometry: BufferGeometry): BufferGeometry {
   return copy;
 }
 
+const scratchFrom = new Vector3();
+const scratchTo = new Vector3();
+
+/**
+ * A mesh's outline, hidden: its edges (`EdgesGeometry`) with their line distances, which a dashed material
+ * reads, made **once** here and shared by every instance. The distances are in metres: a quantised part's
+ * geometry is in the units of its node's scale, so each is multiplied by the mesh's scale in the template.
+ */
+function outlineOf(mesh: Mesh, table: MaterialTable): LineSegments {
+  const geometry = new EdgesGeometry(mesh.geometry, OUTLINE_THRESHOLD_DEG);
+  const world = mesh.getWorldScale(new Vector3());
+  const scale = (world.x + world.y + world.z) / 3;
+  const position = geometry.getAttribute('position');
+  const distances = new Float32Array(position.count);
+  for (let i = 0; i + 1 < position.count; i += 2) {
+    scratchFrom.fromBufferAttribute(position, i);
+    scratchTo.fromBufferAttribute(position, i + 1);
+    distances[i + 1] = scratchFrom.distanceTo(scratchTo) * scale;
+  }
+  geometry.setAttribute('lineDistance', new Float32BufferAttribute(distances, 1));
+  const outline = new LineSegments(geometry, table.line({ edge: 'idle', severity: null }));
+  outline.name = OUTLINE_NAME;
+  outline.visible = false;
+  return outline;
+}
+
 /** Everything a vendor material owns that holds memory: itself and its textures. */
 function disposeVendorMaterial(material: Material): void {
   for (const value of Object.values(material)) {
@@ -140,6 +244,8 @@ function disposeVendorMaterial(material: Material): void {
  * - **Bound** parts stay as objects, moved under the new root with their world transform kept (`attach`), so
  *   a pivot that sat under a static parent still sits where the vendor put it. A bound part's own children
  *   (static or bound) stay under it and move with it: they are not merged.
+ * - Every mesh gets a hidden outline (`OUTLINE_NAME`), built once and shared by the copies: the looks of
+ *   V2-14.9 show it when they need an edge.
  * - What is not kept (the original static meshes, LOD1, the vendor's materials and their textures) is
  *   disposed, so a parsed file does not stay in memory twice.
  */
@@ -197,6 +303,13 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
     root.add(mesh);
   }
 
+  // A hidden outline on every mesh, for the looks that need one (V2-14.9). A bound part's outline moves with it.
+  const meshes: Mesh[] = [];
+  root.traverse((node) => {
+    if (isMesh(node)) meshes.push(node);
+  });
+  for (const mesh of meshes) mesh.add(outlineOf(mesh, table));
+
   // What is left of the loaded scene is not used by the template.
   scene.traverse((node) => {
     if (isMesh(node)) node.geometry.dispose();
@@ -206,9 +319,10 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
   return {
     root,
     info,
+    materials: table,
     dispose() {
       root.traverse((node) => {
-        if (isMesh(node)) node.geometry.dispose();
+        if (isMesh(node) || isLines(node)) node.geometry.dispose();
       });
     },
   };

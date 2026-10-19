@@ -126,6 +126,12 @@ export const twinColors = {
    * faces are tokens; the scene mixes the other severities with the same weight.
    */
   alarm: { top: '#754d55', south: '#6d434a', east: '#683b41' } satisfies Faces,
+  /**
+   * `--tw-alarm-mix` as a fraction: how much of an alarmed asset's severity is mixed into each of its materials
+   * (`tintFor`, V2-14.9). The critical faces above are what this weight gives for `--tw-top`; every other
+   * severity and material is mixed in the scene.
+   */
+  alarmMix: 0.35,
   /** `--tw-stale-*`: no recent data, desaturated faces. */
   stale: { top: '#2b3338', south: '#22292e', east: '#1b2125' } satisfies Faces,
   /** `--tw-stale-edge`: no recent data, the dashed edge. */

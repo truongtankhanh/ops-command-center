@@ -87,3 +87,22 @@
   background: var(--surface-2);
   transform: rotate(45deg);
 }
+
+/*
+ * An asset with no live data (frame 05 `.lg-stale`): the asset diamond, hatched and edged in the stale tone, the
+ * shape the scene draws it in (a grey body with a dashed outline).
+ */
+.stale {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+  border-radius: calc(2px * var(--ui-scale));
+  box-shadow: inset 0 0 0 calc(1.5px * var(--ui-scale)) var(--tw-stale-edge);
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 calc(2px * var(--ui-scale)),
+    var(--tw-stale-edge) calc(2px * var(--ui-scale)) calc(3px * var(--ui-scale))
+  );
+  transform: rotate(45deg);
+}

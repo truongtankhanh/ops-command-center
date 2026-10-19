@@ -31,6 +31,12 @@ export interface BoxGeometry {
   /** Segment pairs `[x1, y1, z1, x2, y2, z2, …]`. */
   edges: number[];
   /**
+   * For every vertex of `edges`, its distance along its segment: `0` at the start and the segment's length at
+   * the end. This is the attribute a dashed line material reads (`lineDistance`); three computes it only for a
+   * non-indexed line, and the edge layers of V2-14.9 are indexed, so it is made here, once.
+   */
+  lineDistances: number[];
+  /**
    * One entry per box, in the input's order: what a later task needs to find a box's vertices (to colour it
    * by state: V2-14.9), its triangles (to name what a ray hit: V2-15.3) and its edges.
    */
@@ -160,8 +166,15 @@ const EDGES: readonly (readonly [Corner, Corner])[] = [
  * object: a rotation θ sends +z to `(sin θ, cos θ)`. Nothing is skipped; an empty input gives empty buffers.
  */
 export function buildBoxGeometry(placed: readonly PlacedAsset[]): BoxGeometry {
-  const geometry: BoxGeometry = { positions: [], normals: [], indices: [], edges: [], ranges: [] };
-  const { positions, normals, indices, edges } = geometry;
+  const geometry: BoxGeometry = {
+    positions: [],
+    normals: [],
+    indices: [],
+    edges: [],
+    lineDistances: [],
+    ranges: [],
+  };
+  const { positions, normals, indices, edges, lineDistances } = geometry;
 
   for (const { code, pose, size } of placed) {
     const cos = Math.cos(pose.rotationY);
@@ -187,7 +200,12 @@ export function buildBoxGeometry(placed: readonly PlacedAsset[]): BoxGeometry {
       }
       indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
-    for (const [from, to] of EDGES) edges.push(...point(from), ...point(to));
+    for (const [from, to] of EDGES) {
+      const start = point(from);
+      const end = point(to);
+      edges.push(...start, ...end);
+      lineDistances.push(0, Math.hypot(end[0] - start[0], end[1] - start[1], end[2] - start[2]));
+    }
 
     geometry.ranges.push({
       code,
@@ -200,4 +218,26 @@ export function buildBoxGeometry(placed: readonly PlacedAsset[]): BoxGeometry {
     });
   }
   return geometry;
+}
+
+/**
+ * The vertices of the edge segments of each asset, split into two layers (V2-14.9): the segments of the assets
+ * in `dashed` (stale, drawn with a dashed material) and all the others (solid). A segment `s` is the vertices
+ * `2s` and `2s + 1`, so each list is an index into the same `edges` buffer: both layers share its vertices, its
+ * colours and its distances, and a change of look rewrites only these two small lists. Assets keep their order
+ * and every segment is in exactly one list.
+ */
+export function edgeIndices(
+  ranges: readonly BoxRange[],
+  dashedCodes: ReadonlySet<string>,
+): { solid: number[]; dashed: number[] } {
+  const solid: number[] = [];
+  const dashed: number[] = [];
+  for (const { code, firstSegment, segmentCount } of ranges) {
+    const layer = dashedCodes.has(code) ? dashed : solid;
+    for (let segment = firstSegment; segment < firstSegment + segmentCount; segment += 1) {
+      layer.push(2 * segment, 2 * segment + 1);
+    }
+  }
+  return { solid, dashed };
 }
