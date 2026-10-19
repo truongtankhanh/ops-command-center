@@ -191,6 +191,38 @@ their author, checked in CI, and served by nginx as immutable files.
       `powerSource` is not a headline. The frame's 7 assets is the frame's; the seed has 8 in `BLD-DC`.
     - **Focus** (the inspector's button, "added in V2-12" in asset-classes.md § Inspector words) is built in V2-15.11
       and shown only in the 3D view: it flies to the selection (`F` is V2-18.2's).
+  - Settled in V2-15.3 (2026-10-19), without changing the decision: how the one raycast per frame is built.
+    - **No separate pick proxy; the drawn meshes are raycast.** The task text called for a merged low-poly proxy "from
+      each model's LOD1 or its box". The `_LOD1` sibling is dropped when a model is built (V2-14.7, level of detail is
+      V2-19.5), and the shells and boxes are already single merged meshes with `ranges` tables, so a proxy would be a
+      second copy that could diverge from what is seen. Instead: the shell faces and the box faces are registered with
+      the picker as they are, and a hit's triangle names its building or asset through `entryAt` over the table
+      (`lib/twinPicking.ts`); a model's own merged static meshes and bound parts are registered per instance, and a
+      hit names the asset, or a part when the mesh sits under a node a binding names. The hidden `_edges` outlines are
+      lines and are never registered. What can be hit is what is drawn: a mesh that is not drawn is unregistered.
+    - **One bounds tree per geometry.** A `three-mesh-bvh` tree is built the first time a mesh using a geometry is
+      registered (`twin/picker.ts`) and kept on `geometry.boundsTree`, so the instances of a class, which share their
+      geometry, share one tree. Bound parts get one too: it is built in the part's local space and holds for a part
+      that moves. No tree is rebuilt per frame; disposal on a level change stays V2-19.6's. The raycast is not
+      `firstHitOnly`: a merged mesh holds many things and the nearest may be out of scope (a faded box in front of
+      the isolated asset), so every crossing is named and `choose` filters.
+    - **The scope** (`scopeOf`, from the store at the moment of the frame): at campus and building level buildings,
+      assets and, while the Cameras layer is on, cameras (the faded buildings of building level stay pickable, so a
+      click moves the focus); at asset and part level only the isolated asset and its parts; while a report location
+      is being picked nothing, until V2-16.7 adds the ground. A bound part is a part only while its asset is isolated;
+      otherwise a ray through it is its asset. Every node a binding names is a part, a `tint` included; any other
+      mesh of a model is the asset.
+    - **Which hit wins.** Of the ray hits the nearest, with hits within `TIE_EPSILON_M` (0.01 m, `unverified`) tied and
+      won by the higher kind (part, asset, camera, building); a camera sprite and a ray hit under the same pixel are
+      compared by kind only, never by distance. Camera markers are tested in screen space from the projected anchor,
+      a target of at least 24 × 24 CSS pixels standing on it (`CAMERA_HIT_SIZE_PX`, WCAG 2.5.8, `unverified`).
+    - **The seam to the pointer.** `lib/twinPicker.ts` is module state in the pattern of `twinCommands`: V2-15.4's
+      `Pointer` calls `requestPick(point)` (CSS pixels from the canvas's top-left corner), the stage's `PickLayer`
+      records the point and asks the on-demand canvas for a frame, and the ray is cast in that frame, at most one a
+      frame; the winner is published to `onPick` listeners only when it changes. A frame with no request casts nothing.
+    - **Measuring.** In development (`MODE === 'development'`, not `DEV`, which Vitest sets) `PickLayer` logs the count,
+      mean and maximum cost of the picks once a second at `console.debug`; the brief's 0.5 ms is read from that on the
+      reference laptop. No test asserts it.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

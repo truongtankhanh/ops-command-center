@@ -11,6 +11,7 @@ import { Equipment } from './Equipment';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
+import { PickLayer } from './PickLayer';
 import { Rig } from './Rig';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
@@ -53,6 +54,8 @@ interface TwinCanvasProps {
  *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
+ * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
+ *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
  *   session (V2-12.11).
  * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
@@ -91,13 +94,15 @@ export function TwinCanvas({
           <Rig bounds={scene.bounds} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
-          <Buildings zones={scene.zones} frame={scene.frame} />
-          <Equipment
-            assets={scene.assets}
-            classes={scene.classes}
-            classPoints={classPoints}
-            feed={feed}
-          />
+          <PickLayer cameras={scene.cameras} frame={scene.frame}>
+            <Buildings zones={scene.zones} frame={scene.frame} />
+            <Equipment
+              assets={scene.assets}
+              classes={scene.classes}
+              classPoints={classPoints}
+              feed={feed}
+            />
+          </PickLayer>
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />

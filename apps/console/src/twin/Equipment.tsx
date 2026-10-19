@@ -1,10 +1,12 @@
 import { useEffect, useMemo } from 'react';
+import type { Binding } from '../lib/twinBindings';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import { type PlacedAsset, visibleAssets } from '../lib/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { AssetBoxes } from './AssetBoxes';
 import { AssetModel, type ModelInstance } from './AssetModel';
 import { instantiate } from './classModel';
+import { usePicker } from './PickContext';
 import type { ClassPoints } from './useClassPoints';
 import { type BoundInstance, useBoundParts } from './useBoundParts';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
@@ -37,6 +39,7 @@ interface EquipmentProps {
  * value, which happens when the scene's data changes (the cameras or the assets arrive), not while it runs.
  */
 export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
+  const picker = usePicker();
   const ready = useClassModels(classes, classPoints);
 
   const { boxes, instances, bound, looks } = useMemo(() => {
@@ -68,6 +71,18 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
     }
   }, [feed, ready]);
 
+  // Each instance is registered with the picker (V2-15.3), with the nodes its bindings name: those are its
+  // parts (every motion, a tint included); any other mesh of the model is the asset. A rebuilt instance is
+  // registered again, and the old one goes.
+  useEffect(() => {
+    if (picker === null) return;
+    const partsOf = new Map(bound.map(({ assetCode, bindings }) => [assetCode, nodesOf(bindings)]));
+    const removers = instances.map(({ assetCode, object }) =>
+      picker.addModel(assetCode, object, partsOf.get(assetCode) ?? NO_PARTS),
+    );
+    return () => removers.forEach((remove) => remove());
+  }, [picker, instances, bound]);
+
   useBoundParts(feed, bound);
   // Every model instance, bound or not, takes the look of its asset's flags (V2-14.9).
   useModelLooks(feed, looks);
@@ -79,3 +94,9 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
     </>
   );
 }
+
+const NO_PARTS: ReadonlySet<string> = new Set();
+
+/** The nodes a class's bindings name: its pickable parts. */
+const nodesOf = (bindings: readonly Binding[]): ReadonlySet<string> =>
+  new Set(bindings.map(({ node }) => node));

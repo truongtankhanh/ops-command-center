@@ -1,8 +1,11 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import type { Mesh } from 'three';
 import { GROUND_LAYERS } from '../lib/twinGround';
 import { EDGE_DASH_M, EDGE_GAP_M } from '../lib/twinMaterials';
 import { type PlacedAsset, visibleAssets } from '../lib/twinPlacement';
+import { boxTable } from '../lib/twinPicking';
 import type { TwinFeed } from '../realtime/twinFeed';
+import { usePicker } from './PickContext';
 import { createBoxLayers, useBoxLooks } from './useAssetLooks';
 
 /**
@@ -39,11 +42,14 @@ interface AssetBoxesProps {
  * - The faces are pushed back a little (`polygonOffset`) so the outline wins on the borders instead of
  *   z-fighting with them, as on the shells.
  * - The mesh keeps the per-box ranges as `userData.ranges` (`lib/twinBoxes.ts`): the table that the looks and
- *   picking (V2-15.3) read, so neither needs a mesh per asset.
+ *   picking read, so neither needs a mesh per asset. The faces are registered with the picker as they are
+ *   (V2-15.3), so only the boxes that are drawn can be hit, and a hit's triangle names its asset through it.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
 export function AssetBoxes({ assets, focusedZoneId = null, feed }: AssetBoxesProps) {
+  const picker = usePicker();
+  const faces = useRef<Mesh>(null);
   const layers = useMemo(() => {
     const visible = visibleAssets(assets, focusedZoneId);
     return visible.length === 0 ? null : createBoxLayers(visible);
@@ -61,10 +67,21 @@ export function AssetBoxes({ assets, focusedZoneId = null, feed }: AssetBoxesPro
   // The looks of stale and alarm, painted into the layers from the feed's flags (V2-14.9).
   useBoxLooks(feed, layers);
 
+  // Registered while it is the mesh drawn; a rebuilt set of boxes registers again, and the old one goes.
+  useEffect(() => {
+    if (picker === null || layers === null || faces.current === null) return;
+    return picker.addTable(faces.current, boxTable(layers.ranges));
+  }, [picker, layers]);
+
   if (layers === null) return null;
   return (
     <>
-      <mesh geometry={layers.faces} renderOrder={FACES_ORDER} userData={{ ranges: layers.ranges }}>
+      <mesh
+        ref={faces}
+        geometry={layers.faces}
+        renderOrder={FACES_ORDER}
+        userData={{ ranges: layers.ranges }}
+      >
         <meshLambertMaterial
           color="#ffffff"
           vertexColors
