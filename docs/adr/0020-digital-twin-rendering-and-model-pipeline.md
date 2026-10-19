@@ -137,7 +137,7 @@ their author, checked in CI, and served by nginx as immutable files.
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
   - Settled in V2-14.1 (2026-10-18, tech lead), without changing the decision. The brief's maths stands
-    (`x += (target − x)·(1 − e^(−λ·dt))`, λ = 8 / s as `EASE_RATE_PER_S`; spin eases the _speed_ and integrates the
+    (`x += (target − x)·(1 − e^(−λ·dt))`, λ = 8 / s as `EASE_LAMBDA`; spin eases the _speed_ and integrates the
     angle); this block adds what a build needs to start:
     - **Encoding.** A reading becomes one number with `encodeReading(value, enumValues)` (`lib/ringBuffer.ts`): a
       number as it is, a boolean 0 / 1, an enum its index in the point's `enumValues`; a value that does not encode
@@ -169,8 +169,13 @@ their author, checked in CI, and served by nginx as immutable files.
       every part at its last pose, without a run-down that would read as a real stop; faces take `--tw-stale-*` and the
       edge `--tw-stale-edge` (dashed). A fault is never hidden by a stale reading: an asset in stale _and_ fault keeps
       the alarm look, with stale-grey faces and the severity edge.
-    - **Snap, not ease**, when a step is larger than the bound's range, on the first value after a model loads, and
-      after a reconnect (brief § Worker).
+    - **Snap, not ease** (refined in V2-14.3, without changing the decision): on the first value after a model loads
+      and on the first after a reconnect (the caller resets the previous value), and on a step of at least
+      `SNAP_FRACTION` (0.5) of the bound's span, in the unit of the pose (rpm for a spin, the point's domain for a
+      `turn` or a `slide`). The brief's "larger than the bound's range" is a step no in-domain value can make, since
+      the API drops a reading outside `min` / `max`; so the threshold is a fraction of it. A boolean or an enum is
+      discrete and eases by size, a breaker closing is a 290 ms motion, not a jump; only its first value snaps.
+      `SETTLE_EPSILON` (0.001 of the span) says when a value has arrived and the loop may sleep.
     - **Reduced motion** shortens the camera's moves (V2-12.9) and stops the beacon's pulse (V2-16.3). It does not
       stop a spinning part: the spin is the reading, an essential movement under WCAG 2.2.2.
     - **A model that fails to load** leaves the asset as its neutral box, with one log line; the asset stays in every
