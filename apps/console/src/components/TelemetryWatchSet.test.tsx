@@ -87,6 +87,15 @@ describe('TelemetryWatchSet', () => {
     expect(lastSet()).toEqual(['LKS-B3', 'CT-01']);
   });
 
+  it('watches an asset once when it is both inspected and the incident’s', () => {
+    // The limit of four is for distinct assets: the 3D view adds none (V2-14.11, `twinPath.test.ts`).
+    useConsole.setState({ selectedIncidentId: 'incident-1', selectedAssetCode: 'CT-01' });
+
+    renderSet();
+
+    expect(lastSet()).toEqual(['CT-01']);
+  });
+
   it('stops watching the incident once it is resolved', async () => {
     useConsole.setState({ selectedIncidentId: 'incident-1' });
     const { client } = renderSet();

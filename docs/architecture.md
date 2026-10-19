@@ -130,6 +130,10 @@ flowchart LR
   A -- "/telemetry: overview 1 Hz, frames up to 10 Hz, snapshot, status" --> W["Web Worker: socket, watch set, ring buffers"]
   W -- "state up to 4 Hz, series up to 1 Hz" --> M["Main thread: telemetry client"]
   M -- "token, history seed over REST" --> W
+  M -- "3D view: layout, the slots of the bound keys" --> W
+  W -- "targets: one buffer per post" --> M
+  M -- "latest buffer" --> F["twinFeed: buffer and flags, outside React"]
+  F -- "read every frame, invalidate on change" --> R["3D render loop: eased pose of each bound part"]
 ```
 
 - **Best-effort, latest wins.** The API emits overviews and frames as `volatile` packets, so a console that cannot keep up skips them and the next one corrects it. A snapshot after connect and after each watch change, and the upstream status, are always delivered.
@@ -140,9 +144,18 @@ flowchart LR
 - **The watch set has one owner.** A component that lives as long as the console (`TelemetryWatchSet`) derives what the console wants every reading of: the asset open in the inspector first, then the asset of the open incident while a telemetry rule's incident is unresolved, at most four, sent once it has held still for 200 ms. The incident sheet and the inspector exclude each other in the console's store, so today the set holds one of them; the server delivers both. Whatever reads a reading (the inspector, the evidence block) only reads.
 - **The console describes an incident, it never decides one.** The API's rule evaluation raises it ([ADR-0018](adr/0018-assets-and-telemetry-as-domain-data.md)). The console reads why from the incident's own record, the note of the first timeline entry, over `GET /incidents/:id` and not over this route: the sheet's "Why it was raised" block does, and so does the reading in the new-incident toast (the live event carries no timeline, so the toast is shown at once and gets the reading from one fetch, in place). Incident events and readings stay on their own paths.
 
+#### The 3D branch
+
+The 3D view moves the parts of a model with the same readings, on a path of its own that never passes through React state ([ADR-0020](adr/0020-digital-twin-rendering-and-model-pipeline.md) § State).
+
+- **Layout and buffer.** The slots are the bound keys of every asset of every modelled class, read from each model's glTF `extras`. When a class's model has been read, the loader tells the feed (`setBindings`); the main thread sends the worker a `layout` (a number and the slots) only when it differs from the last one, and an empty one when the feed is disposed. The worker builds one `Float32Array` per post from its state, encoded against the layout (`NaN` for a value it does not have yet), posts it only when a slot changed, at most about 58 times a second, and echoes the layout's number so the client drops a buffer built for an older layout.
+- **Outside React.** The client keeps the latest buffer. `twinFeed`, which is neither a React module nor `three`, reads it together with per-asset flags that need the catalogue, the incidents and the server's clock: `stale`, `online`, `alarm`, and the point the rule watches once the incident's detail is cached. It calls one injected `invalidate()` when a buffer arrived or a flag changed, so the on-demand canvas draws a frame. No reading is ever React state: `twinFeed.test.ts` drives it and sees no store change, and `twinPath.test.ts` checks that the modules on the path hold no state hook and write to no store.
+- **What is eased where.** The worker encodes and never eases. The render loop (one `useFrame` for every model instance) eases each bound part toward its slot, caps the visual speed of a spinning part, snaps on the first value after a model loads and after a reconnect, freezes a stale or offline asset where it stands (a fan does not run down, which would read as a stop), and allocates nothing per frame. The canvas is drawn on demand and keeps drawing only while a value has not settled or a part spins. Stale and alarm are painted from the flags on shared materials: a stale asset is grey with dashed edges, and a fault keeps its severity edge.
+- **What only a watched asset moves.** The buffer carries the overview's values for every asset (once a second) and the frames of the watched ones (up to ten a second). A part bound to a point that is not a headline or state point has a value only while its asset is watched, so for any other asset it rests at its authored pose. The watch set is still the one `TelemetryWatchSet` derives above, and the 3D side adds nothing to it; a test checks that nothing in `src/twin/` asks for a watch.
+
 ### 3D stage
 
-The console's stage is the 2D map or, where the 3D view is in effect, a three.js scene of the campus ([ADR-0020](adr/0020-digital-twin-rendering-and-model-pipeline.md)). It reads no new endpoint: it draws the zones, the site plan and the cameras the 2D map already loads.
+The console's stage is the 2D map or, where the 3D view is in effect, a three.js scene of the campus ([ADR-0020](adr/0020-digital-twin-rendering-and-model-pipeline.md)). It reads no API endpoint of its own: it draws the zones, the site plan, the cameras and the asset catalogue the 2D map already loads, and the class models from `/models/`; the equipment's readings arrive by the telemetry path above ([The 3D branch](#the-3d-branch)).
 
 - **A lazy chunk behind one import.** `StageView` loads `src/twin/` with a single dynamic `import()`, and only `src/twin/` may import `three` or `@react-three/*`. The 2D view, the fallback and the sign-in screens therefore download none of it, and the build fails if the chunk exceeds its gzip budget.
 - **The main chunk owns the frame around it.** The `Campus 3D view` region, the loading card (the site plan and the 3D code as steps, with a Retry when the site plan fails) and the load-failure fallback are main-chunk code, because they show before the twin chunk exists.
