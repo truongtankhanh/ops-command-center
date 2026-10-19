@@ -340,22 +340,24 @@ describe('TwinLegend with an asset isolated (V2-15.7)', () => {
     expect(screen.queryByText('Esc')).not.toBeInTheDocument();
   });
 
-  it('is the legend as it was at campus and building level', () => {
-    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
-
+  it('is the legend as it was at campus level', () => {
     renderLegend([], {}, [DATA_CENTER]);
 
     expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
     expect(screen.queryByText(/Isolated/)).not.toBeInTheDocument();
   });
 
-  it('comes back, as it was, when the asset is left, with the preference it had', () => {
+  it('leaves the asset for the building’s line, and comes back as it was, with the preference it had, on leaving the building', () => {
     localStorage.setItem(KEY, 'false');
     useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
     renderLegend([], {}, [DATA_CENTER]);
 
+    // Closing the asset keeps the building in focus (V2-15.2), so the building level's line is shown (V2-15.8).
     act(() => useConsole.getState().selectAsset(null));
+    expect(screen.getByText(/Walls see-through/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
 
+    act(() => useConsole.getState().goCampus());
     expect(screen.getByRole('button', { name: 'Legend' })).toHaveAttribute(
       'aria-expanded',
       'false',
@@ -365,6 +367,81 @@ describe('TwinLegend with an asset isolated (V2-15.7)', () => {
   it('has no accessibility violations', async () => {
     useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
     renderLegend([], {}, [DATA_CENTER]);
+
+    await expectNoAxeViolations();
+  });
+});
+
+describe('TwinLegend with a building in focus (V2-15.8)', () => {
+  const LINE = 'Walls see-through, other buildings faded.';
+
+  beforeEach(() => {
+    localStorage.clear();
+    resetStore(useConsole);
+  });
+
+  afterEach(() => {
+    act(() => {
+      resetStore(useConsole);
+      resetStore(useTelemetryStore);
+    });
+  });
+
+  it('is one line in place of the toggle and the entries, saying Escape returns to the campus', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
+
+    renderLegend();
+
+    expect(screen.getByText(/Walls see-through/)).toHaveTextContent(
+      `${LINE} Esc returns to Campus`,
+    );
+    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('asks for no zones: where Escape goes back to is always the campus', () => {
+    useConsole.setState({ focusZoneId: 'zone-unknown', selectedAssetCode: null });
+
+    renderLegend([], {}, []);
+
+    expect(screen.getByText(/Walls see-through/)).toHaveTextContent('Esc returns to Campus');
+  });
+
+  it('gives way to the isolation line once an asset of the building is isolated', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
+
+    renderLegend([], {}, [
+      {
+        id: 'zone-dc',
+        code: 'BLD-DC',
+        name: 'Data Center',
+        kind: 'building',
+        polygon: [],
+        center: [108.44, 11.95],
+      },
+    ]);
+
+    expect(screen.getByText(/Isolated/)).toHaveTextContent('Esc returns to Data Center');
+    expect(screen.queryByText(/Walls see-through/)).not.toBeInTheDocument();
+  });
+
+  it('comes back, as it was, when the building is left, with the preference it had', () => {
+    localStorage.setItem(KEY, 'false');
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
+    renderLegend();
+
+    act(() => useConsole.getState().goCampus());
+
+    expect(screen.getByRole('button', { name: 'Legend' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('has no accessibility violations', async () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
+    renderLegend();
 
     await expectNoAxeViolations();
   });

@@ -1,12 +1,12 @@
 import { useThree } from '@react-three/fiber';
-import { type RefObject, useEffect, useMemo, useRef } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { GROUND_LAYERS } from '../lib/twinGround';
-import { groupsFor, keepIndex } from '../lib/twinGroups';
+import { groupsForLooks } from '../lib/twinGroups';
 import type { HoverState } from '../lib/twinHover';
-import { type Isolation, isFaded } from '../lib/twinLevel';
+import type { Presence } from '../lib/twinLevel';
 import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY } from '../lib/twinMaterials';
-import { type PlacedAsset, visibleAssets } from '../lib/twinPlacement';
+import type { PlacedAsset } from '../lib/twinPlacement';
 import { boxTable } from '../lib/twinPicking';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { applyGroups } from './applyGroups';
@@ -15,7 +15,9 @@ import { type BoxLayers, createBoxLayers, useBoxLooks } from './useAssetLooks';
 
 /**
  * After the ground (0 – 8), the buildings (9, 10) and the markers (11), so nothing here moves `Markers`'s
- * slot. The boxes write depth like the shells, so what is behind one stays behind it whatever the order.
+ * slot. The boxes write depth like the shells, so what is behind one stays behind it whatever the order. A
+ * transparent see-through shell (renderOrder 9, 10) is drawn before the faded boxes (12) and after every opaque
+ * thing, so the opaque boxes inside a focused building show through its walls.
  */
 const FACES_ORDER = GROUND_LAYERS.length + 3;
 const OUTLINE_ORDER = FACES_ORDER + 1;
@@ -28,30 +30,28 @@ const spansOf = ({ ranges }: BoxLayers) =>
 const faceTotalOf = ({ faces }: BoxLayers): number => faces.index?.count ?? 0;
 
 interface AssetBoxesProps {
-  /** Every asset, placed (`useTwinScene`); this component draws the ones the level shows. */
-  assets: readonly PlacedAsset[];
   /**
-   * The building in focus, whose `inside` assets are drawn too. `null` is campus level: only `outdoor` and
-   * `roof` assets. Nothing sets it before V2-15.8.
+   * Every asset that is drawn as a box (`Equipment`: the ones with no model), `inside` ones included. The geometry is
+   * built from all of them once and never for a change of focus; which are drawn is `presences`' answer (V2-15.8).
    */
-  focusedZoneId?: string | null;
+  assets: readonly PlacedAsset[];
   /** The telemetry feed whose flags the boxes' looks follow (V2-14.9); `null` while there is no client. */
   feed: TwinFeed | null;
   /** The hover the canvas keeps from the store (`useHoverRef`): a hovered box takes the hover look (V2-15.5). */
   hover: RefObject<HoverState>;
   /**
-   * The asset isolated and its building (V2-15.7), or `null`: every box but the isolated asset's is faded (and, as
-   * the asset may have a model and no box, all of them are when it is not among them).
+   * How each asset is drawn at this level (`presenceMap`, V2-15.8): `drawn` as it is, `faded` at `--tw-ghost-opacity`,
+   * `hidden` not at all (an `inside` box of a building that is not in focus). A code the map does not name is drawn.
    */
-  isolation?: Isolation | null;
+  presences: ReadonlyMap<string, Presence>;
 }
 
 /**
- * The equipment (V2-14.6, frame 15): every asset the level shows as a neutral box of its class's footprint,
- * standing where `placeAssets` put it, as **one merged mesh** of faces and **two** merged line layers (a solid
- * one and a dashed one that is empty until a box is stale): two draw calls when nothing is stale, three at
- * most, however many assets. Models replace the boxes class by class from V2-14.7. Nothing is drawn for a site
- * with no asset.
+ * The equipment (V2-14.6, frame 15): every asset as a neutral box of its class's footprint, standing where
+ * `placeAssets` put it, as **one merged mesh** of faces and **two** merged line layers (a solid one and a dashed one
+ * that is empty until a box is stale). Which boxes the level shows is `presences`' (V2-15.8), applied as groups of the
+ * faces and as the outline index lists, so a focus costs one draw call per group (`lib/twinGroups.ts`) and rebuilds
+ * nothing. Models replace the boxes class by class from V2-14.7. Nothing is drawn for a site with no asset.
  *
  * - The colours are per vertex (V2-14.9): the faces' material is white and Lambert, shaded by the two lights
  *   (`Lights`), so a vertex colour is the colour of the face; the outline is unlit. `useBoxLooks` rewrites the
@@ -63,31 +63,26 @@ interface AssetBoxesProps {
  * - The mesh keeps the per-box ranges as `userData.ranges` (`lib/twinBoxes.ts`): the table that the looks and
  *   picking read, so neither needs a mesh per asset. The faces are registered with the picker as they are
  *   (V2-15.3), so only the boxes that are drawn can be hit, and a hit's triangle names its asset through it.
- * - While an asset is isolated (V2-15.7) the other boxes are faded to `--tw-ghost-opacity`: the faces mesh has two
- *   materials (as they are, faded) and the geometry's **groups** say which box is drawn with which, by the ranges
- *   above. Nothing is rebuilt and the picking table does not move; the faded faces are transparent and write no
- *   depth. A faded box draws no outline (`useBoxLooks`).
+ * - The faces mesh has two materials (as they are, faded) and the geometry's **groups** say which box is drawn with
+ *   which, by the ranges above (V2-15.7): the isolated asset's neighbours, and at building level the equipment of
+ *   the other buildings, are faded to `--tw-ghost-opacity`, and a box that is `hidden` is in no group, so it is not
+ *   drawn and, as `three-mesh-bvh` only tests the triangles inside a group, not picked (V2-15.8). Nothing is rebuilt
+ *   and the picking table does not move; the faded faces are transparent and write no depth. A faded or hidden box
+ *   draws no outline (`useBoxLooks`).
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
-export function AssetBoxes({
-  assets,
-  focusedZoneId = null,
-  feed,
-  hover,
-  isolation = null,
-}: AssetBoxesProps) {
+export function AssetBoxes({ assets, feed, hover, presences }: AssetBoxesProps) {
   const picker = usePicker();
   const invalidate = useThree((state) => state.invalidate);
   const faces = useRef<Mesh>(null);
   const layers = useMemo(() => {
-    const visible = visibleAssets(assets, focusedZoneId);
-    if (visible.length === 0) return null;
-    const created = createBoxLayers(visible);
-    // Born with everything as it is: the groups follow the isolation in the effect below, without a rebuild.
-    applyGroups(created.faces, groupsFor(spansOf(created), null, faceTotalOf(created)));
+    if (assets.length === 0) return null;
+    const created = createBoxLayers(assets);
+    // Born with everything as it is: the groups follow the presences in the effect below, without a rebuild.
+    applyGroups(created.faces, groupsForLooks(spansOf(created), [], faceTotalOf(created)));
     return created;
-  }, [assets, focusedZoneId]);
+  }, [assets]);
 
   useEffect(
     () => () => {
@@ -98,18 +93,17 @@ export function AssetBoxes({
     [layers],
   );
 
-  // The fade (V2-15.7): the isolated box is drawn as it is and the rest faded; with none of them isolated, all faded.
-  useEffect(() => {
+  // The fade and the hiding (V2-15.7, V2-15.8): each box is drawn as it is, faded or not at all, by the groups. A layout
+  // effect, so a mesh born while a building is already in focus has its groups before its first frame.
+  useLayoutEffect(() => {
     if (layers === null) return;
-    const keep = keepIndex(layers.ranges, isolation !== null, (range) =>
-      isFaded({ kind: 'asset', code: range.code }, isolation),
-    );
-    applyGroups(layers.faces, groupsFor(spansOf(layers), keep, faceTotalOf(layers)));
+    const looks = layers.ranges.map(({ code }) => presences.get(code) ?? 'drawn');
+    applyGroups(layers.faces, groupsForLooks(spansOf(layers), looks, faceTotalOf(layers)));
     invalidate();
-  }, [layers, isolation, invalidate]);
+  }, [layers, presences, invalidate]);
 
   // The looks of stale, alarm and hover, painted into the layers from the feed's flags and the hover (V2-14.9, V2-15.5).
-  useBoxLooks(feed, layers, hover, isolation);
+  useBoxLooks(feed, layers, hover, presences);
 
   // Registered while it is the mesh drawn; a rebuilt set of boxes registers again, and the old one goes.
   useEffect(() => {

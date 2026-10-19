@@ -2,7 +2,8 @@ import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { Binding } from '../lib/twinBindings';
 import type { ModelClass } from '../lib/twinLoadQueue';
-import { type PlacedAsset, visibleAssets } from '../lib/twinPlacement';
+import { presenceMap } from '../lib/twinLevel';
+import type { PlacedAsset } from '../lib/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { AssetBoxes } from './AssetBoxes';
 import { AssetModel, type ModelInstance } from './AssetModel';
@@ -13,7 +14,7 @@ import { type BoundInstance, useBoundParts } from './useBoundParts';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
 import { useHoverRef } from './useHoverRef';
-import { useIsolation } from './useIsolation';
+import { useSceneFocus } from './useSceneFocus';
 
 interface EquipmentProps {
   /** Every asset, placed (`useTwinScene`). */
@@ -32,8 +33,9 @@ interface EquipmentProps {
  * still loading, or failed, or has no model, is a box.
  *
  * It is one component on purpose: the swap from boxes to a model happens in the render in which the class
- * becomes ready, so there is never a frame with both, or with neither. Campus level draws the `outdoor` and
- * `roof` assets (`visibleAssets`); a building in focus will add its `inside` assets (V2-15.8).
+ * becomes ready, so there is never a frame with both, or with neither. Which assets a level draws, and how, is
+ * `presenceOf`'s (`lib/twinLevel.ts`, V2-15.8): campus level draws the `outdoor` and `roof` assets, a building in
+ * focus adds its `inside` ones, and the equipment of the other buildings is faded.
  *
  * It makes the model instances and gives the same objects to `AssetModel` (which places them), to
  * `useBoundParts` (which moves their bound parts) and to `useModelLooks` (which paints stale, alarm and hover,
@@ -41,18 +43,22 @@ interface EquipmentProps {
  * each ready class binds, so the worker follows those keys. The boxes paint their own looks (`AssetBoxes`). A rebuilt instance starts again from its authored pose and snaps to its first
  * value, which happens when the scene's data changes (the cameras or the assets arrive), not while it runs.
  *
- * While an asset is isolated (V2-15.7, `useIsolation`) every other asset is faded, boxes and models alike: the
- * boxes by the groups of their mesh, the models by a faded look (`useModelLooks`). Which asset that is is one
- * value here, so the two cannot disagree; the on-demand canvas is asked for a frame when it changes, because the
- * painters only run inside one. What is drawn is unchanged: `inside` assets wait for V2-15.8, so an isolated
- * `inside` asset is not on screen yet.
+ * The focus (`useSceneFocus`) becomes one map of presences, `drawn`, `faded` or `hidden` for every asset, handed to
+ * both: the boxes use it for the groups of their mesh and their outlines, the models for a faded look
+ * (`useModelLooks`) and for which instances are mounted. Boxes and models read the same map, so they cannot
+ * disagree; the on-demand canvas is asked for a frame when it changes, because the painters only run inside one.
+ *
+ * **A change of focus rebuilds nothing** (V2-15.8, AC3): the boxes' geometry is built once from every box asset and
+ * the `inside` ones are left out of its groups, and an instance is made once for every modelled asset (so a bound part
+ * keeps its pose) and only mounted, and registered with the picker, while its presence is not `hidden`.
  */
 export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
   const picker = usePicker();
   const hover = useHoverRef();
-  const isolation = useIsolation();
+  const focus = useSceneFocus();
   const invalidate = useThree((state) => state.invalidate);
   const ready = useClassModels(classes, classPoints);
+  const presences = useMemo(() => presenceMap(assets, focus), [assets, focus]);
 
   const { boxes, instances, bound, looks } = useMemo(() => {
     const boxes: PlacedAsset[] = [];
@@ -62,7 +68,7 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
     const instances: ModelInstance[] = [];
     const bound: BoundInstance[] = [];
     const looks: ModelLookTarget[] = [];
-    for (const asset of visibleAssets(modelled)) {
+    for (const asset of modelled) {
       const entry = ready.get(asset.classCode);
       if (entry === undefined) continue;
       const object = instantiate(entry.template);
@@ -88,31 +94,38 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
     }
   }, [feed, ready]);
 
-  // Each instance is registered with the picker (V2-15.3), with the nodes its bindings name: those are its
-  // parts (every motion, a tint included); any other mesh of the model is the asset. A rebuilt instance is
-  // registered again, and the old one goes.
+  // The instances that are drawn: a `hidden` one (an `inside` asset of a building that is not in focus) is neither
+  // mounted nor registered with the picker, but is kept, so its bound parts keep their pose across a focus.
+  const shown = useMemo(
+    () => instances.filter(({ assetCode }) => presences.get(assetCode) !== 'hidden'),
+    [instances, presences],
+  );
+
+  // Each drawn instance is registered with the picker (V2-15.3), with the nodes its bindings name: those are its
+  // parts (every motion, a tint included); any other mesh of the model is the asset. The registry follows what is
+  // drawn: a rebuilt or newly hidden instance is removed, and one that appears is registered.
   useEffect(() => {
     if (picker === null) return;
     const partsOf = new Map(bound.map(({ assetCode, bindings }) => [assetCode, nodesOf(bindings)]));
-    const removers = instances.map(({ assetCode, object }) =>
+    const removers = shown.map(({ assetCode, object }) =>
       picker.addModel(assetCode, object, partsOf.get(assetCode) ?? NO_PARTS),
     );
     return () => removers.forEach((remove) => remove());
-  }, [picker, instances, bound]);
+  }, [picker, shown, bound]);
 
-  // The painters run in a frame, and a change of the isolated asset is not announced by anything they read.
+  // The painters run in a frame, and a change of focus is not announced by anything they read.
   useEffect(() => {
     invalidate();
-  }, [isolation, invalidate]);
+  }, [presences, invalidate]);
 
   useBoundParts(feed, bound);
   // Every model instance, bound or not, takes the look of its asset's flags, hover and fade (V2-14.9, V2-15.5, V2-15.7).
-  useModelLooks(feed, looks, hover, isolation);
+  useModelLooks(feed, looks, hover, presences);
 
   return (
     <>
-      <AssetBoxes assets={boxes} feed={feed} hover={hover} isolation={isolation} />
-      <AssetModel instances={instances} />
+      <AssetBoxes assets={boxes} feed={feed} hover={hover} presences={presences} />
+      <AssetModel instances={shown} />
     </>
   );
 }

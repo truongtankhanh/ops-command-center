@@ -30,3 +30,11 @@
   white-space: nowrap;
   will-change: transform;
 }
+
+/*
+ * The labels of the other zones while a building is in focus (V2-15.8, `data-faded` from `ZoneLabels.tsx`): the
+ * focused building's name is the one that reads. Opacity only, so the position the projector writes is untouched.
+ */
+.label[data-faded='true'] {
+  opacity: var(--tw-label-faded-opacity);
+}

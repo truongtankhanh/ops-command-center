@@ -374,6 +374,56 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Chunk.** The twin chunk gains the asset fit and limits, the groups, the faded look and the uniform; the legend
       line is in it too. See the figure `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5;
       V2-15.6's figure is not recorded).
+  - Settled in V2-15.8 (2026-10-19), without changing the decision: how a building in focus is drawn.
+    - **One rule decides how everything is drawn.** `presenceOf` (`lib/twinLevel.ts`, extending V2-15.7's `isFaded`) gives
+      each building, asset and camera marker one of `drawn`, `faded`, `xray` or `hidden` from the focus (`focusOf`: the
+      building in focus and, at asset and part level, the isolated asset). The shells, the boxes, the models, the markers
+      and the pick scope read it, so they cannot disagree. A building is `xray` when it is the one in focus and `faded`
+      otherwise; an asset is `hidden` when it is `inside` a building that is not in focus, `drawn` when its zone is the
+      building in focus (so `GEN-01`, which stands outside the footprint, and `CT-01/02` on the roof are drawn with the
+      Data Center) and `faded` otherwise; markers are `faded` only while an asset is isolated, not at building level.
+    - **See-through at every level below the campus.** The building in focus is see-through at building, asset and part
+      level (frame 15 draws an inspected box inside a see-through building); the other buildings and the equipment of
+      other buildings stay faded at all three. With no building in focus (`TR-01`) the asset-level rule of V2-15.7 is
+      unchanged. The look is the `Xray` material of the models: the idle face at `--tw-xray-opacity` (0.14, no depth
+      write), its outline `--tw-hub`, no new colour token.
+    - **Groups, not a rebuild.** The shell's faces and outline have three materials (as it is, faded, see-through) and
+      `groupsForLooks` (`lib/twinGroups.ts`) turns the looks into the geometry's groups, as V2-15.7 did for two: this
+      replaces the "per-building attribute" the task suggested, which would have needed a shader and would have shared
+      the colour attribute of hover and heat (V2-17.3). A `hidden` span is in no group, so it is neither drawn nor hit
+      (`three-mesh-bvh` only tests the triangles inside a group of a multi-material mesh). The boxes are built once from
+      every box asset, `inside` ones included, and hidden by their groups and by their outline index lists
+      (`edgeIndices` takes the set of the codes that keep an outline); a model instance is made once for every modelled
+      asset and only mounted, and registered with the picker, while it is not `hidden`, so its bound parts keep their
+      pose across a focus. Focusing and leaving rebuild no geometry.
+    - **Draw calls are groups.** A mesh costs one draw call per group, and the boxes, in asset-code order, interleave
+      drawn, faded and hidden spans: at most two groups for each drawn box plus one (a bound of 17 for the Data Center of
+      the seed, against the budget of 150 and about 11 calls at campus level before). The code order is kept; a development log
+      (`twin/DrawCallLog.tsx`, `renderer.info`, until the HUD of V2-19.1) reads the real figure, and ordering the merged
+      boxes by zone is the follow-up if it is far higher. `unverified` until read in a browser.
+    - **The focused building's walls are not a target (refines "Settled in V2-15.1").** The nearest-surface rule said a
+      wall hides what is behind it, which holds for an opaque building and would make the equipment inside a
+      see-through one unclickable from outside. `PickScope.excludedBuildingId` is the building in focus at building
+      level: a ray goes through its walls to the equipment behind them, and a click on a wall with nothing behind it
+      does nothing. The faded buildings and the faded equipment of other buildings stay pickable, so a click on them
+      moves the focus, as V2-15.1 already said for buildings; the frames' scene made them dead, which is not kept.
+    - **The labels fade by the focus alone.** The zone labels of every building but the one in focus are drawn at
+      `--tw-label-faded-opacity` (0.35, a CSS-only token: WebGL does not draw labels), at building, asset and part
+      level; with no building in focus nothing fades. It is a `data-faded` attribute from the store (`ZoneLabels`),
+      not a per-frame write: the projector still owns the position.
+    - **The legend at building level** is frame 12's line, "Walls see-through, other buildings faded. `Esc` returns to
+      Campus" (`buildingLine`), in place of its toggle and entries, as V2-15.7 did for the asset. At asset and part level
+      the isolation line of V2-15.7 stays (frames 03 and 17); frame 15 draws the see-through line there, which is a
+      "Frames to revise" row of the brief. `Esc` is still bound by V2-18.3; the breadcrumb's back button is the step.
+    - **Tests.** No DOM test of `Buildings`: it renders three objects inside `<Canvas>` and jsdom has no WebGL, as for
+      its siblings. The guarantees are in the pure rule and groups (`twinLevel`, `twinGroups`, `twinBoxes`,
+      `twinPicking`), in `picker.test.ts` with real `three` (a hidden span is not hit, the focused shell is skipped, no
+      bounds tree is rebuilt by a focus), and in the DOM tests of `ZoneLabels` and `TwinLegend`.
+    - **By eye, still to do in a browser:** that the opaque boxes show through the near walls of the see-through shell
+      and that the transparent passes order as intended (shell 9 and 10, faded boxes 12); that no hole or flicker
+      appears on focusing and leaving; clicking `UPS-01` from outside; the labels; and the draw-call figures.
+    - **Chunk.** The twin chunk gains the rule, the third material, the log and the labels' fade; see the figure `-verify`
+      reports for this task (336,916 bytes gzip of 350,000 after V2-15.7).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

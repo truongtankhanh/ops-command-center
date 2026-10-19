@@ -2,9 +2,10 @@ import type { Asset } from '@occ/contracts';
 import { useId } from 'react';
 import { useAssets, useZones } from '../api/queries';
 import { hasDimmedAsset } from '../lib/assets';
-import { isolationLine } from '../lib/twinLevel';
+import { buildingLine, isolationLine } from '../lib/twinLevel';
 import { useLegendOpen } from '../lib/useLegendOpen';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
 import { Box, cameraIcon, ChevronDown } from '../ui/icons';
 import { Kbd } from '../ui/Kbd';
@@ -33,6 +34,11 @@ const NO_ASSETS: Asset[] = [];
  * about a campus that is not on screen then, so they and their toggle go; the open or closed preference is kept.
  * The words are ADR-0020's ("Settled in V2-15.1"). `Esc` closes the inspector from the sheet today; in the scene
  * it is bound by V2-18.3, and the breadcrumb's back button does the same step meanwhile.
+ *
+ * At building level, a building in focus and no asset isolated (V2-15.8), it is one line too, frame 12's: the walls
+ * are see-through, the other buildings are faded, and `Esc` returns to the campus. At asset level inside a building
+ * the isolation line above is the one shown, as frames 03 and 17 draw it; frame 15 draws the building line there, a
+ * "Frames to revise" row of the brief.
  */
 export function TwinLegend() {
   const entriesId = useId();
@@ -42,8 +48,10 @@ export function TwinLegend() {
   const serverNow = useServerNow();
   const dimmed = hasDimmedAsset(assets.data ?? NO_ASSETS, overview, serverNow);
   const isolation = useIsolation();
+  const focusZoneId = useConsole((state) => state.focusZoneId);
 
   if (isolation !== null) return <IsolationLine zoneId={isolation.zoneId} />;
+  if (focusZoneId !== null) return <BuildingLine />;
 
   return (
     <div className={styles.legend}>
@@ -95,6 +103,17 @@ function IsolationLine({ zoneId }: { zoneId: string | null }) {
   const parent =
     zoneId === null ? 'Campus' : (zones.data?.find((zone) => zone.id === zoneId)?.name ?? null);
   const { lead, back } = isolationLine(parent);
+  return <LegendLine lead={lead} back={back} />;
+}
+
+/** The legend at building level (V2-15.8): the walls are see-through, and `Esc` returns to the campus. */
+function BuildingLine() {
+  const { lead, back } = buildingLine();
+  return <LegendLine lead={lead} back={back} />;
+}
+
+/** One sentence, then `Esc` in a key and where it goes back to; `back` is `null` while that is not known. */
+function LegendLine({ lead, back }: { lead: string; back: string | null }) {
   return (
     <div className={styles.legend}>
       <Icon glyph={Box} size={16} />

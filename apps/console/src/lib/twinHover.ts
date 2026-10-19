@@ -49,8 +49,8 @@ export function assetHover(code: string, hover: HoverState): AssetHover {
 /**
  * The zone whose building takes the hover tint for the hovered asset `code`: its own, when the asset is
  * `inside` a building that is not the one in focus, because nothing of it is drawn then (ADR-0020, V2-15.1).
- * `null` for an asset that is drawn (`outdoor`, `roof`, or inside the focused building), one the scene does
- * not hold, and no asset. Until V2-15.8 draws a building's `inside` assets, `focusedZoneId` is `null`.
+ * `null` for an asset that is drawn (`outdoor`, `roof`, or inside the focused building, which V2-15.8 draws), one
+ * the scene does not hold, and no asset. `focusedZoneId` is the building in focus, `null` at campus level.
  */
 export function hoveredShellZone(
   code: string | null,

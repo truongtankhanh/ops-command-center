@@ -119,8 +119,9 @@ export function placeAssets(
 
 /**
  * What a level draws: `outdoor` and `roof` assets always, and the `inside` assets of the building in
- * focus. With no focus (campus level, and the only level until V2-15.8) that is the `outdoor` and `roof`
- * ones. Every asset stays in the Assets tab whether it is drawn or not.
+ * focus. With no focus (campus level) that is the `outdoor` and `roof` ones. Every asset stays in the Assets tab
+ * whether it is drawn or not. The scene itself asks `presenceOf` (`lib/twinLevel.ts`, V2-15.8), which says the same
+ * for `hidden`; this stays for the hover tint of a building whose asset is not drawn (`hoveredShellZone`).
  */
 export function visibleAssets(
   placed: readonly PlacedAsset[],

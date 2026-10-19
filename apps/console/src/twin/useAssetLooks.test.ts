@@ -12,7 +12,7 @@ import {
 } from 'three';
 import { edgeIndices } from '../lib/twinBoxes';
 import { type HoverState, NO_HOVER } from '../lib/twinHover';
-import type { Isolation } from '../lib/twinLevel';
+import type { Presence } from '../lib/twinLevel';
 import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import type { AssetFlags, TwinFeed } from '../realtime/twinFeed';
@@ -510,20 +510,28 @@ describe('useModelLooks', () => {
   });
 });
 
-describe('useModelLooks with an asset isolated (V2-15.7)', () => {
+/** The presences a level gives: a code is `drawn`, `faded` or `hidden`. */
+const presencesOf = (entries: Record<string, Presence>): ReadonlyMap<string, Presence> =>
+  new Map(Object.entries(entries));
+
+describe('useModelLooks with presences (V2-15.7, V2-15.8)', () => {
   let table: MaterialTable;
   let template: ReturnType<typeof makeTemplate>['template'];
 
-  const isolating = (assetCode: string): Isolation => ({ assetCode, zoneId: 'dc' });
-  const mountIsolated = (
+  const isolating = (code: string, others: string[]) =>
+    presencesOf({
+      [code]: 'drawn',
+      ...Object.fromEntries(others.map((other) => [other, 'faded'])),
+    });
+  const mountWith = (
     feed: TwinFeed,
     targets: readonly ModelLookTarget[],
-    isolation: Isolation | null,
+    presences?: ReadonlyMap<string, Presence>,
   ) =>
     renderHook(
-      (props: { isolation: Isolation | null }) =>
-        useModelLooks(feed, targets, hoverRef(), props.isolation),
-      { initialProps: { isolation } },
+      (props: { presences: ReadonlyMap<string, Presence> | undefined }) =>
+        useModelLooks(feed, targets, hoverRef(), props.presences),
+      { initialProps: { presences } },
     );
   const fadedMaterial = (mesh: Mesh) =>
     table.look(baseName(mesh), { face: 'idle', severity: null, ghost: true });
@@ -533,11 +541,11 @@ describe('useModelLooks with an asset isolated (V2-15.7)', () => {
     ({ template, table } = makeTemplate());
   });
 
-  it('fades every other asset and leaves the isolated one as it is', () => {
+  it('fades every asset the map says is faded and leaves the drawn one as it is', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed } = createRig();
-    mountIsolated(feed, [tower, other], isolating('CT-01'));
+    mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
 
     tick();
 
@@ -545,27 +553,47 @@ describe('useModelLooks with an asset isolated (V2-15.7)', () => {
     for (const mesh of meshes(other.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
   });
 
+  it('fades nothing without a map: the default is no focus', () => {
+    const tower = targetOf('CT-01', template);
+    const { feed } = createRig();
+    mountWith(feed, [tower]);
+
+    tick();
+
+    for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+  });
+
+  it('paints an instance that is hidden as its flags say: hiding is the mounting’s business, not a look', () => {
+    const tower = targetOf('CT-01', template);
+    const { feed } = createRig();
+    mountWith(feed, [tower], presencesOf({ 'CT-01': 'hidden' }));
+
+    tick();
+
+    for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+  });
+
   it('hides the outlines of a faded model, even a stale one’s', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed, flags } = createRig();
     flags.set('CT-02', STALE);
-    mountIsolated(feed, [tower, other], isolating('CT-01'));
+    mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
 
     tick();
 
     for (const outline of outlines(other.object)) expect(outline.visible).toBe(false);
   });
 
-  it('gives every asset back its own look when the isolation ends', () => {
+  it('gives every asset back its own look when the focus ends', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed, flags } = createRig();
     flags.set('CT-02', STALE);
-    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    const view = mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
     tick();
 
-    view.rerender({ isolation: null });
+    view.rerender({ presences: presencesOf({ 'CT-01': 'drawn', 'CT-02': 'drawn' }) });
     tick();
 
     for (const mesh of meshes(other.object)) {
@@ -582,7 +610,7 @@ describe('useModelLooks with an asset isolated (V2-15.7)', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed, flags } = createRig();
-    mountIsolated(feed, [tower, other], isolating('CT-01'));
+    mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
     tick();
 
     flags.set('CT-02', alarmed('high'));
@@ -595,41 +623,53 @@ describe('useModelLooks with an asset isolated (V2-15.7)', () => {
     }
   });
 
-  it('moves the fade when another asset is isolated', () => {
+  it('moves the fade when the focus moves to another asset', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed } = createRig();
-    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    const view = mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
     tick();
 
-    view.rerender({ isolation: isolating('CT-02') });
+    view.rerender({ presences: isolating('CT-02', ['CT-01']) });
     tick();
 
     for (const mesh of meshes(other.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
     for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
   });
 
-  it('paints nothing again while the isolated asset is the same', () => {
+  it('fades the equipment of other buildings at building level, where no asset is isolated', () => {
+    const inside = targetOf('CT-01', template);
+    const elsewhere = targetOf('CT-02', template);
+    const { feed } = createRig();
+    mountWith(feed, [inside, elsewhere], presencesOf({ 'CT-01': 'drawn', 'CT-02': 'faded' }));
+
+    tick();
+
+    for (const mesh of meshes(inside.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+    for (const mesh of meshes(elsewhere.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
+  });
+
+  it('paints nothing again while a new map says the same', () => {
     const tower = targetOf('CT-01', template);
     const other = targetOf('CT-02', template);
     const { feed } = createRig();
-    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    const view = mountWith(feed, [tower, other], isolating('CT-01', ['CT-02']));
     tick();
     const probe = new MeshStandardMaterial();
     const mesh = meshes(other.object)[0]!;
     mesh.material = probe;
 
-    // A new object for the same asset (the building came to be known) is not a change.
-    view.rerender({ isolation: isolating('CT-01') });
+    // A new map for the same focus (the assets were placed again) is a pass over the instances and no repaint.
+    view.rerender({ presences: isolating('CT-01', ['CT-02']) });
     tick();
 
     expect(mesh.material).toBe(probe);
   });
 
-  it('fades the others of an isolation that was there when the stage came up', () => {
+  it('fades the others of a focus that was there when the stage came up', () => {
     const other = targetOf('CT-02', template);
     const { feed } = createRig();
-    mountIsolated(feed, [other], isolating('CT-01'));
+    mountWith(feed, [other], isolating('CT-01', ['CT-02']));
 
     tick();
 
@@ -974,14 +1014,17 @@ describe('useBoxLooks', () => {
   });
 });
 
-describe('useBoxLooks with an asset isolated (V2-15.7)', () => {
-  const isolating = (assetCode: string): Isolation => ({ assetCode, zoneId: 'dc' });
+describe('useBoxLooks with presences (V2-15.7, V2-15.8)', () => {
   const indexOf = (geometry: BoxLayers['solid']): number[] => Array.from(geometry.index!.array);
-  const mountIsolated = (feed: TwinFeed, layers: BoxLayers | null, isolation: Isolation | null) =>
+  const mountWith = (
+    feed: TwinFeed,
+    layers: BoxLayers | null,
+    presences?: ReadonlyMap<string, Presence>,
+  ) =>
     renderHook(
-      (props: { layers: BoxLayers | null; isolation: Isolation | null }) =>
-        useBoxLooks(feed, props.layers, hoverRef(), props.isolation),
-      { initialProps: { layers, isolation } },
+      (props: { layers: BoxLayers | null; presences: ReadonlyMap<string, Presence> | undefined }) =>
+        useBoxLooks(feed, props.layers, hoverRef(), props.presences),
+      { initialProps: { layers, presences } },
     );
 
   let layers: BoxLayers;
@@ -991,67 +1034,89 @@ describe('useBoxLooks with an asset isolated (V2-15.7)', () => {
     layers = createBoxLayers([placed('A', 0), placed('B', 10), placed('C', 20)]);
   });
 
-  it('draws only the isolated box’s outline: the faded ones draw none', () => {
+  it('draws only the drawn box’s outline: the faded and the hidden ones draw none', () => {
     const { feed } = createRig();
-    mountIsolated(feed, layers, isolating('B'));
+    mountWith(feed, layers, presencesOf({ A: 'faded', B: 'drawn', C: 'hidden' }));
 
     tick();
 
-    expect(indexOf(layers.solid)).toEqual(edgeIndices(layers.ranges, new Set(), 'B').solid);
+    expect(indexOf(layers.solid)).toEqual(
+      edgeIndices(layers.ranges, new Set(), new Set(['B'])).solid,
+    );
     expect(indexOf(layers.dashed)).toEqual([]);
   });
 
-  it('draws every outline again when the isolation ends', () => {
+  it('draws every outline again when everything is drawn, and with no map at all', () => {
     const { feed } = createRig();
-    const view = mountIsolated(feed, layers, isolating('B'));
+    const view = mountWith(feed, layers, presencesOf({ A: 'faded', B: 'drawn', C: 'faded' }));
     tick();
 
-    view.rerender({ layers, isolation: null });
+    view.rerender({ layers, presences: presencesOf({ A: 'drawn', B: 'drawn', C: 'drawn' }) });
     tick();
+    expect(indexOf(layers.solid)).toEqual(edgeIndices(layers.ranges, new Set()).solid);
 
+    view.rerender({ layers, presences: undefined });
+    tick();
     expect(indexOf(layers.solid)).toEqual(edgeIndices(layers.ranges, new Set()).solid);
   });
 
-  it('puts the isolated box in the dashed layer when it is stale, and ignores another one’s staleness', () => {
-    const { feed, flags } = createRig();
-    mountIsolated(feed, layers, isolating('B'));
-    flags.set('A', STALE);
-    flags.set('B', STALE);
+  it('draws the outline of every box a map does not name', () => {
+    const { feed } = createRig();
+    mountWith(feed, layers, presencesOf({ A: 'faded' }));
 
     tick();
 
-    expect(indexOf(layers.dashed)).toEqual(edgeIndices(layers.ranges, new Set(['B']), 'B').dashed);
+    expect(indexOf(layers.solid)).toEqual(
+      edgeIndices(layers.ranges, new Set(), new Set(['B', 'C'])).solid,
+    );
+  });
+
+  it('puts a drawn stale box in the dashed layer, and ignores the staleness of one that is not drawn', () => {
+    const { feed, flags } = createRig();
+    mountWith(feed, layers, presencesOf({ A: 'faded', B: 'drawn', C: 'hidden' }));
+    flags.set('A', STALE);
+    flags.set('B', STALE);
+    flags.set('C', STALE);
+
+    tick();
+
+    expect(indexOf(layers.dashed)).toEqual(
+      edgeIndices(layers.ranges, new Set(['B']), new Set(['B'])).dashed,
+    );
     expect(indexOf(layers.solid)).toEqual([]);
   });
 
-  it('leaves the colours alone: the fade is the mesh’s groups, not a colour', () => {
+  it('leaves the colours alone: the fade and the hiding are the mesh’s groups, not a colour', () => {
     const { feed, flags } = createRig();
     flags.set('A', alarmed('high'));
-    const view = mountIsolated(feed, layers, null);
+    const view = mountWith(feed, layers);
     tick();
     const faces = Array.from(layers.faceColours.array);
 
-    view.rerender({ layers, isolation: isolating('B') });
+    view.rerender({ layers, presences: presencesOf({ A: 'faded', B: 'drawn', C: 'hidden' }) });
     tick();
 
     expect(Array.from(layers.faceColours.array)).toEqual(faces);
   });
 
-  it('applies an isolation to layers that are rebuilt', () => {
+  it('applies presences to layers that are rebuilt', () => {
     const { feed } = createRig();
-    const view = mountIsolated(feed, layers, isolating('B'));
+    const presences = presencesOf({ A: 'faded', B: 'drawn', C: 'faded' });
+    const view = mountWith(feed, layers, presences);
     tick();
     const rebuilt = createBoxLayers([placed('A', 0), placed('B', 10), placed('C', 20)]);
 
-    view.rerender({ layers: rebuilt, isolation: isolating('B') });
+    view.rerender({ layers: rebuilt, presences });
     tick();
 
-    expect(indexOf(rebuilt.solid)).toEqual(edgeIndices(rebuilt.ranges, new Set(), 'B').solid);
+    expect(indexOf(rebuilt.solid)).toEqual(
+      edgeIndices(rebuilt.ranges, new Set(), new Set(['B'])).solid,
+    );
   });
 
-  it('draws no outline at all when the isolated asset is not one of the boxes (it has a model)', () => {
+  it('draws no outline at all when every box is faded or hidden', () => {
     const { feed } = createRig();
-    mountIsolated(feed, layers, isolating('CT-01'));
+    mountWith(feed, layers, presencesOf({ A: 'faded', B: 'hidden', C: 'faded' }));
 
     tick();
 

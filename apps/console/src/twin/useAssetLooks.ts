@@ -12,7 +12,7 @@ import {
 } from 'three';
 import { type BoxRange, buildBoxGeometry, edgeIndices } from '../lib/twinBoxes';
 import { assetHover, type HoverState, NO_HOVER } from '../lib/twinHover';
-import type { Isolation } from '../lib/twinLevel';
+import type { Presence } from '../lib/twinLevel';
 import { type AssetLook, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
@@ -32,11 +32,17 @@ import { filled } from './vertexColours';
  * it alone and its asset keeps its own look. Selection is not passed: an inspected asset keeps its look (frames
  * 03, 08, 15, 17), and a selected part's look is V2-15.10's.
  *
- * Since V2-15.7 both also take the **isolation** (`Isolation | null`, the asset isolated and its building): while
- * one is set every other asset is faded. That is a state of the look (`ghost`), not another colour, so a faded
- * fault is still faintly tinted. A faded model has its outlines hidden and a faded box draws none (`edgeIndices`
- * with `only`): context is a faint volume, and the stale dash and the severity edge come back with the level.
+ * Since V2-15.7 both also take **presences** (V2-15.8: `lib/twinLevel.ts`'s `presenceOf` for every asset, one map per
+ * change of focus): an asset that is `faded` takes the ghost look. That is a state of the look (`ghost`), not another
+ * colour, so a faded fault is still faintly tinted. A faded model has its outlines hidden and a faded or hidden box
+ * draws none (`edgeIndices` with the set of the boxes drawn): context is a faint volume, and the stale dash and the
+ * severity edge come back with the level. What is `hidden` is not drawn at all, which is the mesh's groups' and the
+ * instances' mounting's business, not a look; its look here is whatever its flags say. With no map (the default)
+ * nothing is faded and every box keeps its outline.
  */
+
+/** The presences of "no focus": no asset is faded, and every box is outlined. One object, so it is never a change. */
+const NO_PRESENCES: ReadonlyMap<string, Presence> = new Map();
 
 /** The look as a string, to tell whether it changed. Built only when an asset's flags changed. */
 const keyOf = (look: AssetLook): string =>
@@ -130,8 +136,8 @@ interface ModelMemory {
   flags: unknown[];
   keys: string[];
   hover: HoverState;
-  /** The code of the asset isolated when it last painted, or `null`. */
-  isolated: string | null;
+  /** The presences it last painted with. */
+  presences: ReadonlyMap<string, Presence>;
 }
 
 /**
@@ -139,13 +145,13 @@ interface ModelMemory {
  * (name, face, severity), never a clone per instance, and each outline is shown for the looks that need an edge
  * (a stale dash, a severity, the hover's accent) and hidden for `idle`, so an idle model draws exactly what it
  * drew before. An instance is painted when its flags object changed or when the hover came to it or left it, and
- * every instance is when the isolated asset changed (V2-15.7): the others are faded, the isolated one is not.
+ * every instance is when the presences changed (V2-15.7, V2-15.8): the faded ones take the ghost look.
  */
 export function useModelLooks(
   feed: TwinFeed | null,
   targets: readonly ModelLookTarget[],
   hover: RefObject<HoverState>,
-  isolation: Isolation | null = null,
+  presences: ReadonlyMap<string, Presence> = NO_PRESENCES,
 ): void {
   const tracked = useMemo(() => trackModels(targets), [targets]);
   const memory = useRef<ModelMemory>({
@@ -153,10 +159,10 @@ export function useModelLooks(
     flags: [],
     keys: [],
     hover: NO_HOVER,
-    isolated: null,
+    presences: NO_PRESENCES,
   });
-  // The frame loop reads the isolation from a ref, written after the render (as `useLevelCamera` does with its boxes).
-  const isolated = useIsolatedCode(isolation);
+  // The frame loop reads the presences from a ref, written after the render (as `useLevelCamera` does with its boxes).
+  const current = usePresencesRef(presences);
 
   useFrame(() => {
     if (feed === null || tracked.length === 0) return;
@@ -169,14 +175,14 @@ export function useModelLooks(
       last.keys = new Array<string>(tracked.length).fill('');
     }
     const hoverMoved = hovering !== last.hover;
-    const isolatedCode = isolated.current;
-    const isolationMoved = isolatedCode !== last.isolated;
+    const nowPresent = current.current;
+    const presencesMoved = nowPresent !== last.presences;
     for (let index = 0; index < tracked.length; index += 1) {
       const model = tracked[index];
       if (model === undefined) continue;
       const flags = reader.flags(model.assetCode);
       const touched =
-        isolationMoved ||
+        presencesMoved ||
         (hoverMoved &&
           (model.assetCode === hovering.asset || model.assetCode === last.hover.asset));
       if (flags === last.flags[index] && !touched) continue;
@@ -184,7 +190,7 @@ export function useModelLooks(
       const { whole, part } = assetHover(model.assetCode, hovering);
       // A node this model does not have is no part: the asset keeps its look.
       const node = part !== null && model.byNode.has(part) ? part : null;
-      const faded = isolatedCode !== null && model.assetCode !== isolatedCode;
+      const faded = nowPresent.get(model.assetCode) === 'faded';
       const look = lookOf(flags, whole, false, faded);
       const partLook = node === null ? null : lookOf(flags, true, false);
       const key = partLook === null ? keyOf(look) : `${keyOf(look)}|${node}|${keyOf(partLook)}`;
@@ -193,20 +199,22 @@ export function useModelLooks(
       paintModel(model, look, node !== null && partLook !== null ? { node, look: partLook } : null);
     }
     last.hover = hovering;
-    last.isolated = isolatedCode;
+    last.presences = nowPresent;
   });
 }
 
 /**
- * The code of the asset isolated, in a ref a frame loop reads (V2-15.7). Written after the render, never during it;
- * the component that owns the isolation asks the on-demand canvas for a frame when it changes (`Equipment`).
+ * The presences of the assets, in a ref a frame loop reads (V2-15.7, V2-15.8). Written after the render, never during
+ * it; the component that owns the focus asks the on-demand canvas for a frame when it changes (`Equipment`).
  */
-function useIsolatedCode(isolation: Isolation | null): RefObject<string | null> {
-  const code = useRef<string | null>(isolation?.assetCode ?? null);
+function usePresencesRef(
+  presences: ReadonlyMap<string, Presence>,
+): RefObject<ReadonlyMap<string, Presence>> {
+  const current = useRef(presences);
   useEffect(() => {
-    code.current = isolation?.assetCode ?? null;
-  }, [isolation]);
-  return code;
+    current.current = presences;
+  }, [presences]);
+  return current;
 }
 
 // --- boxes ----------------------------------------------------------------------------------------------------
@@ -277,15 +285,15 @@ function paintBox(layers: BoxLayers, range: BoxRange, look: AssetLook): void {
 }
 
 /**
- * Moves the segments of the stale assets to the dashed layer and the rest to the solid one; with `only` (an asset
- * is isolated, V2-15.7) the other assets' segments are in neither.
+ * Moves the segments of the stale assets to the dashed layer and the rest to the solid one; with `drawn` (some assets
+ * are faded or hidden, V2-15.7, V2-15.8) the segments of the others are in neither.
  */
 function splitEdges(
   layers: BoxLayers,
   dashedCodes: ReadonlySet<string>,
-  only: string | null = null,
+  drawn: ReadonlySet<string> | null,
 ): void {
-  const { solid, dashed } = edgeIndices(layers.ranges, dashedCodes, only);
+  const { solid, dashed } = edgeIndices(layers.ranges, dashedCodes, drawn);
   layers.solid.setIndex(solid);
   layers.dashed.setIndex(dashed);
 }
@@ -298,8 +306,23 @@ interface BoxMemory {
   dashed: Set<string>;
   /** The hover last painted. */
   hover: HoverState;
-  /** The code of the asset isolated when the edges were last split, or `null`. */
-  isolated: string | null;
+  /** The presences the edges were last split with. */
+  presences: ReadonlyMap<string, Presence>;
+  /** The codes of the boxes that have an outline under them, or `null` for all (`NO_PRESENCES`). */
+  drawn: ReadonlySet<string> | null;
+}
+
+/** The boxes that are `drawn` outright: a faded or hidden box has no outline, a box the map does not name is drawn. */
+function drawnCodes(
+  ranges: readonly BoxRange[],
+  presences: ReadonlyMap<string, Presence>,
+): ReadonlySet<string> | null {
+  if (presences === NO_PRESENCES) return null;
+  return new Set(
+    ranges
+      .filter(({ code }) => (presences.get(code) ?? 'drawn') === 'drawn')
+      .map(({ code }) => code),
+  );
 }
 
 /**
@@ -307,14 +330,15 @@ interface BoxMemory {
  * segments of a stale asset go to the dashed layer, and a stale fault keeps a **solid** severity edge, so it
  * stays in the solid layer. As for the models, only an asset whose flags object changed or that the hover came
  * to or left, and whose look changed with it, is touched. A box has no parts: a hovered part names no box. A fade
- * (V2-15.7) changes no colour: the faces are faded by the mesh's groups (`AssetBoxes`), and here only the outlines
- * follow, so a change of the isolated asset re-splits the edge layers and nothing else.
+ * (V2-15.7) or a hiding (V2-15.8) changes no colour: the faces are faded or left out by the mesh's groups
+ * (`AssetBoxes`), and here only the outlines follow, so a change of the presences re-splits the edge layers and
+ * nothing else.
  */
 export function useBoxLooks(
   feed: TwinFeed | null,
   layers: BoxLayers | null,
   hover: RefObject<HoverState>,
-  isolation: Isolation | null = null,
+  presences: ReadonlyMap<string, Presence> = NO_PRESENCES,
 ): void {
   const memory = useRef<BoxMemory>({
     layers: null,
@@ -322,9 +346,10 @@ export function useBoxLooks(
     keys: [],
     dashed: new Set(),
     hover: NO_HOVER,
-    isolated: null,
+    presences: NO_PRESENCES,
+    drawn: null,
   });
-  const isolated = useIsolatedCode(isolation);
+  const current = usePresencesRef(presences);
 
   useFrame(() => {
     if (feed === null || layers === null) return;
@@ -336,12 +361,15 @@ export function useBoxLooks(
       last.flags = new Array<unknown>(layers.ranges.length).fill(undefined);
       last.keys = new Array<string>(layers.ranges.length).fill('');
       last.dashed = new Set();
-      // New layers start with every segment solid: an isolation already there has to be applied to them.
-      last.isolated = null;
+      // New layers start with every segment solid: presences already there have to be applied to them.
+      last.presences = NO_PRESENCES;
+      last.drawn = null;
     }
-    const isolatedCode = isolated.current;
-    // The edge layers depend on the isolation as well as on the stale set.
-    let dashedChanged = isolatedCode !== last.isolated;
+    const nowPresent = current.current;
+    const presencesMoved = nowPresent !== last.presences;
+    if (presencesMoved) last.drawn = drawnCodes(layers.ranges, nowPresent);
+    // The edge layers depend on the presences as well as on the stale set.
+    let dashedChanged = presencesMoved;
     const hoverMoved = hovering !== last.hover;
     for (let index = 0; index < layers.ranges.length; index += 1) {
       const range = layers.ranges[index];
@@ -363,8 +391,8 @@ export function useBoxLooks(
       else last.dashed.delete(range.code);
       dashedChanged = true;
     }
-    if (dashedChanged) splitEdges(layers, last.dashed, isolatedCode);
+    if (dashedChanged) splitEdges(layers, last.dashed, last.drawn);
     last.hover = hovering;
-    last.isolated = isolatedCode;
+    last.presences = nowPresent;
   });
 }
