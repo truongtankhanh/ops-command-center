@@ -113,6 +113,8 @@
   --tw-stale-edge: #4a555c;
   /* The rest of the campus while one asset is isolated. */
   --tw-ghost-opacity: 0.18;
+  /* The zone labels of every building but the one in focus (V2-15.8). CSS only: no WebGL copy. */
+  --tw-label-faded-opacity: 0.35;
   /* Telemetry overlay: sequential in the accent's hue, never a severity hue. */
   --heat-0: #1f2a4d;
   --heat-1: #2b3a72;

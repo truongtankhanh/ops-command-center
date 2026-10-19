@@ -1,11 +1,15 @@
 import {
   buildingFocusOf,
+  buildingLine,
   crumbsOf,
-  isFaded,
+  focusOf,
   isolationLine,
   isolationOf,
   levelOf,
   parentOf,
+  presenceMap,
+  presenceOf,
+  type SceneFocus,
   type SceneLevel,
 } from './twinLevel';
 
@@ -144,38 +148,6 @@ describe('isolationOf (V2-15.7)', () => {
   });
 });
 
-describe('isFaded (V2-15.7)', () => {
-  const isolation = { assetCode: 'CT-01', zoneId: 'BLD-DC' };
-
-  it('fades nothing while nothing is isolated', () => {
-    expect(isFaded({ kind: 'building', zoneId: 'BLD-DC' }, null)).toBe(false);
-    expect(isFaded({ kind: 'asset', code: 'CT-01' }, null)).toBe(false);
-    expect(isFaded({ kind: 'marker' }, null)).toBe(false);
-  });
-
-  it('keeps the asset’s building as it is and fades the others', () => {
-    expect(isFaded({ kind: 'building', zoneId: 'BLD-DC' }, isolation)).toBe(false);
-    expect(isFaded({ kind: 'building', zoneId: 'BLD-LAB' }, isolation)).toBe(true);
-  });
-
-  it('keeps the isolated asset as it is and fades every other, in its building or not', () => {
-    expect(isFaded({ kind: 'asset', code: 'CT-01' }, isolation)).toBe(false);
-    expect(isFaded({ kind: 'asset', code: 'CT-02' }, isolation)).toBe(true);
-    expect(isFaded({ kind: 'asset', code: 'TR-01' }, isolation)).toBe(true);
-  });
-
-  it('fades every building when the asset is in none', () => {
-    const outdoor = { assetCode: 'TR-01', zoneId: null };
-
-    expect(isFaded({ kind: 'building', zoneId: 'BLD-DC' }, outdoor)).toBe(true);
-    expect(isFaded({ kind: 'asset', code: 'TR-01' }, outdoor)).toBe(false);
-  });
-
-  it('fades the camera markers', () => {
-    expect(isFaded({ kind: 'marker' }, isolation)).toBe(true);
-  });
-});
-
 describe('isolationLine (V2-15.7)', () => {
   it('says the rest is faded and where Escape goes back to', () => {
     expect(isolationLine('Data Center')).toEqual({
@@ -189,6 +161,155 @@ describe('isolationLine (V2-15.7)', () => {
     expect(isolationLine(null)).toEqual({
       lead: 'Isolated — the rest of the campus is faded.',
       back: null,
+    });
+  });
+});
+
+describe('focusOf (V2-15.8)', () => {
+  it('is nothing at campus level', () => {
+    expect(focusOf(none)).toBeNull();
+  });
+
+  it('is the building alone at building level', () => {
+    expect(focusOf({ ...none, focusZoneId: 'BLD-DC' })).toEqual({
+      zoneId: 'BLD-DC',
+      assetCode: null,
+    });
+  });
+
+  it('is the asset and its building at asset and part level, so the building stays in focus', () => {
+    const asset = { zoneId: 'BLD-DC', assetCode: 'CT-01' };
+
+    expect(focusOf({ ...none, focusZoneId: 'BLD-DC', selectedAssetCode: 'CT-01' })).toEqual(asset);
+    expect(
+      focusOf({ focusZoneId: 'BLD-DC', selectedAssetCode: 'CT-01', selectedPart: 'FanBlade' }),
+    ).toEqual(asset);
+  });
+
+  it('has no building for an asset in none', () => {
+    expect(focusOf({ ...none, selectedAssetCode: 'TR-01' })).toEqual({
+      zoneId: null,
+      assetCode: 'TR-01',
+    });
+  });
+});
+
+describe('presenceOf (V2-15.8)', () => {
+  const building = (zoneId: string) => ({ kind: 'building' as const, zoneId });
+  const asset = (
+    code: string,
+    zoneId: string,
+    placement: 'outdoor' | 'roof' | 'inside' = 'outdoor',
+  ) => ({ kind: 'asset' as const, code, zoneId, placement });
+  const campus: SceneFocus | null = null;
+  const dataCenter: SceneFocus = { zoneId: 'BLD-DC', assetCode: null };
+
+  describe('at campus level', () => {
+    it('draws every building as it is', () => {
+      expect(presenceOf(building('BLD-DC'), campus)).toBe('drawn');
+    });
+
+    it('draws the outdoor and roof assets and hides the inside ones', () => {
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), campus)).toBe('drawn');
+      expect(presenceOf(asset('GEN-01', 'BLD-DC'), campus)).toBe('drawn');
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), campus)).toBe('drawn');
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), campus)).toBe('hidden');
+    });
+
+    it('draws the camera markers as they are', () => {
+      expect(presenceOf({ kind: 'marker' }, campus)).toBe('drawn');
+    });
+  });
+
+  describe('at building level', () => {
+    it('makes the building in focus see-through and fades the others', () => {
+      expect(presenceOf(building('BLD-DC'), dataCenter)).toBe('xray');
+      expect(presenceOf(building('BLD-LAB'), dataCenter)).toBe('faded');
+    });
+
+    it('draws what belongs to the building: inside, on the roof and beside it (GEN-01)', () => {
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), dataCenter)).toBe('drawn');
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), dataCenter)).toBe('drawn');
+      expect(presenceOf(asset('GEN-01', 'BLD-DC'), dataCenter)).toBe('drawn');
+    });
+
+    it('fades the equipment of other buildings and of no building, and hides their inside ones', () => {
+      expect(presenceOf(asset('AHU-H1', 'BLD-HUB', 'roof'), dataCenter)).toBe('faded');
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), dataCenter)).toBe('faded');
+      expect(presenceOf(asset('LKS-B3', 'BLD-DORB', 'inside'), dataCenter)).toBe('hidden');
+    });
+
+    it('leaves the camera markers as they are', () => {
+      expect(presenceOf({ kind: 'marker' }, dataCenter)).toBe('drawn');
+    });
+  });
+
+  describe('at asset and part level', () => {
+    const isolated: SceneFocus = { zoneId: 'BLD-DORB', assetCode: 'LKS-B3' };
+
+    it('keeps the asset’s building see-through, as frame 15 draws it, and fades the others', () => {
+      expect(presenceOf(building('BLD-DORB'), isolated)).toBe('xray');
+      expect(presenceOf(building('BLD-DC'), isolated)).toBe('faded');
+    });
+
+    it('draws the isolated asset and fades every other, its neighbours in the building too', () => {
+      expect(presenceOf(asset('LKS-B3', 'BLD-DORB', 'inside'), isolated)).toBe('drawn');
+      expect(presenceOf(asset('ICS-DORB', 'BLD-DORB', 'inside'), isolated)).toBe('faded');
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), isolated)).toBe('faded');
+    });
+
+    it('still hides the inside assets of other buildings', () => {
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), isolated)).toBe('hidden');
+    });
+
+    it('fades every building for an asset in none, and draws the asset', () => {
+      const outdoor: SceneFocus = { zoneId: null, assetCode: 'TR-01' };
+
+      expect(presenceOf(building('BLD-DC'), outdoor)).toBe('faded');
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), outdoor)).toBe('drawn');
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), outdoor)).toBe('hidden');
+    });
+
+    it('fades the camera markers', () => {
+      expect(presenceOf({ kind: 'marker' }, isolated)).toBe('faded');
+    });
+  });
+});
+
+describe('presenceMap (V2-15.8)', () => {
+  const placed = [
+    { code: 'CT-01', zoneId: 'BLD-DC', placement: 'roof' as const },
+    { code: 'UPS-01', zoneId: 'BLD-DC', placement: 'inside' as const },
+    { code: 'TR-01', zoneId: 'UTL-PLANT', placement: 'outdoor' as const },
+  ];
+
+  it('gives every asset its presence, by code', () => {
+    expect(presenceMap(placed, { zoneId: 'BLD-DC', assetCode: null })).toEqual(
+      new Map([
+        ['CT-01', 'drawn'],
+        ['UPS-01', 'drawn'],
+        ['TR-01', 'faded'],
+      ]),
+    );
+    expect(presenceMap(placed, null)).toEqual(
+      new Map([
+        ['CT-01', 'drawn'],
+        ['UPS-01', 'hidden'],
+        ['TR-01', 'drawn'],
+      ]),
+    );
+  });
+
+  it('is an empty map for no assets', () => {
+    expect(presenceMap([], null).size).toBe(0);
+  });
+});
+
+describe('buildingLine (V2-15.8)', () => {
+  it('says the walls are see-through and where Escape goes back to: always the campus', () => {
+    expect(buildingLine()).toEqual({
+      lead: 'Walls see-through, other buildings faded.',
+      back: 'returns to Campus',
     });
   });
 });

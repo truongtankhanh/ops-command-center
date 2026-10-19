@@ -1,10 +1,13 @@
 import type { Asset, Zone } from '@occ/contracts';
+import type { PlacedAsset } from './twinPlacement';
 
 /*
  * The 3D view's four levels as plain data (V2-15.2, ADR-0020 § Scene, "Settled in V2-15.1"): no `three`
  * and no store, so the store, the breadcrumb (V2-15.6) and the scene read one definition and it tests
- * without WebGL. It also holds the visibility rule (V2-15.7: what is drawn as it is and what is faded while an
- * asset is isolated); V2-15.8 extends it to the building level, where faded and hidden become possible.
+ * without WebGL. It also holds the visibility rule: how every thing the scene draws looks at each level
+ * (`presenceOf`, V2-15.8: as it is, faded, see-through or not drawn), which the shells, the boxes, the models,
+ * the markers and the pick scope all read, so they cannot disagree. `isolationOf` and `Isolation` are the
+ * narrower question the legend and the markers ask: is an asset isolated, and which.
  */
 
 /** Campus, a building in focus, an isolated asset, a part of it (brief § Scene levels). */
@@ -107,26 +110,84 @@ export function isolationOf(state: LevelState): Isolation | null {
   return { assetCode: state.selectedAssetCode, zoneId: state.focusZoneId };
 }
 
-/** A thing the scene draws, as far as the fade is concerned. */
-export type Fadeable =
-  { kind: 'building'; zoneId: string } | { kind: 'asset'; code: string } | { kind: 'marker' };
+/**
+ * What the scene is looking at (V2-15.8): the building in focus and, at asset and part level, the isolated asset. Unlike
+ * `Isolation` it exists at building level too, with no asset, because a focused building changes how everything is
+ * drawn (its walls see-through, its inside equipment drawn, the rest faded). `null` is the campus.
+ */
+export interface SceneFocus {
+  /** The building zone in focus; `null` for an isolated asset outside every building (`TR-01`). */
+  zoneId: string | null;
+  /** The isolated asset, or `null` at building level. */
+  assetCode: string | null;
+}
+
+/** The focus the level means: nothing at campus level, the building at building level, the asset (and its building) below. */
+export function focusOf(state: LevelState): SceneFocus | null {
+  switch (levelOf(state)) {
+    case 'campus':
+      return null;
+    case 'building':
+      return { zoneId: state.focusZoneId, assetCode: null };
+    case 'asset':
+    case 'part':
+      return { zoneId: state.focusZoneId, assetCode: state.selectedAssetCode };
+  }
+}
 
 /**
- * Whether `target` is drawn at `--tw-ghost-opacity` rather than as it is (V2-15.7, ADR-0020 "Settled in V2-15.1":
- * the rest of the campus is faded, not removed). With nothing isolated nothing is faded. Otherwise everything but
- * the isolated asset and its building is: other buildings, other assets, and the camera markers (screen-sized
- * symbols that would otherwise shout over the asset). The ground and the zone labels are not part of this rule.
+ * How a thing is drawn: `drawn` as it is, `faded` at `--tw-ghost-opacity`, `xray` see-through (the shell of the building
+ * in focus), `hidden` not at all (an `inside` asset of a building that is not in focus).
  */
-export function isFaded(target: Fadeable, isolation: Isolation | null): boolean {
-  if (isolation === null) return false;
+export type Presence = 'drawn' | 'faded' | 'xray' | 'hidden';
+
+/** A thing the scene draws, as far as `presenceOf` is concerned. */
+export type Drawable =
+  | { kind: 'building'; zoneId: string }
+  | { kind: 'asset'; code: string; zoneId: string; placement: PlacedAsset['placement'] }
+  | { kind: 'marker' };
+
+/**
+ * The one rule for what is drawn and how (V2-15.8, ADR-0020 "Settled in V2-15.8", which replaces V2-15.7's `isFaded`).
+ *
+ * - **Building:** with nothing in focus as it is; the building in focus is `xray`, at building, asset and part level
+ *   (frames 12 and 15); every other building is `faded`. An isolated asset outside every building has no building in
+ *   focus, so all of them are faded.
+ * - **Asset:** an `inside` asset is drawn only with its building in focus, else `hidden` (nothing of it is drawn at
+ *   campus level, ADR-0020 "Settled in V2-15.1"). Otherwise, at asset and part level the isolated asset is `drawn` and
+ *   every other `faded`; at building level an asset of the building in focus is `drawn` (`GEN-01`, which stands outside
+ *   the footprint, and the roof's `CT-01` included, by zone) and every other `faded`.
+ * - **Marker:** the camera markers recede only while an asset is isolated, not at building level (the frames' scene
+ *   draws them as they are, and the Cameras layer is a toggle of its own).
+ *
+ * The ground and the zone labels are not part of this rule (the labels fade by `focusZoneId` alone, in `ZoneLabels`).
+ */
+export function presenceOf(target: Drawable, focus: SceneFocus | null): Presence {
   switch (target.kind) {
     case 'building':
-      return target.zoneId !== isolation.zoneId;
+      if (focus === null) return 'drawn';
+      return target.zoneId === focus.zoneId ? 'xray' : 'faded';
     case 'asset':
-      return target.code !== isolation.assetCode;
+      if (target.placement === 'inside' && target.zoneId !== focus?.zoneId) return 'hidden';
+      if (focus === null) return 'drawn';
+      if (focus.assetCode !== null) return target.code === focus.assetCode ? 'drawn' : 'faded';
+      return target.zoneId === focus.zoneId ? 'drawn' : 'faded';
     case 'marker':
-      return true;
+      return focus !== null && focus.assetCode !== null ? 'faded' : 'drawn';
   }
+}
+
+/** The presence of every placed asset, by code: one map per change of focus, shared by the boxes and the models. */
+export function presenceMap(
+  assets: readonly Pick<PlacedAsset, 'code' | 'zoneId' | 'placement'>[],
+  focus: SceneFocus | null,
+): Map<string, Presence> {
+  return new Map(
+    assets.map(({ code, zoneId, placement }) => [
+      code,
+      presenceOf({ kind: 'asset', code, zoneId, placement }, focus),
+    ]),
+  );
 }
 
 /**
@@ -139,4 +200,14 @@ export function isolationLine(parent: string | null): { lead: string; back: stri
     lead: 'Isolated — the rest of the campus is faded.',
     back: parent === null ? null : `returns to ${parent}`,
   };
+}
+
+/**
+ * The words of the legend at building level (frame 12, ADR-0020 "Settled in V2-15.1" and "V2-15.8"): the lead sentence,
+ * and where `Esc` goes back to, which is always the campus (a building's parent). The key is drawn by the legend
+ * between the two: "Walls see-through, other buildings faded. Esc returns to Campus". At asset level the isolation
+ * line is shown instead (V2-15.7); frame 15's use of this line there is a "Frames to revise" row.
+ */
+export function buildingLine(): { lead: string; back: string } {
+  return { lead: 'Walls see-through, other buildings faded.', back: 'returns to Campus' };
 }

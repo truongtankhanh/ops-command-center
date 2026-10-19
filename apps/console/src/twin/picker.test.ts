@@ -15,7 +15,7 @@ import {
   type PickScope,
   type PickTable,
 } from '../lib/twinPicking';
-import { groupsFor, type Keep } from '../lib/twinGroups';
+import { groupsForLooks, type SpanLook } from '../lib/twinGroups';
 import { applyGroups } from './applyGroups';
 import { createPicker, type PickView } from './picker';
 
@@ -35,10 +35,15 @@ function overhead(): PickView {
 }
 
 const view = overhead();
-const campus: PickScope = { kinds: new Set(['building', 'asset', 'camera']), assetCode: null };
+const campus: PickScope = {
+  kinds: new Set(['building', 'asset', 'camera']),
+  assetCode: null,
+  excludedBuildingId: null,
+};
 const isolated = (assetCode: string): PickScope => ({
   kinds: new Set(['asset', 'part']),
   assetCode,
+  excludedBuildingId: null,
 });
 const at = (x: number, y: number) => ({ x, y });
 const centre = at(SIZE / 2, SIZE / 2);
@@ -122,7 +127,11 @@ describe('picker with the merged meshes', () => {
 
   it('names the building when the assets are not in the scope', () => {
     const { picker } = campusScene();
-    const buildingsOnly: PickScope = { kinds: new Set(['building']), assetCode: null };
+    const buildingsOnly: PickScope = {
+      kinds: new Set(['building']),
+      assetCode: null,
+      excludedBuildingId: null,
+    };
 
     expect(picker.pick(centre, view, buildingsOnly)).toEqual({ kind: 'building', id: 'BLD-DC' });
   });
@@ -165,7 +174,9 @@ describe('picker with the merged meshes', () => {
   it('names nothing at all when the scope allows nothing', () => {
     const { picker } = campusScene();
 
-    expect(picker.pick(centre, view, { kinds: new Set(), assetCode: null })).toBeNull();
+    expect(
+      picker.pick(centre, view, { kinds: new Set(), assetCode: null, excludedBuildingId: null }),
+    ).toBeNull();
   });
 
   it('stops naming a mesh once it is removed, and names the rest', () => {
@@ -214,39 +225,40 @@ describe('picker with the merged meshes', () => {
   });
 });
 
-describe('picker with the merged meshes drawn in groups (V2-15.7)', () => {
+const BOX_SPANS = [
+  { start: 0, count: 36 },
+  { start: 36, count: 36 },
+];
+
+describe('picker with the merged meshes drawn in groups (V2-15.7, V2-15.8)', () => {
   /**
-   * The campus scene with its meshes as the isolation draws them: a material array (as it is, faded) and the groups
-   * `groupsFor` makes, which `Buildings` and `AssetBoxes` apply. The pick tables are the same as without groups.
+   * The campus scene with its meshes as a level draws them: a material array (as it is, faded, see-through) and the
+   * groups `groupsForLooks` makes, which `Buildings` and `AssetBoxes` apply. The pick tables are the same as without
+   * groups. `looks` are the two boxes' looks; the shell's is `shellLook`.
    */
-  function groupedScene(keep: Keep) {
+  function groupedScene(looks: SpanLook[], shellLook: SpanLook = 'drawn') {
     const { picker, shell, boxes } = campusScene();
     const faded = new MeshBasicMaterial({ transparent: true, opacity: 0.18, depthWrite: false });
-    for (const [mesh, spans] of [
-      [shell, [{ start: 0, count: 36 }]],
-      [
-        boxes,
-        [
-          { start: 0, count: 36 },
-          { start: 36, count: 36 },
-        ],
-      ],
+    const xray = new MeshBasicMaterial({ transparent: true, opacity: 0.14, depthWrite: false });
+    for (const [mesh, spans, spanLooks] of [
+      [shell, [{ start: 0, count: 36 }], [shellLook]],
+      [boxes, BOX_SPANS, looks],
     ] as const) {
       const target: Mesh = mesh;
-      target.material = [material, faded];
+      target.material = [material, faded, xray];
       const total = mesh.geometry.index?.count ?? 0;
-      applyGroups(mesh.geometry, groupsFor(spans, mesh === boxes ? keep : null, total));
+      applyGroups(mesh.geometry, groupsForLooks(spans, spanLooks, total));
     }
     return { picker, boxes };
   }
 
-  it.each<[string, Keep]>([
-    ['nothing faded', null],
-    ['the first box kept', 0],
-    ['the second box kept', 1],
-    ['everything faded', 'none'],
-  ])('names the same things as without groups: %s', (_name, keep) => {
-    const { picker } = groupedScene(keep);
+  it.each<[string, SpanLook[]]>([
+    ['nothing faded', ['drawn', 'drawn']],
+    ['the first box kept', ['drawn', 'faded']],
+    ['the second box kept', ['faded', 'drawn']],
+    ['everything faded', ['faded', 'faded']],
+  ])('names the same things as without groups: %s', (_name, looks) => {
+    const { picker } = groupedScene(looks);
 
     expect(picker.pick(at(60, 42), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
     expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
@@ -254,32 +266,107 @@ describe('picker with the merged meshes drawn in groups (V2-15.7)', () => {
     expect(picker.pick(at(2, 50), view, campus)).toBeNull();
   });
 
+  it('names the same things for a see-through shell: the walls are still triangles of the table', () => {
+    const { picker } = groupedScene(['drawn', 'drawn'], 'xray');
+
+    expect(picker.pick(at(60, 42), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+  });
+
   it('keeps the isolated scope: the faded box is not a target, the kept one is', () => {
-    const { picker } = groupedScene(0);
+    const { picker } = groupedScene(['drawn', 'faded']);
 
     expect(picker.pick(centre, view, isolated('CT-01'))).toEqual({ kind: 'asset', id: 'CT-01' });
     expect(picker.pick(at(55.4, 55.4), view, isolated('CT-01'))).toBeNull();
   });
 
-  it('is not rebuilt by a change of groups: the same bounds tree answers', () => {
-    const { picker, boxes } = groupedScene(null);
+  it('does not hit a hidden box: the ray goes on to what is behind it', () => {
+    const { picker } = groupedScene(['drawn', 'hidden']);
+
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+    // Where the second box stood there is now only the roof of the building under it.
+    expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+  });
+
+  it('hits nothing of a mesh whose every span is hidden', () => {
+    const { picker } = groupedScene(['hidden', 'hidden']);
+
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+    expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+  });
+
+  it('is not rebuilt by a change of groups, hiding and showing included: the same bounds tree answers', () => {
+    const { picker, boxes } = groupedScene(['drawn', 'drawn']);
     picker.pick(centre, view, campus);
     const tree = boxes.geometry.boundsTree;
+    const total = boxes.geometry.index?.count ?? 0;
 
-    applyGroups(
-      boxes.geometry,
-      groupsFor(
-        [
-          { start: 0, count: 36 },
-          { start: 36, count: 36 },
-        ],
-        1,
-        72,
-      ),
-    );
-
+    applyGroups(boxes.geometry, groupsForLooks(BOX_SPANS, ['faded', 'drawn'], total));
     expect(boxes.geometry.boundsTree).toBe(tree);
     expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'asset', id: 'CT-02' });
+
+    applyGroups(boxes.geometry, groupsForLooks(BOX_SPANS, ['hidden', 'hidden'], total));
+    expect(boxes.geometry.boundsTree).toBe(tree);
+    expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+
+    applyGroups(boxes.geometry, groupsForLooks(BOX_SPANS, ['drawn', 'drawn'], total));
+    expect(boxes.geometry.boundsTree).toBe(tree);
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+  });
+});
+
+describe('picker with a building in focus (V2-15.8)', () => {
+  /** The 20 × 10 × 20 m building with a 2 m box inside it, 5 m west of the middle, under the roof. */
+  function insideScene() {
+    const picker = createPicker();
+    const shell = new Mesh(box(20, 10, 20), material);
+    picker.addTable(shell, buildingTable([range('BLD-DC', 0, 12)]));
+    const boxes = new Mesh(box(2, 2, 2, -5, 0, 0), material);
+    picker.addTable(
+      boxes,
+      boxTable([
+        {
+          code: 'UPS-01',
+          firstVertex: 0,
+          vertexCount: 24,
+          firstTriangle: 0,
+          triangleCount: 12,
+          firstSegment: 0,
+          segmentCount: 12,
+        },
+      ]),
+    );
+    return picker;
+  }
+  /** A pixel above the box inside: the ray crosses the roof first, then the box. */
+  const aboveInside = at(44.3, 50);
+  const inFocus: PickScope = { ...campus, excludedBuildingId: 'BLD-DC' };
+
+  it('is stopped by the roof of a building that is not in focus: the wall hides what is inside', () => {
+    expect(insideScene().pick(aboveInside, view, campus)).toEqual({
+      kind: 'building',
+      id: 'BLD-DC',
+    });
+  });
+
+  it('reaches the equipment inside through the see-through walls of the building in focus', () => {
+    expect(insideScene().pick(aboveInside, view, inFocus)).toEqual({
+      kind: 'asset',
+      id: 'UPS-01',
+    });
+  });
+
+  it('hits nothing where only a wall of the building in focus is under the pointer', () => {
+    expect(insideScene().pick(at(60, 42), view, inFocus)).toBeNull();
+  });
+
+  it('still hits a building that is not the one in focus', () => {
+    expect(
+      insideScene().pick(at(60, 42), view, { ...campus, excludedBuildingId: 'BLD-OTHER' }),
+    ).toEqual({
+      kind: 'building',
+      id: 'BLD-DC',
+    });
   });
 });
 
@@ -416,7 +503,11 @@ describe('picker with the camera markers', () => {
   it('ignores the cameras while the Cameras layer is off', () => {
     const { picker } = campusScene();
     picker.setCameras([marker('cam-1', 30, 0)]);
-    const noCameras: PickScope = { kinds: new Set(['building', 'asset']), assetCode: null };
+    const noCameras: PickScope = {
+      kinds: new Set(['building', 'asset']),
+      assetCode: null,
+      excludedBuildingId: null,
+    };
 
     expect(picker.pick(at(82, 40), view, noCameras)).toBeNull();
   });

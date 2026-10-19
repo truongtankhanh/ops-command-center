@@ -135,6 +135,11 @@ export interface PickScope {
   kinds: ReadonlySet<PickKind>;
   /** When set, the one asset that is isolated: only it and its parts can be hit (V2-15.1). */
   assetCode: string | null;
+  /**
+   * When set, the building in focus, which is not a target (V2-15.8): its walls are see-through, so a ray through
+   * them reaches the equipment inside instead of stopping at the nearest wall.
+   */
+  excludedBuildingId: string | null;
 }
 
 /** The part of the console store that decides the scope. */
@@ -147,28 +152,38 @@ export interface ScopeState {
   layers: Pick<LayerVisibility, 'cameras'>;
 }
 
-const NOTHING: PickScope = { kinds: new Set(), assetCode: null };
+const NOTHING: PickScope = { kinds: new Set(), assetCode: null, excludedBuildingId: null };
 
 /**
- * What the level allows (V2-15.1). At campus and building level a building, an asset (as one target) and,
- * while the Cameras layer is on, a camera: the faded buildings of building level stay pickable, so a click
- * moves the focus. At asset and part level only the isolated asset and its parts: the faded rest is not a
+ * What the level allows (V2-15.1, V2-15.8). At campus and building level a building, an asset (as one target) and,
+ * while the Cameras layer is on, a camera: the faded buildings and the faded equipment of building level stay
+ * pickable, so a click moves the focus, but **the building in focus is not a target**, so the equipment behind its
+ * see-through walls is. At asset and part level only the isolated asset and its parts: the faded rest is not a
  * target. While a report location is picked, nothing.
  */
 export function scopeOf(state: ScopeState): PickScope {
   if (state.picking) return NOTHING;
   const level = levelOf(state);
   if (level === 'asset' || level === 'part') {
-    return { kinds: new Set<PickKind>(['asset', 'part']), assetCode: state.selectedAssetCode };
+    return {
+      kinds: new Set<PickKind>(['asset', 'part']),
+      assetCode: state.selectedAssetCode,
+      excludedBuildingId: null,
+    };
   }
   const kinds = new Set<PickKind>(['building', 'asset']);
   if (state.layers.cameras) kinds.add('camera');
-  return { kinds, assetCode: null };
+  return {
+    kinds,
+    assetCode: null,
+    excludedBuildingId: level === 'building' ? state.focusZoneId : null,
+  };
 }
 
 /** Whether `ref` may be hit in `scope`. */
 function allowed(ref: PickRef, scope: PickScope): boolean {
   if (!scope.kinds.has(ref.kind)) return false;
+  if (ref.kind === 'building' && ref.id === scope.excludedBuildingId) return false;
   if (scope.assetCode === null) return true;
   if (ref.kind === 'asset') return ref.id === scope.assetCode;
   if (ref.kind === 'part') return ref.assetCode === scope.assetCode;

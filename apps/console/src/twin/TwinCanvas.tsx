@@ -7,6 +7,7 @@ import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
 import { ContextGuard } from './ContextGuard';
+import { DrawCallLog } from './DrawCallLog';
 import { Equipment } from './Equipment';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
@@ -59,7 +60,10 @@ interface TwinCanvasProps {
  *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
- * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5).
+ * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5). With a building
+ *   in focus (V2-15.8) it is see-through and the others are faded, and `Equipment` draws its `inside` equipment;
+ *   all of it by the focus the store holds (`useSceneFocus`), with no prop and no rebuild of geometry.
+ * - `DrawCallLog` logs the draw calls of a frame in development builds only (V2-15.8, until the HUD of V2-19.1).
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
  * - `Pointer` listens to the canvas element for hover, click and drag, and asks `PickLayer` what is under it
@@ -99,6 +103,7 @@ export function TwinCanvas({
       <color attach="background" args={[mapColors.ground]} />
       {/* Outside the scene: an empty stage has a context to lose too. */}
       <ContextGuard />
+      <DrawCallLog />
       {scene && (
         <>
           <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} />

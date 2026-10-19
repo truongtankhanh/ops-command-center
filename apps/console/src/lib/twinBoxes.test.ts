@@ -235,27 +235,49 @@ describe('edgeIndices', () => {
     expect(edgeIndices([], new Set(['A']))).toEqual({ solid: [], dashed: [] });
   });
 
-  describe('with one asset isolated (V2-15.7)', () => {
-    const segmentsOfB = Array.from({ length: 12 }, (_, i) => [
-      2 * (12 + i),
-      2 * (12 + i) + 1,
-    ]).flat();
+  describe('with only some assets drawn (V2-15.7, V2-15.8)', () => {
+    const segmentsOf = (first: number) =>
+      Array.from({ length: 12 }, (_, i) => [2 * (first + i), 2 * (first + i) + 1]).flat();
+    const segmentsOfA = segmentsOf(0);
+    const segmentsOfB = segmentsOf(12);
+    const segmentsOfC = segmentsOf(24);
 
     it('draws only that asset’s outline: the faded ones draw none', () => {
-      const { solid, dashed } = edgeIndices(ranges, new Set(), 'B');
+      const { solid, dashed } = edgeIndices(ranges, new Set(), new Set(['B']));
 
       expect(solid).toEqual(segmentsOfB);
       expect(dashed).toEqual([]);
     });
 
-    it('puts the isolated asset in the layer its own flag says', () => {
-      expect(edgeIndices(ranges, new Set(['B']), 'B')).toEqual({ solid: [], dashed: segmentsOfB });
-      // Another asset being stale changes nothing for it.
-      expect(edgeIndices(ranges, new Set(['A']), 'B')).toEqual({ solid: segmentsOfB, dashed: [] });
+    it('draws the outline of several assets, in the order of the boxes', () => {
+      const { solid, dashed } = edgeIndices(ranges, new Set(), new Set(['C', 'A']));
+
+      expect(solid).toEqual([...segmentsOfA, ...segmentsOfC]);
+      expect(dashed).toEqual([]);
     });
 
-    it('draws no outline at all for a code that is not a box, and is every asset for null', () => {
-      expect(edgeIndices(ranges, new Set(), 'Z')).toEqual({ solid: [], dashed: [] });
+    it('puts a drawn asset in the layer its own flag says', () => {
+      expect(edgeIndices(ranges, new Set(['B']), new Set(['B']))).toEqual({
+        solid: [],
+        dashed: segmentsOfB,
+      });
+      // Another asset being stale changes nothing for it.
+      expect(edgeIndices(ranges, new Set(['A']), new Set(['B']))).toEqual({
+        solid: segmentsOfB,
+        dashed: [],
+      });
+    });
+
+    it('draws no outline for a stale asset that is not drawn', () => {
+      expect(edgeIndices(ranges, new Set(['A']), new Set(['B']))).toEqual({
+        solid: segmentsOfB,
+        dashed: [],
+      });
+    });
+
+    it('draws no outline at all for no code, or codes that are not boxes, and every asset for null', () => {
+      expect(edgeIndices(ranges, new Set(), new Set())).toEqual({ solid: [], dashed: [] });
+      expect(edgeIndices(ranges, new Set(), new Set(['Z']))).toEqual({ solid: [], dashed: [] });
       expect(edgeIndices(ranges, new Set(['B']), null)).toEqual(
         edgeIndices(ranges, new Set(['B'])),
       );

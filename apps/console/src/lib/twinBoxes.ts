@@ -227,18 +227,19 @@ export function buildBoxGeometry(placed: readonly PlacedAsset[]): BoxGeometry {
  * colours and its distances, and a change of look rewrites only these two small lists. Assets keep their order
  * and every segment is in exactly one list.
  *
- * With `only` (V2-15.7: an asset is isolated) the other assets are faded and draw no outline, so their segments are
- * in neither list: the isolated asset's go where its own flag says. `null` is every asset.
+ * With `drawn` (V2-15.7, V2-15.8: a level fades or hides some assets) only the assets whose code is in it have an
+ * outline: a faded asset is context and a hidden one is not drawn, so their segments are in neither list; the others go
+ * where their own flag says. `null` is every asset.
  */
 export function edgeIndices(
   ranges: readonly BoxRange[],
   dashedCodes: ReadonlySet<string>,
-  only: string | null = null,
+  drawn: ReadonlySet<string> | null = null,
 ): { solid: number[]; dashed: number[] } {
   const solid: number[] = [];
   const dashed: number[] = [];
   for (const { code, firstSegment, segmentCount } of ranges) {
-    if (only !== null && code !== only) continue;
+    if (drawn !== null && !drawn.has(code)) continue;
     const layer = dashedCodes.has(code) ? dashed : solid;
     for (let segment = firstSegment; segment < firstSegment + segmentCount; segment += 1) {
       layer.push(2 * segment, 2 * segment + 1);

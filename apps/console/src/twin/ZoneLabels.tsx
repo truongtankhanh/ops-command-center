@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import type { LabelAnchor } from '../lib/twinScene';
+import { useConsole } from '../store';
 import styles from './ZoneLabels.module.css';
 
 interface ZoneLabelsProps {
@@ -19,14 +20,23 @@ interface ZoneLabelsProps {
  * - Decoration for the eye only: `aria-hidden` and no pointer events. The names reach assistive tech
  *   through the incident feed, the Assets tab and the report's zone list, as the 2D map's labels do.
  * - Not a layer: nothing toggles them.
+ * - With a building in focus (V2-15.8, at building, asset and part level) every label but the building's own fades
+ *   (`data-faded`, `--tw-label-faded-opacity`, 0.35 as TwinScene draws it), so the see-through building's name is the
+ *   one that reads. With none in focus, including an asset isolated outside every building, nothing fades. The fade is
+ *   store state, not per-frame: a React attribute is the right size for it, and the projector still owns the position.
  * - Under the stage tools, the banners and the sheet without any `z-index`: the stage is
  *   `isolation: isolate` (`StageView.module.css`), so everything inside it paints below them.
  */
 export function ZoneLabels({ anchors, layerRef }: ZoneLabelsProps) {
+  const focusZoneId = useConsole((state) => state.focusZoneId);
   return (
     <div ref={layerRef} className={styles.layer} aria-hidden="true">
       {anchors.map(({ zoneId, name }) => (
-        <span key={zoneId} className={styles.label}>
+        <span
+          key={zoneId}
+          className={styles.label}
+          data-faded={focusZoneId !== null && zoneId !== focusZoneId}
+        >
           {name}
         </span>
       ))}

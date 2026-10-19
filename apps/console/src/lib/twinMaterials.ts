@@ -33,6 +33,12 @@ export interface MaterialSpec {
   opacity: number;
 }
 
+/**
+ * `--tw-xray-opacity`: how opaque a see-through shell is. One value for the model material `Xray` below and for the
+ * shell of the building in focus (V2-15.8), so the two cannot drift apart.
+ */
+export const XRAY_OPACITY = twinColors.xrayOpacity;
+
 const SPECS: Record<MaterialName, MaterialSpec> = {
   Part: { name: 'Part', color: twinColors.idle.top, opacity: 1 },
   Steel: { name: 'Steel', color: twinColors.steel.top, opacity: 1 },
@@ -42,7 +48,7 @@ const SPECS: Record<MaterialName, MaterialSpec> = {
   Blade: { name: 'Blade', color: twinColors.blade, opacity: 1 },
   Hub: { name: 'Hub', color: twinColors.hub, opacity: 1 },
   // The generator's enclosure: the idle material, see-through.
-  Xray: { name: 'Xray', color: twinColors.idle.top, opacity: twinColors.xrayOpacity },
+  Xray: { name: 'Xray', color: twinColors.idle.top, opacity: XRAY_OPACITY },
 };
 
 const isMaterialName = (name: string): name is MaterialName =>

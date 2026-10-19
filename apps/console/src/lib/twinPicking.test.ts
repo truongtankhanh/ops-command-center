@@ -133,17 +133,50 @@ describe('scopeOf', () => {
     expect(kinds(scopeOf({ ...base, picking: true }))).toEqual([]);
     expect(kinds(scopeOf({ ...base, picking: true, selectedAssetCode: 'CT-01' }))).toEqual([]);
   });
+
+  describe('the building in focus (V2-15.8)', () => {
+    it('is not a target at building level: its walls are see-through', () => {
+      expect(scopeOf({ ...base, focusZoneId: 'BLD-DC' }).excludedBuildingId).toBe('BLD-DC');
+    });
+
+    it('excludes nothing at campus level', () => {
+      expect(scopeOf(base).excludedBuildingId).toBeNull();
+    });
+
+    it('excludes nothing at asset and part level, where only the isolated asset is a target anyway', () => {
+      expect(
+        scopeOf({ ...base, focusZoneId: 'BLD-DC', selectedAssetCode: 'CT-01' }).excludedBuildingId,
+      ).toBeNull();
+      expect(
+        scopeOf({
+          ...base,
+          focusZoneId: 'BLD-DC',
+          selectedAssetCode: 'CT-01',
+          selectedPart: 'FanBlade',
+        }).excludedBuildingId,
+      ).toBeNull();
+    });
+
+    it('excludes nothing while a location is picked', () => {
+      expect(
+        scopeOf({ ...base, focusZoneId: 'BLD-DC', picking: true }).excludedBuildingId,
+      ).toBeNull();
+    });
+  });
 });
 
 describe('choose', () => {
   const campus: PickScope = {
     kinds: new Set(['building', 'asset', 'camera']),
     assetCode: null,
+    excludedBuildingId: null,
   };
   const isolated = (assetCode: string): PickScope => ({
     kinds: new Set(['asset', 'part']),
     assetCode,
+    excludedBuildingId: null,
   });
+  const inFocus = (excludedBuildingId: string): PickScope => ({ ...campus, excludedBuildingId });
 
   it('is null for nothing under the pointer', () => {
     expect(choose([], campus)).toBeNull();
@@ -197,7 +230,13 @@ describe('choose', () => {
     expect(choose([hit(asset('CT-02'), 10)], isolated('CT-01'))).toBeNull();
     expect(choose([hit(asset('CT-01'), 10)], isolated('CT-01'))).toEqual(asset('CT-01'));
     expect(choose([hit(camera('cam-1'), 5)], isolated('CT-01'))).toBeNull();
-    expect(choose([hit(asset('CT-01'), 10)], { kinds: new Set(), assetCode: null })).toBeNull();
+    expect(
+      choose([hit(asset('CT-01'), 10)], {
+        kinds: new Set(),
+        assetCode: null,
+        excludedBuildingId: null,
+      }),
+    ).toBeNull();
   });
 
   it('puts an asset before a camera and a camera before a building under the same pixel', () => {
@@ -218,6 +257,34 @@ describe('choose', () => {
 
   it('takes the camera nearest the pointer among several', () => {
     expect(choose([hit(camera('far'), 9), hit(camera('near'), 3)], campus)).toEqual(camera('near'));
+  });
+
+  describe('with a building in focus (V2-15.8)', () => {
+    it('goes through its see-through wall to the asset behind it', () => {
+      expect(
+        choose([hit(building('BLD-DC'), 40), hit(asset('UPS-01'), 55)], inFocus('BLD-DC')),
+      ).toEqual(asset('UPS-01'));
+    });
+
+    it('hits nothing where only its wall is under the pointer', () => {
+      expect(choose([hit(building('BLD-DC'), 40)], inFocus('BLD-DC'))).toBeNull();
+    });
+
+    it('still hits another building, so a click on a faded one moves the focus', () => {
+      expect(choose([hit(building('BLD-LAB'), 40)], inFocus('BLD-DC'))).toEqual(
+        building('BLD-LAB'),
+      );
+    });
+
+    it('still hits a faded asset of another building', () => {
+      expect(choose([hit(asset('AHU-H1'), 40)], inFocus('BLD-DC'))).toEqual(asset('AHU-H1'));
+    });
+
+    it('does not let a wall behind the asset change anything', () => {
+      expect(
+        choose([hit(asset('UPS-01'), 40), hit(building('BLD-DC'), 55)], inFocus('BLD-DC')),
+      ).toEqual(asset('UPS-01'));
+    });
   });
 });
 
