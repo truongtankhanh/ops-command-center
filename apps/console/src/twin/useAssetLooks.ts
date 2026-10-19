@@ -11,7 +11,14 @@ import {
   type Object3D,
 } from 'three';
 import { type BoxRange, buildBoxGeometry, edgeIndices } from '../lib/twinBoxes';
-import { assetHover, type HoverState, NO_HOVER } from '../lib/twinHover';
+import {
+  assetHover,
+  type HoverState,
+  NO_HOVER,
+  NO_SELECTION,
+  partsPicked,
+  type SelectedPart,
+} from '../lib/twinHover';
 import type { Presence } from '../lib/twinLevel';
 import { type AssetLook, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
@@ -29,8 +36,10 @@ import { filled } from './vertexColours';
  * does nothing either. Hover is passed since V2-15.5, as a ref the canvas
  * keeps from the store (`useHoverRef`): when it changes, the asset it left and the asset it names are repainted,
  * and only those. A hovered asset takes the hover look (above stale and alarm, `lookOf`); a hovered *part* takes
- * it alone and its asset keeps its own look. Selection is not passed: an inspected asset keeps its look (frames
- * 03, 08, 15, 17), and a selected part's look is V2-15.10's.
+ * it alone and its asset keeps its own look. An inspected asset keeps its look (frames 03, 08, 15, 17); since
+ * V2-15.10 the models are also given the **selected part** (`useSelectedPartRef`), which takes the selected look
+ * (`lookOf`'s `selected`: the accent face and the 1 px accent outline, as the hover's) and keeps it after the
+ * pointer leaves, until it is deselected. `partsPicked` (`lib/twinHover.ts`) says which nodes of a model that is.
  *
  * Since V2-15.7 both also take **presences** (V2-15.8: `lib/twinLevel.ts`'s `presenceOf` for every asset, one map per
  * change of focus): an asset that is `faded` takes the ghost look. That is a state of the look (`ghost`), not another
@@ -43,6 +52,9 @@ import { filled } from './vertexColours';
 
 /** The presences of "no focus": no asset is faded, and every box is outlined. One object, so it is never a change. */
 const NO_PRESENCES: ReadonlyMap<string, Presence> = new Map();
+
+/** "Nothing is selected", for a caller that has no selection ref: one object, so it is never a change. */
+const NO_SELECTION_REF: RefObject<SelectedPart> = { current: NO_SELECTION };
 
 /** The look as a string, to tell whether it changed. Built only when an asset's flags changed. */
 const keyOf = (look: AssetLook): string =>
@@ -115,19 +127,22 @@ function paintPart(model: TrackedModel, part: ModelPart, look: AssetLook): void 
   }
 }
 
+/** A part node and the look it is painted in, over its asset's own. */
+interface PartLook {
+  node: string;
+  look: AssetLook;
+}
+
 /**
- * Paints an instance: every mesh in the asset's look, then the meshes of the hovered part node in `hovered.look`
- * (V2-15.5). A function of its own and not a block of the frame callback: it writes to objects the hook's memo
- * made, which the React Compiler rules would not let a hook body do.
+ * Paints an instance: every mesh in the asset's look, then the meshes of each picked part node in its own look, in
+ * order (V2-15.5's hovered part, V2-15.10's selected one). A function of its own and not a block of the frame
+ * callback: it writes to objects the hook's memo made, which the React Compiler rules would not let a hook body do.
  */
-function paintModel(
-  model: TrackedModel,
-  look: AssetLook,
-  hovered: { node: string; look: AssetLook } | null,
-): void {
+function paintModel(model: TrackedModel, look: AssetLook, picked: readonly PartLook[]): void {
   for (const part of model.parts) paintPart(model, part, look);
-  if (hovered === null) return;
-  for (const part of model.byNode.get(hovered.node) ?? []) paintPart(model, part, hovered.look);
+  for (const { node, look: partLook } of picked) {
+    for (const part of model.byNode.get(node) ?? []) paintPart(model, part, partLook);
+  }
 }
 
 /** What the model hook remembers between frames, in a ref: the instances it was set up for, per instance the last flags and look, and the hover it last painted. */
@@ -136,6 +151,8 @@ interface ModelMemory {
   flags: unknown[];
   keys: string[];
   hover: HoverState;
+  /** The selected part it last painted. */
+  selection: SelectedPart;
   /** The presences it last painted with. */
   presences: ReadonlyMap<string, Presence>;
 }
@@ -144,14 +161,16 @@ interface ModelMemory {
  * Paints the looks of the model instances (Q3): each mesh is re-pointed at a pooled material for its
  * (name, face, severity), never a clone per instance, and each outline is shown for the looks that need an edge
  * (a stale dash, a severity, the hover's accent) and hidden for `idle`, so an idle model draws exactly what it
- * drew before. An instance is painted when its flags object changed or when the hover came to it or left it, and
- * every instance is when the presences changed (V2-15.7, V2-15.8): the faded ones take the ghost look.
+ * drew before. An instance is painted when its flags object changed or when the hover or the selected part came to it
+ * or left it, and every instance is when the presences changed (V2-15.7, V2-15.8): the faded ones take the ghost look.
+ * `selection` is the selected part (V2-15.10); a caller with none (a test, a stage with no inspector) gets "nothing".
  */
 export function useModelLooks(
   feed: TwinFeed | null,
   targets: readonly ModelLookTarget[],
   hover: RefObject<HoverState>,
   presences: ReadonlyMap<string, Presence> = NO_PRESENCES,
+  selection: RefObject<SelectedPart> = NO_SELECTION_REF,
 ): void {
   const tracked = useMemo(() => trackModels(targets), [targets]);
   const memory = useRef<ModelMemory>({
@@ -159,6 +178,7 @@ export function useModelLooks(
     flags: [],
     keys: [],
     hover: NO_HOVER,
+    selection: NO_SELECTION,
     presences: NO_PRESENCES,
   });
   // The frame loop reads the presences from a ref, written after the render (as `useLevelCamera` does with its boxes).
@@ -174,7 +194,9 @@ export function useModelLooks(
       last.flags = new Array<unknown>(tracked.length).fill(undefined);
       last.keys = new Array<string>(tracked.length).fill('');
     }
+    const selecting = selection.current;
     const hoverMoved = hovering !== last.hover;
+    const selectionMoved = selecting !== last.selection;
     const nowPresent = current.current;
     const presencesMoved = nowPresent !== last.presences;
     for (let index = 0; index < tracked.length; index += 1) {
@@ -184,20 +206,30 @@ export function useModelLooks(
       const touched =
         presencesMoved ||
         (hoverMoved &&
-          (model.assetCode === hovering.asset || model.assetCode === last.hover.asset));
+          (model.assetCode === hovering.asset || model.assetCode === last.hover.asset)) ||
+        (selectionMoved &&
+          (model.assetCode === selecting.asset || model.assetCode === last.selection.asset));
       if (flags === last.flags[index] && !touched) continue;
       last.flags[index] = flags;
-      const { whole, part } = assetHover(model.assetCode, hovering);
-      // A node this model does not have is no part: the asset keeps its look.
-      const node = part !== null && model.byNode.has(part) ? part : null;
       const faded = nowPresent.get(model.assetCode) === 'faded';
-      const look = lookOf(flags, whole, false, faded);
-      const partLook = node === null ? null : lookOf(flags, true, false);
-      const key = partLook === null ? keyOf(look) : `${keyOf(look)}|${node}|${keyOf(partLook)}`;
+      // A hovered asset takes the hover look whole, a hovered or selected part alone (the asset keeps its own).
+      const look = lookOf(flags, assetHover(model.assetCode, hovering).whole, false, faded);
+      // A node this model does not have is no part: the asset keeps its look.
+      const picked: PartLook[] = partsPicked(model.assetCode, hovering, selecting, (node) =>
+        model.byNode.has(node),
+      ).map(({ node, kind }) => ({
+        node,
+        look: lookOf(flags, kind === 'hover', kind === 'selected'),
+      }));
+      const key = picked.reduce(
+        (text, { node, look: partLook }) => `${text}|${node}|${keyOf(partLook)}`,
+        keyOf(look),
+      );
       if (key === last.keys[index]) continue;
       last.keys[index] = key;
-      paintModel(model, look, node !== null && partLook !== null ? { node, look: partLook } : null);
+      paintModel(model, look, picked);
     }
+    last.selection = selecting;
     last.hover = hovering;
     last.presences = nowPresent;
   });

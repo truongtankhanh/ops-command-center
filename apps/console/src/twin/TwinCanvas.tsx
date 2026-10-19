@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
+import type { LeaderStart } from '../lib/twinLeader';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
@@ -45,6 +46,13 @@ interface TwinCanvasProps {
   labelLayer: RefObject<HTMLDivElement | null>;
   /** The compass button `TwinControls` renders, which `CompassSync` turns and renames from the camera. */
   compassRef: RefObject<HTMLButtonElement | null>;
+  /**
+   * The part callout's leader (V2-15.10), which `LeaderProjector` (under `Equipment`) draws from the card to the selected
+   * part: the overlay's line and dot (`LeaderOverlay`) and where the line starts, the card's edge.
+   */
+  leaderLineRef: RefObject<SVGLineElement | null>;
+  leaderDotRef: RefObject<SVGCircleElement | null>;
+  leaderStartRef: RefObject<LeaderStart | null>;
 }
 
 /**
@@ -70,6 +78,8 @@ interface TwinCanvasProps {
  *   (V2-15.4); it renders nothing.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
  *   session (V2-12.11).
+ * - The leader of the part callout (V2-15.10) is an SVG beside the canvas, drawn by `LeaderProjector` under `Equipment` from
+ *   the selected part's bounds on each drawn frame, through refs, with no React render.
  * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
  *   drawn frame, through a ref.
  * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
@@ -90,6 +100,9 @@ export function TwinCanvas({
   onInvalidate,
   labelLayer,
   compassRef,
+  leaderLineRef,
+  leaderDotRef,
+  leaderStartRef,
 }: TwinCanvasProps) {
   return (
     <Canvas
@@ -116,6 +129,9 @@ export function TwinCanvas({
               classes={scene.classes}
               classPoints={classPoints}
               feed={feed}
+              leaderLineRef={leaderLineRef}
+              leaderDotRef={leaderDotRef}
+              leaderStartRef={leaderStartRef}
             />
           </PickLayer>
           <Pointer assets={scene.assets} zones={scene.zones} />

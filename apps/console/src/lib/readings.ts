@@ -17,13 +17,19 @@ import { readingWord } from './readingLabels';
 // `en-GB` like the other formatters of the console (`Header`, `lib/time.ts`): "1,420".
 const NUMBER = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
 
-/** "1,420 rpm", "71 °C", "86 %": at most one fraction digit, a space, then the unit if there is one. */
-function measure(value: number, unit: string | null): string {
+/** "1,420": at most one fraction digit. */
+function figure(value: number): string {
   // A device can send what the catalogue's range should have dropped; show it rather than hide it.
   if (!Number.isFinite(value)) return String(value);
   const text = NUMBER.format(value);
   // `Intl` writes a tiny negative as "-0".
-  const number = text === '-0' ? '0' : text;
+  return text === '-0' ? '0' : text;
+}
+
+/** "1,420 rpm", "71 °C", "86 %": at most one fraction digit, a space, then the unit if there is one. */
+function measure(value: number, unit: string | null): string {
+  const number = figure(value);
+  if (!Number.isFinite(value)) return number;
   return unit === null || unit === '' ? number : `${number} ${unit}`;
 }
 
@@ -52,6 +58,36 @@ export function formatReading(
       // A kind from a newer API (ADR-0018: kinds are only appended).
       return String(value);
   }
+}
+
+/** A reading in two pieces, for a layout that sets the figure big and its unit small (the 3D view's callout). */
+export interface ReadingParts {
+  /** The figure, or the word of the value, or the value as it came. */
+  text: string;
+  /** The point's unit when `text` is a number; `null` for a word, a value of another kind and a number with none. */
+  unit: string | null;
+}
+
+/**
+ * `formatReading` in two pieces (V2-15.10): a number is its figure and its unit, anything else is its text alone,
+ * so `Closed`, `Wet` and an enum have no unit to set small. Joined with a space the pieces are `formatReading`'s
+ * answer, which stays the one place a reading's words are decided; this only splits the one case where the unit is
+ * a separate piece.
+ */
+export function readingParts(
+  point: Pick<TelemetryPoint, 'key' | 'kind' | 'unit'>,
+  value: TelemetryValue,
+): ReadingParts {
+  const isNumber =
+    point.kind === 'number' &&
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    readingWord(point.key, value) === null;
+  if (!isNumber) return { text: formatReading(point, value), unit: null };
+  return {
+    text: figure(value),
+    unit: point.unit === null || point.unit === '' ? null : point.unit,
+  };
 }
 
 /**

@@ -11,7 +11,7 @@ import {
   type Object3D,
 } from 'three';
 import { edgeIndices } from '../lib/twinBoxes';
-import { type HoverState, NO_HOVER } from '../lib/twinHover';
+import { type HoverState, NO_HOVER, NO_SELECTION, type SelectedPart } from '../lib/twinHover';
 import type { Presence } from '../lib/twinLevel';
 import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
@@ -77,6 +77,26 @@ function makeTemplate() {
   return { template: buildTemplate(loaded, table), table };
 }
 
+/**
+ * A model of two **bound** parts (a fan blade and a motor) and one static one. The template merges static parts, so the
+ * static one is no node of the instance and cannot take a look of its own; two parts that can are what a selected part
+ * and a different hovered part need.
+ */
+function makeTwoBoundTemplate() {
+  const root = new Group();
+  root.name = 'CoolingTower';
+  root.add(meshOf('Casing', 'Part'));
+  const fan = meshOf('FanBlade', 'Blade');
+  fan.userData = { bind: 'fanSpeedRpm', motion: 'spin', axis: 'y', range: [0, 1800] };
+  const motor = meshOf('Motor', 'Part');
+  motor.userData = { bind: 'motorTempC', motion: 'tint' };
+  root.add(fan, motor);
+  const loaded = new Group();
+  loaded.add(root);
+  const table = createMaterialTable();
+  return { template: buildTemplate(loaded, table), table };
+}
+
 function targetOf(
   assetCode: string,
   template: ReturnType<typeof makeTemplate>['template'],
@@ -117,6 +137,18 @@ function mount(
       initialProps: { targets },
     },
   );
+}
+
+/** The ref `useSelectedPartRef` keeps, here set by hand; nothing is selected at first. */
+const selectionRef = (): { current: SelectedPart } => ({ current: NO_SELECTION });
+
+function mountSelecting(
+  feed: TwinFeed | null,
+  targets: readonly ModelLookTarget[],
+  hover: RefObject<HoverState>,
+  selection: RefObject<SelectedPart>,
+) {
+  return renderHook(() => useModelLooks(feed, targets, hover, undefined, selection));
 }
 
 const tick = () => frame.callback!();
@@ -495,6 +527,194 @@ describe('useModelLooks', () => {
 
       for (const mesh of meshes(tower.object))
         expect(mesh.material).toBe(table.get(baseName(mesh)));
+    });
+  });
+
+  describe('a selected part (V2-15.10)', () => {
+    const pickedLook = { face: 'hover', severity: null } as const;
+    const bladeOf = (object: Object3D) => meshes(object).find((mesh) => mesh.name === 'FanBlade')!;
+
+    it('tints the selected part alone and outlines it in the accent, with no hover', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+      tick();
+
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      const blade = bladeOf(tower.object);
+      expect(blade.material).toBe(table.look('Blade', pickedLook));
+      expect(outlines(blade)[0]!.visible).toBe(true);
+      expect(outlines(blade)[0]!.material).toBe(table.line({ edge: 'accent', severity: null }));
+      for (const mesh of meshes(tower.object).filter((candidate) => candidate !== blade)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+        expect(outlines(mesh)[0]!.visible).toBe(false);
+      }
+    });
+
+    it('keeps the selected part tinted after the pointer has left it, and over an alarm of the asset', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hover, selection);
+      flags.set('CT-01', alarmed('high'));
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      hover.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      hover.current = NO_HOVER;
+      tick();
+
+      const blade = bladeOf(tower.object);
+      expect(blade.material).toBe(table.look('Blade', pickedLook));
+      for (const mesh of meshes(tower.object).filter((candidate) => candidate !== blade)) {
+        expect(mesh.material).toBe(table.look('Part', { face: 'alarm', severity: 'high' }));
+      }
+    });
+
+    it('paints the selected part and a different hovered part both, and the hover goes when the pointer does', () => {
+      const { template: two, table: tableTwo } = makeTwoBoundTemplate();
+      const tower = targetOf('CT-01', two, new Set(['FanBlade', 'Motor']));
+      const { feed } = createRig();
+      const hover = hoverRef();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hover, selection);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      hover.current = { asset: 'CT-01', part: 'Motor' };
+      tick();
+
+      const blade = bladeOf(tower.object);
+      const motor = meshes(tower.object).find((mesh) => mesh.name === 'Motor')!;
+      expect(blade.material).toBe(tableTwo.look('Blade', pickedLook));
+      expect(motor.material).toBe(tableTwo.look('Part', pickedLook));
+
+      hover.current = NO_HOVER;
+      tick();
+
+      expect(blade.material).toBe(tableTwo.look('Blade', pickedLook));
+      expect(motor.material).toBe(tableTwo.get('Part'));
+    });
+
+    it('restores the asset`s look and hides the outline when the part is deselected', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      selection.current = NO_SELECTION;
+      tick();
+
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+      }
+      for (const outline of outlines(tower.object)) expect(outline.visible).toBe(false);
+    });
+
+    it('moves the look from one part to another when the selection changes', () => {
+      const { template: two, table: tableTwo } = makeTwoBoundTemplate();
+      const tower = targetOf('CT-01', two, new Set(['FanBlade', 'Motor']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      selection.current = { asset: 'CT-01', part: 'Motor' };
+      tick();
+
+      const motor = meshes(tower.object).find((mesh) => mesh.name === 'Motor')!;
+      expect(bladeOf(tower.object).material).toBe(tableTwo.get('Blade'));
+      expect(motor.material).toBe(tableTwo.look('Part', pickedLook));
+    });
+
+    it('keeps a stale asset`s selected part in the accent: the selection is above the dash', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed, flags } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+      flags.set('CT-01', STALE);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      const blade = bladeOf(tower.object);
+      expect(outlines(blade)[0]!.material).toBe(table.line({ edge: 'accent', severity: null }));
+      const rest = meshes(tower.object).filter((candidate) => candidate !== blade);
+      for (const mesh of rest) {
+        expect(outlines(mesh)[0]!.material).toBe(
+          table.line({ edge: 'stale-dashed', severity: null }),
+        );
+      }
+    });
+
+    it('repaints only the asset the selection left and the one it came to', () => {
+      const one = targetOf('CT-01', template, new Set(['FanBlade']));
+      const two = targetOf('CT-02', template, new Set(['FanBlade']));
+      const three = targetOf('CT-03', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [one, two, three], hoverRef(), selection);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+      const sentinel = new MeshStandardMaterial();
+      for (const mesh of meshes(three.object)) mesh.material = sentinel;
+
+      selection.current = { asset: 'CT-02', part: 'FanBlade' };
+      tick();
+
+      expect(bladeOf(one.object).material).toBe(table.get('Blade'));
+      expect(bladeOf(two.object).material).toBe(table.look('Blade', pickedLook));
+      for (const mesh of meshes(three.object)) expect(mesh.material).toBe(sentinel);
+    });
+
+    it('ignores a selected node the model does not have, and another asset`s selection', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+
+      selection.current = { asset: 'CT-01', part: 'NoSuchNode' };
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+      }
+
+      selection.current = { asset: 'CT-02', part: 'FanBlade' };
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+      }
+    });
+
+    it('writes nothing while the selection is the same object', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const selection = selectionRef();
+      mountSelecting(feed, [tower], hoverRef(), selection);
+      selection.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+      const sentinel = new MeshStandardMaterial();
+      bladeOf(tower.object).material = sentinel;
+
+      tick();
+
+      expect(bladeOf(tower.object).material).toBe(sentinel);
+    });
+
+    it('leaves the models as they were for a caller that passes no selection', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      mount(feed, [tower]);
+
+      tick();
+
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+      }
     });
   });
 

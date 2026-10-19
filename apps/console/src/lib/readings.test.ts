@@ -1,5 +1,5 @@
 import type { Asset, TelemetryPoint, TelemetryValue } from '@occ/contracts';
-import { formatReading, limitLine, statePointOf } from './readings';
+import { formatReading, limitLine, readingParts, statePointOf } from './readings';
 
 type PointShape = Pick<TelemetryPoint, 'key' | 'kind' | 'unit'>;
 
@@ -87,6 +87,61 @@ describe('formatReading', () => {
     it('draws a word-table key whose value has the wrong type by its kind', () => {
       expect(formatReading(bool('leakDetected'), 'wet')).toBe('wet');
     });
+  });
+});
+
+describe('readingParts (V2-15.10)', () => {
+  it.each<[string, PointShape, TelemetryValue, string, string | null]>([
+    ['a number with its unit', num('fanSpeedRpm', 'rpm'), 1420, '1,420', 'rpm'],
+    ['a temperature', num('motorTempC', '°C'), 71, '71', '°C'],
+    ['a percentage', num('fuelLevelPct', '%'), 86, '86', '%'],
+    ['at most one fraction digit', num('fanSpeedRpm', 'rpm'), 1234.56, '1,234.6', 'rpm'],
+    ['a number with no unit', num('runHours', null), 12, '12', null],
+    ['an empty unit is no unit', num('runHours', ''), 12, '12', null],
+    ['a tiny negative is not "-0"', num('motorTempC', '°C'), -0.04, '0', '°C'],
+  ])('%s', (_name, point, value, text, unit) => {
+    expect(readingParts(point, value)).toEqual({ text, unit });
+  });
+
+  it.each<[string, PointShape, TelemetryValue, string]>([
+    ['a closed breaker', bool('breakerClosed'), true, 'Closed'],
+    ['an open breaker', bool('breakerClosed'), false, 'Open'],
+    ['a wet leak sensor', bool('leakDetected'), true, 'Wet'],
+    ['a car floor, a number the table words', num('carFloor', null), 2, 'Floor 2'],
+    ['an enum with a word', enumPoint('armPosition'), 'up', 'Up'],
+    ['an enum in sentence case', enumPoint('mode'), 'auto', 'Auto'],
+    ['a boolean with no word', bool('someFlag'), true, 'Yes'],
+  ])('%s has no unit: %s', (_name, point, value, text) => {
+    expect(readingParts(point, value)).toEqual({ text, unit: null });
+  });
+
+  it('draws a value whose type disagrees with its kind as it came, with no unit', () => {
+    expect(readingParts(num('motorTempC', '°C'), 'hot')).toEqual({ text: 'hot', unit: null });
+  });
+
+  it('draws a number that is not finite as it came, with no unit', () => {
+    expect(readingParts(num('motorTempC', '°C'), Number.NaN)).toEqual({ text: 'NaN', unit: null });
+  });
+
+  it('gives a value of a kind from a newer API as text, with no unit', () => {
+    const newer = { key: 'x', kind: 'duration', unit: 's' } as unknown as PointShape;
+
+    expect(readingParts(newer, 12)).toEqual({ text: '12', unit: null });
+  });
+
+  it('joined with a space is what formatReading says, for every case above', () => {
+    const cases: [PointShape, TelemetryValue][] = [
+      [num('fanSpeedRpm', 'rpm'), 1420],
+      [num('runHours', null), 12],
+      [num('motorTempC', '°C'), -0.04],
+      [num('motorTempC', '°C'), Number.NaN],
+      [bool('breakerClosed'), true],
+      [enumPoint('mode'), 'auto'],
+    ];
+    for (const [point, value] of cases) {
+      const { text, unit } = readingParts(point, value);
+      expect(unit === null ? text : `${text} ${unit}`).toBe(formatReading(point, value));
+    }
   });
 });
 

@@ -1,4 +1,12 @@
-import { assetHover, hoveredShellZone, hoverOf, NO_HOVER } from './twinHover';
+import {
+  assetHover,
+  hoveredShellZone,
+  hoverOf,
+  NO_HOVER,
+  NO_SELECTION,
+  partsPicked,
+  selectionOf,
+} from './twinHover';
 import type { SceneFocus } from './twinLevel';
 import type { PlacedAsset, Placement } from './twinPlacement';
 
@@ -68,6 +76,82 @@ describe('assetHover', () => {
       whole: false,
       part: null,
     });
+  });
+});
+
+describe('selectionOf (V2-15.10)', () => {
+  it('is the one shared empty selection with no part or no asset', () => {
+    expect(selectionOf({ selectedAssetCode: null, selectedPart: null })).toBe(NO_SELECTION);
+    expect(selectionOf({ selectedAssetCode: 'CT-01', selectedPart: null })).toBe(NO_SELECTION);
+    expect(selectionOf({ selectedAssetCode: null, selectedPart: 'FanBlade' })).toBe(NO_SELECTION);
+  });
+
+  it('names the asset and its selected part', () => {
+    expect(selectionOf({ selectedAssetCode: 'CT-01', selectedPart: 'FanBlade' })).toEqual({
+      asset: 'CT-01',
+      part: 'FanBlade',
+    });
+  });
+
+  it('makes a new object for each selection, so a reader can tell by identity that it changed', () => {
+    const first = selectionOf({ selectedAssetCode: 'CT-01', selectedPart: 'FanBlade' });
+    const second = selectionOf({ selectedAssetCode: 'CT-01', selectedPart: 'FanBlade' });
+
+    expect(second).not.toBe(first);
+  });
+});
+
+describe('partsPicked (V2-15.10)', () => {
+  const has = (node: string) => ['FanBlade', 'Housing', 'Motor'].includes(node);
+  const hovering = (asset: string | null, part: string | null) => ({ asset, part });
+  const selecting = (asset: string | null, part: string | null) => ({ asset, part });
+
+  it('is nothing with no hover and no selection', () => {
+    expect(partsPicked('CT-01', NO_HOVER, NO_SELECTION, has)).toEqual([]);
+  });
+
+  it('is the hovered part alone while the pointer is on it', () => {
+    expect(partsPicked('CT-01', hovering('CT-01', 'FanBlade'), NO_SELECTION, has)).toEqual([
+      { node: 'FanBlade', kind: 'hover' },
+    ]);
+  });
+
+  it('keeps the selected part after the pointer has left it', () => {
+    expect(partsPicked('CT-01', NO_HOVER, selecting('CT-01', 'FanBlade'), has)).toEqual([
+      { node: 'FanBlade', kind: 'selected' },
+    ]);
+  });
+
+  it('lists a part that is both hovered and selected once, as selected', () => {
+    expect(
+      partsPicked('CT-01', hovering('CT-01', 'FanBlade'), selecting('CT-01', 'FanBlade'), has),
+    ).toEqual([{ node: 'FanBlade', kind: 'selected' }]);
+  });
+
+  it('lists the hovered part and a different selected part, hover first', () => {
+    expect(
+      partsPicked('CT-01', hovering('CT-01', 'Motor'), selecting('CT-01', 'FanBlade'), has),
+    ).toEqual([
+      { node: 'Motor', kind: 'hover' },
+      { node: 'FanBlade', kind: 'selected' },
+    ]);
+  });
+
+  it('ignores the hover and the selection of another asset', () => {
+    expect(
+      partsPicked('CT-02', hovering('CT-01', 'Motor'), selecting('CT-01', 'FanBlade'), has),
+    ).toEqual([]);
+  });
+
+  it('ignores a node the model does not have, and keeps the one it does', () => {
+    expect(
+      partsPicked('CT-01', hovering('CT-01', 'Gone'), selecting('CT-01', 'FanBlade'), has),
+    ).toEqual([{ node: 'FanBlade', kind: 'selected' }]);
+    expect(partsPicked('CT-01', NO_HOVER, selecting('CT-01', 'Gone'), has)).toEqual([]);
+  });
+
+  it('is the hover alone when the asset is hovered with no part (a row)', () => {
+    expect(partsPicked('CT-01', hovering('CT-01', null), NO_SELECTION, has)).toEqual([]);
   });
 });
 
