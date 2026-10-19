@@ -1,0 +1,148 @@
+/*
+ * The surface and the bodies of the hover tooltips (`Tips.tsx`), a popover-family surface (DN-1), shared by
+ * the 2D map's tooltip and the 3D view's (V2-15.5). Each tooltip adds only where it stands. Severity is the
+ * label in `--text-primary` with the hue on the icon only: critical text fails on `--surface-3`.
+ * `max-width` is twice `HALF_WIDTH` in MapTooltip.tsx, which clamps the map's tooltip to the map's sides.
+ * The body rules are scoped under `.tip`, so the surface class (`tipSurface`) must be on the element around
+ * a body.
+ */
+.tip {
+  width: max-content;
+  max-width: calc(280px * var(--ui-scale));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.tip p {
+  margin: 0;
+}
+
+.tip p + p {
+  margin-top: var(--space-1);
+}
+
+.title {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1-5);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+/* Long titles stop at two lines; the detail panel has the rest. */
+.titleText {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Centres an icon on the first line of the title. */
+.title > svg {
+  margin-top: var(--space-0-5);
+}
+
+.glyph {
+  color: var(--text-secondary);
+}
+
+.offline {
+  color: var(--text-tertiary);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--text-primary);
+}
+
+.severity {
+  color: var(--sev);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+  color: var(--text-secondary);
+}
+
+/*
+ * An asset's tooltip (frame 14 `.tw-tip`): name and code on one line, the state line (`.line`), the
+ * two readings as a label and a value, the asset's reading age, and a foot with a rule over it that
+ * says where a click leads. Same surface as the others; nothing here takes a pointer event.
+ */
+.assetHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+.assetCode {
+  flex: none;
+  font-weight: var(--weight-regular);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+.readings {
+  display: grid;
+  gap: var(--space-0-5);
+  margin: var(--space-2) 0 0;
+}
+
+.reading {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+}
+
+.reading dt {
+  color: var(--text-secondary);
+}
+
+.reading dd {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  color: var(--text-primary);
+}
+
+/* The last known value of an asset that is offline or not updating. */
+.reading dd[data-stale='true'] {
+  color: var(--text-tertiary);
+}
+
+.age {
+  color: var(--text-tertiary);
+}
+
+.foot {
+  padding-top: var(--space-2);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+/* One selector part more than `.tip p + p`, which would otherwise set the margin. */
+.tip .foot {
+  margin-top: var(--space-2);
+}

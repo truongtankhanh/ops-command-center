@@ -11,6 +11,7 @@ import type { ClassPoints } from './useClassPoints';
 import { type BoundInstance, useBoundParts } from './useBoundParts';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
+import { useHoverRef } from './useHoverRef';
 
 interface EquipmentProps {
   /** Every asset, placed (`useTwinScene`). */
@@ -33,13 +34,14 @@ interface EquipmentProps {
  * `roof` assets (`visibleAssets`); a building in focus will add its `inside` assets (V2-15.8).
  *
  * It makes the model instances and gives the same objects to `AssetModel` (which places them), to
- * `useBoundParts` (which moves their bound parts) and to `useModelLooks` (which paints stale and alarm), and it
- * tells the feed what each ready class binds, so the worker follows those keys. The boxes paint their own
- * looks (`AssetBoxes`). A rebuilt instance starts again from its authored pose and snaps to its first
+ * `useBoundParts` (which moves their bound parts) and to `useModelLooks` (which paints stale, alarm and hover,
+ * V2-15.5, with the nodes the bindings name as the parts a hover can single out), and it tells the feed what
+ * each ready class binds, so the worker follows those keys. The boxes paint their own looks (`AssetBoxes`). A rebuilt instance starts again from its authored pose and snaps to its first
  * value, which happens when the scene's data changes (the cameras or the assets arrive), not while it runs.
  */
 export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
   const picker = usePicker();
+  const hover = useHoverRef();
   const ready = useClassModels(classes, classPoints);
 
   const { boxes, instances, bound, looks } = useMemo(() => {
@@ -55,7 +57,12 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
       if (entry === undefined) continue;
       const object = instantiate(entry.template);
       instances.push({ assetCode: asset.code, object, pose: asset.pose });
-      looks.push({ assetCode: asset.code, object, materials: entry.template.materials });
+      looks.push({
+        assetCode: asset.code,
+        object,
+        materials: entry.template.materials,
+        parts: entry.bindings === null ? NO_PARTS : nodesOf(entry.bindings),
+      });
       if (entry.bindings !== null) {
         bound.push({ assetCode: asset.code, object, bindings: entry.bindings });
       }
@@ -84,12 +91,12 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
   }, [picker, instances, bound]);
 
   useBoundParts(feed, bound);
-  // Every model instance, bound or not, takes the look of its asset's flags (V2-14.9).
-  useModelLooks(feed, looks);
+  // Every model instance, bound or not, takes the look of its asset's flags and hover (V2-14.9, V2-15.5).
+  useModelLooks(feed, looks, hover);
 
   return (
     <>
-      <AssetBoxes assets={boxes} feed={feed} />
+      <AssetBoxes assets={boxes} feed={feed} hover={hover} />
       <AssetModel instances={instances} />
     </>
   );

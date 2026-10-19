@@ -55,6 +55,7 @@ interface TwinCanvasProps {
  *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
+ * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5).
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
  * - `Pointer` listens to the canvas element for hover, click and drag, and asks `PickLayer` what is under it
@@ -98,7 +99,7 @@ export function TwinCanvas({
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <PickLayer cameras={scene.cameras} frame={scene.frame}>
-            <Buildings zones={scene.zones} frame={scene.frame} />
+            <Buildings zones={scene.zones} frame={scene.frame} assets={scene.assets} />
             <Equipment
               assets={scene.assets}
               classes={scene.classes}

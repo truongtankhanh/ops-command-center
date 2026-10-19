@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react';
+import type { RefObject } from 'react';
 import {
   BoxGeometry,
   type BufferAttribute,
@@ -10,6 +11,7 @@ import {
   type Object3D,
 } from 'three';
 import { edgeIndices } from '../lib/twinBoxes';
+import { type HoverState, NO_HOVER } from '../lib/twinHover';
 import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import type { AssetFlags, TwinFeed } from '../realtime/twinFeed';
@@ -77,9 +79,13 @@ function makeTemplate() {
 function targetOf(
   assetCode: string,
   template: ReturnType<typeof makeTemplate>['template'],
+  parts: ReadonlySet<string> = new Set(),
 ): ModelLookTarget {
-  return { assetCode, object: instantiate(template), materials: template.materials };
+  return { assetCode, object: instantiate(template), materials: template.materials, parts };
 }
+
+/** The ref `useHoverRef` keeps, here set by hand; nothing is hovered at first. */
+const hoverRef = (): { current: HoverState } => ({ current: NO_HOVER });
 
 const meshes = (object: Object3D): Mesh[] => {
   const found: Mesh[] = [];
@@ -99,9 +105,13 @@ const outlines = (object: Object3D): LineSegments[] => {
 
 const baseName = (mesh: Mesh) => (mesh.material as MeshStandardMaterial).name;
 
-function mount(feed: TwinFeed | null, targets: readonly ModelLookTarget[]) {
+function mount(
+  feed: TwinFeed | null,
+  targets: readonly ModelLookTarget[],
+  hover: RefObject<HoverState> = hoverRef(),
+) {
   return renderHook(
-    (props: { targets: readonly ModelLookTarget[] }) => useModelLooks(feed, props.targets),
+    (props: { targets: readonly ModelLookTarget[] }) => useModelLooks(feed, props.targets, hover),
     {
       initialProps: { targets },
     },
@@ -286,6 +296,207 @@ describe('useModelLooks', () => {
     }
   });
 
+  // V2-15.5: hover, from the ref the canvas keeps from the store.
+  describe('hover', () => {
+    const hoverLook = { face: 'hover', severity: null } as const;
+
+    it('tints a hovered asset and outlines it in the accent, and restores it when the pointer leaves', () => {
+      const tower = targetOf('CT-01', template);
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      tick();
+
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.look(baseName(mesh), hoverLook));
+      }
+      for (const outline of outlines(tower.object)) {
+        expect(outline.visible).toBe(true);
+        expect(outline.material).toBe(table.line({ edge: 'accent', severity: null }));
+      }
+
+      hover.current = NO_HOVER;
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+      }
+      for (const outline of outlines(tower.object)) expect(outline.visible).toBe(false);
+    });
+
+    it('shows the hover look over an alarm while hovered and the severity again when it leaves (AC2)', () => {
+      const tower = targetOf('CT-01', template);
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      flags.set('CT-01', alarmed('high'));
+      tick();
+
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.look(baseName(mesh), hoverLook));
+      }
+
+      hover.current = NO_HOVER;
+      tick();
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.look(baseName(mesh), { face: 'alarm', severity: 'high' }));
+      }
+      for (const outline of outlines(tower.object)) {
+        expect(outline.material).toBe(table.line({ edge: 'severity', severity: 'high' }));
+      }
+    });
+
+    it('shows the hover look over a stale asset, and the dash again after it', () => {
+      const tower = targetOf('CT-01', template);
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      flags.set('CT-01', STALE);
+      tick();
+
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+      for (const outline of outlines(tower.object)) {
+        expect(outline.material).toBe(table.line({ edge: 'accent', severity: null }));
+      }
+
+      hover.current = NO_HOVER;
+      tick();
+      for (const outline of outlines(tower.object)) {
+        expect(outline.material).toBe(table.line({ edge: 'stale-dashed', severity: null }));
+      }
+    });
+
+    it('repaints only the asset the hover left and the one it came to', () => {
+      const one = targetOf('CT-01', template);
+      const two = targetOf('CT-02', template);
+      const three = targetOf('CT-03', template);
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [one, two, three], hover);
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+      const sentinel = new MeshStandardMaterial();
+      for (const mesh of meshes(three.object)) mesh.material = sentinel;
+
+      hover.current = { asset: 'CT-02', part: null };
+      tick();
+
+      for (const mesh of meshes(one.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+      for (const mesh of meshes(two.object)) {
+        expect(mesh.material).toBe(table.look(baseName(mesh), hoverLook));
+      }
+      for (const mesh of meshes(three.object)) expect(mesh.material).toBe(sentinel);
+    });
+
+    it('writes nothing while the hover is the same object', () => {
+      const tower = targetOf('CT-01', template);
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+      const sentinel = new MeshStandardMaterial();
+      for (const mesh of meshes(tower.object)) mesh.material = sentinel;
+
+      tick();
+
+      for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(sentinel);
+    });
+
+    it('leaves an asset alone when another one is hovered', () => {
+      const tower = targetOf('CT-01', template);
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+
+      hover.current = { asset: 'CT-02', part: null };
+      tick();
+
+      for (const mesh of meshes(tower.object))
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+    });
+
+    it('tints a hovered part alone, and the asset around it keeps its own look', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      flags.set('CT-01', alarmed('high'));
+      tick();
+
+      hover.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      // The order of the meshes is the template's (static parts are merged), so they are found by name.
+      const all = meshes(tower.object);
+      const blade = all.find((mesh) => mesh.name === 'FanBlade')!;
+      const rest = all.filter((mesh) => mesh !== blade);
+      expect(rest.length).toBeGreaterThan(0);
+      expect(blade.material).toBe(table.look('Blade', hoverLook));
+      const bladeOutline = outlines(blade)[0]!;
+      expect(bladeOutline.visible).toBe(true);
+      expect(bladeOutline.material).toBe(table.line({ edge: 'accent', severity: null }));
+      for (const mesh of rest) {
+        expect(mesh.material).toBe(table.look('Part', { face: 'alarm', severity: 'high' }));
+        expect(outlines(mesh)[0]!.material).toBe(
+          table.line({ edge: 'severity', severity: 'high' }),
+        );
+      }
+    });
+
+    it('gives the part back to the asset when the pointer leaves it', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+      hover.current = { asset: 'CT-01', part: 'FanBlade' };
+      tick();
+
+      hover.current = { asset: 'CT-01', part: null };
+      tick();
+
+      // The body is hovered now, so the whole asset is.
+      for (const mesh of meshes(tower.object)) {
+        expect(mesh.material).toBe(table.look(baseName(mesh), hoverLook));
+      }
+
+      hover.current = NO_HOVER;
+      tick();
+      for (const mesh of meshes(tower.object))
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+    });
+
+    it('ignores a hovered node the model does not have', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+
+      hover.current = { asset: 'CT-01', part: 'NoSuchNode' };
+      tick();
+
+      for (const mesh of meshes(tower.object))
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+    });
+
+    it('ignores a hovered part of another asset', () => {
+      const tower = targetOf('CT-01', template, new Set(['FanBlade']));
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mount(feed, [tower], hover);
+
+      hover.current = { asset: 'CT-02', part: 'FanBlade' };
+      tick();
+
+      for (const mesh of meshes(tower.object))
+        expect(mesh.material).toBe(table.get(baseName(mesh)));
+    });
+  });
+
   it('does nothing without a feed or without instances', () => {
     const tower = targetOf('CT-01', template);
     mount(null, [tower]);
@@ -315,10 +526,17 @@ const colourAt = (attribute: BufferAttribute, v: number): string =>
 
 const hexOf = (color: string): string => `#${new Color(color).getHexString()}`;
 
-function mountBoxes(feed: TwinFeed | null, layers: BoxLayers | null) {
-  return renderHook((props: { layers: BoxLayers | null }) => useBoxLooks(feed, props.layers), {
-    initialProps: { layers },
-  });
+function mountBoxes(
+  feed: TwinFeed | null,
+  layers: BoxLayers | null,
+  hover: RefObject<HoverState> = hoverRef(),
+) {
+  return renderHook(
+    (props: { layers: BoxLayers | null }) => useBoxLooks(feed, props.layers, hover),
+    {
+      initialProps: { layers },
+    },
+  );
 }
 
 describe('useBoxLooks', () => {
@@ -502,6 +720,119 @@ describe('useBoxLooks', () => {
 
     expect(new Set(faceColoursOf(rebuilt, 'B'))).toEqual(new Set([hexOf(twinColors.stale.top)]));
     expect(indexOf(rebuilt.dashed)).toEqual(edgeIndices(rebuilt.ranges, new Set(['B'])).dashed);
+  });
+
+  // V2-15.5: hover, from the ref the canvas keeps from the store.
+  describe('hover', () => {
+    const hovered = lookOf(LIVE, true, false);
+
+    it('tints a hovered box and outlines it in the accent, and no other box, and restores it on leaving', () => {
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+      tick();
+
+      hover.current = { asset: 'B', part: null };
+      tick();
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(
+        new Set([hexOf(faceColour(twinColors.neutral, hovered))]),
+      );
+      expect(new Set(edgeColoursOf(layers, 'B'))).toEqual(new Set([hexOf(mapColors.accent)]));
+      for (const other of ['A', 'C']) {
+        expect(new Set(faceColoursOf(layers, other))).toEqual(new Set([hexOf(twinColors.neutral)]));
+      }
+
+      hover.current = NO_HOVER;
+      tick();
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(new Set([hexOf(twinColors.neutral)]));
+      expect(new Set(edgeColoursOf(layers, 'B'))).toEqual(new Set([hexOf(twinColors.edge)]));
+    });
+
+    it('shows the hover look over an alarm while hovered and the severity again after it (AC2)', () => {
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+      flags.set('B', alarmed('high'));
+      tick();
+      const alarm = lookOf(alarmed('high'), false, false);
+
+      hover.current = { asset: 'B', part: null };
+      tick();
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(
+        new Set([hexOf(faceColour(twinColors.neutral, hovered))]),
+      );
+
+      hover.current = NO_HOVER;
+      tick();
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(
+        new Set([hexOf(faceColour(twinColors.neutral, alarm))]),
+      );
+      expect(new Set(edgeColoursOf(layers, 'B'))).toEqual(
+        new Set([hexOf(mapColors.severity.high)]),
+      );
+    });
+
+    it('takes a hovered stale box out of the dashed layer, and puts it back after', () => {
+      const { feed, flags } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+      flags.set('B', STALE);
+      tick();
+      expect(indexOf(layers.dashed)).toEqual(edgeIndices(layers.ranges, new Set(['B'])).dashed);
+
+      hover.current = { asset: 'B', part: null };
+      tick();
+      expect(indexOf(layers.dashed)).toEqual([]);
+      expect(new Set(edgeColoursOf(layers, 'B'))).toEqual(new Set([hexOf(mapColors.accent)]));
+
+      hover.current = NO_HOVER;
+      tick();
+      expect(indexOf(layers.dashed)).toEqual(edgeIndices(layers.ranges, new Set(['B'])).dashed);
+      expect(new Set(edgeColoursOf(layers, 'B'))).toEqual(new Set([hexOf(twinColors.staleEdge)]));
+    });
+
+    it('repaints only the box the hover left and the one it came to', () => {
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+      hover.current = { asset: 'A', part: null };
+      tick();
+      const rangeC = layers.ranges.find((r) => r.code === 'C')!;
+      layers.faceColours.setXYZ(rangeC.firstVertex, 1, 0, 1);
+
+      hover.current = { asset: 'B', part: null };
+      tick();
+
+      expect(new Set(faceColoursOf(layers, 'A'))).toEqual(new Set([hexOf(twinColors.neutral)]));
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(
+        new Set([hexOf(faceColour(twinColors.neutral, hovered))]),
+      );
+      expect(colourAt(layers.faceColours, rangeC.firstVertex)).toBe('#ff00ff');
+    });
+
+    it('does not tint a box for a hovered part: a box has none', () => {
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+
+      hover.current = { asset: 'B', part: 'FanBlade' };
+      tick();
+
+      expect(new Set(faceColoursOf(layers, 'B'))).toEqual(new Set([hexOf(twinColors.neutral)]));
+    });
+
+    it('writes nothing while the hover is the same object', () => {
+      const { feed } = createRig();
+      const hover = hoverRef();
+      mountBoxes(feed, layers, hover);
+      hover.current = { asset: 'B', part: null };
+      tick();
+      const version = layers.faceColours.version;
+
+      tick();
+
+      expect(layers.faceColours.version).toBe(version);
+    });
   });
 
   it('does nothing without a feed or without boxes', () => {

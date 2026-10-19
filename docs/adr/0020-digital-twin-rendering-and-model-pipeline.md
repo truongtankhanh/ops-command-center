@@ -249,6 +249,41 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Where the code is.** The logic is `lib/twinPointer.ts`, a DOM controller with no `three`, tested with synthetic
       pointer events; `twin/Pointer.tsx` only wires it. Known gap, left to V2-15.5: when the camera moves under a
       still pointer no `pointermove` fires, so the hover and the cursor are stale until the next move.
+  - Settled in V2-15.5 (2026-10-19), without changing the decision: how hover looks and speaks.
+    - **Hover is the asset's look; a selected asset keeps its own.** `lookOf(flags, hovered, selected)` is called with
+      `selected = false` for assets: frames 03, 08 and 17 select the _part_ and draw nothing on the asset, and frame 15
+      keeps an inspected asset in its alarm look, which a selection tint would have hidden (Principle 2). The selected
+      part's look is V2-15.10's. Hover sits above stale and alarm, as `lookOf` already says, and leaving restores them.
+    - **A hovered part is tinted alone.** The pointer writes `hoveredAssetCode` and `hoveredPart` together, so while a
+      part is hovered the asset around it keeps its own look and only the meshes under that bound node take the hover
+      face and accent outline (`lib/twinHover.ts` `assetHover`, `twin/useAssetLooks.ts`). A node the model does not
+      have, and a part of another asset, change nothing; a box has no parts.
+    - **The paint loops read the store, not the feed.** `twin/useHoverRef.ts` subscribes to the store's two hover fields
+      once per consumer, keeps a ref (a new object per change) and asks the on-demand canvas for a frame; the loops
+      repaint the asset the hover left and the one it came to, and no other. `realtime/twinFeed.ts` stays free of
+      UI state and of a store (this replaces the "with `getStore`" hand-over of V2-14.5 and V2-14.9); hover is not a
+      reading, so the rule that readings never enter React state is untouched.
+    - **A hovered `inside` asset tints its building.** Nothing of it is drawn at campus level, so the building of its
+      zone takes `--tw-hover-top` (the accent at 30 % into the idle top, the tokens' arithmetic) while it is hovered
+      (`lib/twinHover.ts` `hoveredShellZone`, `twin/shellLooks.ts`). The shells became one white material with a
+      colour per vertex (`--tw-top` for every building, so the idle picture is unchanged; `unverified` until looked at),
+      painted per building through `userData.ranges`: the first reader of the colour V2-15.8 and V2-17.3 also write.
+      Hovering a building with the pointer tints nothing and says nothing yet (the cursor is its only hover).
+    - **The tooltip follows the pick, for assets and cameras.** `twin/TwinTooltip.tsx` shows the bodies the 2D map's
+      tooltip uses (`components/Tips.tsx`) after 150 ms of resting on one target, at the pointer plus 18 px, flipped to
+      the pointer's left at the stage's edge and clear of the open sheet (`lib/twinTooltip.ts`); a part, a building and
+      nothing get none, and a row hovered in the Assets tab gets none (it tints the asset; there is no pointer to put a
+      tooltip beside). Its foot is "Click to inspect · {place line}", or "No 3D model · drawn as a box" for a class with
+      no `modelUrl` (`AssetTip`'s optional `foot`; the map's foot is unchanged). It is `aria-hidden`, never interactive,
+      and reads only the catalogue, the incidents and the 1 Hz overview: no watch, no new number.
+    - **The known gap of V2-15.4 is closed for the tooltip only.** A press, a wheel turn, leaving the stage, a touch and
+      picking a report location hide it, and it stays hidden until the next `pointermove`, so it never describes what
+      a flying or damping camera has moved from under the pointer. The tint and the cursor can still be stale in that
+      moment (re-casting the last point on a camera change was not done: it would touch the picking seam for a few
+      frames of stale tint).
+    - **Where the code is.** The tip bodies and their surface moved out of `MapTooltip` unchanged (`Tips.tsx`,
+      `Tips.module.css`, the class exported by `tipSurface.ts`); `MapTooltip` keeps only its placement and its
+      tests are untouched. Chunk: see the figure `-verify` reports for this task (the budget was 17,005 bytes under after V2-15.4).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
