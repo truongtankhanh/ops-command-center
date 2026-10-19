@@ -7,7 +7,8 @@ import type { Binding, BindingPoint } from './twinBindings';
  * an angle, and the encoding of a reading into a pose. Pure: no `three`, no DOM, so what runs in `useFrame`
  * and cannot be tested there (a result that depends on the frame rate, a jump, a wrong sign) is tested
  * here. Brief § Worker and render loop and ADR-0020 § State "Settled in V2-14.1" are the specification;
- * `useFrame` applies it in V2-14.8, and nothing else consumes this module before then.
+ * `twin/useBoundParts.ts` (V2-14.8) applies it. The functions below it step one part by one frame
+ * (`stepBound`) and say what pose that is (`poseOfBound`); the loop writes that pose onto the node.
  *
  * Units, because a `Binding` carries only numbers:
  *  - `turn`: the model's `range` is in degrees and `angleFor` returns radians.
@@ -36,6 +37,13 @@ export const SETTLE_EPSILON = 0.001;
  * span, and the API drops a reading outside `min`/`max`), so the threshold is a fraction of it.
  */
 export const SNAP_FRACTION = 0.5;
+
+/**
+ * The longest step the render loop takes, in seconds. A demand-mode canvas that has slept for a minute gets a
+ * `delta` of a minute on its next frame, which would turn a spinning part by an arbitrary angle; easing
+ * converges for any step, so clamping changes nothing for it.
+ */
+export const MAX_FRAME_DT_S = 0.1;
 
 const TWO_PI = 2 * Math.PI;
 
@@ -170,4 +178,104 @@ export function angleFor(binding: Binding, encoded: number): number | null {
 /** A `slide` part's offset in metres for an encoded value; `null` for any other motion, or no range or number. */
 export function offsetFor(binding: Binding, encoded: number): number | null {
   return binding.motion === 'slide' ? poseOf(binding, encoded) : null;
+}
+
+/** The frame's `delta` as the loop uses it: clamped to `MAX_FRAME_DT_S`, and `0` for a step that is not usable. */
+export function frameDt(deltaS: number): number {
+  return Number.isFinite(deltaS) && deltaS > 0 ? Math.min(deltaS, MAX_FRAME_DT_S) : 0;
+}
+
+/**
+ * Where one bound part is between frames (V2-14.8). Plain numbers, mutated in place by `stepBound`, so the loop
+ * allocates nothing.
+ */
+export interface BoundState {
+  /**
+   * `turn` / `slide`: the eased encoded value, in the point's domain units. `spin`: the eased visual speed in
+   * rev/s. `null` until the first value, while the part sits at its authored pose.
+   */
+  value: number | null;
+  /** `spin` only: the integrated angle in radians, in `[0, 2π)`. */
+  angle: number;
+  /** The last reading seen, the previous side of `snapFor`; `null` means the next value snaps. */
+  previous: number | null;
+}
+
+export const createBoundState = (): BoundState => ({ value: null, angle: 0, previous: null });
+
+/** Makes the next value snap instead of ease: the first one after a reconnect (brief § Worker and render loop). */
+export function resetBoundState(state: BoundState): void {
+  state.previous = null;
+}
+
+/** A `turn` / `slide` part: ease the encoded value toward the reading, snapping on the first value or a large step. */
+function stepPose(binding: Binding, state: BoundState, reading: number, dtS: number): boolean {
+  const [from, to] = domainOf(binding.point);
+  state.value =
+    state.value === null || snapFor(binding, state.previous, reading)
+      ? reading
+      : easeToward(state.value, reading, dtS);
+  state.previous = reading;
+  if (hasSettled(state.value, reading, to - from)) {
+    state.value = reading;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * A `spin` part: ease the visual **speed** toward the reading's, then integrate the angle, so a fan never jumps
+ * or reverses when a reading arrives. The speed is settled to exactly the target (a stop is exactly 0), and
+ * the part asks for frames for as long as it turns.
+ */
+function stepSpin(binding: Binding, state: BoundState, reading: number, dtS: number): boolean {
+  if (binding.range === undefined) return false;
+  const target = spinSpeed(reading, binding.range);
+  state.value =
+    state.value === null || snapFor(binding, state.previous, reading)
+      ? target
+      : easeToward(state.value, target, dtS);
+  state.previous = reading;
+  if (hasSettled(state.value, target, MAX_VISUAL_REV_PER_S)) state.value = target;
+  if (state.value > 0) state.angle = integrateAngle(state.angle, state.value, dtS);
+  return state.value > 0;
+}
+
+/**
+ * Advances one bound part by one frame of `dtS` seconds toward `reading` (an encoded number from the targets
+ * buffer: a number as it is, a boolean 0 / 1, an enum its index) and says whether it needs another frame.
+ * That answer is the "needs a frame" predicate of the demand-mode canvas: `true` while a value has not settled
+ * and while a part spins, `false` for a part at rest. A `tint` is not stepped here (V2-14.9). A reading that
+ * is not a number (no value yet, or a layout just rebuilt) changes nothing and asks for nothing: the part
+ * holds where it is.
+ */
+export function stepBound(
+  binding: Binding,
+  state: BoundState,
+  reading: number,
+  dtS: number,
+): boolean {
+  if (binding.motion === 'tint' || !Number.isFinite(reading)) return false;
+  return binding.motion === 'spin'
+    ? stepSpin(binding, state, reading, dtS)
+    : stepPose(binding, state, reading, dtS);
+}
+
+/**
+ * What to write onto the node: radians about the axis for a `turn`, metres along it for a `slide`, the
+ * integrated angle for a `spin`. `null` for a `tint` and for a part with no value yet, which stays at the pose
+ * it was authored in.
+ */
+export function poseOfBound(binding: Binding, state: BoundState): number | null {
+  if (state.value === null) return null;
+  switch (binding.motion) {
+    case 'spin':
+      return state.angle;
+    case 'turn':
+      return angleFor(binding, state.value);
+    case 'slide':
+      return offsetFor(binding, state.value);
+    default:
+      return null;
+  }
 }

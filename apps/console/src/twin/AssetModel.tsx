@@ -1,36 +1,36 @@
-import { useMemo } from 'react';
-import type { PlacedAsset } from '../lib/twinPlacement';
-import { type ClassTemplate, instantiate } from './classModel';
+import type { Object3D } from 'three';
+import type { AssetPose } from '../lib/twinPlacement';
+
+/** One asset's copy of its class's model, made by `Equipment` and moved by `useBoundParts`. */
+export interface ModelInstance {
+  assetCode: string;
+  object: Object3D;
+  pose: AssetPose;
+}
 
 interface AssetModelProps {
-  /** The class's model, ready (`useClassModels`). */
-  template: ClassTemplate;
-  /** The assets of this class to draw, placed and posed (`placeAssets`). */
-  assets: readonly PlacedAsset[];
+  instances: readonly ModelInstance[];
 }
 
 /**
- * One class's model, once per asset (V2-14.7, frames 03 and 08): a copy of the template at the asset's pose,
- * its base on `pose.y`, centred on `pose.x`, `pose.z` and turned by `pose.rotationY`. The copies share the
- * template's geometry and materials, so a class costs its file once however many assets stand in it; each has
- * its own bound parts, which V2-14.8 moves.
+ * The models in the scene (V2-14.7, frames 03 and 08): each instance at its asset's pose, its base on
+ * `pose.y`, centred on `pose.x`, `pose.z` and turned by `pose.rotationY`. It only places what it is given:
+ * `Equipment` makes the copies (a copy shares the template's geometry and materials, so a class costs its file
+ * once however many assets stand in it) and hands the same objects to `useBoundParts`, which moves their bound
+ * parts. Two owners of one object would be two places to get its pose wrong.
  *
- * The scene graph objects are `<primitive>`s: R3F does not dispose what it is handed that way, which is right
- * here, because the template owns the geometry and `useClassModels` frees it with the stage.
+ * The objects are `<primitive>`s: R3F does not dispose what it is handed that way, which is right here, because
+ * the template owns the geometry and `useClassModels` frees it with the stage.
  */
-export function AssetModel({ template, assets }: AssetModelProps) {
-  const copies = useMemo(
-    () => assets.map((asset) => ({ asset, object: instantiate(template) })),
-    [template, assets],
-  );
+export function AssetModel({ instances }: AssetModelProps) {
   return (
     <>
-      {copies.map(({ asset, object }) => (
+      {instances.map(({ assetCode, object, pose }) => (
         <primitive
-          key={asset.code}
+          key={assetCode}
           object={object}
-          position={[asset.pose.x, asset.pose.y, asset.pose.z]}
-          rotation-y={asset.pose.rotationY}
+          position={[pose.x, pose.y, pose.z]}
+          rotation-y={pose.rotationY}
         />
       ))}
     </>

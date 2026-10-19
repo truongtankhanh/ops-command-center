@@ -8,11 +8,13 @@ import { TwinLegend } from './TwinLegend';
 import styles from './TwinStage.module.css';
 import { TwinView } from './TwinView';
 import { useClassPoints } from './useClassPoints';
+import { useTwinFeed } from './useTwinFeed';
 import { useTwinScene } from './useTwinScene';
 import { ZoneLabels } from './ZoneLabels';
 
 const NO_ANCHORS: LabelAnchor[] = [];
 const NO_CLASSES: ModelClass[] = [];
+const NO_INVALIDATE = (): void => undefined;
 
 /**
  * The 3D twin, as the lazy chunk's entry (ADR-0020): `StageView` loads it with `React.lazy` when the
@@ -20,11 +22,12 @@ const NO_CLASSES: ModelClass[] = [];
  * The `Campus 3D view` landmark, the loading placeholder and the load-failure fallback belong to
  * `StageView` (main chunk): this chunk's CSS is not loaded yet while they show.
  *
- * It owns the scene (`useTwinScene`) and the points of the classes that have a model (`useClassPoints`, for the
- * bindings of V2-14.7) and renders the WebGL canvas and the DOM over it as siblings: the zone
- * labels, the drag hint, the legend and the camera controls. The canvas gets the same scene and two refs
- * for what it keeps in step from its frame loop without a React render: the labels' layer (`LabelProjector`,
- * V2-12.7) and the compass (`CompassSync`, V2-12.10).
+ * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
+ * bindings of V2-14.7) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
+ * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend and
+ * the camera controls. The canvas gets the same scene and two refs for what it keeps in step from its frame
+ * loop without a React render: the labels' layer (`LabelProjector`, V2-12.7) and the compass
+ * (`CompassSync`, V2-12.10).
  *
  * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
  * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
@@ -37,6 +40,10 @@ export default function TwinStage() {
   const scene = useTwinScene();
   // Read here, not in the canvas: a query hook has no client inside `<Canvas>` (V2-14.7).
   const classPoints = useClassPoints(scene?.classes ?? NO_CLASSES);
+  // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
+  // only exists once the canvas does, so the feed calls it through a ref the canvas fills (V2-14.8).
+  const invalidateRef = useRef<() => void>(NO_INVALIDATE);
+  const feed = useTwinFeed({ invalidate: () => invalidateRef.current() });
   const labelLayer = useRef<HTMLDivElement>(null);
   const compass = useRef<HTMLButtonElement>(null);
   return (
@@ -47,6 +54,10 @@ export default function TwinStage() {
           <TwinCanvas
             scene={scene}
             classPoints={classPoints}
+            feed={feed}
+            onInvalidate={(invalidate) => {
+              invalidateRef.current = invalidate;
+            }}
             labelLayer={labelLayer}
             compassRef={compass}
           />

@@ -4,18 +4,25 @@ import assetClassesText from '../../../../docs/design/v2/asset-classes.md?raw';
 import type { Axis, Binding, BindingPoint, Motion } from './twinBindings';
 import {
   angleFor,
+  type BoundState,
+  createBoundState,
   domainOf,
   EASE_LAMBDA,
   easeToward,
+  frameDt,
   hasSettled,
   integrateAngle,
+  MAX_FRAME_DT_S,
   MAX_VISUAL_REV_PER_S,
   offsetFor,
+  poseOfBound,
+  resetBoundState,
   SETTLE_EPSILON,
   SNAP_FRACTION,
   shouldSnap,
   snapFor,
   spinSpeed,
+  stepBound,
   targetFor,
 } from './twinMotion';
 
@@ -400,5 +407,290 @@ describe('the fixtures above match asset-classes.md', () => {
     ['`RadiatorFan` · spin · y · [0, 1800]'],
   ])('says %s', (line) => {
     expect(assetClassesText).toContain(line);
+  });
+});
+
+// --- V2-14.8: one frame of a bound part -------------------------------------------------------------------
+
+const FRAME_S = 1 / 60;
+
+/** Steps `state` for `frames` frames of `dtS` toward `reading`; how many of them asked for another frame, and the last answer. */
+function run(
+  part: Binding,
+  state: BoundState,
+  reading: number,
+  frames: number,
+  dtS = FRAME_S,
+): { asked: number; last: boolean } {
+  let asked = 0;
+  let last = false;
+  for (let i = 0; i < frames; i += 1) {
+    last = stepBound(part, state, reading, dtS);
+    if (last) asked += 1;
+  }
+  return { asked, last };
+}
+
+describe('frameDt', () => {
+  it('names the longest step, 0.1 s', () => {
+    expect(MAX_FRAME_DT_S).toBe(0.1);
+  });
+
+  it('is the delta itself within the limit, and the limit above it', () => {
+    expect(frameDt(0.016)).toBe(0.016);
+    expect(frameDt(0.1)).toBe(0.1);
+    expect(frameDt(60)).toBe(MAX_FRAME_DT_S);
+  });
+
+  it('is 0 for a step that cannot be used', () => {
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) expect(frameDt(bad)).toBe(0);
+  });
+});
+
+describe('stepBound for a turn or a slide', () => {
+  it('snaps the first value, and says the part is at rest', () => {
+    const state = createBoundState();
+
+    expect(stepBound(VALVE, state, 50, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(50);
+    expect(poseOfBound(VALVE, state)).toBeCloseTo(radians(45), 10);
+  });
+
+  it('eases a small step toward the reading and asks for frames until it arrives', () => {
+    const state = createBoundState();
+    stepBound(VALVE, state, 50, FRAME_S);
+
+    expect(stepBound(VALVE, state, 60, FRAME_S)).toBe(true);
+    expect(state.value).toBeGreaterThan(50);
+    expect(state.value).toBeLessThan(60);
+
+    const { last } = run(VALVE, state, 60, 120);
+    expect(last).toBe(false);
+    expect(state.value).toBe(60);
+  });
+
+  it('settles exactly on the reading, so the loop can sleep', () => {
+    const state = createBoundState();
+    stepBound(VALVE, state, 10, FRAME_S);
+
+    run(VALVE, state, 30, 200);
+
+    expect(state.value).toBe(30);
+    expect(stepBound(VALVE, state, 30, FRAME_S)).toBe(false);
+  });
+
+  it('gives the same value for one step of 32 ms as for two of 16 ms', () => {
+    const one = createBoundState();
+    const two = createBoundState();
+    for (const state of [one, two]) stepBound(VALVE, state, 50, FRAME_S);
+
+    stepBound(VALVE, one, 60, 0.032);
+    stepBound(VALVE, two, 60, 0.016);
+    stepBound(VALVE, two, 60, 0.016);
+
+    expect(one.value).toBeCloseTo(two.value as number, 10);
+  });
+
+  it('snaps a step of half the span or more, and does not ask for a frame', () => {
+    const state = createBoundState();
+    stepBound(VALVE, state, 0, FRAME_S);
+
+    expect(stepBound(VALVE, state, 60, FRAME_S)).toBe(false);
+    expect(state.value).toBe(60);
+  });
+
+  it('eases a boolean and an enum by size, however large the step', () => {
+    const breaker = createBoundState();
+    stepBound(BREAKER, breaker, 0, FRAME_S);
+    expect(stepBound(BREAKER, breaker, 1, FRAME_S)).toBe(true);
+    expect(breaker.value).toBeGreaterThan(0);
+    expect(breaker.value).toBeLessThan(1);
+    run(BREAKER, breaker, 1, 120);
+    expect(breaker.value).toBe(1);
+
+    const mode = createBoundState();
+    stepBound(SWITCH, mode, 0, FRAME_S);
+    expect(stepBound(SWITCH, mode, 2, FRAME_S)).toBe(true);
+    expect(mode.value).toBeGreaterThan(0);
+    expect(mode.value).toBeLessThan(2);
+  });
+
+  it('moves a slide along its range', () => {
+    const state = createBoundState();
+    stepBound(SLIDER, state, 0, FRAME_S);
+    run(SLIDER, state, 50, 200);
+
+    expect(poseOfBound(SLIDER, state)).toBeCloseTo(1, 10);
+  });
+
+  it('holds where it is for a reading that is not a number, and asks for no frame', () => {
+    const state = createBoundState();
+    stepBound(VALVE, state, 50, FRAME_S);
+
+    expect(stepBound(VALVE, state, Number.NaN, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(50);
+    expect(state.previous).toBe(50);
+  });
+
+  it('keeps a part with no value at its authored pose', () => {
+    const state = createBoundState();
+
+    expect(stepBound(VALVE, state, Number.NaN, FRAME_S)).toBe(false);
+
+    expect(state.value).toBeNull();
+    expect(poseOfBound(VALVE, state)).toBeNull();
+  });
+
+  it('snaps the next value after a reset, as it does after a reconnect', () => {
+    const state = createBoundState();
+    stepBound(VALVE, state, 50, FRAME_S);
+
+    resetBoundState(state);
+    expect(state.previous).toBeNull();
+    expect(stepBound(VALVE, state, 52, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(52);
+  });
+});
+
+describe('stepBound for a spin', () => {
+  it('starts at the speed of the first reading, and keeps asking for frames while it turns', () => {
+    const state = createBoundState();
+
+    expect(stepBound(FAN, state, 900, FRAME_S)).toBe(true);
+
+    expect(state.value).toBeCloseTo(0.75, 10);
+    expect(state.angle).toBeCloseTo(integrateAngle(0, 0.75, FRAME_S), 10);
+  });
+
+  it('turns faster for a larger reading, and never at the rotor’s speed', () => {
+    const slow = createBoundState();
+    const fast = createBoundState();
+
+    run(FAN, slow, 450, 120);
+    run(FAN, fast, 1420, 120);
+
+    expect(slow.value).toBeCloseTo(0.375, 10);
+    expect(fast.value).toBeCloseTo(spinSpeed(1420, [0, 1800]), 10);
+    expect(fast.value as number).toBeGreaterThan(slow.value as number);
+    expect(fast.value as number).toBeLessThanOrEqual(MAX_VISUAL_REV_PER_S);
+  });
+
+  it('asks for a frame at every step of a steady turn, so the canvas stays awake', () => {
+    const state = createBoundState();
+
+    const { asked } = run(FAN, state, 1000, 300);
+
+    expect(asked).toBe(300);
+  });
+
+  it('eases a drop to a live zero to a stop within about a second, then lets the canvas sleep', () => {
+    const state = createBoundState();
+    run(FAN, state, 600, 60);
+    expect(state.value).toBeCloseTo(0.5, 10);
+
+    let frames = 0;
+    while (stepBound(FAN, state, 0, FRAME_S) && frames < 600) frames += 1;
+
+    // λ = 8: about 0.8 s to within a thousandth of the span.
+    expect(frames * FRAME_S).toBeLessThan(1);
+    expect(frames).toBeGreaterThan(20);
+    expect(state.value).toBe(0);
+    expect(stepBound(FAN, state, 0, FRAME_S)).toBe(false);
+  });
+
+  it('stops at once when the reading falls by half the range or more (the snap rule)', () => {
+    const state = createBoundState();
+    run(FAN, state, 1420, 60);
+
+    expect(stepBound(FAN, state, 0, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(0);
+  });
+
+  it('keeps the angle where it stopped', () => {
+    const state = createBoundState();
+    run(FAN, state, 600, 30);
+    run(FAN, state, 0, 120);
+    const stopped = state.angle;
+
+    run(FAN, state, 0, 30);
+
+    expect(state.angle).toBe(stopped);
+  });
+
+  it('keeps the angle in [0, 2π) however long it turns', () => {
+    const state = createBoundState();
+
+    run(FAN, state, 1800, 2000, 0.1);
+
+    expect(state.angle).toBeGreaterThanOrEqual(0);
+    expect(state.angle).toBeLessThan(2 * Math.PI);
+  });
+
+  it('does not turn, or ask for a frame, for a first reading of zero', () => {
+    const state = createBoundState();
+
+    expect(stepBound(FAN, state, 0, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(0);
+    expect(state.angle).toBe(0);
+  });
+
+  it('holds for a reading that is not a number: no integration, no frame', () => {
+    const state = createBoundState();
+    run(FAN, state, 900, 30);
+    const { value, angle } = state;
+
+    expect(stepBound(FAN, state, Number.NaN, FRAME_S)).toBe(false);
+
+    expect(state.value).toBe(value);
+    expect(state.angle).toBe(angle);
+  });
+
+  it('does nothing for a spin with no range', () => {
+    const state = createBoundState();
+
+    expect(stepBound(binding('spin', NUMBER_RPM), state, 900, FRAME_S)).toBe(false);
+
+    expect(state.value).toBeNull();
+  });
+});
+
+describe('stepBound for a tint', () => {
+  it('is not stepped: no state, no frame', () => {
+    const state = createBoundState();
+
+    expect(stepBound(MOTOR, state, 50, FRAME_S)).toBe(false);
+
+    expect(state).toEqual(createBoundState());
+  });
+});
+
+describe('poseOfBound', () => {
+  it('is null until the first value, whatever the motion', () => {
+    for (const part of [VALVE, SLIDER, FAN, MOTOR]) {
+      expect(poseOfBound(part, createBoundState())).toBeNull();
+    }
+  });
+
+  it('is radians for a turn, metres for a slide and the integrated angle for a spin', () => {
+    const valve = createBoundState();
+    stepBound(VALVE, valve, 100, FRAME_S);
+    expect(poseOfBound(VALVE, valve)).toBeCloseTo(radians(90), 10);
+
+    const slider = createBoundState();
+    stepBound(SLIDER, slider, 100, FRAME_S);
+    expect(poseOfBound(SLIDER, slider)).toBeCloseTo(2, 10);
+
+    const fan = createBoundState();
+    stepBound(FAN, fan, 900, FRAME_S);
+    expect(poseOfBound(FAN, fan)).toBe(fan.angle);
+  });
+
+  it('is null for a tint even when a value is set', () => {
+    expect(poseOfBound(MOTOR, { value: 5, angle: 0, previous: 5 })).toBeNull();
   });
 });

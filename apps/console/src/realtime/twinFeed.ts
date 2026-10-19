@@ -36,6 +36,12 @@ export interface TwinFeedReader {
    * copy: the render loop reads it and never writes to it.
    */
   readonly targets: Float32Array;
+  /**
+   * The id of the layout `targets` and `slotOf` are for, `0` while none was sent. It changes whenever a new
+   * layout is sent and not otherwise, so a reader that resolves its slots once can tell when to do it again
+   * (`slotOf` builds a key string per call, which a render loop must not do every frame; V2-14.8).
+   */
+  readonly layout: number;
   /** The index of an asset's key in `targets`, `-1` when the pair is not in the layout. */
   slotOf(assetCode: string, key: string): number;
   /** An asset's flags; an unknown code reads as no data. */
@@ -126,6 +132,9 @@ export function createTwinFeed({
   const reader: TwinFeedReader = {
     get targets() {
       return latest;
+    },
+    get layout() {
+      return layoutId;
     },
     slotOf: (assetCode, key) => index.get(slotKey(assetCode, key)) ?? -1,
     flags: (assetCode) => flags.get(assetCode) ?? NO_FLAGS,

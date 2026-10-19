@@ -39,7 +39,8 @@ function createHolder() {
  * instead of at the next tick. `invalidate` is the canvas's (`useThree`), which this hook's caller supplies;
  * the latest one is used without recreating the feed.
  *
- * Not mounted anywhere yet: the render loop that reads the feed is V2-14.8.
+ * Mounted by `TwinStage`, outside the canvas (it needs the QueryClient); `useBoundParts` (V2-14.8) reads the feed
+ * from inside it.
  */
 export function useTwinFeed({ invalidate }: { invalidate: () => void }): TwinFeed | null {
   const client = useTelemetryStore((state) => state.client);

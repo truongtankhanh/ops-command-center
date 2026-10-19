@@ -233,6 +233,32 @@ describe('twin feed', () => {
       expect(feed.read().slotOf('NOPE', 'fanSpeedRpm')).toBe(-1);
     });
 
+    it('numbers the layout the reader is for: 0 before one is sent, the client’s id after', () => {
+      const { feed, layouts } = setup();
+      expect(feed.read().layout).toBe(0);
+
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm')]);
+      expect(feed.read().layout).toBe(layouts[0]?.id);
+
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm'), binding('valveOpenPct')]);
+      expect(layouts).toHaveLength(2);
+      expect(feed.read().layout).toBe(layouts[1]?.id);
+      expect(feed.read().layout).not.toBe(layouts[0]?.id);
+    });
+
+    it('keeps the layout number when a rebuild comes out the same, so a reader does not look slots up again', async () => {
+      const { feed, layouts } = setup();
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm')]);
+      const before = feed.read().layout;
+
+      feed.refresh();
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm')]);
+      await tick(3_000);
+
+      expect(layouts).toHaveLength(1);
+      expect(feed.read().layout).toBe(before);
+    });
+
     it('sends no layout while no class has bindings', async () => {
       const { feed, client } = setup();
 

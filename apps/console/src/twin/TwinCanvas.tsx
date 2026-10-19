@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import { HOME_FOV_DEG } from '../lib/twinCamera';
+import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
@@ -26,6 +27,13 @@ interface TwinCanvasProps {
   scene: TwinScene | null;
   /** Every point of each class that has a model (`useClassPoints`), for the models' bindings. */
   classPoints: ClassPoints;
+  /** The telemetry feed the models' bound parts follow (`useTwinFeed`, the stage's); `null` without a telemetry client. */
+  feed: TwinFeed | null;
+  /**
+   * Called once the canvas exists with its `invalidate`, which the stage's feed calls when a reading arrives so
+   * that the on-demand canvas draws a frame.
+   */
+  onInvalidate: (invalidate: () => void) => void;
   /** The DOM label layer `ZoneLabels` renders, whose labels `LabelProjector` places. */
   labelLayer: RefObject<HTMLDivElement | null>;
   /** The compass button `TwinControls` renders, which `CompassSync` turns and renames from the camera. */
@@ -40,7 +48,9 @@ interface TwinCanvasProps {
  *
  * - The scene is a prop. `TwinStage` reads the queries and derives it once (`useTwinScene`, and the classes'
  *   points, `useClassPoints`): `<Canvas>` renders in its own reconciler, so its children are not a safe place
- *   for a query hook, and the DOM labels beside the canvas need the same frame.
+ *   for a query hook, and the DOM labels beside the canvas need the same frame. The telemetry feed is the
+ *   stage's too, for the same reason (`useTwinFeed` reads the query cache); the canvas hands its `invalidate`
+ *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
@@ -56,9 +66,22 @@ interface TwinCanvasProps {
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
  */
-export function TwinCanvas({ scene, classPoints, labelLayer, compassRef }: TwinCanvasProps) {
+export function TwinCanvas({
+  scene,
+  classPoints,
+  feed,
+  onInvalidate,
+  labelLayer,
+  compassRef,
+}: TwinCanvasProps) {
   return (
-    <Canvas camera={LENS} frameloop="demand" dpr={[1, 1.5]} flat>
+    <Canvas
+      camera={LENS}
+      frameloop="demand"
+      dpr={[1, 1.5]}
+      flat
+      onCreated={({ invalidate }) => onInvalidate(invalidate)}
+    >
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
       <color attach="background" args={[mapColors.ground]} />
       {/* Outside the scene: an empty stage has a context to lose too. */}
@@ -69,7 +92,12 @@ export function TwinCanvas({ scene, classPoints, labelLayer, compassRef }: TwinC
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <Buildings zones={scene.zones} frame={scene.frame} />
-          <Equipment assets={scene.assets} classes={scene.classes} classPoints={classPoints} />
+          <Equipment
+            assets={scene.assets}
+            classes={scene.classes}
+            classPoints={classPoints}
+            feed={feed}
+          />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />
