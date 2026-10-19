@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
-import { HOME_FOV_DEG } from '../lib/twinCamera';
+import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Buildings } from './Buildings';
@@ -31,6 +31,8 @@ interface TwinCanvasProps {
   classPoints: ClassPoints;
   /** The telemetry feed the models' bound parts follow (`useTwinFeed`, the stage's); `null` without a telemetry client. */
   feed: TwinFeed | null;
+  /** The box of every building (`buildingBoxes`), for the rig's first view when the stage starts at building level (V2-15.6). */
+  boxes: ReadonlyMap<string, FitBox>;
   /**
    * Called once the canvas exists with its `invalidate`, which the stage's feed calls when a reading arrives so
    * that the on-demand canvas draws a frame.
@@ -77,6 +79,7 @@ export function TwinCanvas({
   scene,
   classPoints,
   feed,
+  boxes,
   onInvalidate,
   labelLayer,
   compassRef,
@@ -95,7 +98,7 @@ export function TwinCanvas({
       <ContextGuard />
       {scene && (
         <>
-          <Rig bounds={scene.bounds} />
+          <Rig bounds={scene.bounds} boxes={boxes} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <PickLayer cameras={scene.cameras} frame={scene.frame}>

@@ -8,6 +8,13 @@ import { isActive } from './incidents';
 export const activeIncidentCount = (incidents: readonly Incident[]): number =>
   incidents.filter(isActive).length;
 
+/**
+ * The element id of the 3D view's one tab stop (`twin/TwinView`), as `VIEW_SWITCH_3D_ID` is the switch's. The
+ * breadcrumb, which is main-chunk code and so cannot import `src/twin/`, hands focus to it after a press that
+ * may have removed the control that had it (V2-15.6). The keys of V2-18.3 work on this element.
+ */
+export const TWIN_VIEW_ID = 'twin-view';
+
 interface TwinSummaryInput {
   /** The site plan's name; `undefined` while the plan is on its way or when none is served. */
   siteName: string | undefined;

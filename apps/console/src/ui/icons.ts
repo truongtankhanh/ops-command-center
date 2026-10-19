@@ -264,9 +264,11 @@ export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff
 // The map glyph is Lucide's `MapIcon` alias, so it does not shadow the global `Map` in consumers.
 export {
   Activity,
+  ArrowLeft,
   Box,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleDot,
   CircleX,
   Clock,

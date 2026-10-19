@@ -110,6 +110,10 @@ export function positionToPose(position: Vec3, target: Vec3): Pose {
  * is foreshortened, so a corner fit is closer than a bounding circle and fills the stage. `aspect` is the
  * width over the height of the part of the stage that shows the campus (the sheet leaves less of it).
  * Found by bisection on a pinhole projection; `Infinity` for an aspect that is not positive.
+ *
+ * With a `heightM` above zero the box is a building: its four top corners must fit too and the camera looks
+ * at the middle of its height (V2-15.6), or a roof seen from above would lose its edge. With `0`, the
+ * default, it is the ground rectangle above and nothing about the answer changes.
  */
 export function fitDistance(
   bounds: Bounds,
@@ -117,15 +121,19 @@ export function fitDistance(
   aspect: number,
   angles: { yaw: number; tilt: number } = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG },
   margin: number = HOME_MARGIN,
+  heightM = 0,
 ): number {
   if (!(aspect > 0) || !(fov > 0)) return Infinity;
-  const centre: Vec3 = [(bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2];
-  const corners: Vec3[] = [
+  const top = heightM > 0 ? heightM : 0;
+  const centre: Vec3 = [(bounds.minX + bounds.maxX) / 2, top / 2, (bounds.minZ + bounds.maxZ) / 2];
+  const ground: Vec3[] = [
     [bounds.minX, 0, bounds.minZ],
     [bounds.maxX, 0, bounds.minZ],
     [bounds.maxX, 0, bounds.maxZ],
     [bounds.minX, 0, bounds.maxZ],
   ];
+  const corners: Vec3[] =
+    top > 0 ? [...ground, ...ground.map(([x, , z]): Vec3 => [x, top, z])] : ground;
   const tanV = Math.tan(toRadians(fov) / 2);
   const tanH = tanV * aspect;
   const yaw = toRadians(angles.yaw);
@@ -184,6 +192,46 @@ export function homeView(bounds: Bounds, aspect: number): Pose {
   return {
     target: [(bounds.minX + bounds.maxX) / 2, 0, (bounds.minZ + bounds.maxZ) / 2],
     distance: clamp(fitDistance(bounds, HOME_FOV_DEG, aspect), minDistance, maxDistance),
+    yaw: HOME_YAW_DEG,
+    tilt: HOME_TILT_DEG,
+  };
+}
+
+/** A box to look at: a footprint on the ground and how tall it stands. A building, as the camera fits it. */
+export interface FitBox {
+  bounds: Bounds;
+  /** Metres above the ground; `0` is a flat rectangle, as the campus is. */
+  heightM: number;
+}
+
+/**
+ * The view that fits `bounds` standing `heightM` tall (V2-15.6): the camera looks at the middle of the box, from
+ * the home angles, from as close as shows all eight corners, held within the campus limits (a building small
+ * enough to be fitted nearer than 60 m is shown from 60). With a height of `0` it is `homeView`, which is what
+ * makes Home "the fit of the campus level". `aspect` is the visible part of the stage's, as for `homeView`.
+ */
+export function fitBounds(
+  bounds: Bounds,
+  aspect: number,
+  heightM = 0,
+  margin: number = HOME_MARGIN,
+): Pose {
+  const { minDistance, maxDistance } = CAMERA_LIMITS.campus;
+  const top = heightM > 0 ? heightM : 0;
+  return {
+    target: [(bounds.minX + bounds.maxX) / 2, top / 2, (bounds.minZ + bounds.maxZ) / 2],
+    distance: clamp(
+      fitDistance(
+        bounds,
+        HOME_FOV_DEG,
+        aspect,
+        { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG },
+        margin,
+        top,
+      ),
+      minDistance,
+      maxDistance,
+    ),
     yaw: HOME_YAW_DEG,
     tilt: HOME_TILT_DEG,
   };

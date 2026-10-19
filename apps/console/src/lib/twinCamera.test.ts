@@ -3,6 +3,7 @@ import {
   clampTarget,
   compassLabel,
   ease,
+  fitBounds,
   fitDistance,
   FLY_MS,
   flyPath,
@@ -24,6 +25,9 @@ import { type Bounds, panBounds } from './twinScene';
 
 // TwinScene.dc.html's campus box (the demo site).
 const CAMPUS: Bounds = { minX: -282, maxX: 228, minZ: -247, maxZ: 277 };
+
+// A 60 × 40 m footprint, the size of a demo building.
+const BUILDING: Bounds = { minX: 100, maxX: 160, minZ: -60, maxZ: -20 };
 
 const pose = (overrides: Partial<Pose> = {}): Pose => ({
   target: [0, 0, 0],
@@ -129,6 +133,30 @@ describe('fitDistance', () => {
     expect(fitDistance(CAMPUS, 50, 0)).toBe(Infinity);
     expect(fitDistance(CAMPUS, 0, 1)).toBe(Infinity);
   });
+
+  describe('with a height (V2-15.6)', () => {
+    const angles = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG };
+
+    it('is the ground rectangle when the height is nothing, whatever way nothing is said', () => {
+      const flat = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9);
+
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 0)).toBe(flat);
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, -5)).toBe(flat);
+    });
+
+    it('needs more distance for a taller box, because its roof has to fit too', () => {
+      const flat = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9);
+      const low = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 10);
+      const tall = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 40);
+
+      expect(low).toBeGreaterThan(flat);
+      expect(tall).toBeGreaterThan(low);
+    });
+
+    it('still reports a stage with no width as unbounded', () => {
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 0, angles, HOME_MARGIN, 24)).toBe(Infinity);
+    });
+  });
 });
 
 describe('homeView', () => {
@@ -164,6 +192,64 @@ describe('homeView', () => {
     // At these shapes the stage's height is what binds, so a sheet that is not too wide costs nothing.
     expect(sheetOpen).toBeGreaterThanOrEqual(closed);
     expect(sheetWide).toBeGreaterThan(closed);
+  });
+});
+
+describe('fitBounds', () => {
+  it('is the home view of the campus when the box is flat', () => {
+    expect(fitBounds(CAMPUS, 16 / 9)).toEqual(homeView(CAMPUS, 16 / 9));
+    expect(fitBounds(CAMPUS, 16 / 9, 0)).toEqual(homeView(CAMPUS, 16 / 9));
+  });
+
+  it('looks at the middle of the box, half way up, from the home angles', () => {
+    const view = fitBounds(BUILDING, 16 / 9, 24);
+
+    expect(view.target).toEqual([130, 12, -40]);
+    expect(view.yaw).toBe(HOME_YAW_DEG);
+    expect(view.tilt).toBe(HOME_TILT_DEG);
+  });
+
+  it('is the distance that shows the whole box, inside the campus limits', () => {
+    const { distance } = fitBounds(BUILDING, 16 / 9, 24);
+
+    expect(distance).toBeGreaterThanOrEqual(CAMERA_LIMITS.campus.minDistance);
+    expect(distance).toBeLessThanOrEqual(CAMERA_LIMITS.campus.maxDistance);
+    expect(distance).toBeCloseTo(
+      Math.max(
+        CAMERA_LIMITS.campus.minDistance,
+        fitDistance(
+          BUILDING,
+          HOME_FOV_DEG,
+          16 / 9,
+          { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG },
+          HOME_MARGIN,
+          24,
+        ),
+      ),
+      9,
+    );
+  });
+
+  it('is farther for a taller building than for a flat one at the same footprint', () => {
+    expect(fitBounds(BUILDING, 16 / 9, 24).distance).toBeGreaterThan(
+      fitBounds(BUILDING, 16 / 9, 0).distance,
+    );
+  });
+
+  it('holds a very small box at the 60 m floor, and a stage too narrow for it at the 900 m ceiling', () => {
+    expect(fitBounds({ minX: 0, maxX: 5, minZ: 0, maxZ: 5 }, 16 / 9, 5).distance).toBe(60);
+    expect(fitBounds(CAMPUS, 0.3, 24).distance).toBe(900);
+    expect(fitBounds(BUILDING, 0, 24).distance).toBe(900);
+  });
+
+  it('is farther on a narrower stage, as when a sheet is open', () => {
+    expect(fitBounds(BUILDING, 0.6, 24).distance).toBeGreaterThan(
+      fitBounds(BUILDING, 16 / 9, 24).distance,
+    );
+  });
+
+  it('treats a height that is not above the ground as none', () => {
+    expect(fitBounds(BUILDING, 16 / 9, -3)).toEqual(fitBounds(BUILDING, 16 / 9, 0));
   });
 });
 

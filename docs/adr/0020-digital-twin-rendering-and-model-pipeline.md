@@ -284,6 +284,45 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Where the code is.** The tip bodies and their surface moved out of `MapTooltip` unchanged (`Tips.tsx`,
       `Tips.module.css`, the class exported by `tipSurface.ts`); `MapTooltip` keeps only its placement and its
       tests are untouched. Chunk: see the figure `-verify` reports for this task (the budget was 17,005 bytes under after V2-15.4).
+  - Settled in V2-15.6 (2026-10-19), without changing the decision: how the level is shown and how the camera follows it.
+    - **The camera follows the level through a watcher, not through the store's actions.** The task said `goUp()` and
+      `goCampus()` call the fly commands; the store holds neither a building's box nor the stage's shape, which the
+      fit needs, and the level changes in more ways than those two (a click on a building, a row, the crumbs, the
+      Reset button, later the keys of V2-18.3). `twin/useLevelCamera.ts` listens to the store outside React and, when
+      the level or the focused building changes, asks the rig for the new level's fit (`lib/twinLevelCamera.ts`,
+      pure): campus → the home view; building → that building's box, whether the operator flies in by clicking it or
+      back out of an asset; asset and part → nothing yet (V2-15.7). It reads the store only, never data, so the camera
+      moves only for an operator's act, and it does nothing at mount.
+    - **A fit is the rig's.** `twinCommands.fit({ bounds, heightM })` is a new command because only the rig knows
+      the stage's aspect and the open sheet's inset. `fitBounds` (`lib/twinCamera.ts`, pure) fits the **box**: the
+      footprint's corners at the ground and at the roof, looking at half the height from the home angles, within the
+      campus limits (a building that would fit nearer than 60 m is shown from 60). With a height of nothing it is `homeView`.
+      A building too small to have a shell falls back to its zone polygon. The asset's limits (4 – 40 m) are
+      V2-15.7's.
+    - **The first view.** The store keeps its level while the operator is in 2D, and the camera is back at home when
+      3D returns, so the rig's first view is the fit of the focused building when the stage starts at building level
+      (`startBoxOf`), not a flight at mount, which would race the canvas's children registering their commands.
+    - **Home is campus level plus the home view.** The cluster's Reset button calls `goCampus()` and then `home()`,
+      as ADR-0020 "Settled in V2-15.1" says (it deselects the asset, leaves the building, keeps an open incident and
+      the report form) and flies home even from the campus level. Its name stays "Reset view"; "Reset to the campus
+      view" is the keyboard help's word. No key is bound here: V2-18.3 calls `goUp()` and `goCampus()`, and the camera
+      already follows them.
+    - **The breadcrumb is main-chunk code, in the switch's place.** `components/TwinBreadcrumb.tsx`, not
+      `src/twin/` as the task wrote: it sits in `StageView`'s tools and `src/twin/` can only be crossed by the dynamic
+      import (as the loading card, V2-12.11). The frames (03, 12, 15) put it where the 3D / 2D switch is, with the
+      layers beside it at building level, not in the layers control's place as the task text says; so at building
+      and asset level the switch is replaced, the layers stay, and the switch is one press of the back button away
+      (and the context-lost fallback puts the 2D view and the switch back). Its parts are native buttons in a `nav`
+      "Scene level" with an `ol`, and the current item is `<strong aria-current="location">`. The back button is one
+      step of Escape's ladder: at the level of a part it closes the callout and its name says the asset; otherwise it
+      names the previous crumb (`Campus` for an asset outside every building). After a press focus goes to the 3D view
+      (`TWIN_VIEW_ID`), because the pressed control may be gone.
+    - **No legend line here.** The asset's line ("Isolated — …") is V2-15.7's and the building's ("Walls
+      see-through, …") V2-15.8's, which draws the walls it speaks of.
+    - **Still open from V2-15.5:** with the camera flying under a still pointer the tint and the cursor are stale
+      until the next move (the tooltip is handled); V2-15.7 is the next to move the camera and decides.
+    - **Chunk.** The breadcrumb is main-chunk; the twin chunk gains the hook, `fit` and `fitBounds`. See the figure
+      `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

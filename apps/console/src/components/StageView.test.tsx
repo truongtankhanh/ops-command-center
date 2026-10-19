@@ -1,4 +1,4 @@
-import type { SitePlan } from '@occ/contracts';
+import type { SitePlan, Zone } from '@occ/contracts';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { api } from '../api/client';
@@ -43,6 +43,24 @@ function seededClient() {
 const renderStage = (client = seededClient()) => renderWithQueryClient(<StageView />, client);
 
 const show3d = () => act(() => useConsole.setState({ view: '3d' }));
+
+const DATA_CENTER: Zone = {
+  id: 'z-dc',
+  code: 'BLD-DC',
+  name: 'Data Center',
+  kind: 'building',
+  polygon: [],
+  center: [0, 0],
+};
+
+/** A client that holds the building the breadcrumb names. */
+function clientWithBuilding() {
+  const client = seededClient();
+  client.setQueryData(queryKeys.zones, [DATA_CENTER]);
+  return client;
+}
+
+const crumbsNav = () => screen.queryByRole('navigation', { name: 'Scene level' });
 
 describe('StageView', () => {
   beforeEach(() => {
@@ -253,6 +271,77 @@ describe('StageView', () => {
 
       expect(CampusMap).toHaveBeenCalled();
       expect(screen.queryByText('3D stage')).not.toBeInTheDocument();
+    });
+
+    // V2-15.6, frames 03, 12 and 15: the scene's breadcrumb is in the 3D / 2D switch's place at building and
+    // asset level, and the layers stay.
+    describe('the breadcrumb', () => {
+      it('takes the place of the view switch at building level, with the layers still there', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        expect(crumbsNav()).toBeInTheDocument();
+        expect(within(crumbsNav()!).getByText('Data Center')).toBeInTheDocument();
+        expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+      });
+
+      it('does so at asset level too', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+
+        act(() => useConsole.getState().selectAsset('CT-01', 'z-dc'));
+
+        expect(crumbsNav()).toBeInTheDocument();
+        expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
+      });
+
+      it('is absent at campus level, where the switch is', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+
+        expect(crumbsNav()).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+      });
+
+      it('gives the switch back when its back button goes up to the campus', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        await userEvent.click(screen.getByRole('button', { name: 'Up one level — Campus' }));
+
+        expect(crumbsNav()).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+      });
+
+      it('never replaces the switch in the 2D view, where there are no levels', () => {
+        renderStage(clientWithBuilding());
+
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        expect(crumbsNav()).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+      });
+
+      it('lets the switch come back when the context is lost at a level', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        act(() => useConsole.getState().markTwinLost());
+
+        expect(crumbsNav()).not.toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+      });
     });
   });
 });
