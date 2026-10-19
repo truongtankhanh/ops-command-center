@@ -1,7 +1,7 @@
 import type { AssetDetail } from '@occ/contracts';
 import { type ReactNode, useCallback, useMemo } from 'react';
 import { ApiRequestError, isRateLimited } from '../api/client';
-import { useAsset, useIncidents, useZones } from '../api/queries';
+import { useAsset, useIncidents, useModelParts, useZones } from '../api/queries';
 import {
   footprintText,
   incidentsOf,
@@ -9,9 +9,9 @@ import {
   inspectorStateText,
   readingIsStale,
 } from '../lib/assetInspector';
-import { partsOf } from '../lib/assetParts';
 import { assetStates, openIncidentOf, placeLabel } from '../lib/assets';
 import { severityLabel } from '../lib/incidents';
+import { partRows } from '../lib/modelParts';
 import { staleAfterMs } from '../lib/telemetryFreshness';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -26,7 +26,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { AssetFoot } from './AssetFoot';
 import { AssetIncidents } from './AssetIncidents';
 import styles from './AssetInspector.module.css';
-import { AssetParts } from './AssetParts';
+import { AssetParts, AssetPartsSkeleton } from './AssetParts';
 import { AssetReadings } from './AssetReadings';
 import { LoadFailed, RateLimited } from './LoadStates';
 
@@ -136,11 +136,16 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
   );
   const incident = incidents === undefined ? undefined : openIncidentOf(detail, incidents);
   const rows = useMemo(() => inspectorRows(detail.points, detail.rules), [detail]);
-  // Parts are keyed on the class being in the console's table, not on `modelUrl`, which is `null`
-  // for every class until V2-13. A class that has a model and no table row yet gets neither the
-  // parts nor the "no model" words, rather than a false "No 3D model" (V2-09.9).
-  const parts = partsOf(detail.class.code);
-  const unmodelled = parts === undefined && detail.class.modelUrl === null;
+  // The parts are the model's (V2-14.10): its node tree is read once per model file and shared by every asset
+  // of the class. While it is on its way the section is a skeleton; if it cannot be read (the file is missing,
+  // or has no named part) there is no section and the inspector still works. "No 3D model" is for a class with
+  // no `modelUrl` only, never for a model that failed to load.
+  const model = useModelParts(detail.class.modelUrl);
+  const parts = useMemo(
+    () => (model.data ? partRows(model.data, detail.points) : []),
+    [model.data, detail.points],
+  );
+  const unmodelled = detail.class.modelUrl === null;
   const raised = useMemo(
     () => (incidents === undefined ? [] : incidentsOf(detail, incidents)),
     [detail, incidents],
@@ -203,14 +208,18 @@ function InspectorBody({ detail, closeButton }: { detail: AssetDetail; closeButt
         serverNow={serverNow}
         stale={stale}
       />
-      {parts && (
-        <AssetParts
-          assetCode={detail.code}
-          parts={parts}
-          points={detail.points}
-          entry={entry}
-          stale={stale}
-        />
+      {model.isLoading ? (
+        <AssetPartsSkeleton />
+      ) : (
+        parts.length > 0 && (
+          <AssetParts
+            assetCode={detail.code}
+            parts={parts}
+            points={detail.points}
+            entry={entry}
+            stale={stale}
+          />
+        )
       )}
       {/* Not drawn while the incident list loads, as the head's badge: "none" would be a guess. */}
       {raised.length > 0 && <AssetIncidents incidents={raised} />}

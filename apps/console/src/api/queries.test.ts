@@ -2,7 +2,7 @@ import type { Asset } from '@occ/contracts';
 import { renderHook, waitFor } from '@testing-library/react';
 import { getAccessToken, renewSession } from '../auth/session';
 import { createTestQueryClient, queryWrapper } from '../test-utils';
-import { queryKeys, useAsset, useAssetHistory, useAssets } from './queries';
+import { queryKeys, useAsset, useAssetHistory, useAssets, useModelParts } from './queries';
 
 // As in `client.test.ts`: the session module decides only which token is sent, and the network is
 // `fetch`, so the real client, the retry policy of the test client and the cache are under test.
@@ -274,5 +274,134 @@ describe('queryKeys for assets', () => {
     expect(queryKeys.assets).toEqual(['assets']);
     expect(queryKeys.asset('CT-01')).toEqual(['assets', 'CT-01']);
     expect(queryKeys.assetHistory('CT-01')).toEqual(['assets', 'CT-01', 'history']);
+  });
+});
+
+/** A `.glb` holding `json`, padded as the format asks, with a short binary chunk after it. */
+function glb(json: unknown): Uint8Array<ArrayBuffer> {
+  const body = new TextEncoder().encode(JSON.stringify(json));
+  const jsonLength = Math.ceil(body.length / 4) * 4;
+  const bytes = new Uint8Array(12 + 8 + jsonLength + 8 + 8);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(0, 0x46546c67, true);
+  view.setUint32(4, 2, true);
+  view.setUint32(8, bytes.length, true);
+  view.setUint32(12, jsonLength, true);
+  view.setUint32(16, 0x4e4f534a, true);
+  bytes.fill(0x20, 20, 20 + jsonLength);
+  bytes.set(body, 20);
+  return bytes;
+}
+
+/** Answers every request with the bytes of a ranged read (206), as nginx does. */
+function serveModel(bytes: Uint8Array<ArrayBuffer>, status = 206): void {
+  fetchMock.mockImplementation(async () => new Response(bytes.slice(), { status }));
+}
+
+const MODEL_URL = '/models/cooling_tower.961e8f9f464e.glb';
+const TOWER = {
+  scenes: [{ nodes: [0] }],
+  nodes: [{ name: 'CoolingTower', children: [1] }, { name: 'Casing' }],
+};
+
+describe('useModelParts', () => {
+  it('sends nothing without a URL, and is not loading', () => {
+    const { result } = renderHook(() => useModelParts(null), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(result.current.isLoading).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('reads the class root from the file, with a ranged request and no bearer token', async () => {
+    serveModel(glb(TOWER));
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() =>
+      expect(result.current.data).toEqual({
+        name: 'CoolingTower',
+        children: [{ name: 'Casing', children: [] }],
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(MODEL_URL, { headers: { Range: 'bytes=0-65535' } });
+    expect(getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('reads a server that ignores Range and answers the whole file', async () => {
+    serveModel(glb(TOWER), 200);
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() => expect(result.current.data?.name).toBe('CoolingTower'));
+  });
+
+  it('is loading while the file is on its way', () => {
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined));
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toBeUndefined();
+  });
+
+  it('sends one request however many readers ask for the same model', async () => {
+    serveModel(glb(TOWER));
+    const client = createTestQueryClient();
+    const { result } = renderHook(
+      () => [useModelParts(MODEL_URL), useModelParts(MODEL_URL), useModelParts(MODEL_URL)],
+      { wrapper: queryWrapper(client) },
+    );
+
+    await waitFor(() => expect(result.current.every((query) => query.isSuccess)).toBe(true));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(client.getQueryCache().findAll({ queryKey: ['models'] })).toHaveLength(1);
+  });
+
+  it('resolves to null for a file with no class root, so the caller can tell it from loading', async () => {
+    serveModel(glb({ scenes: [{ nodes: [] }], nodes: [] }));
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toBeNull();
+  });
+
+  // `retry: 1` overrides the test client's `retry: false`, and TanStack waits a second before the retry.
+  it('leaves data undefined with the error set after one retry when the file is missing', async () => {
+    fetchMock.mockImplementation(async () => new Response('Not Found', { status: 404 }));
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 4000 });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.error).toMatchObject({ message: expect.stringContaining('HTTP 404') });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a body that is not a GLB as an error, such as an HTML page served for the URL', async () => {
+    fetchMock.mockImplementation(
+      async () => new Response('<!doctype html><title>Console</title><p>x</p>', { status: 200 }),
+    );
+    const { result } = renderHook(() => useModelParts(MODEL_URL), {
+      wrapper: queryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 4000 });
+    expect(result.current.data).toBeUndefined();
+  });
+});
+
+describe('queryKeys for models', () => {
+  it('is by URL, apart from the assets', () => {
+    expect(queryKeys.model(MODEL_URL)).toEqual(['models', MODEL_URL]);
   });
 });

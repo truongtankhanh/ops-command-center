@@ -289,6 +289,14 @@ their author, checked in CI, and served by nginx as immutable files.
       from `extras` the inspector's Parts section is a code-owned table in the console (`lib/assetParts.ts`: role,
       label and bound point, from asset-classes.md) for the two modelled classes. V2-14 deletes it, and a class
       without a model has no Parts section.
+    - Settled in V2-14.10 (2026-10-19), without changing the decision: the console reads the parts list from the model.
+      `fetchGlbJson` asks for the first 64 KiB of the file with a `Range` request (nginx answers `206`; the Vite dev
+      server ignores `Range` and sends the whole file, which is read the same way) and a second request for exactly
+      the JSON chunk when it is longer; a chunk above 2 MiB is refused. The tree is cached as reference data under
+      the model's URL (`staleTime: Infinity`, one retry), so every asset of a class shares one request, and the 2D
+      view and the WebGL-less fallback list parts without the 3D chunk. The rows are `partTree` joined with
+      `bindingsFromNodes` (V2-14.2): every named node in document order, labelled by `extras.label` or the node name in
+      sentence case. The V2-09.1 table (`lib/assetParts.ts`) is deleted.
     - Settled in V2-13.1 (2026-10-18, tech lead), without changing the decision; `pnpm models:check` and
       `ops/models/README.md` are its executable form:
       - **Size.** The model's real outside dimensions are authoritative and `footprint_m` follows them. The target

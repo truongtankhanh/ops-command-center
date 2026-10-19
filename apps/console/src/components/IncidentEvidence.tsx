@@ -7,7 +7,7 @@ import type {
 } from '@occ/contracts';
 import { type ReactNode, useMemo } from 'react';
 import { ApiRequestError } from '../api/client';
-import { useAsset, useAssets, useZones } from '../api/queries';
+import { useAsset, useAssets, useModelParts, useZones } from '../api/queries';
 import {
   drawnSeries,
   encodedLatest,
@@ -18,6 +18,7 @@ import {
 } from '../lib/assetInspector';
 import { assetLinkLines } from '../lib/assetLink';
 import { isActive } from '../lib/incidents';
+import { partRows } from '../lib/modelParts';
 import { formatReading } from '../lib/readings';
 import {
   describeEvidence,
@@ -77,7 +78,9 @@ function EvidenceBlock({ incident, evidence }: { incident: Detail; evidence: Rul
   // object as last time is not rendered again.
   const gone = error instanceof ApiRequestError && error.status === 404;
   const link =
-    asset !== undefined && !gone ? <AssetLink asset={asset} evidenceKey={evidence.key} /> : null;
+    asset !== undefined && !gone ? (
+      <AssetLink asset={asset} evidenceKey={evidence.key} points={detail?.points} />
+    ) : null;
 
   if (detail === undefined) {
     // No asset to read: gone (not in the catalogue, or a 404) is a fact; anything else is a failure
@@ -287,7 +290,10 @@ function Card({
 
 /**
  * Frame 10's `.asset-link` (V2-11.3): the asset, the part the rule watches and where it stands, and
- * the way to its inspector. Opening is reading, not acting, so every role has it. `selectAsset`
+ * the way to its inspector. The part is the first row of the model's parts list bound to the point the rule
+ * watches (`partRows`, as the inspector's Parts section builds it, so the two cannot disagree); while the
+ * model or the asset's detail is on its way, or if either could not be read, the line is the place alone.
+ * Opening is reading, not acting, so every role has it. `selectAsset`
  * replaces this sheet with the inspector, and the inspector's "Incident raised by this asset" row
  * is the way back while the incident is unresolved. Focus moves on its own: this button goes with
  * the sheet, and the inspector's sheet takes focus when it is lost (`Sheet`).
@@ -295,11 +301,28 @@ function Card({
  * A `div` with a real button, not frame 10's button around a button, which is invalid markup and
  * two tab stops. The accessible name says which asset; it contains the visible words (WCAG 2.5.3).
  */
-function AssetLink({ asset, evidenceKey }: { asset: Asset; evidenceKey: string }) {
+function AssetLink({
+  asset,
+  evidenceKey,
+  points,
+}: {
+  asset: Asset;
+  evidenceKey: string;
+  /** The asset's points when its detail is loaded: the parent holds the query, so the link adds no observer. */
+  points: readonly TelemetryPoint[] | undefined;
+}) {
   const { data: zones } = useZones();
   const selectAsset = useConsole((s) => s.selectAsset);
   const zone = zones?.find((candidate) => candidate.id === asset.zoneId);
-  const { heading, detail } = assetLinkLines(asset, zone, evidenceKey);
+  const { data: model } = useModelParts(asset.class.modelUrl);
+  const partLabel = useMemo(
+    () =>
+      points && model
+        ? partRows(model, points).find((row) => row.bind === evidenceKey)?.label
+        : undefined,
+    [points, model, evidenceKey],
+  );
+  const { heading, detail } = assetLinkLines(asset, zone, partLabel);
   return (
     <div className={styles.assetLink}>
       <span className={styles.assetGlyph}>
