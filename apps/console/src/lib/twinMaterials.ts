@@ -103,6 +103,9 @@ export function tintFor(severity: IncidentSeverity, base: string): string {
 export const EDGE_DASH_M = 0.3;
 export const EDGE_GAP_M = 0.2;
 
+/** `--tw-ghost-opacity`: how opaque the rest of the campus is while one asset is isolated (V2-15.7). */
+export const GHOST_OPACITY = twinColors.ghostOpacity;
+
 export type FaceLook = 'idle' | 'stale' | 'alarm' | 'hover';
 export type EdgeLook = 'idle' | 'stale-dashed' | 'severity' | 'accent';
 
@@ -114,6 +117,8 @@ export interface LookFlags {
 }
 
 export interface AssetLook {
+  /** Faded to `GHOST_OPACITY` because another asset is isolated (V2-15.7): the face and the edge below stay what they would be. */
+  ghost: boolean;
   face: FaceLook;
   edge: EdgeLook;
   /** The open incident's severity, whatever the face and the edge are (an alarmed asset that is hovered keeps it). */
@@ -132,12 +137,21 @@ export interface AssetLook {
  *   idle. So a stale fault is grey with a solid severity edge.
  * - Severity is the only loud colour (Principle 2) and the dash is how "not live" is told without colour
  *   (Principle 3).
+ * - **Ghost** (V2-15.7) is a state, not a colour: an asset faded because another is isolated keeps the face and the
+ *   edge its flags give it, so a faded fault is faintly tinted and a faded stale asset faintly grey, and is restored
+ *   exactly when the isolation ends. How faint is `GHOST_OPACITY`; whether its outline is drawn is the appliers'.
  */
-export function lookOf(flags: LookFlags, hovered: boolean, selected: boolean): AssetLook {
+export function lookOf(
+  flags: LookFlags,
+  hovered: boolean,
+  selected: boolean,
+  ghost = false,
+): AssetLook {
   const dimmed = flags.stale || !flags.online;
   const picked = hovered || selected;
   const alarmed = flags.alarm !== null;
   return {
+    ghost,
     face: picked ? 'hover' : dimmed ? 'stale' : alarmed ? 'alarm' : 'idle',
     edge: picked ? 'accent' : alarmed ? 'severity' : dimmed ? 'stale-dashed' : 'idle',
     severity: flags.alarm,

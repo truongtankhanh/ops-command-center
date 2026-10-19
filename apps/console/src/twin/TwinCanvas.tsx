@@ -33,6 +33,8 @@ interface TwinCanvasProps {
   feed: TwinFeed | null;
   /** The box of every building (`buildingBoxes`), for the rig's first view when the stage starts at building level (V2-15.6). */
   boxes: ReadonlyMap<string, FitBox>;
+  /** The box of every asset (`assetBoxes`), for the rig's first view when the stage starts with an asset isolated (V2-15.7). */
+  assetBoxes: ReadonlyMap<string, FitBox>;
   /**
    * Called once the canvas exists with its `invalidate`, which the stage's feed calls when a reading arrives so
    * that the on-demand canvas draws a frame.
@@ -80,6 +82,7 @@ export function TwinCanvas({
   classPoints,
   feed,
   boxes,
+  assetBoxes,
   onInvalidate,
   labelLayer,
   compassRef,
@@ -98,7 +101,7 @@ export function TwinCanvas({
       <ContextGuard />
       {scene && (
         <>
-          <Rig bounds={scene.bounds} boxes={boxes} />
+          <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <PickLayer cameras={scene.cameras} frame={scene.frame}>

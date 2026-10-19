@@ -3,8 +3,8 @@ import type { Asset, Zone } from '@occ/contracts';
 /*
  * The 3D view's four levels as plain data (V2-15.2, ADR-0020 § Scene, "Settled in V2-15.1"): no `three`
  * and no store, so the store, the breadcrumb (V2-15.6) and the scene read one definition and it tests
- * without WebGL. V2-15.8 adds the visibility rule (which assets and buildings are drawn, faded or hidden at
- * each level) to this file.
+ * without WebGL. It also holds the visibility rule (V2-15.7: what is drawn as it is and what is faded while an
+ * asset is isolated); V2-15.8 extends it to the building level, where faded and hidden become possible.
  */
 
 /** Campus, a building in focus, an isolated asset, a part of it (brief § Scene levels). */
@@ -86,4 +86,57 @@ export function buildingFocusOf(
   zones: readonly Pick<Zone, 'id' | 'kind'>[] | undefined,
 ): string | null {
   return zones?.find((zone) => zone.id === asset.zoneId)?.kind === 'building' ? asset.zoneId : null;
+}
+
+/**
+ * What the isolated asset is: its code, and the building in focus, which is drawn with it (an asset's building is
+ * not "the rest of the campus"). `zoneId` is `null` for an asset in no building (`TR-01`).
+ */
+export interface Isolation {
+  assetCode: string;
+  zoneId: string | null;
+}
+
+/**
+ * The isolation the level means (V2-15.7): at asset and part level the selected asset and the building in focus,
+ * else `null`, where nothing is faded. The one place that says when the rest of the scene recedes.
+ */
+export function isolationOf(state: LevelState): Isolation | null {
+  const level = levelOf(state);
+  if ((level !== 'asset' && level !== 'part') || state.selectedAssetCode === null) return null;
+  return { assetCode: state.selectedAssetCode, zoneId: state.focusZoneId };
+}
+
+/** A thing the scene draws, as far as the fade is concerned. */
+export type Fadeable =
+  { kind: 'building'; zoneId: string } | { kind: 'asset'; code: string } | { kind: 'marker' };
+
+/**
+ * Whether `target` is drawn at `--tw-ghost-opacity` rather than as it is (V2-15.7, ADR-0020 "Settled in V2-15.1":
+ * the rest of the campus is faded, not removed). With nothing isolated nothing is faded. Otherwise everything but
+ * the isolated asset and its building is: other buildings, other assets, and the camera markers (screen-sized
+ * symbols that would otherwise shout over the asset). The ground and the zone labels are not part of this rule.
+ */
+export function isFaded(target: Fadeable, isolation: Isolation | null): boolean {
+  if (isolation === null) return false;
+  switch (target.kind) {
+    case 'building':
+      return target.zoneId !== isolation.zoneId;
+    case 'asset':
+      return target.code !== isolation.assetCode;
+    case 'marker':
+      return true;
+  }
+}
+
+/**
+ * The words of the legend while an asset is isolated (frames 03 and 17, "Settled in V2-15.1"): the lead sentence,
+ * and where `Esc` goes back to, `null` while the building in focus is not known yet. The key itself is drawn by the
+ * legend (`Esc` in a `Kbd`) between the two: "Isolated — the rest of the campus is faded. Esc returns to Data Center".
+ */
+export function isolationLine(parent: string | null): { lead: string; back: string | null } {
+  return {
+    lead: 'Isolated — the rest of the campus is faded.',
+    back: parent === null ? null : `returns to ${parent}`,
+  };
 }

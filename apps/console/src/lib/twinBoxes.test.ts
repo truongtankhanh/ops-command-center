@@ -234,4 +234,31 @@ describe('edgeIndices', () => {
     expect(edgeIndices(ranges, new Set(['Z'])).dashed).toEqual([]);
     expect(edgeIndices([], new Set(['A']))).toEqual({ solid: [], dashed: [] });
   });
+
+  describe('with one asset isolated (V2-15.7)', () => {
+    const segmentsOfB = Array.from({ length: 12 }, (_, i) => [
+      2 * (12 + i),
+      2 * (12 + i) + 1,
+    ]).flat();
+
+    it('draws only that asset’s outline: the faded ones draw none', () => {
+      const { solid, dashed } = edgeIndices(ranges, new Set(), 'B');
+
+      expect(solid).toEqual(segmentsOfB);
+      expect(dashed).toEqual([]);
+    });
+
+    it('puts the isolated asset in the layer its own flag says', () => {
+      expect(edgeIndices(ranges, new Set(['B']), 'B')).toEqual({ solid: [], dashed: segmentsOfB });
+      // Another asset being stale changes nothing for it.
+      expect(edgeIndices(ranges, new Set(['A']), 'B')).toEqual({ solid: segmentsOfB, dashed: [] });
+    });
+
+    it('draws no outline at all for a code that is not a box, and is every asset for null', () => {
+      expect(edgeIndices(ranges, new Set(), 'Z')).toEqual({ solid: [], dashed: [] });
+      expect(edgeIndices(ranges, new Set(['B']), null)).toEqual(
+        edgeIndices(ranges, new Set(['B'])),
+      );
+    });
+  });
 });

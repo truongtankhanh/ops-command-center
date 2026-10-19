@@ -14,6 +14,17 @@ export function sheetInset(element: Element): number {
 }
 
 /**
+ * How much of the stage's right side the sheet **will** cover once it is open, in px: the stage's
+ * `--sheet-inset-open` (`App.module.css`, registered in `tokens.css`), which is the sheet's width and `0px` on a
+ * phone, where the sheet covers the whole screen. The asset's fit (V2-15.7) is asked for in the same store update
+ * that opens the inspector, before the sheet is in the DOM and `sheetInset` can read it; this is where the
+ * stylesheet already says it.
+ */
+export function sheetInsetOpen(element: Element): number {
+  return parseFloat(getComputedStyle(element).getPropertyValue('--sheet-inset-open')) || 0;
+}
+
+/**
  * Keeps the view offset of the stage's camera in step with the sheet (V2-12.9): the picture is shifted left
  * by half the sheet's width, so what the camera looks at sits in the middle of the part the sheet leaves
  * visible. Only the offset changes. The camera does not move, so opening a sheet never moves the view on

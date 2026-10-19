@@ -12,6 +12,7 @@ import {
 } from 'three';
 import { edgeIndices } from '../lib/twinBoxes';
 import { type HoverState, NO_HOVER } from '../lib/twinHover';
+import type { Isolation } from '../lib/twinLevel';
 import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import type { AssetFlags, TwinFeed } from '../realtime/twinFeed';
@@ -509,6 +510,133 @@ describe('useModelLooks', () => {
   });
 });
 
+describe('useModelLooks with an asset isolated (V2-15.7)', () => {
+  let table: MaterialTable;
+  let template: ReturnType<typeof makeTemplate>['template'];
+
+  const isolating = (assetCode: string): Isolation => ({ assetCode, zoneId: 'dc' });
+  const mountIsolated = (
+    feed: TwinFeed,
+    targets: readonly ModelLookTarget[],
+    isolation: Isolation | null,
+  ) =>
+    renderHook(
+      (props: { isolation: Isolation | null }) =>
+        useModelLooks(feed, targets, hoverRef(), props.isolation),
+      { initialProps: { isolation } },
+    );
+  const fadedMaterial = (mesh: Mesh) =>
+    table.look(baseName(mesh), { face: 'idle', severity: null, ghost: true });
+
+  beforeEach(() => {
+    frame.callback = null;
+    ({ template, table } = makeTemplate());
+  });
+
+  it('fades every other asset and leaves the isolated one as it is', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed } = createRig();
+    mountIsolated(feed, [tower, other], isolating('CT-01'));
+
+    tick();
+
+    for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+    for (const mesh of meshes(other.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
+  });
+
+  it('hides the outlines of a faded model, even a stale one’s', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed, flags } = createRig();
+    flags.set('CT-02', STALE);
+    mountIsolated(feed, [tower, other], isolating('CT-01'));
+
+    tick();
+
+    for (const outline of outlines(other.object)) expect(outline.visible).toBe(false);
+  });
+
+  it('gives every asset back its own look when the isolation ends', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed, flags } = createRig();
+    flags.set('CT-02', STALE);
+    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    tick();
+
+    view.rerender({ isolation: null });
+    tick();
+
+    for (const mesh of meshes(other.object)) {
+      expect(mesh.material).toBe(table.look(baseName(mesh), { face: 'stale', severity: null }));
+    }
+    for (const outline of outlines(other.object)) {
+      expect(outline.visible).toBe(true);
+      expect(outline.material).toBe(table.line({ edge: 'stale-dashed', severity: null }));
+    }
+    for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+  });
+
+  it('keeps a faded fault faintly tinted, and follows its flags while faded', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed, flags } = createRig();
+    mountIsolated(feed, [tower, other], isolating('CT-01'));
+    tick();
+
+    flags.set('CT-02', alarmed('high'));
+    tick();
+
+    for (const mesh of meshes(other.object)) {
+      expect(mesh.material).toBe(
+        table.look(baseName(mesh), { face: 'alarm', severity: 'high', ghost: true }),
+      );
+    }
+  });
+
+  it('moves the fade when another asset is isolated', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed } = createRig();
+    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    tick();
+
+    view.rerender({ isolation: isolating('CT-02') });
+    tick();
+
+    for (const mesh of meshes(other.object)) expect(mesh.material).toBe(table.get(baseName(mesh)));
+    for (const mesh of meshes(tower.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
+  });
+
+  it('paints nothing again while the isolated asset is the same', () => {
+    const tower = targetOf('CT-01', template);
+    const other = targetOf('CT-02', template);
+    const { feed } = createRig();
+    const view = mountIsolated(feed, [tower, other], isolating('CT-01'));
+    tick();
+    const probe = new MeshStandardMaterial();
+    const mesh = meshes(other.object)[0]!;
+    mesh.material = probe;
+
+    // A new object for the same asset (the building came to be known) is not a change.
+    view.rerender({ isolation: isolating('CT-01') });
+    tick();
+
+    expect(mesh.material).toBe(probe);
+  });
+
+  it('fades the others of an isolation that was there when the stage came up', () => {
+    const other = targetOf('CT-02', template);
+    const { feed } = createRig();
+    mountIsolated(feed, [other], isolating('CT-01'));
+
+    tick();
+
+    for (const mesh of meshes(other.object)) expect(mesh.material).toBe(fadedMaterial(mesh));
+  });
+});
+
 // --- boxes ----------------------------------------------------------------------------------------------------
 
 const placed = (code: string, x: number): PlacedAsset => ({
@@ -843,5 +971,91 @@ describe('useBoxLooks', () => {
     const { feed } = createRig();
     mountBoxes(feed, null);
     expect(() => tick()).not.toThrow();
+  });
+});
+
+describe('useBoxLooks with an asset isolated (V2-15.7)', () => {
+  const isolating = (assetCode: string): Isolation => ({ assetCode, zoneId: 'dc' });
+  const indexOf = (geometry: BoxLayers['solid']): number[] => Array.from(geometry.index!.array);
+  const mountIsolated = (feed: TwinFeed, layers: BoxLayers | null, isolation: Isolation | null) =>
+    renderHook(
+      (props: { layers: BoxLayers | null; isolation: Isolation | null }) =>
+        useBoxLooks(feed, props.layers, hoverRef(), props.isolation),
+      { initialProps: { layers, isolation } },
+    );
+
+  let layers: BoxLayers;
+
+  beforeEach(() => {
+    frame.callback = null;
+    layers = createBoxLayers([placed('A', 0), placed('B', 10), placed('C', 20)]);
+  });
+
+  it('draws only the isolated box’s outline: the faded ones draw none', () => {
+    const { feed } = createRig();
+    mountIsolated(feed, layers, isolating('B'));
+
+    tick();
+
+    expect(indexOf(layers.solid)).toEqual(edgeIndices(layers.ranges, new Set(), 'B').solid);
+    expect(indexOf(layers.dashed)).toEqual([]);
+  });
+
+  it('draws every outline again when the isolation ends', () => {
+    const { feed } = createRig();
+    const view = mountIsolated(feed, layers, isolating('B'));
+    tick();
+
+    view.rerender({ layers, isolation: null });
+    tick();
+
+    expect(indexOf(layers.solid)).toEqual(edgeIndices(layers.ranges, new Set()).solid);
+  });
+
+  it('puts the isolated box in the dashed layer when it is stale, and ignores another one’s staleness', () => {
+    const { feed, flags } = createRig();
+    mountIsolated(feed, layers, isolating('B'));
+    flags.set('A', STALE);
+    flags.set('B', STALE);
+
+    tick();
+
+    expect(indexOf(layers.dashed)).toEqual(edgeIndices(layers.ranges, new Set(['B']), 'B').dashed);
+    expect(indexOf(layers.solid)).toEqual([]);
+  });
+
+  it('leaves the colours alone: the fade is the mesh’s groups, not a colour', () => {
+    const { feed, flags } = createRig();
+    flags.set('A', alarmed('high'));
+    const view = mountIsolated(feed, layers, null);
+    tick();
+    const faces = Array.from(layers.faceColours.array);
+
+    view.rerender({ layers, isolation: isolating('B') });
+    tick();
+
+    expect(Array.from(layers.faceColours.array)).toEqual(faces);
+  });
+
+  it('applies an isolation to layers that are rebuilt', () => {
+    const { feed } = createRig();
+    const view = mountIsolated(feed, layers, isolating('B'));
+    tick();
+    const rebuilt = createBoxLayers([placed('A', 0), placed('B', 10), placed('C', 20)]);
+
+    view.rerender({ layers: rebuilt, isolation: isolating('B') });
+    tick();
+
+    expect(indexOf(rebuilt.solid)).toEqual(edgeIndices(rebuilt.ranges, new Set(), 'B').solid);
+  });
+
+  it('draws no outline at all when the isolated asset is not one of the boxes (it has a model)', () => {
+    const { feed } = createRig();
+    mountIsolated(feed, layers, isolating('CT-01'));
+
+    tick();
+
+    expect(indexOf(layers.solid)).toEqual([]);
+    expect(indexOf(layers.dashed)).toEqual([]);
   });
 });

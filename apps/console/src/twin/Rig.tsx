@@ -5,22 +5,29 @@ import { Box3, MathUtils, Vector3 } from 'three';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import {
   CAMERA_LIMITS,
+  type DistanceLimits,
+  distanceLimitsOf,
   FLY_MS,
   flyPath,
+  fitAssetView,
   fitBounds,
   type FitBox,
   flyProgress,
+  HOME_TILT_DEG,
+  HOME_YAW_DEG,
   homeView,
   limitPose,
   type Pose,
   poseToPosition,
   positionToPose,
+  unionLimits,
 } from '../lib/twinCamera';
 import { registerTwinCommands } from '../lib/twinCommands';
-import { startBoxOf } from '../lib/twinLevelCamera';
+import { levelOf } from '../lib/twinLevel';
+import { startAssetBoxOf, startBoxOf } from '../lib/twinLevelCamera';
 import { type Bounds, panBounds } from '../lib/twinScene';
 import { useConsole } from '../store';
-import { sheetInset, useSheetOffset } from './useSheetOffset';
+import { sheetInset, sheetInsetOpen, useSheetOffset } from './useSheetOffset';
 
 const { ACTION } = CameraControlsImpl;
 
@@ -40,6 +47,8 @@ interface Flight {
   from: Pose;
   to: Pose;
   startedAt: number;
+  /** The distance limits the controls take once it has landed (the level it flies to, V2-15.7). */
+  limits: DistanceLimits;
 }
 
 /** Where `controls` is going (its end values), as a pose. */
@@ -58,6 +67,15 @@ function placeCamera(controls: CameraControls, pose: Pose): void {
   void controls.setLookAt(x, y, z, pose.target[0], pose.target[1], pose.target[2], false);
 }
 
+/** Gives `controls` the distance limits `limits` (V2-15.7: they follow the level). */
+function applyLimits(controls: CameraControls, limits: DistanceLimits): void {
+  controls.minDistance = limits.minDistance;
+  controls.maxDistance = limits.maxDistance;
+}
+
+/** The distance limits of the level the store is at: the one a command that just changed it is flying to. */
+const limitsNow = (): DistanceLimits => distanceLimitsOf(levelOf(useConsole.getState()));
+
 /** The width over the height of the part of the stage the campus has to fit in (the sheet takes some). */
 function visibleAspect(width: number, height: number, inset: number): number {
   return height > 0 ? Math.max(1, width - inset) / height : 1;
@@ -71,14 +89,19 @@ interface RigProps {
    * level (V2-15.6). Later fits are asked for with `twinCommands.fit`, which carries its own box.
    */
   boxes: ReadonlyMap<string, FitBox>;
+  /** The box of every asset (`assetBoxes`): read once, for the first view when the stage starts with an asset isolated (V2-15.7). */
+  assetBoxes: ReadonlyMap<string, FitBox>;
 }
 
 /**
  * The 3D stage's camera (V2-12.9, ADR-0020 § Camera): drei's `CameraControls` with the brief's limits, the mouse
  * and touch mapping, our own fly-to, the sheet's view offset and the command API. It renders nothing itself.
  *
- * - **Limits** (brief § Camera limits): distance 60 – 900 m, tilt 20° – 78° from the vertical, the target held
- *   inside the site boundary + 40 m (`setBoundary`), wheel zoom toward the cursor, a response of about 300 ms.
+ * - **Limits** (brief § Camera limits): distance 60 – 900 m (4 – 40 m while an asset is isolated: they follow the
+ *   level, `distanceLimitsOf`), tilt 20° – 78° from the vertical, the target held inside the site boundary + 40 m
+ *   (`setBoundary`), wheel zoom toward the cursor, a response of about 300 ms. The controls take a level's
+ *   distance limits when a flight to it has landed (and at the first view); during the flight they allow both
+ *   levels' range, or the library would clamp a camera still far from the new range in a jump.
  * - **Mouse:** drag orbits, right-drag or Shift-drag pans along the ground (`SCREEN_PAN`), wheel zooms.
  *   camera-controls has no modifier-key setting, so Shift switches the left button while it is held.
  *   **Touch:** one finger orbits, two fingers pan and pinch.
@@ -88,18 +111,21 @@ interface RigProps {
  *   applies it at once.
  * - **Never moves by itself.** Nothing here starts a movement but a user action or a command (`twinCommands`),
  *   and the first view is set once, when the rig mounts, before the first paint: the home view, or the fit of the
- *   building in focus when the stage starts at building level (the store keeps the level while the operator is
- *   in 2D). `fit` flies to a building's box with the stage's aspect and the sheet's inset, as `home` does.
+ *   building in focus when the stage starts at building level, or the fit of the asset isolated when it starts
+ *   at asset level (the store keeps the level while the operator is in 2D). `fit` flies to a building's box with
+ *   the stage's aspect and the sheet's inset, as `home` does; `fitAsset` flies to an asset's box from the
+ *   camera's own yaw and tilt, with the width the inspector will take (it opens in the same update).
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing.
  */
-export function Rig({ bounds, boxes }: RigProps) {
+export function Rig({ bounds, boxes, assetBoxes }: RigProps) {
   const controls = useRef<CameraControls>(null);
   const flight = useRef<Flight | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const reduced = useRef(reducedMotion);
   const initialBounds = useRef(bounds);
   const initialBoxes = useRef(boxes);
+  const initialAssetBoxes = useRef(assetBoxes);
   const get = useThree((state) => state.get);
   const pan = useMemo(() => panBounds(bounds), [bounds]);
 
@@ -116,13 +142,23 @@ export function Rig({ bounds, boxes }: RigProps) {
     if (!rig) return;
     const { size, gl } = get();
     const aspect = visibleAspect(size.width, size.height, sheetInset(gl.domElement));
-    const start = startBoxOf(useConsole.getState(), initialBoxes.current);
-    placeCamera(
-      rig,
-      start === null
-        ? homeView(initialBounds.current, aspect)
-        : fitBounds(start.bounds, aspect, start.heightM),
-    );
+    const state = useConsole.getState();
+    const asset = startAssetBoxOf(state, initialAssetBoxes.current);
+    const building = startBoxOf(state, initialBoxes.current);
+    if (asset !== null) {
+      // The inspector is open for the selection that is kept, so the stage is already narrower.
+      const beside = visibleAspect(
+        size.width,
+        size.height,
+        Math.max(sheetInset(gl.domElement), sheetInsetOpen(gl.domElement)),
+      );
+      placeCamera(rig, fitAssetView(asset, beside, { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG }));
+    } else if (building !== null) {
+      placeCamera(rig, fitBounds(building.bounds, aspect, building.heightM));
+    } else {
+      placeCamera(rig, homeView(initialBounds.current, aspect));
+    }
+    applyLimits(rig, limitsNow());
   }, [get]);
 
   // The target never leaves the site boundary + 40 m, and never goes under the ground or above the roofs.
@@ -174,6 +210,8 @@ export function Rig({ bounds, boxes }: RigProps) {
     const rig = controls.current;
     if (!rig) return;
     const cancel = () => {
+      // The camera stays where the drag took it from; the controls take the range of the level it was flying to.
+      if (flight.current !== null) applyLimits(rig, flight.current.limits);
       flight.current = null;
     };
     rig.addEventListener('controlstart', cancel);
@@ -186,19 +224,29 @@ export function Rig({ bounds, boxes }: RigProps) {
     if (!rig) return;
 
     const flyTo = (to: Pose) => {
-      const goal = limitPose(to, pan);
+      const limits = limitsNow();
+      const goal = limitPose(to, pan, limits);
       if (reduced.current) {
         flight.current = null;
+        applyLimits(rig, unionLimits(rig, limits));
         placeCamera(rig, goal);
+        applyLimits(rig, limits);
         get().invalidate();
         return;
       }
-      flight.current = { from: currentPose(rig), to: goal, startedAt: performance.now() };
+      applyLimits(rig, unionLimits(rig, limits));
+      flight.current = { from: currentPose(rig), to: goal, startedAt: performance.now(), limits };
       get().invalidate();
     };
     const aspect = (): number => {
       const { size, gl } = get();
       return visibleAspect(size.width, size.height, sheetInset(gl.domElement));
+    };
+    // An asset always opens its inspector, which is not on screen yet when this is asked for.
+    const assetAspect = (): number => {
+      const { size, gl } = get();
+      const inset = Math.max(sheetInset(gl.domElement), sheetInsetOpen(gl.domElement));
+      return visibleAspect(size.width, size.height, inset);
     };
     const home = (): Pose => homeView(bounds, aspect());
 
@@ -214,6 +262,10 @@ export function Rig({ bounds, boxes }: RigProps) {
       },
       home: () => flyTo(home()),
       fit: ({ bounds: box, heightM }) => flyTo(fitBounds(box, aspect(), heightM)),
+      fitAsset: (box) => {
+        const now = currentPose(rig);
+        flyTo(fitAssetView(box, assetAspect(), { yaw: now.yaw, tilt: now.tilt }));
+      },
       zoomBy: (factor) => {
         flight.current = null;
         void rig.dollyTo(currentPose(rig).distance * factor, true);
@@ -234,8 +286,10 @@ export function Rig({ bounds, boxes }: RigProps) {
     if (!rig || !current) return;
     const progress = flyProgress(performance.now() - current.startedAt, FLY_MS);
     placeCamera(rig, flyPath(current.from, current.to, progress));
-    if (progress >= 1) flight.current = null;
-    else state.invalidate();
+    if (progress >= 1) {
+      applyLimits(rig, current.limits);
+      flight.current = null;
+    } else state.invalidate();
   }, -2);
 
   return (

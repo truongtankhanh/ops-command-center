@@ -13,6 +13,7 @@ function fakeCommands(): FakeCommands {
     flyTo: vi.fn<TwinCommands['flyTo']>(),
     home: vi.fn<TwinCommands['home']>(),
     fit: vi.fn<TwinCommands['fit']>(),
+    fitAsset: vi.fn<TwinCommands['fitAsset']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
@@ -25,6 +26,18 @@ const LAB: FitBox = { bounds: { minX: 100, maxX: 140, minZ: 0, maxZ: 40 }, heigh
 const BOXES = new Map([
   ['dc', DC],
   ['lab', LAB],
+]);
+
+// An asset on the Data Center's roof, one beside it, one in the lab, and one outside any building.
+const CT01: FitBox = { bounds: { minX: 5, maxX: 11, minZ: 5, maxZ: 11 }, heightM: 8, baseM: 24 };
+const GEN01: FitBox = { bounds: { minX: 45, maxX: 50, minZ: 5, maxZ: 9 }, heightM: 3, baseM: 0 };
+const LKSB3: FitBox = { bounds: { minX: 130, maxX: 131, minZ: 5, maxZ: 6 }, heightM: 1, baseM: 2 };
+const TR01: FitBox = { bounds: { minX: 200, maxX: 204, minZ: 5, maxZ: 9 }, heightM: 4, baseM: 0 };
+const ASSETS = new Map([
+  ['CT-01', CT01],
+  ['GEN-01', GEN01],
+  ['LKS-B3', LKSB3],
+  ['TR-01', TR01],
 ]);
 
 const store = () => useConsole.getState();
@@ -42,7 +55,7 @@ describe('useLevelCamera', () => {
   afterEach(() => unregister());
 
   it('flies in to a building that is focused', () => {
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
 
     store().focusBuilding('dc');
 
@@ -52,7 +65,7 @@ describe('useLevelCamera', () => {
   });
 
   it('flies to the other building when the focus moves to it', () => {
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
     store().focusBuilding('dc');
 
     store().focusBuilding('lab');
@@ -62,7 +75,7 @@ describe('useLevelCamera', () => {
   });
 
   it('flies home when the building is left, by going up or by Home', () => {
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
     store().focusBuilding('dc');
     store().goUp();
     expect(rig.home).toHaveBeenCalledTimes(1);
@@ -76,46 +89,146 @@ describe('useLevelCamera', () => {
     expect(rig.home).toHaveBeenCalledTimes(3);
   });
 
-  it('flies nothing for an asset or a part, and back to its building when the asset is left (AC2)', () => {
-    renderHook(() => useLevelCamera(BOXES));
+  describe('the asset (V2-15.7)', () => {
+    it('flies to an asset that is selected, once (AC1)', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
 
-    store().selectAsset('CT-01', 'dc');
-    store().selectPart('FanBlade');
-    expect(rig.fit).not.toHaveBeenCalled();
-    expect(rig.home).not.toHaveBeenCalled();
+      store().selectAsset('CT-01', 'dc');
 
-    // Part → asset is still no flight; asset → building is the fit of that building.
-    store().goUp();
-    expect(rig.fit).not.toHaveBeenCalled();
-    store().goUp();
-    expect(rig.fit).toHaveBeenCalledTimes(1);
-    expect(rig.fit).toHaveBeenCalledWith(DC);
-  });
+      expect(rig.fitAsset).toHaveBeenCalledTimes(1);
+      expect(rig.fitAsset).toHaveBeenCalledWith(CT01);
+      // The building the asset is in is focused in the same update: that is not a second flight.
+      expect(rig.fit).not.toHaveBeenCalled();
+      expect(rig.home).not.toHaveBeenCalled();
+    });
 
-  it('flies an asset outside any building home when it is left', () => {
-    renderHook(() => useLevelCamera(BOXES));
-    store().selectAsset('TR-01', null);
-    expect(rig.home).not.toHaveBeenCalled();
-    expect(rig.fit).not.toHaveBeenCalled();
+    it('flies to an asset selected while the building is already in focus', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+      store().focusBuilding('dc');
 
-    store().goUp();
+      store().selectAsset('GEN-01', 'dc');
 
-    expect(rig.home).toHaveBeenCalledTimes(1);
-  });
+      expect(rig.fitAsset).toHaveBeenCalledWith(GEN01);
+      expect(rig.fit).toHaveBeenCalledTimes(1);
+    });
 
-  it('flies home from an asset when Home leaves everything at once', () => {
-    renderHook(() => useLevelCamera(BOXES));
-    store().selectAsset('CT-01', 'dc');
-    rig.fit.mockClear();
+    it('flies to an asset inside another building, as the one flight of the asset (AC2)', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
 
-    store().goCampus();
+      store().selectAsset('LKS-B3', 'lab');
 
-    expect(rig.home).toHaveBeenCalledTimes(1);
-    expect(rig.fit).not.toHaveBeenCalled();
+      expect(rig.fitAsset).toHaveBeenCalledTimes(1);
+      expect(rig.fitAsset).toHaveBeenCalledWith(LKSB3);
+      expect(rig.fit).not.toHaveBeenCalled();
+    });
+
+    it('ends at the second asset when two are selected one after the other (AC4)', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+
+      store().selectAsset('CT-01', 'dc');
+      store().selectAsset('GEN-01', 'dc');
+
+      expect(rig.fitAsset).toHaveBeenCalledTimes(2);
+      expect(rig.fitAsset).toHaveBeenNthCalledWith(1, CT01);
+      expect(rig.fitAsset).toHaveBeenLastCalledWith(GEN01);
+    });
+
+    it('flies to an asset outside any building, and goes home when it is left', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+
+      store().selectAsset('TR-01', null);
+      expect(rig.fitAsset).toHaveBeenCalledWith(TR01);
+
+      store().goUp();
+      expect(rig.home).toHaveBeenCalledTimes(1);
+      expect(rig.fit).not.toHaveBeenCalled();
+    });
+
+    it('goes back to the building when the asset is closed or left by Escape (AC3)', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+      store().selectAsset('CT-01', 'dc');
+
+      store().selectAsset(null);
+
+      expect(rig.fit).toHaveBeenCalledTimes(1);
+      expect(rig.fit).toHaveBeenCalledWith(DC);
+
+      store().selectAsset('CT-01', 'dc');
+      store().goUp();
+      expect(rig.fit).toHaveBeenCalledTimes(2);
+    });
+
+    it('goes back to the building when another selection takes the sheet: an incident or a report', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+      store().selectAsset('CT-01', 'dc');
+
+      store().select('a');
+      expect(rig.fit).toHaveBeenCalledTimes(1);
+      expect(rig.fit).toHaveBeenLastCalledWith(DC);
+      // Selecting the incident did not fly to anything of its own.
+      expect(rig.fitAsset).toHaveBeenCalledTimes(1);
+
+      store().selectAsset('CT-01', 'dc');
+      store().startReport();
+      expect(rig.fit).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not move for a part of the isolated asset, selected, left or closed', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+      store().selectAsset('CT-01', 'dc');
+      rig.fitAsset.mockClear();
+
+      store().selectPart('FanBlade');
+      store().goUp();
+
+      expect(rig.fitAsset).not.toHaveBeenCalled();
+      expect(rig.fit).not.toHaveBeenCalled();
+      expect(rig.home).not.toHaveBeenCalled();
+    });
+
+    it('goes home from the asset and the part when Home leaves everything at once', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+      store().selectAsset('CT-01', 'dc');
+      store().selectPart('FanBlade');
+
+      store().goCampus();
+
+      expect(rig.home).toHaveBeenCalledTimes(1);
+      expect(rig.fit).not.toHaveBeenCalled();
+    });
+
+    it('does not fly for an asset the console has no box for', () => {
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+
+      store().selectAsset('GONE', 'dc');
+
+      expect(rig.fitAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not fly at mount, even when the stage starts with an asset isolated', () => {
+      store().selectAsset('CT-01', 'dc');
+
+      renderHook(() => useLevelCamera(BOXES, ASSETS));
+
+      expect(rig.fitAsset).not.toHaveBeenCalled();
+    });
+
+    it('uses the newest asset boxes at the moment of the change', () => {
+      const moved: FitBox = { ...CT01, baseM: 30 };
+      const view = renderHook(
+        (props: { assets: ReadonlyMap<string, FitBox> }) => useLevelCamera(BOXES, props.assets),
+        { initialProps: { assets: ASSETS } },
+      );
+
+      view.rerender({ assets: new Map([['CT-01', moved]]) });
+      store().selectAsset('CT-01', 'dc');
+
+      expect(rig.fitAsset).toHaveBeenCalledWith(moved);
+    });
   });
 
   it('does not fly for what is not a change of level: hover, filters, an incident', () => {
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
     store().focusBuilding('dc');
     rig.fit.mockClear();
 
@@ -132,14 +245,14 @@ describe('useLevelCamera', () => {
   it('does not fly at mount, even when the stage starts at building level', () => {
     store().focusBuilding('dc');
 
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
 
     expect(rig.fit).not.toHaveBeenCalled();
     expect(rig.home).not.toHaveBeenCalled();
   });
 
   it('does not fly to a building the console does not hold', () => {
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
 
     store().focusBuilding('gone');
 
@@ -149,7 +262,7 @@ describe('useLevelCamera', () => {
   it('uses the newest boxes at the moment of the change', () => {
     const moved: FitBox = { ...DC, heightM: 30 };
     const view = renderHook(
-      (props: { boxes: ReadonlyMap<string, FitBox> }) => useLevelCamera(props.boxes),
+      (props: { boxes: ReadonlyMap<string, FitBox> }) => useLevelCamera(props.boxes, ASSETS),
       { initialProps: { boxes: BOXES } },
     );
 
@@ -160,7 +273,7 @@ describe('useLevelCamera', () => {
   });
 
   it('stops listening when it goes', () => {
-    const view = renderHook(() => useLevelCamera(BOXES));
+    const view = renderHook(() => useLevelCamera(BOXES, ASSETS));
     view.unmount();
 
     store().focusBuilding('dc');
@@ -170,7 +283,7 @@ describe('useLevelCamera', () => {
 
   it('does nothing, and does not throw, with no rig registered', () => {
     unregister();
-    renderHook(() => useLevelCamera(BOXES));
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
 
     expect(() => {
       store().focusBuilding('dc');

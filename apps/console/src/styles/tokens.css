@@ -262,3 +262,14 @@
   inherits: true;
   initial-value: 0px;
 }
+
+/*
+ * What `--sheet-inset` becomes while a sheet is open (the sheet's width, or 0 on a phone), readable before the
+ * sheet is: the 3D view's fit of an isolated asset asks for it in the same update that opens the inspector
+ * (V2-15.7). Registered for the same reason, so it reads in px. Set on the stage (App.module.css).
+ */
+@property --sheet-inset-open {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}

@@ -1,10 +1,11 @@
-import type { Asset, TelemetryPoint } from '@occ/contracts';
+import type { Asset, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { MapLegend } from '../components/MapLegend';
 import { initialTelemetryState } from '../lib/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 import {
   createTestQueryClient,
   expectNoAxeViolations,
@@ -66,9 +67,12 @@ const entry = (ageMs: number, online = true) => ({
 function renderLegend(
   assets: Asset[] = [],
   overview: Record<string, ReturnType<typeof entry>> = {},
+  zones?: Zone[],
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.assets, assets);
+  // Only an isolated asset's line asks for the zones: a test that does not isolate seeds none.
+  if (zones !== undefined) client.setQueryData(queryKeys.zones, zones);
   act(() => {
     useTelemetryStore.setState({
       view: {
@@ -267,5 +271,101 @@ describe('TwinLegend', () => {
 
       await expectNoAxeViolations();
     });
+  });
+});
+
+describe('TwinLegend with an asset isolated (V2-15.7)', () => {
+  const DATA_CENTER: Zone = {
+    id: 'zone-dc',
+    code: 'BLD-DC',
+    name: 'Data Center',
+    kind: 'building',
+    polygon: [],
+    center: [108.44, 11.95],
+  };
+  const LINE = 'Isolated — the rest of the campus is faded.';
+
+  beforeEach(() => {
+    localStorage.clear();
+    resetStore(useConsole);
+  });
+
+  afterEach(() => {
+    act(() => {
+      resetStore(useConsole);
+      resetStore(useTelemetryStore);
+    });
+  });
+
+  it('is one line in place of the toggle and the entries, saying where Escape returns to', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
+
+    renderLegend([], {}, [DATA_CENTER]);
+
+    expect(screen.getByText(/Isolated — the rest of the campus is faded\./)).toHaveTextContent(
+      `${LINE} Esc returns to Data Center`,
+    );
+    expect(screen.getByText('Esc')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('returns to the campus for an asset in no building', () => {
+    useConsole.setState({ focusZoneId: null, selectedAssetCode: 'TR-01' });
+
+    renderLegend([], {}, []);
+
+    expect(screen.getByText(/Isolated/)).toHaveTextContent(`${LINE} Esc returns to Campus`);
+  });
+
+  it('says the same with a part of the asset selected', () => {
+    useConsole.setState({
+      focusZoneId: 'zone-dc',
+      selectedAssetCode: 'CT-01',
+      selectedPart: 'FanBlade',
+    });
+
+    renderLegend([], {}, [DATA_CENTER]);
+
+    expect(screen.getByText(/Isolated/)).toHaveTextContent('Esc returns to Data Center');
+  });
+
+  it('names no place while the building in focus is not known yet, rather than a wrong one', () => {
+    useConsole.setState({ focusZoneId: 'zone-gone', selectedAssetCode: 'CT-01' });
+
+    renderLegend([], {}, []);
+
+    expect(screen.getByText(/Isolated/)).toHaveTextContent(LINE);
+    expect(screen.getByText(/Isolated/)).not.toHaveTextContent('returns to');
+    expect(screen.queryByText('Esc')).not.toBeInTheDocument();
+  });
+
+  it('is the legend as it was at campus and building level', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
+
+    renderLegend([], {}, [DATA_CENTER]);
+
+    expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+    expect(screen.queryByText(/Isolated/)).not.toBeInTheDocument();
+  });
+
+  it('comes back, as it was, when the asset is left, with the preference it had', () => {
+    localStorage.setItem(KEY, 'false');
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
+    renderLegend([], {}, [DATA_CENTER]);
+
+    act(() => useConsole.getState().selectAsset(null));
+
+    expect(screen.getByRole('button', { name: 'Legend' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  it('has no accessibility violations', async () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
+    renderLegend([], {}, [DATA_CENTER]);
+
+    await expectNoAxeViolations();
   });
 });

@@ -15,6 +15,8 @@ import {
   type PickScope,
   type PickTable,
 } from '../lib/twinPicking';
+import { groupsFor, type Keep } from '../lib/twinGroups';
+import { applyGroups } from './applyGroups';
 import { createPicker, type PickView } from './picker';
 
 // The view: 100 × 100 px, 100 m above the origin and looking straight down, so a pixel is about 0.93 m on
@@ -209,6 +211,75 @@ describe('picker with the merged meshes', () => {
     picker.clear();
 
     expect(picker.pick(centre, view, campus)).toBeNull();
+  });
+});
+
+describe('picker with the merged meshes drawn in groups (V2-15.7)', () => {
+  /**
+   * The campus scene with its meshes as the isolation draws them: a material array (as it is, faded) and the groups
+   * `groupsFor` makes, which `Buildings` and `AssetBoxes` apply. The pick tables are the same as without groups.
+   */
+  function groupedScene(keep: Keep) {
+    const { picker, shell, boxes } = campusScene();
+    const faded = new MeshBasicMaterial({ transparent: true, opacity: 0.18, depthWrite: false });
+    for (const [mesh, spans] of [
+      [shell, [{ start: 0, count: 36 }]],
+      [
+        boxes,
+        [
+          { start: 0, count: 36 },
+          { start: 36, count: 36 },
+        ],
+      ],
+    ] as const) {
+      const target: Mesh = mesh;
+      target.material = [material, faded];
+      const total = mesh.geometry.index?.count ?? 0;
+      applyGroups(mesh.geometry, groupsFor(spans, mesh === boxes ? keep : null, total));
+    }
+    return { picker, boxes };
+  }
+
+  it.each<[string, Keep]>([
+    ['nothing faded', null],
+    ['the first box kept', 0],
+    ['the second box kept', 1],
+    ['everything faded', 'none'],
+  ])('names the same things as without groups: %s', (_name, keep) => {
+    const { picker } = groupedScene(keep);
+
+    expect(picker.pick(at(60, 42), view, campus)).toEqual({ kind: 'building', id: 'BLD-DC' });
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+    expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'asset', id: 'CT-02' });
+    expect(picker.pick(at(2, 50), view, campus)).toBeNull();
+  });
+
+  it('keeps the isolated scope: the faded box is not a target, the kept one is', () => {
+    const { picker } = groupedScene(0);
+
+    expect(picker.pick(centre, view, isolated('CT-01'))).toEqual({ kind: 'asset', id: 'CT-01' });
+    expect(picker.pick(at(55.4, 55.4), view, isolated('CT-01'))).toBeNull();
+  });
+
+  it('is not rebuilt by a change of groups: the same bounds tree answers', () => {
+    const { picker, boxes } = groupedScene(null);
+    picker.pick(centre, view, campus);
+    const tree = boxes.geometry.boundsTree;
+
+    applyGroups(
+      boxes.geometry,
+      groupsFor(
+        [
+          { start: 0, count: 36 },
+          { start: 36, count: 36 },
+        ],
+        1,
+        72,
+      ),
+    );
+
+    expect(boxes.geometry.boundsTree).toBe(tree);
+    expect(picker.pick(at(55.4, 55.4), view, campus)).toEqual({ kind: 'asset', id: 'CT-02' });
   });
 });
 
