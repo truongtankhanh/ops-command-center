@@ -46,6 +46,7 @@ import {
 import { startPulse } from '../lib/mapPulse';
 import { siteBounds } from '../lib/sitePlan';
 import { serverNow } from '../lib/telemetryFreshness';
+import { buildingFocusOf } from '../lib/twinLevel';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -164,7 +165,15 @@ export function CampusMap() {
   useCameraLayer(map, cameras);
   // Between the cameras and the incidents: layers added later are drawn higher (see the hook).
   useAssetLayers(map, assets, incidents);
-  useIncidentLayers(map, features, layers.incidents);
+  // The building an asset is in, for the click that selects it (the 3D view focuses it; 2D ignores it).
+  const focusZoneOf = useMemo(
+    () => (code: string) => {
+      const asset = assets?.find((candidate) => candidate.code === code);
+      return asset ? buildingFocusOf(asset, zones) : null;
+    },
+    [assets, zones],
+  );
+  useIncidentLayers(map, features, layers.incidents, focusZoneOf);
   // After every hook that adds a layer: effects run in declaration order, so the layers exist when
   // this applies the operator's toggles (do not move it above them).
   useLayerVisibility(map, layers);
@@ -482,8 +491,15 @@ function useIncidentLayers(
   features: ReturnType<typeof incidentFeatures> | null,
   /** The Incidents toggle: the layers follow it in `useLayerVisibility`, the DOM tag and pulse here. */
   shown: boolean,
+  /** The building zone of an asset by code, or `null` (V2-15.2). */
+  focusZoneOf: (code: string) => string | null,
 ) {
   const codeTag = useRef<maplibregl.Marker | null>(null);
+  // Read by the one click handler added per map, so it sees the assets and zones as they are now.
+  const focusZoneOfRef = useRef(focusZoneOf);
+  useEffect(() => {
+    focusZoneOfRef.current = focusZoneOf;
+  });
   const pulsing = features?.pulsing ?? false;
   const reducedMotion = usePrefersReducedMotion();
 
@@ -521,7 +537,8 @@ function useIncidentLayers(
         const code: unknown = hit.properties.code;
         if (typeof code !== 'string') return;
         const { selectAsset, selectedAssetCode } = useConsole.getState();
-        selectAsset(code === selectedAssetCode ? null : code);
+        if (code === selectedAssetCode) selectAsset(null);
+        else selectAsset(code, focusZoneOfRef.current(code));
         return;
       }
       const id = String(hit.properties.id);

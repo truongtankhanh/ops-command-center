@@ -552,6 +552,39 @@ describe('CampusMap', () => {
       expect(useConsole.getState().selectedAssetCode).toBeNull();
     });
 
+    // V2-15.2: the click also says which building to focus, for the 3D view; the map itself ignores it.
+    it('focuses the building of the asset it selects', async () => {
+      const { map } = await renderMap([], { assets: [oneAsset()], zones: [zone()] });
+
+      click(map, assetHit('CT-01'));
+
+      expect(useConsole.getState().focusZoneId).toBe('z1');
+    });
+
+    it('focuses nothing for an asset in a zone that is not a building', async () => {
+      const plant = zone({ id: 'z2', code: 'UTL-PLANT', name: 'Utility Plant', kind: 'utility' });
+      const { map } = await renderMap([], {
+        assets: [oneAsset({ zoneId: 'z2' })],
+        zones: [zone(), plant],
+      });
+      useConsole.setState({ focusZoneId: 'z1' });
+
+      click(map, assetHit('CT-01'));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().focusZoneId).toBeNull();
+    });
+
+    it('keeps the building in focus when a second click deselects the asset', async () => {
+      const { map } = await renderMap([], { assets: [oneAsset()], zones: [zone()] });
+      click(map, assetHit('CT-01'));
+
+      click(map, assetHit('CT-01'));
+
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+      expect(useConsole.getState().focusZoneId).toBe('z1');
+    });
+
     it('opens the incident drawn over an asset, not the asset', async () => {
       const { map } = await renderMap([incident({ id: 'a' })], { assets: [oneAsset()] });
       // The map answers topmost first: the incident marker, then the asset beneath it.
@@ -600,7 +633,7 @@ describe('CampusMap', () => {
       it('ring the selected asset, and none once it is deselected', async () => {
         const { map } = await renderMap([], { assets: [oneAsset()] });
 
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
         expect(map.setFilter).toHaveBeenLastCalledWith(MAP_LAYERS.assetSelected, [
           '==',
           ['get', 'code'],
@@ -646,7 +679,7 @@ describe('CampusMap', () => {
         ).toEqual(expect.arrayContaining([MAP_LAYERS.assetHover, MAP_LAYERS.assetSelected]));
         map.setLayoutProperty.mockClear();
 
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
 
         expect(map.setLayoutProperty.mock.calls.map(([id, , value]) => [id, value])).toEqual(
           expect.arrayContaining([[MAP_LAYERS.assetSelected, 'visible']]),
@@ -658,7 +691,7 @@ describe('CampusMap', () => {
         const before = map.setFilter.mock.calls.length;
 
         unmount();
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
 
         expect(map.setFilter.mock.calls.length).toBe(before);
       });
@@ -668,7 +701,7 @@ describe('CampusMap', () => {
       it('centres the selected asset beside the open sheet and returns to the campus on close', async () => {
         const { map } = await renderMap([], { zones: [zone()], assets: [oneAsset()] });
 
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
         expect(map.easeTo).toHaveBeenLastCalledWith({
           center: POSITION,
           offset: [-220, 0],
@@ -686,7 +719,7 @@ describe('CampusMap', () => {
         ];
         const { map } = await renderMap([], { zones: [zone()], assets: pair });
 
-        act(() => useConsole.getState().selectAsset('PMP-S1'));
+        act(() => useConsole.getState().selectAsset('PMP-S1', null));
 
         const drawn = fanOutAssets(pair).get('PMP-S1')!;
         expect(drawn).not.toEqual(POSITION);
@@ -704,9 +737,9 @@ describe('CampusMap', () => {
           zones: [zone()],
           assets: [oneAsset(), other],
         });
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
 
-        act(() => useConsole.getState().selectAsset('CT-02'));
+        act(() => useConsole.getState().selectAsset('CT-02', null));
         expect(map.easeTo).toHaveBeenLastCalledWith({
           center: [108.4416, 11.953],
           offset: [-220, 0],
@@ -733,7 +766,7 @@ describe('CampusMap', () => {
         );
         const { map } = await renderMap([], { zones: [zone()], assets: [oneAsset()] });
 
-        act(() => useConsole.getState().selectAsset('CT-01'));
+        act(() => useConsole.getState().selectAsset('CT-01', null));
         expect(map.easeTo).toHaveBeenLastCalledWith(expect.objectContaining({ duration: 0 }));
 
         act(() => useConsole.getState().selectAsset(null));

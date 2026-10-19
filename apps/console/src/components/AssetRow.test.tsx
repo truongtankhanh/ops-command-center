@@ -83,12 +83,14 @@ function Row({
   state = 'running',
   incident: raised,
   ageMs = null,
+  focusZoneId = null,
   tabIndex = 0,
 }: {
   asset?: Asset;
   state?: AssetState;
   incident?: Incident;
   ageMs?: number | null;
+  focusZoneId?: string | null;
   tabIndex?: 0 | -1;
 }) {
   return (
@@ -97,6 +99,7 @@ function Row({
       state={state}
       incident={raised}
       ageMs={ageMs}
+      focusZoneId={focusZoneId}
       itemKey={`asset:${item.code}`}
       tabIndex={tabIndex}
       register={register}
@@ -281,6 +284,29 @@ describe('AssetRow', () => {
 
       await userEvent.click(row());
       expect(useConsole.getState().selectedAssetCode).toBeNull();
+    });
+
+    it('focuses the building it is given when it selects, and nothing when it is given none', async () => {
+      const { rerender } = render(<Row focusZoneId="zone-dc" />);
+
+      await userEvent.click(row());
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
+
+      act(() => useConsole.getState().selectAsset(null));
+      rerender(<Row focusZoneId={null} />);
+      await userEvent.click(row());
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().focusZoneId).toBeNull();
+    });
+
+    it('keeps the building in focus when it deselects', async () => {
+      useConsole.setState({ selectedAssetCode: 'CT-01', focusZoneId: 'zone-dc' });
+      render(<Row focusZoneId="zone-dc" />);
+
+      await userEvent.click(row());
+
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
     });
 
     it('selects with Enter', async () => {

@@ -224,17 +224,20 @@ function renderBlock(
     catalogue = [COOLING_TOWER, LEAK_SENSOR],
     details = [COOLING_TOWER, LEAK_SENSOR],
     model = TOWER_TREE,
+    zones = [ZONE],
   }: {
     catalogue?: AssetDetail[];
     details?: AssetDetail[];
     model?: NodeInfo | null | false;
+    /** `null`: not cached, so the block asks the API for the zones. */
+    zones?: Zone[] | null;
   } = {},
 ) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.assets, catalogue);
   if (model !== false) client.setQueryData(queryKeys.model(TOWER_URL), model);
   // The link names the place: cached, so it asks for nothing of its own.
-  client.setQueryData(queryKeys.zones, [ZONE]);
+  if (zones) client.setQueryData(queryKeys.zones, zones);
   for (const cached of details) client.setQueryData(queryKeys.asset(cached.code), cached);
   return renderWithQueryClient(<IncidentEvidence incident={detail} />, client);
 }
@@ -497,6 +500,25 @@ describe('IncidentEvidence', () => {
 
   describe('the link to the asset', () => {
     const OPEN_CT = { name: 'Open asset CT-01' };
+
+    // V2-15.2: opening the asset also says which building to focus, for the 3D view.
+    it('opens the asset and focuses the building it is in', async () => {
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', OPEN_CT));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
+    });
+
+    it('opens the asset with no building in focus while the zones are not known', async () => {
+      renderBlock(incident(), { zones: null });
+
+      await userEvent.click(screen.getByRole('button', OPEN_CT));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().focusZoneId).toBeNull();
+    });
 
     it('names the asset, its part and where it stands, with a way to open it', () => {
       hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });

@@ -28,6 +28,7 @@ import {
   type RuleEvidence,
 } from '../lib/telemetryEvidence';
 import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
+import { buildingFocusOf } from '../lib/twinLevel';
 import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
@@ -337,7 +338,7 @@ function AssetLink({
         <Button
           size="sm"
           aria-label={`Open asset ${asset.code}`}
-          onClick={() => selectAsset(asset.code)}
+          onClick={() => selectAsset(asset.code, buildingFocusOf(asset, zones))}
         >
           Open asset
         </Button>

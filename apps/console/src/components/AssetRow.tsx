@@ -21,6 +21,11 @@ interface AssetRowProps {
    * stale); `null` for every other row, so a live row's props never change with the clock.
    */
   ageMs: number | null;
+  /**
+   * The building zone the asset is in (`buildingFocusOf`), or `null`: what selecting it focuses in the 3D
+   * view. The list resolves it, so the row reads no zones and stays a primitive for the memo (V2-15.2).
+   */
+  focusZoneId: string | null;
   /** This row's key in the list's roving set (`assetKey`). */
   itemKey: string;
   /** The list's roving tab stop: `0` on one item, `-1` on the others. */
@@ -49,6 +54,7 @@ export const AssetRow = memo(function AssetRow({
   state,
   incident,
   ageMs,
+  focusZoneId,
   itemKey,
   tabIndex,
   register,
@@ -92,7 +98,7 @@ export const AssetRow = memo(function AssetRow({
       aria-current={selected}
       data-hovered={hovered || undefined}
       onFocus={() => onFocusItem(itemKey)}
-      onClick={() => selectAsset(selected ? null : asset.code)}
+      onClick={() => (selected ? selectAsset(null) : selectAsset(asset.code, focusZoneId))}
       onMouseEnter={() => hoverAsset(asset.code)}
       onMouseLeave={() => hoverAsset(null)}
     >
