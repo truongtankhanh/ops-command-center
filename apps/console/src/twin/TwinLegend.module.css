@@ -37,6 +37,14 @@
   cursor: pointer;
 }
 
+/* The one line of an isolated asset (frames 03 and 17): the legend's box, a glyph and a sentence that may wrap. */
+.line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-1);
+}
+
 /* Only arrival, selection and escalation animate: the chevron turns without a transition. */
 .toggle[aria-expanded='true'] .chevron {
   transform: rotate(180deg);

@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import type { FitBox } from '../lib/twinCamera';
-import { buildingBoxes } from '../lib/twinLevelCamera';
+import { assetBoxes, buildingBoxes } from '../lib/twinLevelCamera';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import type { LabelAnchor } from '../lib/twinScene';
 import { DragHint } from './DragHint';
@@ -48,7 +48,9 @@ export default function TwinStage() {
     () => (scene ? buildingBoxes(scene.zones, scene.frame) : NO_BOXES),
     [scene],
   );
-  useLevelCamera(boxes);
+  // The box of every asset: the camera flies to the one that is isolated (V2-15.7).
+  const assetFits = useMemo(() => (scene ? assetBoxes(scene.assets) : NO_BOXES), [scene]);
+  useLevelCamera(boxes, assetFits);
   // Read here, not in the canvas: a query hook has no client inside `<Canvas>` (V2-14.7).
   const classPoints = useClassPoints(scene?.classes ?? NO_CLASSES);
   // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
@@ -67,6 +69,7 @@ export default function TwinStage() {
             classPoints={classPoints}
             feed={feed}
             boxes={boxes}
+            assetBoxes={assetFits}
             onInvalidate={(invalidate) => {
               invalidateRef.current = invalidate;
             }}

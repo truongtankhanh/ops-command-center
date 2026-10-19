@@ -1,17 +1,22 @@
 import type { Zone } from '@occ/contracts';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { BufferGeometry, Float32BufferAttribute, type Mesh } from 'three';
 import { buildShellGeometry } from '../lib/twinBuildings';
 import { GROUND_LAYERS } from '../lib/twinGround';
 import { hoveredShellZone } from '../lib/twinHover';
+import { groupsFor, keepIndex, type Span } from '../lib/twinGroups';
+import { isFaded } from '../lib/twinLevel';
+import { GHOST_OPACITY } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import { buildingTable } from '../lib/twinPicking';
 import { buildingShells, type Frame } from '../lib/twinScene';
 import { twinColors } from '../styles/tokens';
 import { usePicker } from './PickContext';
+import { applyGroups } from './applyGroups';
 import { createShellColours, paintShell } from './shellLooks';
 import { useHoverRef } from './useHoverRef';
+import { useIsolation } from './useIsolation';
 
 /** After the last ground layer; the faces and then their outline. */
 const FACES_ORDER = GROUND_LAYERS.length;
@@ -40,12 +45,19 @@ interface BuildingsProps {
  *   that picking, the see-through look (V2-15.8) and the heat colouring (V2-17.3) read, so none of
  *   them needs a mesh per building. The faces are registered with the picker as they are (V2-15.3): a
  *   ray is cast at the mesh that is drawn, and a hit's triangle names its building through that table.
+ * - While an asset is isolated (V2-15.7) every building but the asset's is faded to `--tw-ghost-opacity`: the faces
+ *   and the outline each have two materials (as they are, faded) and the geometry's **groups** say which building
+ *   is drawn with which, by the ranges above. Nothing is rebuilt and the picking table does not move; the faded
+ *   group is transparent and writes no depth, so it never hides the asset. `lib/twinLevel.ts` (`isFaded`) is the
+ *   rule; V2-15.8 adds the see-through look of the focused building to the same groups.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
 export function Buildings({ zones, frame, assets }: BuildingsProps) {
   const picker = usePicker();
   const hover = useHoverRef();
+  const isolation = useIsolation();
+  const invalidate = useThree((state) => state.invalidate);
   // The tint last painted, and into which shell: a rebuilt shell starts idle.
   const painted = useRef<{ shell: object | null; zone: string | null }>({
     shell: null,
@@ -65,7 +77,21 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
     faces.setIndex(indices);
     const outline = new BufferGeometry();
     outline.setAttribute('position', new Float32BufferAttribute(edges, 3));
-    return { faces, outline, ranges, colours };
+    // The runs of each building in the two buffers: triangles are three indices, a segment two vertices.
+    const faceSpans: Span[] = ranges.map((r) => ({
+      start: r.firstTriangle * 3,
+      count: r.triangleCount * 3,
+    }));
+    const outlineSpans: Span[] = ranges.map((r) => ({
+      start: r.firstSegment * 2,
+      count: r.segmentCount * 2,
+    }));
+    const faceTotal = indices.length;
+    const outlineTotal = edges.length / 3;
+    // Born with everything as it is: the groups follow the isolation in the effect below, without a rebuild.
+    applyGroups(faces, groupsFor(faceSpans, null, faceTotal));
+    applyGroups(outline, groupsFor(outlineSpans, null, outlineTotal));
+    return { faces, outline, ranges, colours, faceSpans, outlineSpans, faceTotal, outlineTotal };
   }, [zones, frame]);
 
   useEffect(
@@ -75,6 +101,17 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
     },
     [shell],
   );
+
+  // The fade (V2-15.7): the building the isolated asset is in stays as it is, the others are faded.
+  useEffect(() => {
+    if (shell === null) return;
+    const keep = keepIndex(shell.ranges, isolation !== null, (range) =>
+      isFaded({ kind: 'building', zoneId: range.zoneId }, isolation),
+    );
+    applyGroups(shell.faces, groupsFor(shell.faceSpans, keep, shell.faceTotal));
+    applyGroups(shell.outline, groupsFor(shell.outlineSpans, keep, shell.outlineTotal));
+    invalidate();
+  }, [shell, isolation, invalidate]);
 
   // The hover tint (V2-15.5): follows the hovered asset's building, repainting only when the zone changes.
   useFrame(() => {
@@ -105,16 +142,36 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
         renderOrder={FACES_ORDER}
         userData={{ ranges: shell.ranges }}
       >
+        {/* Group 0 is a building as it is; group 1 is one faded (`applyGroups`). */}
         <meshLambertMaterial
+          attach="material-0"
           color="#ffffff"
           vertexColors
           polygonOffset
           polygonOffsetFactor={1}
           polygonOffsetUnits={1}
         />
+        <meshLambertMaterial
+          attach="material-1"
+          color="#ffffff"
+          vertexColors
+          polygonOffset
+          polygonOffsetFactor={1}
+          polygonOffsetUnits={1}
+          transparent
+          opacity={GHOST_OPACITY}
+          depthWrite={false}
+        />
       </mesh>
       <lineSegments geometry={shell.outline} renderOrder={OUTLINE_ORDER}>
-        <lineBasicMaterial color={twinColors.edge} />
+        <lineBasicMaterial attach="material-0" color={twinColors.edge} />
+        <lineBasicMaterial
+          attach="material-1"
+          color={twinColors.edge}
+          transparent
+          opacity={GHOST_OPACITY}
+          depthWrite={false}
+        />
       </lineSegments>
     </>
   );

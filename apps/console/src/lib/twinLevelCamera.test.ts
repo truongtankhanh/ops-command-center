@@ -1,12 +1,15 @@
 import type { LngLat, Zone } from '@occ/contracts';
 import { offsetM } from './geo';
 import type { FitBox } from './twinCamera';
+import type { PlacedAsset } from './twinPlacement';
 import {
+  assetBoxes,
   buildingBoxes,
   type CameraStep,
   type LevelKey,
   levelCameraStep,
   levelKeyOf,
+  startAssetBoxOf,
   startBoxOf,
 } from './twinLevelCamera';
 import { DEFAULT_BUILDING_HEIGHT_M, makeFrame } from './twinScene';
@@ -96,14 +99,78 @@ describe('buildingBoxes', () => {
   });
 });
 
+describe('assetBoxes (V2-15.7)', () => {
+  const placed = (
+    code: string,
+    pose: Partial<PlacedAsset['pose']>,
+    size: PlacedAsset['size'],
+  ): PlacedAsset => ({
+    code,
+    classCode: 'CLS',
+    zoneId: 'dc',
+    placement: 'outdoor',
+    pose: { x: 0, y: 0, z: 0, rotationY: 0, ...pose },
+    size,
+  });
+
+  it('is the footprint around the pose, the height it stands and the elevation of its base', () => {
+    const boxes = assetBoxes([placed('CT-01', { x: 100, y: 24, z: -50 }, { x: 6, y: 8, z: 4 })]);
+
+    expect(boxes.get('CT-01')).toEqual({
+      bounds: { minX: 97, maxX: 103, minZ: -52, maxZ: -48 },
+      heightM: 8,
+      baseM: 24,
+    });
+  });
+
+  it('swaps the extents for a quarter turn, whichever way it is turned', () => {
+    for (const rotationY of [Math.PI / 2, -Math.PI / 2, (3 * Math.PI) / 2]) {
+      const { bounds } = assetBoxes([placed('A', { rotationY }, { x: 6, y: 2, z: 2 })]).get('A')!;
+
+      expect(bounds.maxX - bounds.minX).toBeCloseTo(2, 6);
+      expect(bounds.maxZ - bounds.minZ).toBeCloseTo(6, 6);
+    }
+  });
+
+  it('is the box turned half a turn, which is the heading of a north-facing model', () => {
+    const { bounds } = assetBoxes([placed('A', { rotationY: Math.PI }, { x: 6, y: 2, z: 2 })]).get(
+      'A',
+    )!;
+
+    expect(bounds.maxX - bounds.minX).toBeCloseTo(6, 6);
+    expect(bounds.maxZ - bounds.minZ).toBeCloseTo(2, 6);
+  });
+
+  it('contains the whole footprint for a turn between', () => {
+    const { bounds } = assetBoxes([
+      placed('A', { rotationY: Math.PI / 4 }, { x: 4, y: 2, z: 4 }),
+    ]).get('A')!;
+
+    // A 4 × 4 square turned 45° spans 4·√2 on each axis.
+    expect(bounds.maxX - bounds.minX).toBeCloseTo(4 * Math.SQRT2, 6);
+    expect(bounds.maxZ - bounds.minZ).toBeCloseTo(4 * Math.SQRT2, 6);
+  });
+
+  it('has a box for every asset, by code, and none for an empty list', () => {
+    const boxes = assetBoxes([
+      placed('A', {}, { x: 1, y: 1, z: 1 }),
+      placed('B', {}, { x: 1, y: 1, z: 1 }),
+    ]);
+
+    expect([...boxes.keys()]).toEqual(['A', 'B']);
+    expect(assetBoxes([]).size).toBe(0);
+  });
+});
+
 describe('levelKeyOf', () => {
-  it('is the level and the building in focus', () => {
+  it('is the level, the building in focus and the asset isolated', () => {
     expect(
       levelKeyOf({ focusZoneId: 'dc', selectedAssetCode: 'CT-01', selectedPart: null }),
-    ).toEqual({ level: 'asset', focusZoneId: 'dc' });
+    ).toEqual({ level: 'asset', focusZoneId: 'dc', assetCode: 'CT-01' });
     expect(levelKeyOf({ focusZoneId: null, selectedAssetCode: null, selectedPart: null })).toEqual({
       level: 'campus',
       focusZoneId: null,
+      assetCode: null,
     });
   });
 });
@@ -115,14 +182,34 @@ describe('levelCameraStep', () => {
     ['dc', dc],
     ['lab', lab],
   ]);
+  const tower: FitBox = { bounds: { minX: 5, maxX: 11, minZ: 5, maxZ: 11 }, heightM: 8, baseM: 24 };
+  const gen: FitBox = { bounds: { minX: 45, maxX: 50, minZ: 5, maxZ: 9 }, heightM: 3, baseM: 0 };
+  const sensor: FitBox = { bounds: { minX: 130, maxX: 131, minZ: 5, maxZ: 6 }, heightM: 1 };
+  const assets = new Map([
+    ['CT-01', tower],
+    ['GEN-01', gen],
+    ['LKS-B3', sensor],
+  ]);
 
-  const campus: LevelKey = { level: 'campus', focusZoneId: null };
-  const building = (focusZoneId: string): LevelKey => ({ level: 'building', focusZoneId });
-  const asset = (focusZoneId: string | null): LevelKey => ({ level: 'asset', focusZoneId });
-  const part = (focusZoneId: string | null): LevelKey => ({ level: 'part', focusZoneId });
+  const campus: LevelKey = { level: 'campus', focusZoneId: null, assetCode: null };
+  const building = (focusZoneId: string): LevelKey => ({
+    level: 'building',
+    focusZoneId,
+    assetCode: null,
+  });
+  const asset = (focusZoneId: string | null, assetCode: string): LevelKey => ({
+    level: 'asset',
+    focusZoneId,
+    assetCode,
+  });
+  const part = (focusZoneId: string | null, assetCode: string): LevelKey => ({
+    level: 'part',
+    focusZoneId,
+    assetCode,
+  });
 
   const step = (previous: LevelKey | null, next: LevelKey): CameraStep | null =>
-    levelCameraStep(previous, next, boxes);
+    levelCameraStep(previous, next, boxes, assets);
 
   it('flies in to a building that is clicked', () => {
     expect(step(campus, building('dc'))).toEqual({ kind: 'fit', box: dc });
@@ -137,32 +224,95 @@ describe('levelCameraStep', () => {
   });
 
   it('flies back to the building when the asset is left, and home when it had no building', () => {
-    expect(step(asset('dc'), building('dc'))).toEqual({ kind: 'fit', box: dc });
-    expect(step(asset(null), campus)).toEqual({ kind: 'home' });
+    expect(step(asset('dc', 'CT-01'), building('dc'))).toEqual({ kind: 'fit', box: dc });
+    expect(step(asset(null, 'TR-01'), campus)).toEqual({ kind: 'home' });
   });
 
   it('flies home from the asset and the part when Home leaves everything at once', () => {
-    expect(step(asset('dc'), campus)).toEqual({ kind: 'home' });
-    expect(step(part('dc'), campus)).toEqual({ kind: 'home' });
+    expect(step(asset('dc', 'CT-01'), campus)).toEqual({ kind: 'home' });
+    expect(step(part('dc', 'CT-01'), campus)).toEqual({ kind: 'home' });
   });
 
-  it('does not fly for the asset or the part: V2-15.7 fits the asset', () => {
-    expect(step(campus, asset(null))).toBeNull();
-    expect(step(building('dc'), asset('dc'))).toBeNull();
-    expect(step(asset('dc'), part('dc'))).toBeNull();
-    expect(step(part('dc'), asset('dc'))).toBeNull();
-    expect(step(asset('dc'), asset('lab'))).toBeNull();
+  describe('the asset (V2-15.7)', () => {
+    it('flies to the asset that is selected, from the campus and from a building', () => {
+      expect(step(campus, asset('dc', 'CT-01'))).toEqual({ kind: 'fit-asset', box: tower });
+      expect(step(building('dc'), asset('dc', 'CT-01'))).toEqual({
+        kind: 'fit-asset',
+        box: tower,
+      });
+    });
+
+    it('flies to the second asset when another one is selected: two quick selections end at the second', () => {
+      expect(step(asset('dc', 'CT-01'), asset('dc', 'GEN-01'))).toEqual({
+        kind: 'fit-asset',
+        box: gen,
+      });
+    });
+
+    it('flies once, to the asset, when the other asset is in another building', () => {
+      expect(step(asset('dc', 'CT-01'), asset('lab', 'LKS-B3'))).toEqual({
+        kind: 'fit-asset',
+        box: sensor,
+      });
+    });
+
+    it('flies to an asset in no building', () => {
+      expect(step(campus, asset(null, 'GEN-01'))).toEqual({ kind: 'fit-asset', box: gen });
+    });
+
+    it('does not move for a part of the same asset, selected or left', () => {
+      expect(step(asset('dc', 'CT-01'), part('dc', 'CT-01'))).toBeNull();
+      expect(step(part('dc', 'CT-01'), asset('dc', 'CT-01'))).toBeNull();
+    });
+
+    it('does not fly to an asset the console has no box for', () => {
+      expect(step(campus, asset('dc', 'GONE'))).toBeNull();
+    });
   });
 
   it('does nothing when nothing changed, and for a first reading', () => {
     expect(step(building('dc'), building('dc'))).toBeNull();
     expect(step(campus, campus)).toBeNull();
+    expect(step(asset('dc', 'CT-01'), asset('dc', 'CT-01'))).toBeNull();
     expect(step(null, building('dc'))).toBeNull();
     expect(step(null, campus)).toBeNull();
+    expect(step(null, asset('dc', 'CT-01'))).toBeNull();
   });
 
   it('does not fly to a building the console does not hold', () => {
     expect(step(campus, building('gone'))).toBeNull();
+  });
+});
+
+describe('startAssetBoxOf (V2-15.7)', () => {
+  const tower: FitBox = { bounds: { minX: 5, maxX: 11, minZ: 5, maxZ: 11 }, heightM: 8, baseM: 24 };
+  const assets = new Map([['CT-01', tower]]);
+
+  it('is the isolated asset’s box at asset and part level', () => {
+    expect(
+      startAssetBoxOf(
+        { focusZoneId: 'dc', selectedAssetCode: 'CT-01', selectedPart: null },
+        assets,
+      ),
+    ).toBe(tower);
+    expect(
+      startAssetBoxOf(
+        { focusZoneId: 'dc', selectedAssetCode: 'CT-01', selectedPart: 'Fan' },
+        assets,
+      ),
+    ).toBe(tower);
+  });
+
+  it('is nothing at campus and building level, or for an asset the console does not hold', () => {
+    expect(
+      startAssetBoxOf({ focusZoneId: null, selectedAssetCode: null, selectedPart: null }, assets),
+    ).toBeNull();
+    expect(
+      startAssetBoxOf({ focusZoneId: 'dc', selectedAssetCode: null, selectedPart: null }, assets),
+    ).toBeNull();
+    expect(
+      startAssetBoxOf({ focusZoneId: 'dc', selectedAssetCode: 'GONE', selectedPart: null }, assets),
+    ).toBeNull();
   });
 });
 
@@ -182,7 +332,7 @@ describe('startBoxOf', () => {
     ).toBeNull();
   });
 
-  it('is nothing at asset and part level (V2-15.7) or for a building the console does not hold', () => {
+  it('is nothing at asset and part level (`startAssetBoxOf`) or for a building the console does not hold', () => {
     expect(
       startBoxOf({ focusZoneId: 'dc', selectedAssetCode: 'CT-01', selectedPart: null }, boxes),
     ).toBeNull();

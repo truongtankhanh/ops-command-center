@@ -1,3 +1,4 @@
+import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { Binding } from '../lib/twinBindings';
 import type { ModelClass } from '../lib/twinLoadQueue';
@@ -12,6 +13,7 @@ import { type BoundInstance, useBoundParts } from './useBoundParts';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
 import { useHoverRef } from './useHoverRef';
+import { useIsolation } from './useIsolation';
 
 interface EquipmentProps {
   /** Every asset, placed (`useTwinScene`). */
@@ -38,10 +40,18 @@ interface EquipmentProps {
  * V2-15.5, with the nodes the bindings name as the parts a hover can single out), and it tells the feed what
  * each ready class binds, so the worker follows those keys. The boxes paint their own looks (`AssetBoxes`). A rebuilt instance starts again from its authored pose and snaps to its first
  * value, which happens when the scene's data changes (the cameras or the assets arrive), not while it runs.
+ *
+ * While an asset is isolated (V2-15.7, `useIsolation`) every other asset is faded, boxes and models alike: the
+ * boxes by the groups of their mesh, the models by a faded look (`useModelLooks`). Which asset that is is one
+ * value here, so the two cannot disagree; the on-demand canvas is asked for a frame when it changes, because the
+ * painters only run inside one. What is drawn is unchanged: `inside` assets wait for V2-15.8, so an isolated
+ * `inside` asset is not on screen yet.
  */
 export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps) {
   const picker = usePicker();
   const hover = useHoverRef();
+  const isolation = useIsolation();
+  const invalidate = useThree((state) => state.invalidate);
   const ready = useClassModels(classes, classPoints);
 
   const { boxes, instances, bound, looks } = useMemo(() => {
@@ -90,13 +100,18 @@ export function Equipment({ assets, classes, classPoints, feed }: EquipmentProps
     return () => removers.forEach((remove) => remove());
   }, [picker, instances, bound]);
 
+  // The painters run in a frame, and a change of the isolated asset is not announced by anything they read.
+  useEffect(() => {
+    invalidate();
+  }, [isolation, invalidate]);
+
   useBoundParts(feed, bound);
-  // Every model instance, bound or not, takes the look of its asset's flags and hover (V2-14.9, V2-15.5).
-  useModelLooks(feed, looks, hover);
+  // Every model instance, bound or not, takes the look of its asset's flags, hover and fade (V2-14.9, V2-15.5, V2-15.7).
+  useModelLooks(feed, looks, hover, isolation);
 
   return (
     <>
-      <AssetBoxes assets={boxes} feed={feed} hover={hover} />
+      <AssetBoxes assets={boxes} feed={feed} hover={hover} isolation={isolation} />
       <AssetModel instances={instances} />
     </>
   );

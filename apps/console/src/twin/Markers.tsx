@@ -42,12 +42,13 @@ const VERTEX = /* glsl */ `
  */
 const FRAGMENT = /* glsl */ `
   uniform sampler2D uMap;
+  uniform float uOpacity;
   varying vec2 vUv;
 
   void main() {
     vec4 texel = texture2D(uMap, vUv);
     if (texel.a < 0.01) discard;
-    gl_FragColor = texel;
+    gl_FragColor = vec4(texel.rgb, texel.a * uOpacity);
     #include <colorspace_fragment>
   }
 `;
@@ -57,6 +58,11 @@ interface MarkersProps {
   atlas: SpriteAtlas;
   /** Off hides every marker without rebuilding the atlas or the buffers. */
   visible: boolean;
+  /**
+   * How opaque every marker is, 0 – 1 (V2-15.7: `--tw-ghost-opacity` while an asset is isolated). Part of the
+   * material's uniforms, so a change builds the material again; it changes with the level, not per frame.
+   */
+  opacity?: number;
 }
 
 /**
@@ -71,7 +77,7 @@ interface MarkersProps {
  *   pixel rules (`lib/twinMarkers.ts`).
  * - `frustumCulled` is off: the base quad's bounds say nothing about where the instances are.
  */
-export function Markers({ sprites, atlas, visible }: MarkersProps) {
+export function Markers({ sprites, atlas, visible, opacity = 1 }: MarkersProps) {
   const { width, height } = useThree((state) => state.size);
 
   const geometry = useMemo(() => {
@@ -94,8 +100,12 @@ export function Markers({ sprites, atlas, visible }: MarkersProps) {
 
   // Rebuilt, not mutated, when the texture or the canvas size changes (a hook's value is not edited).
   const uniforms = useMemo(
-    () => ({ uMap: { value: atlas.texture }, uViewport: { value: new Vector2(width, height) } }),
-    [atlas, width, height],
+    () => ({
+      uMap: { value: atlas.texture },
+      uViewport: { value: new Vector2(width, height) },
+      uOpacity: { value: opacity },
+    }),
+    [atlas, width, height, opacity],
   );
 
   if (geometry === null) return null;
@@ -106,7 +116,7 @@ export function Markers({ sprites, atlas, visible }: MarkersProps) {
         the program, so swapping the object on a live material would keep drawing with the old viewport.
       */}
       <shaderMaterial
-        key={`${width}x${height}`}
+        key={`${width}x${height}x${opacity}`}
         vertexShader={VERTEX}
         fragmentShader={FRAGMENT}
         uniforms={uniforms}

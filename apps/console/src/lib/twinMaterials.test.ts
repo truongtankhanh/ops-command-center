@@ -4,6 +4,7 @@ import {
   type AssetLook,
   edgeColour,
   faceColour,
+  GHOST_OPACITY,
   HOVER_MIX,
   type LookFlags,
   lookOf,
@@ -215,11 +216,42 @@ describe('lookOf', () => {
   it('is decided by the flags alone: a resolved incident clears the alarm look', () => {
     expect(lookOf({ ...LIVE, alarm: 'high' }, false, false).face).toBe('alarm');
     expect(lookOf(LIVE, false, false)).toEqual({
+      ghost: false,
       face: 'idle',
       edge: 'idle',
       severity: null,
       motion: true,
     });
+  });
+});
+
+describe('lookOf with a ghost (V2-15.7)', () => {
+  it('is not faded unless it is asked to be', () => {
+    expect(lookOf(LIVE, false, false).ghost).toBe(false);
+    expect(lookOf(LIVE, true, true).ghost).toBe(false);
+  });
+
+  it('keeps the face and the edge its flags give it: a faded state, not a colour', () => {
+    const cases: LookFlags[] = [
+      LIVE,
+      { ...LIVE, stale: true },
+      { ...LIVE, online: false },
+      { ...LIVE, alarm: 'high' },
+      { stale: true, online: true, alarm: 'critical' },
+    ];
+    for (const flags of cases) {
+      const plain = lookOf(flags, false, false);
+      const faded = lookOf(flags, false, false, true);
+
+      expect(faded.ghost).toBe(true);
+      expect({ ...faded, ghost: false }).toEqual(plain);
+    }
+  });
+
+  it('is the token’s opacity', () => {
+    expect(GHOST_OPACITY).toBe(twinColors.ghostOpacity);
+    expect(GHOST_OPACITY).toBeGreaterThan(0);
+    expect(GHOST_OPACITY).toBeLessThan(1);
   });
 });
 

@@ -1,3 +1,4 @@
+import type { SceneLevel } from './twinLevel';
 import type { Bounds } from './twinScene';
 
 /*
@@ -39,7 +40,7 @@ export const FLY_MS = 600;
 /** Brief § Camera limits. */
 export const CAMERA_LIMITS = {
   campus: { minDistance: 60, maxDistance: 900 },
-  /** Recomputed from the asset's bounds by V2-15.6; the campus limits apply until then. */
+  /** An isolated asset and its parts (V2-15.7): the fit is recomputed from the asset's bounds inside these. */
   asset: { minDistance: 4, maxDistance: 40 },
   /** Never under the ground, never flat (V2-12.1: 78° from vertical is 12° above the ground). */
   minTiltDeg: 20,
@@ -113,7 +114,9 @@ export function positionToPose(position: Vec3, target: Vec3): Pose {
  *
  * With a `heightM` above zero the box is a building: its four top corners must fit too and the camera looks
  * at the middle of its height (V2-15.6), or a roof seen from above would lose its edge. With `0`, the
- * default, it is the ground rectangle above and nothing about the answer changes.
+ * default, it is the ground rectangle above and nothing about the answer changes. `baseM` lifts the whole box
+ * off the ground (an asset on a roof, V2-15.7); the answer depends on the box's size, not on how high it
+ * stands, so it matters only to where the camera looks.
  */
 export function fitDistance(
   bounds: Bounds,
@@ -122,18 +125,23 @@ export function fitDistance(
   angles: { yaw: number; tilt: number } = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG },
   margin: number = HOME_MARGIN,
   heightM = 0,
+  baseM = 0,
 ): number {
   if (!(aspect > 0) || !(fov > 0)) return Infinity;
   const top = heightM > 0 ? heightM : 0;
-  const centre: Vec3 = [(bounds.minX + bounds.maxX) / 2, top / 2, (bounds.minZ + bounds.maxZ) / 2];
+  const centre: Vec3 = [
+    (bounds.minX + bounds.maxX) / 2,
+    baseM + top / 2,
+    (bounds.minZ + bounds.maxZ) / 2,
+  ];
   const ground: Vec3[] = [
-    [bounds.minX, 0, bounds.minZ],
-    [bounds.maxX, 0, bounds.minZ],
-    [bounds.maxX, 0, bounds.maxZ],
-    [bounds.minX, 0, bounds.maxZ],
+    [bounds.minX, baseM, bounds.minZ],
+    [bounds.maxX, baseM, bounds.minZ],
+    [bounds.maxX, baseM, bounds.maxZ],
+    [bounds.minX, baseM, bounds.maxZ],
   ];
   const corners: Vec3[] =
-    top > 0 ? [...ground, ...ground.map(([x, , z]): Vec3 => [x, top, z])] : ground;
+    top > 0 ? [...ground, ...ground.map(([x, , z]): Vec3 => [x, baseM + top, z])] : ground;
   const tanV = Math.tan(toRadians(fov) / 2);
   const tanH = tanV * aspect;
   const yaw = toRadians(angles.yaw);
@@ -197,11 +205,13 @@ export function homeView(bounds: Bounds, aspect: number): Pose {
   };
 }
 
-/** A box to look at: a footprint on the ground and how tall it stands. A building, as the camera fits it. */
+/** A box to look at: a footprint and how tall it stands. A building or an asset, as the camera fits it. */
 export interface FitBox {
   bounds: Bounds;
-  /** Metres above the ground; `0` is a flat rectangle, as the campus is. */
+  /** Metres from the base to the top; `0` is a flat rectangle, as the campus is. */
   heightM: number;
+  /** Metres from the ground to the base (V2-15.7: an asset on a roof); `0` or absent is on the ground, as a building. */
+  baseM?: number;
 }
 
 /**
@@ -237,6 +247,72 @@ export function fitBounds(
   };
 }
 
+/** How close and how far the camera may be from its target. */
+export interface DistanceLimits {
+  minDistance: number;
+  maxDistance: number;
+}
+
+/**
+ * The distance limits of a level (brief § Camera limits): an isolated asset and its parts are looked at from 4 to
+ * 40 m, everything else from 60 to 900 m. The rig applies them to the controls and to `limitPose`.
+ */
+export function distanceLimitsOf(level: SceneLevel): DistanceLimits {
+  return level === 'asset' || level === 'part' ? CAMERA_LIMITS.asset : CAMERA_LIMITS.campus;
+}
+
+/**
+ * The widest range both `a` and `b` allow. The rig uses it while it flies between two levels, so the controls never
+ * clamp a camera that is still on its way into the new range (a jump), and then narrows to the new level's own.
+ */
+export function unionLimits(a: DistanceLimits, b: DistanceLimits): DistanceLimits {
+  return {
+    minDistance: Math.min(a.minDistance, b.minDistance),
+    maxDistance: Math.max(a.maxDistance, b.maxDistance),
+  };
+}
+
+/**
+ * The view that fits an isolated asset (V2-15.7): the camera looks at the middle of its box, which stands on
+ * its base elevation, from the operator's own yaw and tilt (a fit is not a reset of the view; the tilt is held
+ * within the camera's range), from as close as shows all eight corners, within the asset limits. A box so small
+ * that it would fit nearer than 4 m is shown from 4 (the near plane and the model's detail say so), and a huge
+ * one is held at 40. `aspect` is the visible part of the stage's, as for `homeView`.
+ */
+export function fitAssetView(
+  box: FitBox,
+  aspect: number,
+  angles: { yaw: number; tilt: number },
+  margin: number = HOME_MARGIN,
+): Pose {
+  const { minDistance, maxDistance } = CAMERA_LIMITS.asset;
+  const height = box.heightM > 0 ? box.heightM : 0;
+  const baseM = box.baseM ?? 0;
+  const tilt = clamp(angles.tilt, CAMERA_LIMITS.minTiltDeg, CAMERA_LIMITS.maxTiltDeg);
+  return {
+    target: [
+      (box.bounds.minX + box.bounds.maxX) / 2,
+      baseM + height / 2,
+      (box.bounds.minZ + box.bounds.maxZ) / 2,
+    ],
+    distance: clamp(
+      fitDistance(
+        box.bounds,
+        HOME_FOV_DEG,
+        aspect,
+        { yaw: angles.yaw, tilt },
+        margin,
+        height,
+        baseM,
+      ),
+      minDistance,
+      maxDistance,
+    ),
+    yaw: angles.yaw,
+    tilt,
+  };
+}
+
 /** `target` held inside `pan` (x and z) and between the ground and `targetMaxHeightM` (y). */
 export function clampTarget(target: Vec3, pan: Bounds): Vec3 {
   return [
@@ -247,13 +323,17 @@ export function clampTarget(target: Vec3, pan: Bounds): Vec3 {
 }
 
 /**
- * `pose` brought inside what the camera can do at campus level: the target inside the pan box, the distance
- * between 60 and 900 m, the tilt between 20° and 78°. A command aims where it likes; this is what keeps the
- * fly-to from heading for a place a drag could never reach, so the tween ends exactly where the controls will
- * leave it (they clamp the same way).
+ * `pose` brought inside what the camera can do: the target inside the pan box, the distance within `limits`
+ * (the campus's 60 – 900 m unless the level says otherwise, `distanceLimitsOf`), the tilt between 20° and 78°. A
+ * command aims where it likes; this is what keeps the fly-to from heading for a place a drag could never reach,
+ * so the tween ends exactly where the controls will leave it (they clamp the same way).
  */
-export function limitPose(pose: Pose, pan: Bounds): Pose {
-  const { minDistance, maxDistance } = CAMERA_LIMITS.campus;
+export function limitPose(
+  pose: Pose,
+  pan: Bounds,
+  limits: DistanceLimits = CAMERA_LIMITS.campus,
+): Pose {
+  const { minDistance, maxDistance } = limits;
   return {
     target: clampTarget(pose.target, pan),
     distance: clamp(pose.distance, minDistance, maxDistance),

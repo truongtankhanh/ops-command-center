@@ -1,12 +1,15 @@
 import type { Asset } from '@occ/contracts';
 import { useId } from 'react';
-import { useAssets } from '../api/queries';
+import { useAssets, useZones } from '../api/queries';
 import { hasDimmedAsset } from '../lib/assets';
+import { isolationLine } from '../lib/twinLevel';
 import { useLegendOpen } from '../lib/useLegendOpen';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { Icon } from '../ui/Icon';
-import { cameraIcon, ChevronDown } from '../ui/icons';
+import { Box, cameraIcon, ChevronDown } from '../ui/icons';
+import { Kbd } from '../ui/Kbd';
 import styles from './TwinLegend.module.css';
+import { useIsolation } from './useIsolation';
 
 const NO_ASSETS: Asset[] = [];
 
@@ -24,6 +27,12 @@ const NO_ASSETS: Asset[] = [];
  * own rule (`hasDimmedAsset`), not the Assets list's state word, so a stale fault, which the list calls a
  * fault but the scene draws grey, counts. The swatch is a hatched diamond, a shape: the grey and the dash
  * are not the only cue.
+ *
+ * While an asset is isolated (V2-15.7) the legend is one line instead, as frames 03 and 17 draw it: the rest of
+ * the campus is faded, and `Esc` returns to the building (or the campus, for an asset in none). The entries are
+ * about a campus that is not on screen then, so they and their toggle go; the open or closed preference is kept.
+ * The words are ADR-0020's ("Settled in V2-15.1"). `Esc` closes the inspector from the sheet today; in the scene
+ * it is bound by V2-18.3, and the breadcrumb's back button does the same step meanwhile.
  */
 export function TwinLegend() {
   const entriesId = useId();
@@ -32,6 +41,9 @@ export function TwinLegend() {
   const overview = useTelemetryStore((state) => state.view.state.assets);
   const serverNow = useServerNow();
   const dimmed = hasDimmedAsset(assets.data ?? NO_ASSETS, overview, serverNow);
+  const isolation = useIsolation();
+
+  if (isolation !== null) return <IsolationLine zoneId={isolation.zoneId} />;
 
   return (
     <div className={styles.legend}>
@@ -69,6 +81,32 @@ export function TwinLegend() {
           </li>
         )}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * The legend while an asset is isolated: one line. A component of its own, so the zones are asked for only while
+ * it shows. Where Escape goes back to is the building the asset is in, `Campus` when it is in none, and nothing
+ * is said while that building is not known yet (reference data on its way) rather than a wrong name.
+ */
+function IsolationLine({ zoneId }: { zoneId: string | null }) {
+  const zones = useZones();
+  const parent =
+    zoneId === null ? 'Campus' : (zones.data?.find((zone) => zone.id === zoneId)?.name ?? null);
+  const { lead, back } = isolationLine(parent);
+  return (
+    <div className={styles.legend}>
+      <Icon glyph={Box} size={16} />
+      <span className={styles.line}>
+        {lead}
+        {back !== null && (
+          <>
+            {' '}
+            <Kbd decorative={false}>Esc</Kbd> {back}
+          </>
+        )}
+      </span>
     </div>
   );
 }

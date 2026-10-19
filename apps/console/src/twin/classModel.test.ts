@@ -11,7 +11,7 @@ import {
   type Object3D,
   Vector3,
 } from 'three';
-import { EDGE_DASH_M, EDGE_GAP_M, mixInto, tintFor } from '../lib/twinMaterials';
+import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY, mixInto, tintFor } from '../lib/twinMaterials';
 import { mapColors, twinColors } from '../styles/tokens';
 import {
   buildTemplate,
@@ -474,6 +474,75 @@ describe('the look pool of a material table', () => {
     expect(table.get('Part')).toMatchObject({ polygonOffset: true, polygonOffsetFactor: 1 });
     expect(table.look('Part', { face: 'stale', severity: null })).toMatchObject({
       polygonOffset: true,
+    });
+  });
+
+  describe('a ghost look (V2-15.7)', () => {
+    it('is a different material from the idle one, and pooled: the same object for whoever asks', () => {
+      const table = createMaterialTable();
+      const faded = table.look('Steel', { face: 'idle', severity: null, ghost: true });
+
+      expect(faded).not.toBe(table.get('Steel'));
+      expect(table.look('Steel', { face: 'idle', severity: null, ghost: true })).toBe(faded);
+      expect(table.look('Part', { face: 'idle', severity: null, ghost: true })).not.toBe(faded);
+    });
+
+    it('is faint, see-through and does not write depth, so it never hides the isolated asset', () => {
+      const table = createMaterialTable();
+
+      expect(table.look('Steel', { face: 'idle', severity: null, ghost: true })).toMatchObject({
+        transparent: true,
+        opacity: GHOST_OPACITY,
+        depthWrite: false,
+      });
+      // The idle material is as it was.
+      expect(table.get('Steel')).toMatchObject({
+        transparent: false,
+        opacity: 1,
+        depthWrite: true,
+      });
+    });
+
+    it('keeps the colour of the face it would have: a faded fault is tinted, a faded stale asset grey', () => {
+      const table = createMaterialTable();
+
+      expect(hexOf(table.look('Steel', { face: 'idle', severity: null, ghost: true }))).toBe(
+        twinColors.steel.top,
+      );
+      expect(hexOf(table.look('Steel', { face: 'alarm', severity: 'high', ghost: true }))).toBe(
+        tintFor('high', twinColors.steel.top),
+      );
+      expect(hexOf(table.look('Steel', { face: 'stale', severity: null, ghost: true }))).toBe(
+        twinColors.stale.top,
+      );
+    });
+
+    it('is a different material from the same face as it is, and keeps the severity apart', () => {
+      const table = createMaterialTable();
+      const plain = table.look('Steel', { face: 'alarm', severity: 'high' });
+      const faded = table.look('Steel', { face: 'alarm', severity: 'high', ghost: true });
+
+      expect(faded).not.toBe(plain);
+      expect(table.look('Steel', { face: 'alarm', severity: 'low', ghost: true })).not.toBe(faded);
+      expect(plain).toMatchObject({ transparent: false, opacity: 1 });
+    });
+
+    it('never makes a see-through material more solid', () => {
+      const table = createMaterialTable();
+
+      expect(table.look('Xray', { face: 'idle', severity: null, ghost: true }).opacity).toBe(
+        Math.min(twinColors.xrayOpacity, GHOST_OPACITY),
+      );
+    });
+
+    it('is pushed back like the others and is freed with the table', () => {
+      const table = createMaterialTable();
+      const faded = table.look('Steel', { face: 'idle', severity: null, ghost: true });
+      const spy = vi.spyOn(faded, 'dispose');
+
+      expect(faded).toMatchObject({ polygonOffset: true, polygonOffsetFactor: 1 });
+      table.dispose();
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 

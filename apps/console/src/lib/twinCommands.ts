@@ -29,6 +29,13 @@ export interface TwinCommands {
    * stage's shape; a caller outside the canvas has the box and nothing more.
    */
   fit(box: FitBox): void;
+  /**
+   * Flies to the fit of `box`, an isolated asset (V2-15.7): from the camera's own yaw and tilt, from as close as
+   * shows it whole within the asset limits (4 – 40 m), and centred in the part of the stage the inspector will
+   * leave visible. Separate from `fit` because a building is looked at from fixed angles and within the campus
+   * limits.
+   */
+  fitAsset(box: FitBox): void;
   /** Dollies by `factor` of the current distance: above 1 moves away, below 1 comes closer. */
   zoomBy(factor: number): void;
   /** Turns round the target by `degrees` (positive turns the camera towards the east). */
@@ -58,6 +65,7 @@ export const twinCommands: TwinCommands = {
   flyTo: (target) => registered?.flyTo(target),
   home: () => registered?.home(),
   fit: (box) => registered?.fit(box),
+  fitAsset: (box) => registered?.fitAsset(box),
   zoomBy: (factor) => registered?.zoomBy(factor),
   rotateBy: (degrees) => registered?.rotateBy(degrees),
   faceNorth: () => registered?.faceNorth(),

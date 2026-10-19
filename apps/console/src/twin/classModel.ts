@@ -24,6 +24,7 @@ import {
   EDGE_GAP_M,
   edgeColour,
   faceColour,
+  GHOST_OPACITY,
   type MaterialName,
   materialSpec,
 } from '../lib/twinMaterials';
@@ -47,8 +48,15 @@ import {
 export interface MaterialTable {
   /** The console material for a glTF material's name (`Part` for an unknown one). */
   get(name: string | undefined): MeshLambertMaterial;
-  /** The same material under a look: its colour for the face (`faceColour`), the same opacity. `idle` is `get`. */
-  look(name: string | undefined, look: Pick<AssetLook, 'face' | 'severity'>): MeshLambertMaterial;
+  /**
+   * The same material under a look: its colour for the face (`faceColour`), the same opacity. `idle` is `get`. A
+   * `ghost` look (V2-15.7, another asset is isolated) is faint and does not write depth, whatever the face: one more
+   * pooled material per name and face, never a copy per instance.
+   */
+  look(
+    name: string | undefined,
+    look: Pick<AssetLook, 'face' | 'severity'> & { ghost?: boolean },
+  ): MeshLambertMaterial;
   /** An outline under a look: a solid line, dashed for `stale-dashed`, in the colour of the edge (`edgeColour`). */
   line(look: Pick<AssetLook, 'edge' | 'severity'>): LineBasicMaterial;
   dispose(): void;
@@ -94,13 +102,19 @@ export function createMaterialTable(): MaterialTable {
       return material;
     },
     look(name, look) {
-      if (look.face === 'idle') return table.get(name);
+      const ghost = look.ghost === true;
+      if (look.face === 'idle' && !ghost) return table.get(name);
       const { name: resolved, color, opacity } = materialSpec(name);
       // Only an alarmed face depends on the severity.
-      const key = `${resolved}|${look.face}|${look.face === 'alarm' ? look.severity : ''}`;
+      const key = `${resolved}|${look.face}|${look.face === 'alarm' ? look.severity : ''}${ghost ? '|ghost' : ''}`;
       let material = made.get(key);
       if (material === undefined) {
-        material = faceMaterial(resolved, faceColour(color, look), opacity);
+        // A see-through material (`Xray`) is already fainter than the ghost: faded never makes it more solid.
+        material = faceMaterial(
+          resolved,
+          faceColour(color, look),
+          ghost ? Math.min(opacity, GHOST_OPACITY) : opacity,
+        );
         made.set(key, material);
       }
       return material;

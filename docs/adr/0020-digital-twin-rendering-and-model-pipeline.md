@@ -323,6 +323,57 @@ their author, checked in CI, and served by nginx as immutable files.
       until the next move (the tooltip is handled); V2-15.7 is the next to move the camera and decides.
     - **Chunk.** The breadcrumb is main-chunk; the twin chunk gains the hook, `fit` and `fitBounds`. See the figure
       `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5).
+  - Settled in V2-15.7 (2026-10-19), without changing the decision: how an asset is isolated and the camera fits it.
+    - **One watcher, and the asset is in its key.** The asset's flight is one more case of the V2-15.6 watcher
+      (`useLevelCamera`, `lib/twinLevelCamera.ts`), not a second hook as the task named (`useFocusTarget`): selecting an
+      asset in another building changes the level, the building and the asset in one store update, which must be one
+      flight, the asset's. The level key gained the asset's code, because one level (`asset`) holds many selections and
+      a second selection is a flight too; a part of the same asset is not.
+    - **A fit of an asset is the rig's.** `twinCommands.fitAsset(box)` (separate from `fit`: a building is looked at from
+      fixed angles within the campus limits). The box is the placed footprint turned by the pose, standing on its base
+      elevation (`FitBox.baseM`; `CT-01` is on a roof): the model's bounds are the footprint by the model contract, so a
+      class whose model has not arrived is fitted the same. The camera keeps the operator's own yaw and tilt (tilt held
+      to 20° – 78°), the distance is the closest that shows the eight corners, held to 4 – 40 m (a sensor is shown from
+      4 m), with the margin of the home view.
+    - **Distance limits follow the level.** An isolated asset and its parts: 4 – 40 m; everything else: 60 – 900 m
+      (`distanceLimitsOf`). The rig gives the controls a level's limits when a flight to it has landed, at the first
+      view, or when a drag cancels the flight, and the **union** of both ranges during it, so the library never clamps a
+      camera that is still far from the new range in a jump. The wheel therefore cannot zoom an isolated asset out
+      past 40 m. `unverified` against the library's clamping: judged by eye.
+    - **Beside the sheet, before it exists.** The fit is asked for in the same store update that opens the inspector, so
+      the sheet is not in the DOM yet. The stage carries `--sheet-inset-open` (the sheet's width, 0 on a phone, in
+      `App.module.css`, registered in `tokens.css`) beside `--sheet-inset`, and the asset fit uses the larger of the two
+      insets: no timing, and the phone breakpoint stays in the stylesheet.
+    - **Leaving is the parent's fit, not the old pose.** Closing the inspector, Escape in the sheet, another selection,
+      Home: the building's fit or the home view of V2-15.6. No earlier pose is saved. An incident selected or a report
+      started while an asset is isolated clears the asset and so flies out; that is leaving the asset, not flying to the
+      incident, which V2-16.1 still owns. The first view of a stage that starts with an asset isolated (3D → 2D → 3D)
+      is its fit.
+    - **The rest is faded, not removed.** `lib/twinLevel.ts` holds the rule (`isolationOf`, `isFaded`): every building
+      but the asset's, every other asset and the camera markers are drawn at `--tw-ghost-opacity`; the ground and the
+      zone labels are not (the ground faded against the background would only vanish; the labels are V2-15.8's). Picking
+      was already isolated (V2-15.3, 15.4). How it is drawn: the shells and the boxes are still one merged mesh each, with
+      two materials (as they are, faded: transparent, no depth write) and **geometry groups** from the per-building and
+      per-asset ranges, so isolating rebuilds nothing and the picking tables do not move (a test with real three guards
+      it); the models take a pooled `ghost` look (`MaterialTable.look`), one more material per name, never a clone per
+      instance; the markers an opacity uniform. A faded fault keeps its tint at the faded opacity (`ghost` is a state of
+      the look, not a colour). **The outlines of faded equipment are not drawn** (a model's are hidden, a box's leave both
+      edge layers) and the faded shells keep theirs at the faded opacity: the boxes' edge layers are indexed and split by
+      stale, so a faded outline would be a third layer and draw call; context is a faint volume, and the stale dash and
+      the severity edge return with the level. V2-15.8 puts the focused building's see-through look in the same groups.
+    - **The legend is one line.** While an asset is isolated the legend is the line of frames 03 and 17, in place of its
+      toggle and entries: "Isolated — the rest of the campus is faded. `Esc` returns to Data Center" (Campus for an asset
+      in none; nothing after the first sentence while the building is not known yet). `Esc` works from the sheet today;
+      in the scene it is bound by V2-18.3, and the breadcrumb's back button is the same step meanwhile. At part level the
+      line is the asset's; V2-15.10 may want to say that the first Escape closes the callout.
+    - **Not drawn yet.** `inside` assets (`LKS-B3`) are drawn with their building in focus by V2-15.8, so the camera
+      flies to one, behind opaque walls, and nothing of it is on screen until then.
+    - **Still open from V2-15.5, decided:** the hover tint and the cursor are stale under a camera that flies under a
+      still pointer until the next move; at asset level only one asset is pickable, so the staleness is small, and
+      re-casting the last point when a flight ends would touch the picking seam for a few frames. Left as it is.
+    - **Chunk.** The twin chunk gains the asset fit and limits, the groups, the faded look and the uniform; the legend
+      line is in it too. See the figure `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5;
+      V2-15.6's figure is not recorded).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

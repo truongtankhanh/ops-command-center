@@ -2,7 +2,10 @@ import {
   CAMERA_LIMITS,
   clampTarget,
   compassLabel,
+  distanceLimitsOf,
   ease,
+  fitAssetView,
+  type FitBox,
   fitBounds,
   fitDistance,
   FLY_MS,
@@ -18,6 +21,7 @@ import {
   type Pose,
   poseToPosition,
   positionToPose,
+  unionLimits,
   viewOffset,
   yawOfDirection,
 } from './twinCamera';
@@ -157,6 +161,38 @@ describe('fitDistance', () => {
       expect(fitDistance(BUILDING, HOME_FOV_DEG, 0, angles, HOME_MARGIN, 24)).toBe(Infinity);
     });
   });
+
+  describe('with a base (V2-15.7)', () => {
+    const angles = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG };
+
+    it('is the same distance for a box standing higher: only where it looks changes', () => {
+      const grounded = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 8, 0);
+
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 8, 24)).toBeCloseTo(
+        grounded,
+        6,
+      );
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 0, 24)).toBeCloseTo(
+        fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 0, 0),
+        6,
+      );
+    });
+
+    it('leaves the old answers alone when there is no base', () => {
+      const flat = fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 12);
+
+      expect(fitDistance(BUILDING, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 12, 0)).toBe(flat);
+    });
+  });
+});
+
+describe('distanceLimitsOf (V2-15.7)', () => {
+  it('is 4 – 40 m for an isolated asset and its parts, 60 – 900 m for every other level', () => {
+    expect(distanceLimitsOf('asset')).toEqual({ minDistance: 4, maxDistance: 40 });
+    expect(distanceLimitsOf('part')).toEqual({ minDistance: 4, maxDistance: 40 });
+    expect(distanceLimitsOf('campus')).toEqual({ minDistance: 60, maxDistance: 900 });
+    expect(distanceLimitsOf('building')).toEqual({ minDistance: 60, maxDistance: 900 });
+  });
 });
 
 describe('homeView', () => {
@@ -253,6 +289,73 @@ describe('fitBounds', () => {
   });
 });
 
+describe('unionLimits (V2-15.7)', () => {
+  it('is the widest range of the two, whichever way round', () => {
+    const campus = distanceLimitsOf('campus');
+    const asset = distanceLimitsOf('asset');
+
+    expect(unionLimits(campus, asset)).toEqual({ minDistance: 4, maxDistance: 900 });
+    expect(unionLimits(asset, campus)).toEqual({ minDistance: 4, maxDistance: 900 });
+    expect(unionLimits(asset, asset)).toEqual(asset);
+  });
+});
+
+describe('fitAssetView (V2-15.7)', () => {
+  // A 6 × 6 m footprint, 8 m tall: a cooling tower's size.
+  const TOWER: Bounds = { minX: 100, maxX: 106, minZ: -60, maxZ: -54 };
+  const angles = { yaw: HOME_YAW_DEG, tilt: HOME_TILT_DEG };
+  const fit = (box: FitBox = { bounds: TOWER, heightM: 8, baseM: 0 }, aspect = 16 / 9) =>
+    fitAssetView(box, aspect, angles);
+
+  it('looks at the middle of the box, on its base: a rooftop asset is looked at on the roof', () => {
+    expect(fit().target).toEqual([103, 4, -57]);
+    expect(fit({ bounds: TOWER, heightM: 8, baseM: 24 }).target).toEqual([103, 28, -57]);
+    // No base is the ground, as a building's box has none.
+    expect(fit({ bounds: TOWER, heightM: 8 }).target).toEqual([103, 4, -57]);
+  });
+
+  it('keeps the operator’s yaw and tilt', () => {
+    const view = fitAssetView({ bounds: TOWER, heightM: 8 }, 16 / 9, { yaw: -120, tilt: 33 });
+
+    expect(view.yaw).toBe(-120);
+    expect(view.tilt).toBe(33);
+  });
+
+  it('holds the tilt within 20° – 78°', () => {
+    expect(fitAssetView({ bounds: TOWER, heightM: 8 }, 16 / 9, { yaw: 0, tilt: 5 }).tilt).toBe(20);
+    expect(fitAssetView({ bounds: TOWER, heightM: 8 }, 16 / 9, { yaw: 0, tilt: 89 }).tilt).toBe(78);
+  });
+
+  it('stands as close as shows the whole box, inside 4 – 40 m', () => {
+    const view = fit();
+    const needed = fitDistance(TOWER, HOME_FOV_DEG, 16 / 9, angles, HOME_MARGIN, 8, 0);
+
+    expect(needed).toBeGreaterThan(4);
+    expect(needed).toBeLessThan(40);
+    expect(view.distance).toBeCloseTo(needed, 6);
+  });
+
+  it('is farther for a bigger box and for a narrower visible stage', () => {
+    const small = fit().distance;
+    const big = fit({ bounds: { ...TOWER, maxX: 118 }, heightM: 8, baseM: 0 }).distance;
+
+    expect(big).toBeGreaterThan(small);
+    expect(fit(undefined, 0.3).distance).toBeGreaterThan(small);
+  });
+
+  it('shows a small box from 4 m and a huge one from 40 m', () => {
+    const sensor: Bounds = { minX: 0, maxX: 0.2, minZ: 0, maxZ: 0.2 };
+    const hall: Bounds = { minX: 0, maxX: 400, minZ: 0, maxZ: 400 };
+
+    expect(fit({ bounds: sensor, heightM: 0.2, baseM: 0 }).distance).toBe(4);
+    expect(fit({ bounds: hall, heightM: 20, baseM: 0 }).distance).toBe(40);
+  });
+
+  it('is held at the far limit for a stage with no width', () => {
+    expect(fit(undefined, 0).distance).toBe(40);
+  });
+});
+
 describe('clampTarget', () => {
   const pan = panBounds(CAMPUS);
 
@@ -301,6 +404,16 @@ describe('limitPose', () => {
       distance: 60,
       tilt: 78,
     });
+  });
+
+  it('takes the distance limits it is given, and the campus ones by default (V2-15.7)', () => {
+    const asset = distanceLimitsOf('asset');
+
+    expect(limitPose(pose({ distance: 1 }), pan, asset).distance).toBe(4);
+    expect(limitPose(pose({ distance: 12 }), pan, asset).distance).toBe(12);
+    expect(limitPose(pose({ distance: 300 }), pan, asset).distance).toBe(40);
+    expect(limitPose(pose({ distance: 12 }), pan).distance).toBe(60);
+    expect(limitPose(pose({ distance: 12 }), pan, asset).tilt).toBe(55);
   });
 });
 
