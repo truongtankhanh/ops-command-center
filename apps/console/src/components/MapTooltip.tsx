@@ -1,26 +1,12 @@
-import type { Asset, Camera, Incident } from '@occ/contracts';
 import type { Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
-import { assetStates, openIncidentOf } from '../lib/assets';
-import { freshnessText } from '../lib/assetInspector';
-import { stateText } from '../lib/assetList';
-import { formatAge, isActive, severityLabel, statusLabel } from '../lib/incidents';
+import { isActive } from '../lib/incidents';
 import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../lib/mapHover';
 import { HOVER_LAYERS, visibleLayers } from '../lib/mapLayers';
-import { formatReading } from '../lib/readings';
-import { ageMs as readingAgeMs, isStale, staleAfterMs } from '../lib/telemetryFreshness';
-import { useNow } from '../lib/useNow';
-import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
-import { Icon } from '../ui/Icon';
-import {
-  assetStateIcon,
-  cameraIcon,
-  incidentTypeIcon,
-  severityIcon,
-  statusIcon,
-} from '../ui/icons';
+import { AssetTip, CameraTip, ClusterTip, IncidentTip } from './Tips';
+import { tipSurface } from './tipSurface';
 import styles from './MapTooltip.module.css';
 
 /** Half the tooltip's `max-width` in the module: it is clamped this far from the map's sides. */
@@ -45,6 +31,8 @@ interface Hover {
  * anchors at the marker, hides while the map moves, and reads incidents from the live cache on
  * every render, so an acknowledge shows at once and an incident that stops being drawn takes its
  * tooltip with it.
+ *
+ * The bodies are `Tips.tsx`'s, shared with the 3D view's tooltip (V2-15.5).
  *
  * Over an asset it also tells the console which one (`hoveredAssetCode`), so the Assets tab
  * highlights its row; the map rings the marker of a hovered row from the same value (two-way,
@@ -142,145 +130,18 @@ export function MapTooltip({ map }: { map: MapLibreMap | null }) {
     if (!asset) return null;
     body = <AssetTip asset={asset} incidents={incidents ?? []} zone={zoneName(asset.zoneId)} />;
   } else {
-    body = (
-      <>
-        <p className={styles.title}>{target.count} incidents</p>
-        <p className={styles.line} data-severity={target.severity}>
-          <Icon glyph={severityIcon(target.severity)} size={16} className={styles.severity} />
-          Highest: {severityLabel(target.severity)}
-        </p>
-        <p>Click to zoom in</p>
-      </>
-    );
+    body = <ClusterTip count={target.count} severity={target.severity} />;
   }
 
   return (
     <div
-      className={styles.tooltip}
+      className={`${tipSurface} ${styles.tooltip}`}
       style={{ left: hover.left, top: hover.top }}
       data-placement={hover.below ? 'below' : 'above'}
       aria-hidden="true"
     >
       {body}
     </div>
-  );
-}
-
-function IncidentTip({ incident, zone }: { incident: Incident; zone?: string }) {
-  const now = useNow();
-  return (
-    <>
-      <p className={styles.title}>
-        <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.glyph} />
-        <span className={styles.titleText}>{incident.title}</span>
-      </p>
-      <p className={styles.line} data-severity={incident.severity}>
-        <Icon glyph={severityIcon(incident.severity)} size={16} className={styles.severity} />
-        {severityLabel(incident.severity)}
-        <span className={styles.status}>
-          <Icon glyph={statusIcon(incident.status)} size={16} />
-          {statusLabel(incident.status)}
-        </span>
-      </p>
-      <p>
-        {[incident.code, zone, formatAge(incident.reportedAt, now)].filter(Boolean).join(' · ')}
-      </p>
-    </>
-  );
-}
-
-function CameraTip({ camera, zone }: { camera: Camera; zone?: string }) {
-  return (
-    <>
-      <p className={styles.title}>
-        <Icon
-          glyph={cameraIcon(camera.online)}
-          size={16}
-          className={camera.online ? styles.glyph : styles.offline}
-        />
-        <span className={styles.titleText}>{camera.name}</span>
-      </p>
-      <p>
-        {[camera.code, zone, camera.online ? undefined : 'Offline'].filter(Boolean).join(' · ')}
-      </p>
-    </>
-  );
-}
-
-/**
- * Frame 14's `.tw-tip`: name and code, the state word with its glyph (the list's wording), the two
- * headline readings from the overview (no watch: the tooltip never asks for more than the console
- * already holds), how old the asset's latest reading is, and where a click leads.
- *
- * The age is the asset's, not each reading's: a frame carries changed keys only, so a steady
- * reading's own age would read "old" on a healthy device (V2-08.3, and the inspector's rule). It
- * is the one component here that reads the clock, so only an open asset tooltip re-renders each
- * second.
- */
-function AssetTip({
-  asset,
-  incidents,
-  zone,
-}: {
-  asset: Asset;
-  incidents: readonly Incident[];
-  zone?: string;
-}) {
-  const entry = useAssetState(asset.code);
-  const now = useServerNow();
-
-  const state =
-    assetStates([asset], incidents, entry ? { [asset.code]: entry } : {}, now).get(asset.code) ??
-    'unknown';
-  const incident = state === 'fault' ? openIncidentOf(asset, incidents) : undefined;
-  const age = entry !== undefined && now !== null ? readingAgeMs(entry.receivedAt, now) : null;
-  // Offline or past its threshold: the values are the last known, and the age is said as such.
-  const stale =
-    entry !== undefined &&
-    (!entry.online ||
-      (now !== null && isStale(entry.receivedAt, staleAfterMs(asset.headline), now)));
-  const word = stateText(state, { ageMs: stale ? age : null, incidentCode: incident?.code });
-  const glyph =
-    state === 'fault'
-      ? incident && severityIcon(incident.severity)
-      : state === 'unknown'
-        ? undefined
-        : assetStateIcon(state);
-  const readings = asset.headline.slice(0, 2).map((point) => {
-    const value = entry?.values[point.key] ?? entry?.headline[point.key];
-    return {
-      key: point.key,
-      label: point.label,
-      text: value === undefined ? '—' : formatReading(point, value),
-    };
-  });
-  const freshness = freshnessText(age, stale);
-
-  return (
-    <>
-      <p className={styles.assetHead}>
-        <span className={styles.titleText}>{asset.name}</span>
-        <span className={styles.assetCode}>{asset.code}</span>
-      </p>
-      {word !== null && (
-        <p className={styles.line} data-severity={incident?.severity}>
-          {glyph && <Icon glyph={glyph} size={16} className={styles.severity} />}
-          {word}
-        </p>
-      )}
-      {readings.length > 0 && (
-        <dl className={styles.readings}>
-          {readings.map((reading) => (
-            <div key={reading.key} className={styles.reading}>
-              <dt>{reading.label}</dt>
-              <dd data-stale={stale}>{reading.text}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {freshness !== null && <p className={styles.age}>{freshness}</p>}
-      <p className={styles.foot}>{['Click to inspect', zone].filter(Boolean).join(' · ')}</p>
-    </>
   );
 }
 

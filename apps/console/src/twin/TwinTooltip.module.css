@@ -1,0 +1,19 @@
+/*
+ * Where the 3D view's tooltip stands (`TwinTooltip.tsx`). Its surface and bodies are the map tooltip's
+ * (`components/Tips.module.css`). The layer covers the stage and takes no pointer event; it comes last in the stage,
+ * so it paints over the legend and the controls without a z-index, as the stage stacks by order
+ * (`StageView.module.css .twin`). The tooltip sits at the layer's origin and is moved by a `transform` written
+ * from the pointer handler, so a pointer move changes no layout.
+ */
+.layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+}

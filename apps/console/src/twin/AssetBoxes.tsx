@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { type RefObject, useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { GROUND_LAYERS } from '../lib/twinGround';
+import type { HoverState } from '../lib/twinHover';
 import { EDGE_DASH_M, EDGE_GAP_M } from '../lib/twinMaterials';
 import { type PlacedAsset, visibleAssets } from '../lib/twinPlacement';
 import { boxTable } from '../lib/twinPicking';
@@ -25,6 +26,8 @@ interface AssetBoxesProps {
   focusedZoneId?: string | null;
   /** The telemetry feed whose flags the boxes' looks follow (V2-14.9); `null` while there is no client. */
   feed: TwinFeed | null;
+  /** The hover the canvas keeps from the store (`useHoverRef`): a hovered box takes the hover look (V2-15.5). */
+  hover: RefObject<HoverState>;
 }
 
 /**
@@ -36,7 +39,7 @@ interface AssetBoxesProps {
  *
  * - The colours are per vertex (V2-14.9): the faces' material is white and Lambert, shaded by the two lights
  *   (`Lights`), so a vertex colour is the colour of the face; the outline is unlit. `useBoxLooks` rewrites the
- *   colours of one asset's range when its look changes (stale grey, the severity tint, the severity edge).
+ *   colours of one asset's range when its look changes (stale grey, the severity tint, the severity edge, the hover).
  * - The two line layers share their vertices, colours and line distances and have their own index: the
  *   segments of a stale asset are in the dashed layer, all the others in the solid one (`edgeIndices`).
  * - The faces are pushed back a little (`polygonOffset`) so the outline wins on the borders instead of
@@ -47,7 +50,7 @@ interface AssetBoxesProps {
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
-export function AssetBoxes({ assets, focusedZoneId = null, feed }: AssetBoxesProps) {
+export function AssetBoxes({ assets, focusedZoneId = null, feed, hover }: AssetBoxesProps) {
   const picker = usePicker();
   const faces = useRef<Mesh>(null);
   const layers = useMemo(() => {
@@ -64,8 +67,8 @@ export function AssetBoxes({ assets, focusedZoneId = null, feed }: AssetBoxesPro
     [layers],
   );
 
-  // The looks of stale and alarm, painted into the layers from the feed's flags (V2-14.9).
-  useBoxLooks(feed, layers);
+  // The looks of stale, alarm and hover, painted into the layers from the feed's flags and the hover (V2-14.9, V2-15.5).
+  useBoxLooks(feed, layers, hover);
 
   // Registered while it is the mesh drawn; a rebuilt set of boxes registers again, and the old one goes.
   useEffect(() => {

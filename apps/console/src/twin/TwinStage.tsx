@@ -5,6 +5,7 @@ import { DragHint } from './DragHint';
 import { TwinCanvas } from './TwinCanvas';
 import { TwinControls } from './TwinControls';
 import { TwinLegend } from './TwinLegend';
+import { TwinTooltip } from './TwinTooltip';
 import styles from './TwinStage.module.css';
 import { TwinView } from './TwinView';
 import { useClassPoints } from './useClassPoints';
@@ -24,10 +25,10 @@ const NO_INVALIDATE = (): void => undefined;
  *
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
  * bindings of V2-14.7) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
- * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend and
- * the camera controls. The canvas gets the same scene and two refs for what it keeps in step from its frame
- * loop without a React render: the labels' layer (`LabelProjector`, V2-12.7) and the compass
- * (`CompassSync`, V2-12.10).
+ * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
+ * camera controls and the hover tooltip (V2-15.5). The canvas gets the same scene and two refs for what it
+ * keeps in step from its frame loop without a React render: the labels' layer (`LabelProjector`, V2-12.7) and
+ * the compass (`CompassSync`, V2-12.10).
  *
  * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
  * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
@@ -68,6 +69,8 @@ export default function TwinStage() {
       {/* The legend explains what is drawn: with no scene there is nothing to explain (frame 06 has none while loading). */}
       {scene && <TwinLegend />}
       <TwinControls compassRef={compass} />
+      {/* Last, so it paints over the legend and the controls; it draws nothing until a hover rests (V2-15.5). */}
+      <TwinTooltip />
     </div>
   );
 }
