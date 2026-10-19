@@ -1,14 +1,16 @@
-import type { Incident, LngLat, Role, SitePlan, Zone } from '@occ/contracts';
+import type { Asset, Incident, LngLat, Role, SitePlan, Zone } from '@occ/contracts';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { TwinCanvas } from './TwinCanvas';
 import TwinStage from './TwinStage';
 
-// R3F's canvas needs WebGL, which jsdom does not have; the stage's job here is to mount it.
-vi.mock('./TwinCanvas', () => ({ TwinCanvas: () => <canvas aria-label="3D canvas" /> }));
+// R3F's canvas needs WebGL, which jsdom does not have; the stage's job here is to mount it, and to hand it
+// the scene (a spy, so a test can read what the stage derived).
+vi.mock('./TwinCanvas', () => ({ TwinCanvas: vi.fn(() => <canvas aria-label="3D canvas" />) }));
 
 const CENTER: LngLat = [108.4415, 11.953];
 
@@ -59,14 +61,34 @@ const incident = (overrides: Partial<Incident>): Incident => ({
   ...overrides,
 });
 
+/** An asset of a 2 × 1 × 3 m class, at `position`, in `zoneId`, as the catalogue serves it. */
+const asset = (code: string, zoneId: string, position: LngLat, elevationM = 0): Asset => ({
+  id: code,
+  code,
+  name: code,
+  class: {
+    id: 'ups',
+    code: 'ups',
+    name: 'UPS',
+    modelUrl: null,
+    footprintM: { width: 2, depth: 1, height: 3 },
+  },
+  zoneId,
+  position,
+  elevationM,
+  headingDeg: 0,
+  headline: [],
+});
+
 /** The stage with the site's reference data already in the cache, as it is once the map has loaded. */
-function renderStage(zones: Zone[], incidents: Incident[] = []) {
+function renderStage(zones: Zone[], incidents: Incident[] = [], assets: Asset[] = []) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, zones);
   client.setQueryData(queryKeys.sitePlan, PLAN);
-  // The stage reads the cameras and the incidents too; an unseeded query would try to fetch them.
+  // The stage reads the cameras, the incidents and the assets too; an unseeded query would try to fetch them.
   client.setQueryData(queryKeys.cameras, []);
   client.setQueryData(queryKeys.incidents, incidents);
+  client.setQueryData(queryKeys.assets, assets);
   return renderWithQueryClient(<TwinStage />, client);
 }
 
@@ -147,6 +169,44 @@ describe('TwinStage', () => {
 
     expect(screen.queryByText(/./, { selector: 'span' })).not.toBeInTheDocument();
   });
+
+  describe('the equipment (V2-14.6)', () => {
+    /** The assets of the scene the canvas was last given. */
+    const sceneAssets = () => vi.mocked(TwinCanvas).mock.lastCall?.[0].scene?.assets;
+
+    beforeEach(() => {
+      vi.mocked(TwinCanvas).mockClear();
+    });
+
+    it('hands the canvas every asset placed and posed, in the catalogue order of codes', () => {
+      const zones = [zone(0, 'building', 'Library'), zone(1, 'outdoor', 'Central Lawn')];
+      renderStage(
+        zones,
+        [],
+        [
+          asset('UPS-OUT', 'zone-1', zones[1]!.center),
+          asset('UPS-IN', 'zone-0', zones[0]!.center),
+          asset('UPS-ROOF', 'zone-0', zones[0]!.center, 18),
+        ],
+      );
+
+      expect(sceneAssets()?.map(({ code, placement }) => [code, placement])).toEqual([
+        ['UPS-IN', 'inside'],
+        ['UPS-OUT', 'outdoor'],
+        ['UPS-ROOF', 'roof'],
+      ]);
+      const roof = sceneAssets()?.find(({ code }) => code === 'UPS-ROOF');
+      expect(roof?.pose.y).toBe(18);
+      expect(roof?.size).toEqual({ x: 2, y: 3, z: 1 });
+    });
+
+    it('hands the canvas none while the catalogue is empty', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+
+      expect(sceneAssets()).toEqual([]);
+    });
+  });
+
   describe('for assistive technology', () => {
     afterEach(() => resetStore(useSession));
 

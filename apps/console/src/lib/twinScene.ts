@@ -116,7 +116,11 @@ function ringToLocal(ring: readonly LngLat[], frame: Frame): Local[] {
   return signedAreaM2(points) < 0 ? points.reverse() : points;
 }
 
-const heightOf = ({ heightM }: Zone): number =>
+/**
+ * The height a zone's shell is drawn at, in metres. Exported so that "an asset stands on the roof" (V2-14.6)
+ * compares with the height the building really has on screen, `DEFAULT_BUILDING_HEIGHT_M` included.
+ */
+export const heightOf = ({ heightM }: Zone): number =>
   typeof heightM === 'number' && Number.isFinite(heightM) && heightM > 0
     ? heightM
     : DEFAULT_BUILDING_HEIGHT_M;

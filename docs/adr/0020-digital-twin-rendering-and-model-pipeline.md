@@ -133,6 +133,19 @@ their author, checked in CI, and served by nginx as immutable files.
       pure helpers stay in `src/lib/twin*.ts`, so they test without WebGL.
     - **Camera floor.** The written limit, 78° from vertical (12° above the ground), stands; frame 00's note "never
       below 8° above" is a drawing note.
+  - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
+    - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
+      (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
+      −north, turned by `π − heading`) and its box from the class's `footprint_m`. The canvas receives the placed
+      assets as props, because a query hook has no client inside `<Canvas>`. The position drawn is the 2D map's own
+      (`fanOutAssets`, run over all assets), so assets on one spot are spread the same way in both views; the
+      placement itself uses the catalogue position.
+    - **One merged mesh, not instances.** Every drawn box is merged into one triangle mesh and one list of edges
+      (`lib/twinBoxes.ts`, wrapped by `twin/AssetBoxes.tsx`): two draw calls however many assets, with a range per asset
+      for colouring by state and for picking. The neutral base is `--tw-neutral`, shaded by the scene's two lights.
+    - **Campus level draws `outdoor` and `roof` assets.** `inside` assets are placed but not drawn until a building is
+      in focus (V2-15.8). An asset whose zone is not in the list is `outdoor`, a building too small to have a footprint
+      has nothing `inside`, and a missing height is the shell's `DEFAULT_BUILDING_HEIGHT_M`.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
