@@ -26,6 +26,7 @@ import {
 import {
   type FromWorker,
   type SeriesData,
+  type TargetSlot,
   TELEMETRY_PROTOCOL_VERSION,
   type ToWorker,
 } from './telemetryProtocol';
@@ -97,6 +98,14 @@ const WATCH_RETRY_MS = 1000;
 const STATE_MIN_INTERVAL_MS = 250;
 /** A ring takes at most one point a second per key, so a faster series has nothing new. */
 const SERIES_MIN_INTERVAL_MS = 1000;
+/**
+ * The render loop hears about targets at most once per 60 FPS frame (V2-14.4). A frame is 16.7 ms, but a throttle
+ * of 16 ms can post 63 times a second; 17 ms keeps to 58.8, within the 60 a second the task allows. No
+ * `requestAnimationFrame` is assumed in a worker (not in every browser), so a timer stands in for the frame.
+ */
+const TARGETS_MIN_INTERVAL_MS = 17;
+/** The HUD's counts (V2-19.1) are read once a second, so they are posted at most that often. */
+const STATS_MIN_INTERVAL_MS = 1000;
 
 /**
  * Socket.IO's own message for a namespace the server does not have. It is not in
@@ -145,6 +154,17 @@ function createThrottle(intervalMs: number, run: () => void, { leading = true } 
 
 const sameList = (a: readonly string[], b: readonly string[]): boolean =>
   a.length === b.length && a.every((item, index) => item === b[index]);
+
+/** Whether two buffers hold the same numbers, a `NaN` equal to a `NaN`: a slot with no value has not changed. */
+function sameTargets(a: Float32Array, b: Float32Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let index = 0; index < a.length; index++) {
+    const x = a[index];
+    const y = b[index];
+    if (x !== y && !(Number.isNaN(x) && Number.isNaN(y))) return false;
+  }
+  return true;
+}
 
 /** The assets of `next` that are not the same object in `previous`. */
 function changedAssets(
@@ -236,9 +256,25 @@ export function createTelemetryEngine({
   const rings = new Map<string, Map<string, RingBuffer>>();
   const dirty = new Map<string, Set<string>>();
 
+  // The targets path (V2-14.4): the layout the main thread set, and the engine's own copy of the last buffer
+  // posted (a transfer detaches the posted one, and in the main thread the client keeps it).
+  let layout: { id: number; slots: readonly TargetSlot[] } | null = null;
+  let lastTargets: Float32Array | null = null;
+
+  // Cumulative counts for the HUD: socket messages received, buffers posted.
+  let messages = 0;
+  let targetPosts = 0;
+  let postedStats = { messages: 0, targetPosts: 0 };
+
   const reduce = (message: TelemetryMessage) => {
     state = applyMessage(state, message, performance.now());
     stateThrottle.request();
+    if (layout) targetsThrottle.request();
+  };
+
+  const countMessage = () => {
+    messages += 1;
+    statsThrottle.request();
   };
 
   const setSocket = (next: SocketState) => reduce({ type: 'socket', state: next, at: Date.now() });
@@ -281,6 +317,56 @@ export function createTelemetryEngine({
   );
 
   const watchThrottle = createThrottle(WATCH_MIN_INTERVAL_MS, () => flushWatch());
+
+  const statsThrottle = createThrottle(
+    STATS_MIN_INTERVAL_MS,
+    () => {
+      if (messages === postedStats.messages && targetPosts === postedStats.targetPosts) return;
+      postedStats = { messages, targetPosts };
+      host.post({ v, type: 'stats', ...postedStats });
+    },
+    // Not leading, like the series: a burst of messages is one count, and nothing posts at connect.
+    { leading: false },
+  );
+
+  /**
+   * One buffer of the layout's current values, posted when it differs from the last one (and so never
+   * for a quiet socket, nor for an overview that changed no slot). With no buffer posted yet the last
+   * one counts as all `NaN`: a layout whose slots have no value yet posts nothing.
+   */
+  const targetsThrottle = createThrottle(TARGETS_MIN_INTERVAL_MS, () => {
+    if (!layout) return;
+    const buffer = buildTargets(layout.slots);
+    const previous = lastTargets ?? new Float32Array(buffer.length).fill(Number.NaN);
+    if (sameTargets(previous, buffer)) return;
+    // Copied before the post: a transfer detaches `buffer` in a worker.
+    lastTargets = buffer.slice();
+    // `buffer.buffer` is a plain ArrayBuffer here; only the declared type is the wider one.
+    host.post({ v, type: 'targets', layoutId: layout.id, buffer }, [buffer.buffer as ArrayBuffer]);
+    targetPosts += 1;
+    statsThrottle.request();
+  });
+
+  /** Slot *i* is the latest value of its key, as a number: `NaN` while the asset or key has none, or it does not encode. */
+  function buildTargets(slots: readonly TargetSlot[]): Float32Array {
+    const buffer = new Float32Array(slots.length);
+    slots.forEach(({ assetCode, key, enumValues }, index) => {
+      const value = state.assets[assetCode]?.values[key];
+      buffer[index] = (value === undefined ? null : encodeReading(value, enumValues)) ?? Number.NaN;
+    });
+    return buffer;
+  }
+
+  function setLayout(id: number, slots: readonly TargetSlot[]) {
+    // Plain copies: nothing of the message is kept, and nothing but the three fields is read.
+    layout = {
+      id,
+      slots: slots.map(({ assetCode, key, enumValues }) => ({ assetCode, key, enumValues })),
+    };
+    // What was posted belongs to the old layout. The next build is a change whenever a slot has a value.
+    lastTargets = null;
+    targetsThrottle.request();
+  }
 
   function ringFor(assetCode: string, key: string): RingBuffer | undefined {
     if (!desired.includes(assetCode)) return undefined;
@@ -438,10 +524,21 @@ export function createTelemetryEngine({
       }),
     );
 
-    live.onOverview(guarded((payload: TelemetryOverview) => reduce({ type: 'overview', payload })));
-    live.onStatus(guarded((payload: TelemetryStatus) => reduce({ type: 'status', payload })));
+    live.onOverview(
+      guarded((payload: TelemetryOverview) => {
+        countMessage();
+        reduce({ type: 'overview', payload });
+      }),
+    );
+    live.onStatus(
+      guarded((payload: TelemetryStatus) => {
+        countMessage();
+        reduce({ type: 'status', payload });
+      }),
+    );
     live.onSnapshot(
       guarded((payload: TelemetrySnapshot) => {
+        countMessage();
         reduce({ type: 'snapshot', payload });
         for (const [assetCode, asset] of Object.entries(payload.assets)) {
           for (const [key, value] of Object.entries(asset.values)) {
@@ -452,6 +549,7 @@ export function createTelemetryEngine({
     );
     live.onFrames(
       guarded((payload: TelemetryFrames) => {
+        countMessage();
         reduce({ type: 'frames', payload });
         for (const frame of payload.frames) {
           for (const [key, value] of Object.entries(frame.values)) {
@@ -481,6 +579,10 @@ export function createTelemetryEngine({
     stateThrottle.cancel();
     seriesThrottle.cancel();
     watchThrottle.cancel();
+    targetsThrottle.cancel();
+    statsThrottle.cancel();
+    layout = null;
+    lastTargets = null;
     for (const waiter of tokenWaiters.values()) clearTimeout(waiter.timer);
     tokenWaiters.clear();
     rings.clear();
@@ -508,6 +610,9 @@ export function createTelemetryEngine({
           return;
         case 'seed':
           seed(message.assetCode, message.series);
+          return;
+        case 'layout':
+          setLayout(message.layoutId, message.slots);
           return;
         case 'retry':
           retryNow();

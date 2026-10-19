@@ -47,6 +47,10 @@ function fakeClient(initial: TelemetryView = view()) {
     getView: () => current,
     setWatch: vi.fn(),
     retry: vi.fn(),
+    setLayout: vi.fn(() => 1),
+    onTargets: vi.fn(() => () => {}),
+    getTargets: vi.fn(() => null),
+    getStats: vi.fn(() => ({ messages: 0, targetPosts: 0 })),
     dispose: vi.fn(),
   };
   return {

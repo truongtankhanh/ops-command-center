@@ -180,6 +180,22 @@ their author, checked in CI, and served by nginx as immutable files.
       stop a spinning part: the spin is the reading, an essential movement under WCAG 2.2.2.
     - **A model that fails to load** leaves the asset as its neutral box, with one log line; the asset stays in every
       list.
+  - Settled in V2-14.4 (2026-10-19), without changing the decision: how the one buffer per frame is built.
+    - **Layout.** The main thread sends `layout` (`layoutId`, `slots`: `{ assetCode, key, enumValues }`); slot _i_ is element _i_ of every
+      buffer. `layoutId` rises with each layout, and the worker echoes it on every `targets` message, so the client drops a buffer built
+      for an earlier layout and `getTargets()` is `null` until the new layout's first buffer.
+    - **Buffer.** One `Float32Array` per post, transferred, `NaN` for a slot with no value yet (an absent asset or key, a word that is
+      not one of the enum's values, a number that is not finite). It is built from `state.assets[code].values`, so a watched asset moves
+      at frame rate and an unwatched one at the overview's 1 Hz, with no new socket traffic. It is posted only when a slot's number
+      differs from the last post, so a quiet socket posts none and a layout whose slots have no value yet posts none; a new layout
+      forgets the last post, so the current values are sent once under it.
+    - **Rate.** A 17 ms throttle, leading, stands in for the frame (a worker has no `requestAnimationFrame` in every browser). A
+      16 ms throttle can reach 63 posts a second under continuous change; 17 ms keeps to 58.8, within the 60 a second this path allows.
+    - **Outside React.** Targets are read with `client.onTargets` and `getTargets`, never through `TelemetryView`, so no reading is
+      React state. The snap after a reconnect (V2-14.1) is a flag for V2-14.5, not part of the buffer.
+    - **Counts for the HUD.** The worker counts the socket messages it receives and the buffers it posts, and posts both as a `stats`
+      message at most once a second and only when they changed; the client keeps the latest for `getStats()`. V2-19.1 turns them into
+      messages per second and posts per frame.
 - **Model contract.**
   - glTF 2.0 binary, **one file per asset class**, instanced for every asset of that class.
   - **Node names are part roles, unique within the file** (`FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`), under

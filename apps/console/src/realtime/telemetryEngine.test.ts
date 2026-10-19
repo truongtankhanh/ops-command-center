@@ -10,7 +10,12 @@ import {
   type EngineSocket,
   type SocketFactory,
 } from './telemetryEngine';
-import { type FromWorker, TELEMETRY_PROTOCOL_VERSION, type ToWorker } from './telemetryProtocol';
+import {
+  type FromWorker,
+  type TargetSlot,
+  TELEMETRY_PROTOCOL_VERSION,
+  type ToWorker,
+} from './telemetryProtocol';
 
 const v = TELEMETRY_PROTOCOL_VERSION;
 const T0 = '2026-10-15T08:00:00.000Z';
@@ -128,6 +133,12 @@ const snapshotOf = (
   assets: Object.fromEntries(
     Object.entries(assets).map(([code, asset]) => [code, { online: true, ...asset }]),
   ),
+});
+
+const slot = (assetCode: string, key: string, enumValues: string[] | null = null): TargetSlot => ({
+  assetCode,
+  key,
+  enumValues,
 });
 
 describe('telemetry engine', () => {
@@ -600,6 +611,341 @@ describe('telemetry engine', () => {
       await advance(1_000);
 
       expect([...(ofType('series').at(-1)?.entries[0]?.v ?? [])]).toEqual([2]);
+    });
+  });
+
+  describe('targets', () => {
+    /** An engine that is live, with `slots` as layout 1 and its window over, as when the stage has been open a moment. */
+    async function start(slots: TargetSlot[], layoutId = 1) {
+      const rig = setup();
+      rig.goLive();
+      rig.send({ v, type: 'layout', layoutId, slots });
+      await advance(20);
+      return rig;
+    }
+    const targetPosts = (posts: ReturnType<typeof setup>['posts']) =>
+      posts.filter((post) => post.message.type === 'targets');
+    const at = (ms: number) => Date.parse(T0) + ms;
+
+    it('holds each slot’s latest value as a number, in the order of the layout', async () => {
+      const { socket, ofType } = await start([
+        slot('CT-01', 'fanSpeedRpm'),
+        slot('CT-01', 'running'),
+        slot('CT-01', 'switchState', ['off', 'auto', 'hand']),
+        slot('CT-02', 'fanSpeedRpm'),
+      ]);
+
+      socket.handlers.snapshot?.(
+        snapshotOf({
+          'CT-01': {
+            receivedAt: T0,
+            values: { fanSpeedRpm: 1420, running: true, switchState: 'hand' },
+          },
+        }),
+      );
+      await advance(20);
+
+      const [first, ...rest] = ofType('targets');
+      expect(rest).toHaveLength(0);
+      expect(first?.layoutId).toBe(1);
+      expect([...(first?.buffer ?? [])]).toEqual([1420, 1, 2, Number.NaN]);
+    });
+
+    it('is NaN for an asset or key with no value, a word that is not an enum value, a string for a number slot and a number that is not finite', async () => {
+      const { socket, ofType } = await start([
+        slot('CT-01', 'fanSpeedRpm'),
+        slot('CT-99', 'fanSpeedRpm'),
+        slot('CT-01', 'vibrationMms'),
+        slot('CT-01', 'switchState', ['off', 'auto']),
+        slot('CT-01', 'note'),
+        slot('CT-01', 'motorTempC'),
+      ]);
+
+      socket.handlers.snapshot?.(
+        snapshotOf({
+          'CT-01': {
+            receivedAt: T0,
+            values: {
+              fanSpeedRpm: 900,
+              switchState: 'hand',
+              note: 'text',
+              motorTempC: Number.POSITIVE_INFINITY,
+            },
+          },
+        }),
+      );
+      await advance(20);
+
+      expect([...(ofType('targets')[0]?.buffer ?? [])]).toEqual([
+        900,
+        ...Array.from({ length: 5 }, () => Number.NaN),
+      ]);
+    });
+
+    it('posts one buffer for a change and nothing for what changed no slot', async () => {
+      const { socket, ofType } = await start([slot('CT-01', 'fanSpeedRpm')]);
+      socket.handlers.snapshot?.(
+        snapshotOf({ 'CT-01': { receivedAt: T0, values: { fanSpeedRpm: 1000 } } }),
+      );
+      await advance(20);
+      expect(ofType('targets')).toHaveLength(1);
+
+      // The same reading again, and another asset's overview: no slot holds a different number.
+      socket.handlers.frames?.(frames('CT-01', at(1_000), { fanSpeedRpm: 1000 }));
+      socket.handlers.overview?.({
+        at: iso(at(1_000)),
+        assets: {
+          'CT-02': { online: true, receivedAt: iso(at(1_000)), headline: { fanSpeedRpm: 500 } },
+        },
+      });
+      await advance(1_000);
+      expect(ofType('targets')).toHaveLength(1);
+
+      socket.handlers.frames?.(frames('CT-01', at(2_000), { fanSpeedRpm: 1001 }));
+      await advance(20);
+      expect(ofType('targets')).toHaveLength(2);
+    });
+
+    it('posts the first change at once and coalesces the rest of a 17 ms window into one more', async () => {
+      const { socket, posts } = await start([slot('CT-01', 'fanSpeedRpm')]);
+
+      socket.handlers.frames?.(frames('CT-01', at(100), { fanSpeedRpm: 1 }));
+      expect(targetPosts(posts)).toHaveLength(1);
+      await advance(5);
+      socket.handlers.frames?.(frames('CT-01', at(105), { fanSpeedRpm: 2 }));
+      await advance(5);
+      socket.handlers.frames?.(frames('CT-01', at(110), { fanSpeedRpm: 3 }));
+      expect(targetPosts(posts)).toHaveLength(1);
+      await advance(20);
+
+      const sent = targetPosts(posts);
+      expect(sent).toHaveLength(2);
+      const last = sent[1]?.message;
+      expect(last?.type === 'targets' ? [...last.buffer] : null).toEqual([3]);
+      expect((sent[1]?.at ?? 0) - (sent[0]?.at ?? 0)).toBeGreaterThanOrEqual(17);
+    });
+
+    it('never posts more than 60 buffers in any second, however fast values change', async () => {
+      const { socket, posts } = await start([slot('CT-01', 'fanSpeedRpm')]);
+
+      for (let step = 1; step <= 1_000; step++) {
+        socket.handlers.frames?.(frames('CT-01', at(step), { fanSpeedRpm: step }));
+        await advance(1);
+      }
+      await advance(20);
+
+      const times = targetPosts(posts).map((post) => post.at);
+      for (const time of times) {
+        expect(
+          times.filter((other) => other >= time && other < time + 1_000).length,
+        ).toBeLessThanOrEqual(60);
+      }
+      expect(times.length).toBeGreaterThan(50);
+    });
+
+    it('posts one buffer per changed frame for 30 slots and a frame every 100 ms, and none on a quiet socket', async () => {
+      const keys = Array.from({ length: 30 }, (_, index) => `k${index}`);
+      const { socket, posts } = await start(keys.map((key) => slot('CT-01', key)));
+
+      for (let frame = 0; frame < 30; frame++) {
+        socket.handlers.frames?.(
+          frames('CT-01', at(frame * 100), { [keys[frame] ?? '']: frame + 1 }),
+        );
+        await advance(100);
+      }
+
+      expect(targetPosts(posts)).toHaveLength(30);
+      for (const post of targetPosts(posts)) {
+        expect(post.message.type === 'targets' ? post.message.buffer.length : 0).toBe(30);
+      }
+
+      await advance(5_000);
+      expect(targetPosts(posts)).toHaveLength(30);
+    });
+
+    it('posts nothing while every slot is still without a value', async () => {
+      const { socket, ofType } = await start([
+        slot('CT-01', 'fanSpeedRpm'),
+        slot('CT-02', 'running'),
+      ]);
+
+      socket.handlers.status?.({ upstream: 'live', since: T0 });
+      socket.handlers.overview?.({ at: iso(at(1_000)), assets: {} });
+      await advance(5_000);
+
+      expect(ofType('targets')).toHaveLength(0);
+    });
+
+    it('posts the held values again, with the new id, when the layout changes', async () => {
+      const { socket, send, ofType } = await start([slot('CT-01', 'fanSpeedRpm')], 1);
+      socket.handlers.snapshot?.(
+        snapshotOf({ 'CT-01': { receivedAt: T0, values: { fanSpeedRpm: 1000 } } }),
+      );
+      await advance(20);
+
+      send({ v, type: 'layout', layoutId: 2, slots: [slot('CT-01', 'fanSpeedRpm')] });
+      await advance(20);
+
+      const sent = ofType('targets');
+      expect(sent.map((message) => message.layoutId)).toEqual([1, 2]);
+      expect([...(sent[1]?.buffer ?? [])]).toEqual([1000]);
+    });
+
+    it('stops posting for an empty layout', async () => {
+      const { socket, send, ofType } = await start([slot('CT-01', 'fanSpeedRpm')]);
+      socket.handlers.snapshot?.(
+        snapshotOf({ 'CT-01': { receivedAt: T0, values: { fanSpeedRpm: 1000 } } }),
+      );
+      await advance(20);
+
+      send({ v, type: 'layout', layoutId: 2, slots: [] });
+      await advance(20);
+      socket.handlers.frames?.(frames('CT-01', at(1_000), { fanSpeedRpm: 1200 }));
+      await advance(1_000);
+
+      expect(ofType('targets')).toHaveLength(1);
+    });
+
+    it('takes a layout before the socket is live, and posts when the first values arrive', async () => {
+      const { socket, send, ofType } = setup();
+
+      send({ v, type: 'layout', layoutId: 1, slots: [slot('CT-01', 'fanSpeedRpm')] });
+      await advance(20);
+      socket.handlers.snapshot?.(
+        snapshotOf({ 'CT-01': { receivedAt: T0, values: { fanSpeedRpm: 700 } } }),
+      );
+      await advance(20);
+
+      expect([...(ofType('targets')[0]?.buffer ?? [])]).toEqual([700]);
+    });
+
+    it('posts nothing after dispose', async () => {
+      const { socket, send, ofType } = await start([slot('CT-01', 'fanSpeedRpm')]);
+
+      send({ v, type: 'dispose' });
+      socket.handlers.frames?.(frames('CT-01', at(1_000), { fanSpeedRpm: 5 }));
+      send({ v, type: 'layout', layoutId: 2, slots: [slot('CT-01', 'fanSpeedRpm')] });
+      await advance(1_000);
+
+      expect(ofType('targets')).toHaveLength(0);
+    });
+
+    it('sends no message per reading: a thousand readings are a handful of posts', async () => {
+      const slots = Array.from({ length: 100 }, (_, index) => slot('CT-01', `k${index}`));
+      const { socket, posts } = await start(slots);
+
+      for (let batch = 0; batch < 10; batch++) {
+        socket.handlers.frames?.({
+          frames: Array.from({ length: 5 }, (_, asset) => ({
+            assetCode: `CT-0${asset + 1}`,
+            at: '2026-10-15T07:00:00.000Z',
+            receivedAt: iso(at(1_000 + batch)),
+            values: Object.fromEntries(
+              Array.from({ length: 20 }, (_, key) => [`k${key}`, batch * 100 + asset * 20 + key]),
+            ),
+          })),
+        });
+      }
+      await advance(1_000);
+
+      for (const post of posts) {
+        expect(['tokenRequest', 'state', 'series', 'targets', 'stats']).toContain(
+          post.message.type,
+        );
+      }
+      // One at once and one when the window ends, however many frames came in that window.
+      expect(targetPosts(posts).length).toBeLessThanOrEqual(2);
+      expect(posts.length).toBeLessThan(20);
+    });
+
+    it('allocates a buffer for each post, and compares with its own copy once a transfer has detached the posted one', async () => {
+      const { socket, posts } = await start([slot('CT-01', 'fanSpeedRpm')]);
+      socket.handlers.frames?.(frames('CT-01', at(100), { fanSpeedRpm: 1000 }));
+      await advance(20);
+      const first = targetPosts(posts)[0];
+      if (first?.message.type !== 'targets') throw new Error('no targets post');
+
+      expect(first.transfer).toEqual([first.message.buffer.buffer]);
+      // What a worker's post does to the buffer it transfers.
+      structuredClone(first.message.buffer, { transfer: first.transfer });
+      expect(first.message.buffer.byteLength).toBe(0);
+
+      socket.handlers.frames?.(frames('CT-01', at(200), { fanSpeedRpm: 1000 }));
+      await advance(20);
+      expect(targetPosts(posts)).toHaveLength(1);
+
+      socket.handlers.frames?.(frames('CT-01', at(300), { fanSpeedRpm: 1001 }));
+      await advance(20);
+      const second = targetPosts(posts)[1]?.message;
+      expect(second?.type === 'targets' ? [...second.buffer] : null).toEqual([1001]);
+      // `Object.is`, not `.not.toBe`: on a pass the matcher still builds a diff hint, which reads the detached buffer.
+      expect(
+        Object.is(second?.type === 'targets' ? second.buffer : null, first.message.buffer),
+      ).toBe(false);
+    });
+  });
+
+  describe('stats', () => {
+    it('counts the overview, snapshot, frames and status messages, and posts the count once a second', async () => {
+      const { socket, ofType, goLive } = setup();
+      goLive();
+
+      socket.handlers.status?.({ upstream: 'live', since: T0 });
+      socket.handlers.overview?.({ at: T0, assets: {} });
+      socket.handlers.snapshot?.(snapshotOf({}));
+      socket.handlers.frames?.({ frames: [] });
+      expect(ofType('stats')).toHaveLength(0);
+      await advance(1_000);
+
+      expect(ofType('stats')).toEqual([{ v, type: 'stats', messages: 4, targetPosts: 0 }]);
+    });
+
+    it('posts nothing while the counts have not changed', async () => {
+      const { socket, ofType, goLive } = setup();
+      goLive();
+      socket.handlers.frames?.({ frames: [] });
+      await advance(1_000);
+
+      await advance(10_000);
+
+      expect(ofType('stats')).toHaveLength(1);
+    });
+
+    it('counts the buffers it posts', async () => {
+      const { socket, send, ofType, goLive } = setup();
+      goLive();
+      send({ v, type: 'layout', layoutId: 1, slots: [slot('CT-01', 'fanSpeedRpm')] });
+      await advance(20);
+
+      socket.handlers.frames?.(frames('CT-01', Date.parse(T0) + 100, { fanSpeedRpm: 1 }));
+      await advance(20);
+      socket.handlers.frames?.(frames('CT-01', Date.parse(T0) + 200, { fanSpeedRpm: 2 }));
+      await advance(1_000);
+
+      expect(ofType('stats').at(-1)).toEqual({ v, type: 'stats', messages: 2, targetPosts: 2 });
+    });
+
+    it('is cumulative and at most once a second under a message every 100 ms', async () => {
+      const { socket, posts, goLive } = setup();
+      goLive();
+
+      for (let step = 0; step < 25; step++) {
+        socket.handlers.frames?.(
+          frames('CT-01', Date.parse(T0) + step * 100, { fanSpeedRpm: step }),
+        );
+        await advance(100);
+      }
+      await advance(1_000);
+
+      const stats = posts.filter((post) => post.message.type === 'stats');
+      const counts = stats.map((post) =>
+        post.message.type === 'stats' ? post.message.messages : 0,
+      );
+      expect(counts.at(-1)).toBe(25);
+      expect([...counts].sort((a, b) => a - b)).toEqual(counts);
+      for (let index = 1; index < stats.length; index++) {
+        expect((stats[index]?.at ?? 0) - (stats[index - 1]?.at ?? 0)).toBeGreaterThanOrEqual(1_000);
+      }
     });
   });
 
