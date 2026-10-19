@@ -196,6 +196,22 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Counts for the HUD.** The worker counts the socket messages it receives and the buffers it posts, and posts both as a `stats`
       message at most once a second and only when they changed; the client keeps the latest for `getStats()`. V2-19.1 turns them into
       messages per second and posts per frame.
+  - Settled in V2-14.5 (2026-10-19), without changing the decision: what the render loop reads besides the numbers.
+    - **A feed, not React.** `realtime/twinFeed.ts` holds the layout, the latest targets buffer and per-asset flags, and gives the render loop `read()`: the
+      targets (the client's own buffer, read and never written), `slotOf(code, key)` and `flags(code)`. It reads the telemetry client, the query cache through
+      getters it is given and a timer, makes no request and touches no store; it calls an injected `invalidate()` once when a buffer arrived or the layout or a
+      flag changed, so a demand-mode canvas draws a frame, and never for a change that moved nothing.
+    - **The layout is told by the loader.** The slots are the bound keys of every asset's class, from the bindings of the class's model (V2-14.2); whoever loads a
+      model calls `setBindings(classCode, bindings)`, and the layout is empty until then. Headline and state points are not slots: nothing reads them from the
+      buffer (tooltips and the list read React state), and an enum state point has no values in the asset list. They are added when a consumer exists.
+    - **Flags.** `stale` is the console's own rule (3 × the asset's shortest headline interval, at least 5 s) on the server's clock rebuilt from the client's anchor
+      and `performance.now()`, never `Date.now()`; an asset nothing was received about, or an unknown code, is `stale` and not `online`, as the list's "No data";
+      no clock yet is not stale. `alarm` is the severity of the asset's open incident (an incident with an `assetId` is one a telemetry rule raised) and is not hidden
+      by `stale`. `ruleKey` is the point in the evidence of the incident's cached detail (`evidenceOfTimeline`), and `null` when the detail is not in the cache: the
+      feed fetches nothing, and the inspector's detail view already does.
+    - **When it looks.** On each telemetry change, once a second (an age is a function of the clock), and on `refresh()`, which the stage's hook calls when the query
+      cache changes for the assets, the incidents or an incident's detail. A stored flags object keeps its identity until a field changes. Disposing the feed sends an
+      empty layout so the worker stops posting buffers nobody reads.
 - **Model contract.**
   - glTF 2.0 binary, **one file per asset class**, instanced for every asset of that class.
   - **Node names are part roles, unique within the file** (`FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`), under
