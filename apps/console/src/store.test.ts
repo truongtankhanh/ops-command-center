@@ -1,4 +1,5 @@
 import type { ReportPreset } from './lib/assetReport';
+import { levelOf } from './lib/twinLevel';
 import { FRESH_LIMIT, useConsole } from './store';
 import { resetStore, stubTwinAvailable, unstubTwin } from './test-utils';
 
@@ -151,7 +152,7 @@ describe('useConsole', () => {
       state().setReportZone('z1');
       state().setPicking(true);
 
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       expect(state().selectedAssetCode).toBe('CT-01');
       expect(state().selectedIncidentId).toBeNull();
@@ -161,7 +162,7 @@ describe('useConsole', () => {
     });
 
     it('closes the selected asset when an incident is selected', () => {
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       state().select('a');
 
@@ -170,7 +171,7 @@ describe('useConsole', () => {
     });
 
     it('closes the selected asset when the report form opens', () => {
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       state().startReport();
 
@@ -179,7 +180,7 @@ describe('useConsole', () => {
     });
 
     it('keeps the asset when the incident sheet or the report form is closed', () => {
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       state().select(null);
       state().closeReport();
@@ -188,7 +189,7 @@ describe('useConsole', () => {
     });
 
     it('clears the asset without reopening anything', () => {
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       state().selectAsset(null);
 
@@ -221,6 +222,341 @@ describe('useConsole', () => {
       expect(state().assetZoneId).toBe('z1');
 
       state().setAssetZone(null);
+      expect(state().assetZoneId).toBeNull();
+    });
+  });
+
+  // V2-15.2: the 3D view's four levels. The level is derived (`levelOf`), never stored; these are the
+  // transitions of ADR-0020 "Settled in V2-15.1".
+  describe('scene levels', () => {
+    const level = () => levelOf(state());
+
+    it('starts on the campus, with no building, part or hovered part', () => {
+      expect(state().focusZoneId).toBeNull();
+      expect(state().selectedPart).toBeNull();
+      expect(state().hoveredPart).toBeNull();
+      expect(level()).toBe('campus');
+    });
+
+    describe('selecting an asset', () => {
+      it('focuses the building it is in, and leaves the Assets filter alone', () => {
+        state().selectAsset('GEN-01', 'BLD-DC');
+
+        expect(state().focusZoneId).toBe('BLD-DC');
+        expect(state().assetZoneId).toBeNull();
+        expect(level()).toBe('asset');
+      });
+
+      it('ends the focus for an asset outside every building', () => {
+        state().focusBuilding('BLD-DC');
+
+        state().selectAsset('TR-01', null);
+
+        expect(state().focusZoneId).toBeNull();
+        expect(state().selectedAssetCode).toBe('TR-01');
+      });
+
+      it('moves the focus to the other building', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+
+        state().selectAsset('AHU-L1', 'BLD-LIB');
+
+        expect(state().focusZoneId).toBe('BLD-LIB');
+      });
+
+      it('keeps the focus for another asset of the same building', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+
+        state().selectAsset('CT-02', 'BLD-DC');
+
+        expect(state().focusZoneId).toBe('BLD-DC');
+      });
+
+      it('clears the selected part and the hovered part', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+        state().hoverPart('FanMotor');
+
+        state().selectAsset('CT-02', 'BLD-DC');
+
+        expect(state().selectedPart).toBeNull();
+        expect(state().hoveredPart).toBeNull();
+      });
+
+      it('keeps the building in focus when the asset is cleared, and clears its part', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+
+        state().selectAsset(null);
+
+        expect(state().selectedAssetCode).toBeNull();
+        expect(state().selectedPart).toBeNull();
+        expect(state().focusZoneId).toBe('BLD-DC');
+        expect(level()).toBe('building');
+      });
+    });
+
+    describe('the part', () => {
+      it('is selected and cleared while an asset is selected', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+
+        state().selectPart('FanBlade');
+        expect(state().selectedPart).toBe('FanBlade');
+        expect(level()).toBe('part');
+
+        state().selectPart(null);
+        expect(state().selectedPart).toBeNull();
+        expect(level()).toBe('asset');
+      });
+
+      it('cannot be selected without an asset', () => {
+        const before = state();
+
+        state().selectPart('FanBlade');
+
+        expect(state()).toBe(before);
+        expect(state().selectedPart).toBeNull();
+      });
+
+      it('is cleared when an incident is selected or a report starts', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+        state().select('a');
+        expect(state().selectedPart).toBeNull();
+
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+        state().startReport();
+        expect(state().selectedPart).toBeNull();
+      });
+
+      it('survives closing the incident sheet, which keeps the asset', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+
+        state().select(null);
+
+        expect(state().selectedPart).toBe('FanBlade');
+      });
+
+      it('is hovered and un-hovered without being selected', () => {
+        state().hoverPart('FanBlade');
+        expect(state().hoveredPart).toBe('FanBlade');
+        expect(state().selectedPart).toBeNull();
+
+        state().hoverPart(null);
+        expect(state().hoveredPart).toBeNull();
+      });
+
+      it('changes nothing when the same part is hovered again', () => {
+        state().hoverPart('FanBlade');
+        const before = state();
+
+        state().hoverPart('FanBlade');
+
+        expect(state()).toBe(before);
+      });
+    });
+
+    describe('focusing a building', () => {
+      it('sets the focus and the Assets filter to the building', () => {
+        state().focusBuilding('BLD-DC');
+
+        expect(state().focusZoneId).toBe('BLD-DC');
+        expect(state().assetZoneId).toBe('BLD-DC');
+        expect(level()).toBe('building');
+      });
+
+      it('is the building level: the selected asset and part are cleared', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+
+        state().focusBuilding('BLD-LIB');
+
+        expect(state().selectedAssetCode).toBeNull();
+        expect(state().selectedPart).toBeNull();
+        expect(state().focusZoneId).toBe('BLD-LIB');
+      });
+
+      it('replaces a filter the operator had, because the click is explicit', () => {
+        state().setAssetZone('BLD-LIB');
+
+        state().focusBuilding('BLD-DC');
+
+        expect(state().assetZoneId).toBe('BLD-DC');
+      });
+
+      it('changes nothing when the building is already the whole state', () => {
+        state().focusBuilding('BLD-DC');
+        const before = state();
+
+        state().focusBuilding('BLD-DC');
+
+        expect(state()).toBe(before);
+      });
+
+      it('is going to the campus when given null', () => {
+        state().focusBuilding('BLD-DC');
+        state().selectAsset('CT-01', 'BLD-DC');
+
+        state().focusBuilding(null);
+
+        expect(level()).toBe('campus');
+        expect(state().focusZoneId).toBeNull();
+        expect(state().selectedAssetCode).toBeNull();
+      });
+    });
+
+    describe('going up', () => {
+      it('goes part, asset, building, campus, one step at a time', () => {
+        state().focusBuilding('BLD-DC');
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+        const seen = [level()];
+
+        for (let step = 0; step < 3; step++) {
+          state().goUp();
+          seen.push(level());
+        }
+
+        expect(seen).toEqual(['part', 'asset', 'building', 'campus']);
+        expect(state().focusZoneId).toBeNull();
+      });
+
+      it('goes from an asset outside every building straight to the campus', () => {
+        state().selectAsset('TR-01', null);
+
+        state().goUp();
+
+        expect(level()).toBe('campus');
+      });
+
+      it('does nothing at the campus', () => {
+        const before = state();
+
+        state().goUp();
+
+        expect(state()).toBe(before);
+      });
+
+      it('clears the hovered part with the part', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+        state().hoverPart('FanMotor');
+
+        state().goUp();
+
+        expect(state().hoveredPart).toBeNull();
+      });
+    });
+
+    describe('going to the campus', () => {
+      it('clears the part, the asset and the building', () => {
+        state().selectAsset('CT-01', 'BLD-DC');
+        state().selectPart('FanBlade');
+
+        state().goCampus();
+
+        expect(level()).toBe('campus');
+        expect(state().selectedPart).toBeNull();
+        expect(state().selectedAssetCode).toBeNull();
+        expect(state().focusZoneId).toBeNull();
+      });
+
+      it('keeps an open incident and an open report form', () => {
+        state().focusBuilding('BLD-DC');
+        state().select('a');
+        state().goCampus();
+        expect(state().selectedIncidentId).toBe('a');
+
+        state().startReport();
+        state().focusBuilding('BLD-DC');
+        state().goCampus();
+        expect(state().reporting).toBe(true);
+      });
+
+      it('changes nothing at the campus', () => {
+        const before = state();
+
+        state().goCampus();
+
+        expect(state()).toBe(before);
+      });
+    });
+  });
+
+  // The focus writes the Assets filter only for a building click, and takes back only what it wrote.
+  describe('building focus and the Assets filter', () => {
+    it('is cleared on leaving the building by going up', () => {
+      state().focusBuilding('BLD-DC');
+
+      state().goUp();
+
+      expect(state().assetZoneId).toBeNull();
+      expect(state().focusFilterZoneId).toBeNull();
+    });
+
+    it('is cleared on going to the campus from an asset', () => {
+      state().focusBuilding('BLD-DC');
+      state().selectAsset('CT-01', 'BLD-DC');
+
+      state().goCampus();
+
+      expect(state().assetZoneId).toBeNull();
+    });
+
+    it('is kept when the operator chose another zone after the focus', () => {
+      state().focusBuilding('BLD-DC');
+      state().setAssetZone('BLD-LIB');
+
+      state().goUp();
+
+      expect(state().assetZoneId).toBe('BLD-LIB');
+    });
+
+    it('is kept cleared when the operator cleared it', () => {
+      state().focusBuilding('BLD-DC');
+      state().setAssetZone(null);
+
+      state().goUp();
+
+      expect(state().assetZoneId).toBeNull();
+    });
+
+    it('is kept when the operator chose the same zone before the focus came from an asset', () => {
+      state().setAssetZone('BLD-DC');
+      state().selectAsset('GEN-01', 'BLD-DC');
+
+      state().goUp();
+      state().goUp();
+
+      expect(state().focusZoneId).toBeNull();
+      expect(state().assetZoneId).toBe('BLD-DC');
+    });
+
+    it('is kept when the operator chose the zone and then clicked its building', () => {
+      state().setAssetZone('BLD-DC');
+      state().focusBuilding('BLD-DC');
+
+      state().goCampus();
+
+      expect(state().assetZoneId).toBe('BLD-DC');
+    });
+
+    it('drops the focus as its owner as soon as the operator sets a zone', () => {
+      state().focusBuilding('BLD-DC');
+
+      state().setAssetZone('BLD-DC');
+
+      expect(state().focusFilterZoneId).toBeNull();
+    });
+
+    it('is taken back from the old building and not set for the new one by selecting an asset', () => {
+      state().focusBuilding('BLD-DC');
+
+      state().selectAsset('AHU-L1', 'BLD-LIB');
+
+      expect(state().focusZoneId).toBe('BLD-LIB');
       expect(state().assetZoneId).toBeNull();
     });
   });
@@ -409,7 +745,7 @@ describe('useConsole', () => {
 
     it('closes the selected asset and the selected incident, as any report does', () => {
       state().select('a');
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       state().startReport(PRESET);
 
@@ -432,7 +768,7 @@ describe('useConsole', () => {
     it.each([
       ['the report is closed', () => state().closeReport()],
       ['an incident is selected', () => state().select('a')],
-      ['an asset is selected', () => state().selectAsset('CT-01')],
+      ['an asset is selected', () => state().selectAsset('CT-01', null)],
     ])('forgets the preset when %s', (_when, run) => {
       state().startReport(PRESET);
 
@@ -785,7 +1121,7 @@ describe('useConsole', () => {
     it('shows the assets again when an asset is selected', () => {
       state().toggleLayer('assets');
 
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       expect(state().layers.assets).toBe(true);
     });
@@ -794,7 +1130,7 @@ describe('useConsole', () => {
       state().toggleLayer('assets');
       state().toggleLayer('incidents');
 
-      state().selectAsset('CT-01');
+      state().selectAsset('CT-01', null);
 
       expect(state().layers).toEqual({ incidents: false, cameras: true, assets: true });
     });

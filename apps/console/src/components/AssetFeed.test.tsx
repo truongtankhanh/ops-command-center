@@ -332,6 +332,67 @@ describe('AssetFeed', () => {
     });
   });
 
+  // V2-15.2: selecting a row focuses the building its zone is, for the 3D view; the list stays as it is.
+  describe('the building focus', () => {
+    const plant: Zone = {
+      id: 'zone-plant',
+      code: 'UTL-PLANT',
+      name: 'Utility Plant',
+      kind: 'utility',
+      polygon: [],
+      center: [0, 0],
+    };
+    const transformer = asset({
+      id: 'asset-tr-01',
+      code: 'TR-01',
+      name: 'Main transformer',
+      zoneId: 'zone-plant',
+    });
+
+    it('focuses the building of the selected asset and leaves the list unfiltered', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(rowNamed(/Cooling tower 2/));
+
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
+      expect(useConsole.getState().assetZoneId).toBeNull();
+      expect(rowNamed(/Leak sensor B3/)).toBeInTheDocument();
+    });
+
+    it('focuses nothing for an asset in a zone that is not a building', async () => {
+      const client = seeded([...assets, transformer]);
+      client.setQueryData(queryKeys.zones, [...zones, plant]);
+      // Not `focusBuilding`: that would filter the list to the Data Center and hide the transformer.
+      useConsole.setState({ focusZoneId: 'zone-dc' });
+      renderWithQueryClient(<AssetFeed />, client);
+
+      await userEvent.click(rowNamed(/Main transformer/));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('TR-01');
+      expect(useConsole.getState().focusZoneId).toBeNull();
+    });
+
+    it('keeps the building in focus when the selected row is clicked again', async () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+      await userEvent.click(rowNamed(/Cooling tower 2/));
+
+      await userEvent.click(rowNamed(/Cooling tower 2/));
+
+      expect(useConsole.getState().selectedAssetCode).toBeNull();
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
+    });
+
+    it('leaves a zone chip the operator chose as it was', async () => {
+      useConsole.getState().setAssetZone('zone-dc');
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await userEvent.click(rowNamed(/Cooling tower 2/));
+      act(() => useConsole.getState().goCampus());
+
+      expect(useConsole.getState().assetZoneId).toBe('zone-dc');
+    });
+  });
+
   describe('the zone chip', () => {
     it('is set by a header, narrows the list and the counts, and moves focus to the chip', async () => {
       renderWithQueryClient(<AssetFeed />, seeded());

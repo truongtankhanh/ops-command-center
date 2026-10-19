@@ -23,6 +23,7 @@ import {
 import { searchTerms } from '../lib/incidents';
 import { nextRowIndex } from '../lib/rowNavigation';
 import { ageMs, isStale, staleAfterMs } from '../lib/telemetryFreshness';
+import { buildingFocusOf } from '../lib/twinLevel';
 import { useShortcut } from '../lib/useShortcut';
 import { useServerNow, useTelemetryStatus, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -323,6 +324,7 @@ export function AssetFeed() {
                                 state={states.get(asset.code) ?? 'unknown'}
                                 incident={rowFacts?.incident}
                                 ageMs={rowFacts?.ageMs ?? null}
+                                focusZoneId={buildingFocusOf(asset, zones)}
                                 itemKey={itemKey}
                                 tabIndex={itemKey === tabStopKey ? 0 : -1}
                                 register={register}

@@ -9,6 +9,7 @@ import type { FeedFilter } from './lib/incidents';
 import type { LayerVisibility, MapLayerKey } from './lib/mapLayers';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
 import { type TwinFault, twinCapability } from './lib/twinCapability';
+import { levelOf } from './lib/twinLevel';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
 
 /**
@@ -54,6 +55,9 @@ const NO_REPORT_LOCATION: ReportLocation = {
   pinMissed: false,
 };
 
+/** No asset, and so no part of it: the selection a level above the asset has (V2-15.2). */
+const NO_ASSET = { selectedAssetCode: null, selectedPart: null, hoveredPart: null };
+
 interface ConsoleState extends ReportLocation {
   selectedIncidentId: string | null;
   filter: FeedFilter;
@@ -89,10 +93,28 @@ interface ConsoleState extends ReportLocation {
   selectedAssetCode: string | null;
   /** The asset under the pointer in the list or on the map; highlights its twin. Never opens a sheet. */
   hoveredAssetCode: string | null;
+  /**
+   * The building zone in focus in the 3D view (V2-15.2), or `null`. Only a `building` zone is ever set.
+   * Together with the selected asset and part it gives the scene level (`levelOf`); the 2D map ignores it.
+   */
+  focusZoneId: string | null;
+  /**
+   * The part of the selected asset (a node name of its model) whose callout is open, or `null`. Only held
+   * while an asset is selected: every action that clears the asset clears it.
+   */
+  selectedPart: string | null;
+  /** The part under the pointer in the 3D view or its Parts row; highlights the other. Never selects. */
+  hoveredPart: string | null;
   /** The Assets tab's filter tab. */
   assetFilter: AssetFilter;
   /** The Assets list shows this zone only (a group header sets it, V2-09.6); `null` shows every zone. */
   assetZoneId: string | null;
+  /**
+   * The zone the building focus wrote into `assetZoneId` (V2-15.2), or `null` when the filter is the
+   * operator's. Leaving the building clears the filter only while it is still this zone, so a filter the
+   * operator chose (`setAssetZone`, which drops this) is never cleared by the scene.
+   */
+  focusFilterZoneId: string | null;
   /**
    * Unsent timeline notes by incident id. Kept here, not in the detail, so switching to another
    * incident or to the report form and back never loses one: only Close and a sent note clear it.
@@ -158,11 +180,34 @@ interface ConsoleState extends ReportLocation {
   setSidePanel(tab: SidePanelTab): void;
   /**
    * Opens `code` in the inspector, which closes the selected incident and the report form (and
-   * the pin, as they do) and shows the Assets layer. `null` clears the asset only: it never
-   * reopens anything.
+   * the pin, as they do) and shows the Assets layer, and clears the selected part. `focusZoneId` is the
+   * building zone the asset is in (`buildingFocusOf`), or `null` for one outside every building: it
+   * becomes the building in focus, and a focus on another building ends (the asset's crumbs must not
+   * name a building it is not in). It never writes the Assets filter. `null` clears the asset and its
+   * part only, and keeps the building in focus: it never reopens anything.
    */
-  selectAsset(code: string | null): void;
+  selectAsset(code: null): void;
+  selectAsset(code: string, focusZoneId: string | null): void;
   hoverAsset(code: string | null): void;
+  /**
+   * Focuses a building (a click on it, or its crumb): the building level, so the selected asset and part
+   * are cleared, and the Assets list is filtered to its zone (an explicit act, so it replaces a filter
+   * the operator had). `null` is `goCampus`.
+   */
+  focusBuilding(zoneId: string | null): void;
+  /** Opens a part's callout. Does nothing without a selected asset: a part belongs to one. */
+  selectPart(node: string | null): void;
+  hoverPart(node: string | null): void;
+  /**
+   * One step up the levels, the order Escape takes (V2-15.1): the part, then the asset, then the
+   * building; nothing at campus. Leaving the building clears the Assets filter it set.
+   */
+  goUp(): void;
+  /**
+   * Back to the campus level: no part, asset or building. Keeps an open incident and an open report form,
+   * as `Home` does (V2-15.1); leaves the Assets filter the operator chose.
+   */
+  goCampus(): void;
   setAssetFilter(filter: AssetFilter): void;
   setAssetZone(zoneId: string | null): void;
   /** Also keeps `offlineSince`: set on the first state after a loss, cleared once `live`. */
@@ -227,8 +272,12 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   sidePanel: 'incidents',
   selectedAssetCode: null,
   hoveredAssetCode: null,
+  focusZoneId: null,
+  selectedPart: null,
+  hoveredPart: null,
   assetFilter: 'all',
   assetZoneId: null,
+  focusFilterZoneId: null,
   noteDrafts: {},
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
@@ -251,7 +300,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
           ? closed
           : {
               ...closed,
-              selectedAssetCode: null,
+              ...NO_ASSET,
               layers: shown(state.layers, 'incidents'),
             };
       return id === null || !state.fresh.has(id)
@@ -262,7 +311,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     set({
       reporting: true,
       selectedIncidentId: null,
-      selectedAssetCode: null,
+      ...NO_ASSET,
       ...NO_REPORT_LOCATION,
       ...(preset
         ? { reportZoneId: preset.zoneId, reportPosition: preset.position, reportPreset: preset }
@@ -278,22 +327,72 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     ),
   clearSeverity: () => set({ severity: null }),
   setSidePanel: (sidePanel) => set({ sidePanel }),
-  selectAsset: (code) =>
+  selectAsset: (code: string | null, focusZoneId: string | null = null) =>
     set((state) =>
       code === null
-        ? { selectedAssetCode: null }
+        ? NO_ASSET
         : {
+            ...NO_ASSET,
             selectedAssetCode: code,
             selectedIncidentId: null,
             reporting: false,
             ...NO_REPORT_LOCATION,
             // The map is about to centre on a marker that must be drawn (as `select` for incidents).
             layers: shown(state.layers, 'assets'),
+            ...(focusZoneId === state.focusZoneId ? {} : { ...leave(state), focusZoneId }),
           },
     ),
   hoverAsset: (hoveredAssetCode) => set({ hoveredAssetCode }),
+  focusBuilding: (zoneId) => {
+    if (zoneId === null) {
+      get().goCampus();
+      return;
+    }
+    set((state) =>
+      state.focusZoneId === zoneId &&
+      state.assetZoneId === zoneId &&
+      state.selectedAssetCode === null &&
+      state.hoveredPart === null
+        ? state
+        : {
+            ...NO_ASSET,
+            focusZoneId: zoneId,
+            // A filter that already is this zone stays whoever set it: the marker is only for what the
+            // focus wrote.
+            assetZoneId: zoneId,
+            focusFilterZoneId: state.assetZoneId === zoneId ? state.focusFilterZoneId : zoneId,
+          },
+    );
+  },
+  selectPart: (selectedPart) =>
+    set((state) => {
+      if (selectedPart !== null && state.selectedAssetCode === null) return state;
+      return state.selectedPart === selectedPart ? state : { selectedPart };
+    }),
+  hoverPart: (hoveredPart) =>
+    set((state) => (state.hoveredPart === hoveredPart ? state : { hoveredPart })),
+  goUp: () =>
+    set((state) => {
+      switch (levelOf(state)) {
+        case 'part':
+          return { selectedPart: null, hoveredPart: null };
+        case 'asset':
+          return NO_ASSET;
+        case 'building':
+          return leave(state);
+        case 'campus':
+          return state;
+      }
+    }),
+  goCampus: () =>
+    set((state) =>
+      state.focusZoneId === null && state.selectedAssetCode === null && state.hoveredPart === null
+        ? state
+        : { ...NO_ASSET, ...leave(state) },
+    ),
   setAssetFilter: (assetFilter) => set({ assetFilter }),
-  setAssetZone: (assetZoneId) => set({ assetZoneId }),
+  // The operator's filter: whatever the scene wrote there before is theirs now.
+  setAssetZone: (assetZoneId) => set({ assetZoneId, focusFilterZoneId: null }),
   setConnection: (connection, at = Date.now()) =>
     set((state) => ({
       connection,
@@ -361,6 +460,20 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   showLayer: (key) =>
     set((state) => (state.layers[key] ? state : { layers: shown(state.layers, key) })),
 }));
+
+/**
+ * The patch that ends the building focus: the focus goes, and so does the Assets filter, but only while
+ * it still is what the focus wrote (`focusFilterZoneId`), never one the operator chose.
+ */
+function leave(state: Pick<ConsoleState, 'assetZoneId' | 'focusFilterZoneId'>) {
+  const ownFilter =
+    state.focusFilterZoneId !== null && state.assetZoneId === state.focusFilterZoneId;
+  return {
+    focusZoneId: null,
+    focusFilterZoneId: null,
+    ...(ownFilter ? { assetZoneId: null } : {}),
+  };
+}
 
 /** `layers` with `key` on; the same object when it already is, so nothing re-renders for it. */
 function shown(layers: LayerVisibility, key: MapLayerKey): LayerVisibility {

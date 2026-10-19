@@ -635,7 +635,7 @@ describe('AssetInspector', () => {
   describe('closing', () => {
     beforeEach(() => {
       hold({ assets: { 'CT-01': entry() }, afterMs: 400 });
-      useConsole.getState().selectAsset('CT-01');
+      useConsole.getState().selectAsset('CT-01', null);
     });
 
     it('clears the asset with Close', async () => {
@@ -955,7 +955,7 @@ describe('AssetInspector', () => {
     });
 
     it('opens the incident, which closes the inspector', async () => {
-      useConsole.getState().selectAsset('CT-01');
+      useConsole.getState().selectAsset('CT-01', null);
       renderInspector({ incidents: [INCIDENT] });
 
       await userEvent.click(screen.getByRole('button', { name: 'Open INC-000108' }));
@@ -965,7 +965,7 @@ describe('AssetInspector', () => {
     });
 
     it('opens it from its row as well', async () => {
-      useConsole.getState().selectAsset('CT-01');
+      useConsole.getState().selectAsset('CT-01', null);
       renderInspector({ incidents: [INCIDENT] });
       const row = screen.getByText('Motor over temperature').closest('button') as HTMLElement;
 
@@ -1055,7 +1055,7 @@ describe('AssetInspector', () => {
       'offers a %s a button that opens the report form on the asset',
       async (role) => {
         signInAs(role);
-        useConsole.getState().selectAsset('CT-01');
+        useConsole.getState().selectAsset('CT-01', null);
         renderInspector({ incidents: [] });
 
         await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));

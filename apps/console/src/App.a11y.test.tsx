@@ -606,7 +606,7 @@ describe('the console', () => {
         },
       });
 
-      act(() => consoleState().selectAsset('CT-01'));
+      act(() => consoleState().selectAsset('CT-01', null));
 
       expect(screen.getByRole('complementary', { name: 'Asset CT-01' })).toBeInTheDocument();
       // Not /^Incident/: the side panel is "Incidents and assets". An incident's sheet is "Incident INC-…".
@@ -626,7 +626,7 @@ describe('the console', () => {
         // No `points`: the inspector throws while it renders.
         renderConsole({ details: [{ ...ASSETS[0]!, points: undefined as never, rules: [] }] });
 
-        act(() => consoleState().selectAsset('CT-01'));
+        act(() => consoleState().selectAsset('CT-01', null));
 
         expect(await screen.findByText('This panel stopped working.')).toBeInTheDocument();
         const sheet = screen.getByRole('complementary', { name: 'Asset' });
@@ -683,7 +683,7 @@ describe('the console', () => {
         renderConsole({ details: [TOWER] });
         holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
 
-        act(() => consoleState().selectAsset('CT-01'));
+        act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
         expect(within(sheet).getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
@@ -703,7 +703,7 @@ describe('the console', () => {
           'CT-01': { ageMs: 72_000, values: { fanSpeedRpm: 1420, motorTempC: 71 } },
         });
 
-        act(() => consoleState().selectAsset('CT-01'));
+        act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
         expect(within(sheet).getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
@@ -716,7 +716,7 @@ describe('the console', () => {
         renderConsole({ ...withLeakSensor, details: [LEAK_SENSOR] });
         holdTelemetry({ 'LKS-B3': { ageMs: 400, values: { leakDetected: true } } });
 
-        act(() => consoleState().selectAsset('LKS-B3'));
+        act(() => consoleState().selectAsset('LKS-B3', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset LKS-B3' });
         expect(within(sheet).getByText('No 3D model')).toBeInTheDocument();
@@ -728,7 +728,7 @@ describe('the console', () => {
         renderConsole({ role: 'viewer', details: [TOWER] });
         holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
 
-        act(() => consoleState().selectAsset('CT-01'));
+        act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
         expect(within(sheet).getByRole('note')).toHaveTextContent('View only');
