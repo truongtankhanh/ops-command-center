@@ -1,8 +1,9 @@
 import type { Mock } from 'vitest';
-import type { Pose } from './twinCamera';
+import type { FitBox, Pose } from './twinCamera';
 import { registerTwinCommands, type TwinCommands, twinCommands } from './twinCommands';
 
 const POSE: Pose = { target: [1, 0, 2], distance: 300, yaw: 45, tilt: 55 };
+const BOX: FitBox = { bounds: { minX: 0, maxX: 40, minZ: 0, maxZ: 40 }, heightM: 24 };
 
 /** Every command as a spy that still satisfies `TwinCommands`. */
 type FakeCommands = { [K in keyof TwinCommands]: Mock<TwinCommands[K]> };
@@ -11,6 +12,7 @@ function fakeCommands(pose: Pose | null = POSE): FakeCommands {
   return {
     flyTo: vi.fn<TwinCommands['flyTo']>(),
     home: vi.fn<TwinCommands['home']>(),
+    fit: vi.fn<TwinCommands['fit']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
@@ -35,6 +37,7 @@ describe('twinCommands with nothing registered', () => {
     expect(() => {
       twinCommands.flyTo({ target: [0, 0, 0] });
       twinCommands.home();
+      twinCommands.fit(BOX);
       twinCommands.zoomBy(2);
       twinCommands.rotateBy(30);
       twinCommands.faceNorth();
@@ -50,12 +53,14 @@ describe('registerTwinCommands', () => {
 
     twinCommands.flyTo({ target: [5, 0, 6], distance: 120 });
     twinCommands.home();
+    twinCommands.fit(BOX);
     twinCommands.zoomBy(0.5);
     twinCommands.rotateBy(-30);
     twinCommands.faceNorth();
 
     expect(rig.flyTo).toHaveBeenCalledWith({ target: [5, 0, 6], distance: 120 });
     expect(rig.home).toHaveBeenCalledTimes(1);
+    expect(rig.fit).toHaveBeenCalledWith(BOX);
     expect(rig.zoomBy).toHaveBeenCalledWith(0.5);
     expect(rig.rotateBy).toHaveBeenCalledWith(-30);
     expect(rig.faceNorth).toHaveBeenCalledTimes(1);
@@ -103,8 +108,10 @@ describe('registerTwinCommands', () => {
 
     unregister();
     twinCommands.home();
+    twinCommands.fit(BOX);
 
     expect(rig.home).not.toHaveBeenCalled();
+    expect(rig.fit).not.toHaveBeenCalled();
     expect(twinCommands.current()).toBeNull();
   });
 

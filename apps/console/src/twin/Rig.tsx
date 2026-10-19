@@ -7,6 +7,8 @@ import {
   CAMERA_LIMITS,
   FLY_MS,
   flyPath,
+  fitBounds,
+  type FitBox,
   flyProgress,
   homeView,
   limitPose,
@@ -15,7 +17,9 @@ import {
   positionToPose,
 } from '../lib/twinCamera';
 import { registerTwinCommands } from '../lib/twinCommands';
+import { startBoxOf } from '../lib/twinLevelCamera';
 import { type Bounds, panBounds } from '../lib/twinScene';
+import { useConsole } from '../store';
 import { sheetInset, useSheetOffset } from './useSheetOffset';
 
 const { ACTION } = CameraControlsImpl;
@@ -62,6 +66,11 @@ function visibleAspect(width: number, height: number, inset: number): number {
 interface RigProps {
   /** The campus, in scene metres; the pan box and the home view come from it. */
   bounds: Bounds;
+  /**
+   * The box of every building (`buildingBoxes`): read once, for the first view when the stage starts at building
+   * level (V2-15.6). Later fits are asked for with `twinCommands.fit`, which carries its own box.
+   */
+  boxes: ReadonlyMap<string, FitBox>;
 }
 
 /**
@@ -78,16 +87,19 @@ interface RigProps {
  *   reduced motion it is one frame. It runs before the controls update (priority −2 < −1) so each frame
  *   applies it at once.
  * - **Never moves by itself.** Nothing here starts a movement but a user action or a command (`twinCommands`),
- *   and the first view is set once, when the rig mounts, before the first paint.
+ *   and the first view is set once, when the rig mounts, before the first paint: the home view, or the fit of the
+ *   building in focus when the stage starts at building level (the store keeps the level while the operator is
+ *   in 2D). `fit` flies to a building's box with the stage's aspect and the sheet's inset, as `home` does.
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing.
  */
-export function Rig({ bounds }: RigProps) {
+export function Rig({ bounds, boxes }: RigProps) {
   const controls = useRef<CameraControls>(null);
   const flight = useRef<Flight | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const reduced = useRef(reducedMotion);
   const initialBounds = useRef(bounds);
+  const initialBoxes = useRef(boxes);
   const get = useThree((state) => state.get);
   const pan = useMemo(() => panBounds(bounds), [bounds]);
 
@@ -103,12 +115,13 @@ export function Rig({ bounds }: RigProps) {
     const rig = controls.current;
     if (!rig) return;
     const { size, gl } = get();
+    const aspect = visibleAspect(size.width, size.height, sheetInset(gl.domElement));
+    const start = startBoxOf(useConsole.getState(), initialBoxes.current);
     placeCamera(
       rig,
-      homeView(
-        initialBounds.current,
-        visibleAspect(size.width, size.height, sheetInset(gl.domElement)),
-      ),
+      start === null
+        ? homeView(initialBounds.current, aspect)
+        : fitBounds(start.bounds, aspect, start.heightM),
     );
   }, [get]);
 
@@ -183,10 +196,11 @@ export function Rig({ bounds }: RigProps) {
       flight.current = { from: currentPose(rig), to: goal, startedAt: performance.now() };
       get().invalidate();
     };
-    const home = (): Pose => {
+    const aspect = (): number => {
       const { size, gl } = get();
-      return homeView(bounds, visibleAspect(size.width, size.height, sheetInset(gl.domElement)));
+      return visibleAspect(size.width, size.height, sheetInset(gl.domElement));
     };
+    const home = (): Pose => homeView(bounds, aspect());
 
     return registerTwinCommands({
       flyTo: ({ target, distance, yaw, tilt }) => {
@@ -199,6 +213,7 @@ export function Rig({ bounds }: RigProps) {
         });
       },
       home: () => flyTo(home()),
+      fit: ({ bounds: box, heightM }) => flyTo(fitBounds(box, aspect(), heightM)),
       zoomBy: (factor) => {
         flight.current = null;
         void rig.dollyTo(currentPose(rig).distance * factor, true);

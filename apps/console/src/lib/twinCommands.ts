@@ -1,4 +1,4 @@
-import type { Pose, Vec3 } from './twinCamera';
+import type { FitBox, Pose, Vec3 } from './twinCamera';
 
 /*
  * The 3D camera's command API (V2-12.9): what the on-screen buttons (V2-12.10), the keys (V2-18), the toast
@@ -23,6 +23,12 @@ export interface TwinCommands {
   flyTo(target: FlyTarget): void;
   /** Flies to the home view. */
   home(): void;
+  /**
+   * Flies to the fit of `box`, a building (V2-15.6): the camera looks at the middle of it from the home angles,
+   * from as close as shows it whole, beside the open sheet. The rig does the fit because only it knows the
+   * stage's shape; a caller outside the canvas has the box and nothing more.
+   */
+  fit(box: FitBox): void;
   /** Dollies by `factor` of the current distance: above 1 moves away, below 1 comes closer. */
   zoomBy(factor: number): void;
   /** Turns round the target by `degrees` (positive turns the camera towards the east). */
@@ -51,6 +57,7 @@ export function registerTwinCommands(commands: TwinCommands): () => void {
 export const twinCommands: TwinCommands = {
   flyTo: (target) => registered?.flyTo(target),
   home: () => registered?.home(),
+  fit: (box) => registered?.fit(box),
   zoomBy: (factor) => registered?.zoomBy(factor),
   rotateBy: (degrees) => registered?.rotateBy(degrees),
   faceNorth: () => registered?.faceNorth(),

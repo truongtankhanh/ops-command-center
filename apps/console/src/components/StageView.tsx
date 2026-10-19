@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { levelOf } from '../lib/twinLevel';
 import { useTwinLoading } from '../lib/useTwinLoading';
 import { useConsole } from '../store';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
@@ -6,6 +7,7 @@ import { CampusMap } from './CampusMap';
 import { LayersControl } from './LayersControl';
 import { RegionFallback } from './LoadStates';
 import styles from './StageView.module.css';
+import { TwinBreadcrumb } from './TwinBreadcrumb';
 import { TwinLoading } from './TwinLoading';
 import { ViewSwitch } from './ViewSwitch';
 
@@ -44,14 +46,19 @@ const lazyStage = (onLoaded: () => void) =>
  * inside it, and the stage grid places the map and the strip, so the tools are out of the flow
  * (`StageView.module.css`), as the banners are. The layers control sits beside the switch. They are
  * always drawn, so the operator can go back to 2D when the 3D stage fails to load.
+ *
+ * In the 3D view at building and asset level the scene's breadcrumb takes the switch's place (V2-15.6, frames 03,
+ * 12 and 15), and the layers stay. The switch is back at campus level, which is one press of the breadcrumb's back
+ * button away, and in the 2D view, where the levels do not exist.
  */
 export function StageView() {
   const view = useConsole((s) => s.view);
+  const level = useConsole((s) => levelOf(s));
   return (
     <>
       {view === '3d' ? <LazyTwinStage /> : <CampusMap />}
       <div className={styles.tools} data-view={view}>
-        <ViewSwitch />
+        {view === '3d' && level !== 'campus' ? <TwinBreadcrumb /> : <ViewSwitch />}
         <LayersControl view={view} />
       </div>
     </>

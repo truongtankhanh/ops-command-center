@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import type { Mock } from 'vitest';
 import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
-import { expectNoAxeViolations } from '../test-utils';
+import { useConsole } from '../store';
+import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { TwinControls } from './TwinControls';
 
 type FakeCommands = { [K in keyof TwinCommands]: Mock<TwinCommands[K]> };
@@ -12,6 +13,7 @@ function fakeCommands(): FakeCommands {
   return {
     flyTo: vi.fn<TwinCommands['flyTo']>(),
     home: vi.fn<TwinCommands['home']>(),
+    fit: vi.fn<TwinCommands['fit']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
@@ -26,6 +28,7 @@ describe('TwinControls', () => {
   let unregister: () => void;
 
   beforeEach(() => {
+    resetStore(useConsole);
     rig = fakeCommands();
     unregister = registerTwinCommands(rig);
   });
@@ -68,6 +71,37 @@ describe('TwinControls', () => {
     await press('Reset view');
 
     expect(rig.home).toHaveBeenCalledTimes(1);
+  });
+
+  it('also goes back to the campus level: the asset is deselected and the building left', async () => {
+    useConsole.getState().selectAsset('CT-01', 'dc');
+    render(<TwinControls compassRef={createRef()} />);
+
+    await press('Reset view');
+
+    expect(useConsole.getState().selectedAssetCode).toBeNull();
+    expect(useConsole.getState().focusZoneId).toBeNull();
+    expect(rig.home).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an open incident when it resets', async () => {
+    useConsole.getState().select('a');
+    useConsole.getState().focusBuilding('dc');
+    render(<TwinControls compassRef={createRef()} />);
+
+    await press('Reset view');
+
+    expect(useConsole.getState().selectedIncidentId).toBe('a');
+    expect(useConsole.getState().focusZoneId).toBeNull();
+  });
+
+  it('flies home even when it was at the campus level already', async () => {
+    render(<TwinControls compassRef={createRef()} />);
+
+    await press('Reset view');
+    await press('Reset view');
+
+    expect(rig.home).toHaveBeenCalledTimes(2);
   });
 
   it('faces north from the compass, in one press', async () => {

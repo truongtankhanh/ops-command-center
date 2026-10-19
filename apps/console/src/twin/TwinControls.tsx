@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import { twinCommands } from '../lib/twinCommands';
+import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { House, Minus, Plus, RotateCcw, RotateCw } from '../ui/icons';
 import styles from './TwinControls.module.css';
@@ -12,6 +13,16 @@ import styles from './TwinControls.module.css';
 const ZOOM_IN = 0.8;
 const ZOOM_OUT = 1.25;
 const TURN_DEGREES = 30;
+
+/**
+ * Reset (Home, V2-15.1): back to the campus level and the home view. The level goes first, so an asset is
+ * deselected and a building left (an open incident and a report form stay), and the camera flies home even
+ * when the level was campus already, because the operator may have orbited away.
+ */
+function resetView(): void {
+  useConsole.getState().goCampus();
+  twinCommands.home();
+}
 
 interface TwinControlsProps {
   /**
@@ -86,7 +97,7 @@ export function TwinControls({ compassRef }: TwinControlsProps) {
           icon={House}
           aria-label="Reset view"
           className={styles.button}
-          onClick={() => twinCommands.home()}
+          onClick={resetView}
         />
       </div>
     </div>

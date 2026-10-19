@@ -1,4 +1,6 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import type { FitBox } from '../lib/twinCamera';
+import { buildingBoxes } from '../lib/twinLevelCamera';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import type { LabelAnchor } from '../lib/twinScene';
 import { DragHint } from './DragHint';
@@ -9,11 +11,13 @@ import { TwinTooltip } from './TwinTooltip';
 import styles from './TwinStage.module.css';
 import { TwinView } from './TwinView';
 import { useClassPoints } from './useClassPoints';
+import { useLevelCamera } from './useLevelCamera';
 import { useTwinFeed } from './useTwinFeed';
 import { useTwinScene } from './useTwinScene';
 import { ZoneLabels } from './ZoneLabels';
 
 const NO_ANCHORS: LabelAnchor[] = [];
+const NO_BOXES: ReadonlyMap<string, FitBox> = new Map();
 const NO_CLASSES: ModelClass[] = [];
 const NO_INVALIDATE = (): void => undefined;
 
@@ -39,6 +43,12 @@ const NO_INVALIDATE = (): void => undefined;
  */
 export default function TwinStage() {
   const scene = useTwinScene();
+  // The box of every building: the rig's first view reads it, and the camera follows the level with it (V2-15.6).
+  const boxes = useMemo(
+    () => (scene ? buildingBoxes(scene.zones, scene.frame) : NO_BOXES),
+    [scene],
+  );
+  useLevelCamera(boxes);
   // Read here, not in the canvas: a query hook has no client inside `<Canvas>` (V2-14.7).
   const classPoints = useClassPoints(scene?.classes ?? NO_CLASSES);
   // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
@@ -56,6 +66,7 @@ export default function TwinStage() {
             scene={scene}
             classPoints={classPoints}
             feed={feed}
+            boxes={boxes}
             onInvalidate={(invalidate) => {
               invalidateRef.current = invalidate;
             }}

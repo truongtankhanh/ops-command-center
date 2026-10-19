@@ -1,0 +1,72 @@
+/*
+ * Frame 03 / 12 / 15 `.crumbs`: the scene level as a pill in the stage's tools (`StageView.module.css .tools`), in
+ * the place of the 3D / 2D switch. The buttons are `Button`'s ghost ones; the overrides below have one selector part
+ * more than `Button`'s rules, so they do not depend on CSS order (as `LayersControl.module.css` does it).
+ */
+.crumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  max-width: 100%;
+  height: calc(40px * var(--ui-scale));
+  padding: 0 var(--space-3) 0 var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.crumbs .back {
+  flex: none;
+  justify-content: center;
+  width: calc(32px * var(--ui-scale));
+  height: calc(32px * var(--ui-scale));
+  padding: 0;
+  border-radius: var(--radius-s);
+}
+
+.crumbs .link {
+  height: calc(30px * var(--ui-scale));
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-s);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.crumbs .link:hover {
+  color: var(--text-primary);
+}
+
+/* The place the operator is: not a button, so the text stays still, in the primary colour and a heavier weight. */
+.current {
+  overflow: hidden;
+  max-width: calc(220px * var(--ui-scale));
+  padding: 0 var(--space-1-5);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

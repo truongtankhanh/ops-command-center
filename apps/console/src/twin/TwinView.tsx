@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useIncidents, useSitePlan } from '../api/queries';
-import { activeIncidentCount, twinSummary } from '../lib/twinSummary';
+import { activeIncidentCount, TWIN_VIEW_ID, twinSummary } from '../lib/twinSummary';
 import styles from './TwinView.module.css';
 
 interface TwinViewProps {
@@ -39,6 +39,7 @@ export function TwinView({ children }: TwinViewProps) {
 
   return (
     <div
+      id={TWIN_VIEW_ID}
       role="group"
       tabIndex={0}
       aria-roledescription="3D view"
