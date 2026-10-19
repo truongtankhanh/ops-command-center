@@ -1,7 +1,7 @@
 import { Group } from 'three';
 import type { MockInstance } from 'vitest';
 import type { ClassProgress, ModelClass } from '../lib/twinLoadQueue';
-import type { ClassTemplate } from './classModel';
+import { type ClassTemplate, createMaterialTable } from './classModel';
 import type { BytesProgress } from './loadGltf';
 import {
   createModelCache,
@@ -48,6 +48,7 @@ function setup(options: { concurrency?: number; buildFails?: boolean } = {}) {
     const template: ClassTemplate = {
       root: new Group(),
       info: { name: scene },
+      materials: createMaterialTable(),
       dispose: vi.fn(),
     };
     templates.push(template);

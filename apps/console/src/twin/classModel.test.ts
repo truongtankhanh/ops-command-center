@@ -3,14 +3,23 @@ import {
   BufferGeometry,
   Group,
   Int16BufferAttribute,
+  LineBasicMaterial,
+  type LineSegments,
   Mesh,
   MeshLambertMaterial,
   MeshStandardMaterial,
   type Object3D,
   Vector3,
 } from 'three';
-import { twinColors } from '../styles/tokens';
-import { buildTemplate, createMaterialTable, instantiate, nodeInfoOf } from './classModel';
+import { EDGE_DASH_M, EDGE_GAP_M, mixInto, tintFor } from '../lib/twinMaterials';
+import { mapColors, twinColors } from '../styles/tokens';
+import {
+  buildTemplate,
+  createMaterialTable,
+  instantiate,
+  nodeInfoOf,
+  OUTLINE_NAME,
+} from './classModel';
 
 /*
  * The scenes below are what glTF's loader returns, made by hand: a `scene` holding the class root and its
@@ -396,5 +405,223 @@ describe('instantiate', () => {
 
     expect(two.position.x).toBe(0);
     expect(made.root.position.x).toBe(0);
+  });
+});
+
+// --- looks (V2-14.9) -----------------------------------------------------------------------------------------
+
+const hexOf = (material: MeshLambertMaterial): string => `#${material.color.getHexString()}`;
+
+describe('the look pool of a material table', () => {
+  it('is the base material for an idle look', () => {
+    const table = createMaterialTable();
+
+    expect(table.look('Steel', { face: 'idle', severity: null })).toBe(table.get('Steel'));
+  });
+
+  it('gives one material per name, face and severity, shared by whoever asks', () => {
+    const table = createMaterialTable();
+    const high = table.look('Steel', { face: 'alarm', severity: 'high' });
+
+    expect(table.look('Steel', { face: 'alarm', severity: 'high' })).toBe(high);
+    expect(table.look('Steel', { face: 'alarm', severity: 'low' })).not.toBe(high);
+    expect(table.look('Part', { face: 'alarm', severity: 'high' })).not.toBe(high);
+    expect(high).not.toBe(table.get('Steel'));
+  });
+
+  it('does not tell a stale or hovered face by severity: one material for all of them', () => {
+    const table = createMaterialTable();
+
+    expect(table.look('Steel', { face: 'stale', severity: 'high' })).toBe(
+      table.look('Steel', { face: 'stale', severity: 'low' }),
+    );
+    expect(table.look('Steel', { face: 'hover', severity: 'high' })).toBe(
+      table.look('Steel', { face: 'hover', severity: null }),
+    );
+  });
+
+  it('paints each face with the colour the look gives', () => {
+    const table = createMaterialTable();
+
+    expect(hexOf(table.look('Steel', { face: 'alarm', severity: 'high' }))).toBe(
+      tintFor('high', twinColors.steel.top),
+    );
+    expect(hexOf(table.look('Part', { face: 'alarm', severity: 'critical' }))).toBe(
+      twinColors.alarm.top,
+    );
+    expect(hexOf(table.look('Steel', { face: 'stale', severity: null }))).toBe(
+      twinColors.stale.top,
+    );
+    expect(hexOf(table.look('Part', { face: 'hover', severity: null }))).toBe(twinColors.hover.top);
+    expect(mixInto(twinColors.idle.top, mapColors.accent, 0.3)).toBe(twinColors.hover.top);
+  });
+
+  it('keeps a see-through material see-through in every look', () => {
+    const table = createMaterialTable();
+
+    for (const face of ['stale', 'hover', 'alarm'] as const) {
+      expect(table.look('Xray', { face, severity: 'high' })).toMatchObject({
+        transparent: true,
+        opacity: twinColors.xrayOpacity,
+        depthWrite: false,
+      });
+    }
+  });
+
+  it('is pushed back like the shells, so an outline wins on the edge', () => {
+    const table = createMaterialTable();
+
+    expect(table.get('Part')).toMatchObject({ polygonOffset: true, polygonOffsetFactor: 1 });
+    expect(table.look('Part', { face: 'stale', severity: null })).toMatchObject({
+      polygonOffset: true,
+    });
+  });
+
+  it('gives a solid outline in the colour of each edge, and a dashed one for a stale edge', () => {
+    const table = createMaterialTable();
+
+    const idle = table.line({ edge: 'idle', severity: null });
+    expect(idle).toBeInstanceOf(LineBasicMaterial);
+    expect(idle.color.getHexString()).toBe(twinColors.edge.slice(1));
+    expect(table.line({ edge: 'accent', severity: null }).color.getHexString()).toBe(
+      mapColors.accent.slice(1),
+    );
+    const severity = table.line({ edge: 'severity', severity: 'high' });
+    expect(severity.color.getHexString()).toBe(mapColors.severity.high.slice(1));
+    expect(table.line({ edge: 'severity', severity: 'low' })).not.toBe(severity);
+
+    const dashed = table.line({ edge: 'stale-dashed', severity: null });
+    expect(dashed).toMatchObject({
+      isLineDashedMaterial: true,
+      dashSize: EDGE_DASH_M,
+      gapSize: EDGE_GAP_M,
+    });
+    expect(dashed.color.getHexString()).toBe(twinColors.staleEdge.slice(1));
+    expect(idle).not.toHaveProperty('isLineDashedMaterial', true);
+  });
+
+  it('shares an outline material by edge, and by severity only for the severity edge', () => {
+    const table = createMaterialTable();
+
+    expect(table.line({ edge: 'stale-dashed', severity: 'high' })).toBe(
+      table.line({ edge: 'stale-dashed', severity: 'low' }),
+    );
+    expect(table.line({ edge: 'severity', severity: 'high' })).toBe(
+      table.line({ edge: 'severity', severity: 'high' }),
+    );
+  });
+
+  it('frees the whole pool with the table', () => {
+    const table = createMaterialTable();
+    const alarmed = table.look('Steel', { face: 'alarm', severity: 'high' });
+    const dashed = table.line({ edge: 'stale-dashed', severity: null });
+    const spies = [vi.spyOn(alarmed, 'dispose'), vi.spyOn(dashed, 'dispose')];
+
+    table.dispose();
+
+    for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+const outlinesOf = (object: Object3D): LineSegments[] => {
+  const found: LineSegments[] = [];
+  object.traverse((node) => {
+    if (node.name === OUTLINE_NAME) found.push(node as LineSegments);
+  });
+  return found;
+};
+
+const meshesOf = (object: Object3D): Mesh[] => {
+  const found: Mesh[] = [];
+  object.traverse((node) => {
+    if ((node as Mesh).isMesh) found.push(node as Mesh);
+  });
+  return found;
+};
+
+describe('the outlines of a template', () => {
+  function tower() {
+    const root = group('CoolingTower');
+    root.add(part('Casing', 'Part'), part('Pipe', 'Steel', [3, 0, 0]));
+    const fan = part('FanBlade', 'Blade', [0, 2, 0], FAN);
+    fan.scale.set(3, 3, 3);
+    root.add(fan);
+    return buildTemplate(scene(root), createMaterialTable());
+  }
+
+  it('gives every mesh a hidden outline, so an idle model draws no more than before', () => {
+    const template = tower();
+
+    const meshes = meshesOf(template.root);
+    const outlines = outlinesOf(template.root);
+    expect(meshes.length).toBe(3);
+    expect(outlines).toHaveLength(meshes.length);
+    for (const outline of outlines) {
+      expect(outline.visible).toBe(false);
+      expect(meshes).toContain(outline.parent);
+    }
+  });
+
+  it('starts every outline in the idle line material of the table', () => {
+    const template = tower();
+
+    for (const outline of outlinesOf(template.root)) {
+      expect(outline.material).toBe(template.materials.line({ edge: 'idle', severity: null }));
+    }
+  });
+
+  it('has the edges of the mesh, with the distance a dashed line needs: 0, then the length in metres', () => {
+    const template = tower();
+    const casing = outlinesOf(template.root).find(
+      (outline) => (outline.parent as Mesh).name === '_static_Part',
+    )!;
+
+    const position = casing.geometry.getAttribute('position');
+    const distance = casing.geometry.getAttribute('lineDistance');
+    expect(position.count).toBe(24);
+    expect(distance.count).toBe(position.count);
+    for (let i = 0; i < distance.count; i += 2) {
+      expect(distance.getX(i)).toBe(0);
+      expect(distance.getX(i + 1)).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('measures a part in metres even when its node is scaled', () => {
+    const template = tower();
+    const fan = outlinesOf(template.root).find((outline) => outline.parent?.name === 'FanBlade')!;
+
+    const distance = fan.geometry.getAttribute('lineDistance');
+    expect(distance.getX(1)).toBeCloseTo(3, 6);
+  });
+
+  it('moves with its mesh, and a copy has its own outline over the same geometry', () => {
+    const template = tower();
+    const copy = instantiate(template);
+
+    const [original] = outlinesOf(template.root);
+    const [cloned] = outlinesOf(copy);
+    expect(cloned).not.toBe(original);
+    expect(cloned!.geometry).toBe(original!.geometry);
+    expect(cloned!.material).toBe(original!.material);
+
+    cloned!.visible = true;
+    expect(original!.visible).toBe(false);
+  });
+
+  it('is freed with the template', () => {
+    const template = tower();
+    const spies = outlinesOf(template.root).map((outline) => vi.spyOn(outline.geometry, 'dispose'));
+
+    template.dispose();
+
+    for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('remembers the table it was built with', () => {
+    const table = createMaterialTable();
+    const root = group('Root');
+    root.add(part('Casing', 'Part'));
+
+    expect(buildTemplate(scene(root), table).materials).toBe(table);
   });
 });

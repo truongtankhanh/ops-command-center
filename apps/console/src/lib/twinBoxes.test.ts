@@ -1,4 +1,4 @@
-import { buildBoxGeometry } from './twinBoxes';
+import { buildBoxGeometry, edgeIndices } from './twinBoxes';
 import type { PlacedAsset } from './twinPlacement';
 
 const box = (
@@ -27,6 +27,7 @@ describe('buildBoxGeometry', () => {
       normals: [],
       indices: [],
       edges: [],
+      lineDistances: [],
       ranges: [],
     });
   });
@@ -153,5 +154,84 @@ describe('buildBoxGeometry', () => {
     const own = indices.slice(3 * 12, 3 * 24);
     expect(Math.min(...own)).toBe(24);
     expect(Math.max(...own)).toBe(47);
+  });
+});
+
+describe('lineDistances', () => {
+  it('has two numbers per segment: 0, then the segment’s length', () => {
+    const { edges, lineDistances } = buildBoxGeometry([box('A')]);
+
+    expect(lineDistances).toHaveLength(edges.length / 3);
+    for (let segment = 0; segment < edges.length / 6; segment += 1) {
+      expect(lineDistances[2 * segment]).toBe(0);
+    }
+  });
+
+  it('gives the three edge lengths of the box, four of each', () => {
+    const { lineDistances } = buildBoxGeometry([box('A')]);
+    const lengths = new Map<number, number>();
+    for (let i = 1; i < lineDistances.length; i += 2) {
+      const key = Math.round(lineDistances[i]! * 1000) / 1000;
+      lengths.set(key, (lengths.get(key) ?? 0) + 1);
+    }
+
+    expect([...lengths.entries()].sort()).toEqual([
+      [2, 4],
+      [4, 4],
+      [6, 4],
+    ]);
+  });
+
+  it('is turned with the box: a quarter turn keeps the lengths', () => {
+    const { lineDistances } = buildBoxGeometry([box('A', { rotationY: Math.PI / 2 })]);
+
+    expect(
+      [
+        ...new Set(lineDistances.filter((d) => d > 0).map((d) => Math.round(d * 1000) / 1000)),
+      ].sort(),
+    ).toEqual([2, 4, 6]);
+  });
+
+  it('keeps the boxes in order, 24 numbers a box', () => {
+    const { lineDistances } = buildBoxGeometry([box('A'), box('B', { x: 20 })]);
+
+    expect(lineDistances).toHaveLength(48);
+  });
+});
+
+describe('edgeIndices', () => {
+  const ranges = buildBoxGeometry([box('A'), box('B', { x: 20 }), box('C', { x: 40 })]).ranges;
+
+  /** Every segment of the three boxes, as vertex pairs. */
+  const all = Array.from({ length: 36 }, (_, segment) => [2 * segment, 2 * segment + 1]).flat();
+
+  it('puts every segment in the solid layer when nothing is dashed', () => {
+    const { solid, dashed } = edgeIndices(ranges, new Set());
+
+    expect(solid).toEqual(all);
+    expect(dashed).toEqual([]);
+  });
+
+  it('moves exactly the segments of a dashed asset, once each, and keeps the order', () => {
+    const { solid, dashed } = edgeIndices(ranges, new Set(['B']));
+
+    // B is segments 12 – 23.
+    expect(dashed).toEqual(
+      Array.from({ length: 12 }, (_, i) => [2 * (12 + i), 2 * (12 + i) + 1]).flat(),
+    );
+    expect(solid).toEqual([...all.slice(0, 24), ...all.slice(48)]);
+  });
+
+  it('covers every segment exactly once between the two layers, whatever is dashed', () => {
+    for (const dashedCodes of [new Set(['A']), new Set(['A', 'C']), new Set(['A', 'B', 'C'])]) {
+      const { solid, dashed } = edgeIndices(ranges, dashedCodes);
+
+      expect([...solid, ...dashed].sort((a, b) => a - b)).toEqual(all);
+    }
+  });
+
+  it('ignores a code that is not a box, and gives nothing for no box', () => {
+    expect(edgeIndices(ranges, new Set(['Z'])).dashed).toEqual([]);
+    expect(edgeIndices([], new Set(['A']))).toEqual({ solid: [], dashed: [] });
   });
 });

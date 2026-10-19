@@ -4,6 +4,7 @@ import {
   assetStates,
   countAssetFilters,
   groupByZone,
+  hasDimmedAsset,
   matchesAssetFilter,
   matchesAssetQuery,
   openIncidentOf,
@@ -269,6 +270,52 @@ describe('assetStates', () => {
       ['CT-01', 'running'],
       ['CT-02', 'nodata'],
     ]);
+  });
+});
+
+describe('hasDimmedAsset', () => {
+  const ct01 = asset();
+  const ct02 = asset({ id: 'asset-ct-02', code: 'CT-02' });
+
+  it('is false when every asset reports, live', () => {
+    const overview = { 'CT-01': entry(), 'CT-02': entry() };
+
+    expect(hasDimmedAsset([ct01, ct02], overview, NOW)).toBe(false);
+  });
+
+  it('is true for an asset with no entry', () => {
+    expect(hasDimmedAsset([ct01, ct02], { 'CT-01': entry() }, NOW)).toBe(true);
+  });
+
+  it('is true for an asset whose device is offline', () => {
+    const overview = { 'CT-01': entry(), 'CT-02': entry({ online: false }) };
+
+    expect(hasDimmedAsset([ct01, ct02], overview, NOW)).toBe(true);
+  });
+
+  it('is true for an asset whose reading is older than its threshold, and not before it', () => {
+    // 1 s and 5 s headline points: stale from the 5 s floor.
+    const overview = (ageMs: number) => ({ 'CT-01': entry({ ageMs }) });
+
+    expect(hasDimmedAsset([ct01], overview(4_999), NOW)).toBe(false);
+    expect(hasDimmedAsset([ct01], overview(5_000), NOW)).toBe(true);
+  });
+
+  it('counts a stale fault: unlike the list, an open incident does not hide it', () => {
+    const overview = { 'CT-01': entry({ ageMs: 60_000 }) };
+
+    expect(assetStates([ct01], [incident()], overview, NOW).get('CT-01')).toBe('fault');
+    expect(hasDimmedAsset([ct01], overview, NOW)).toBe(true);
+  });
+
+  it('cannot judge without a server clock, so a reading is not stale', () => {
+    const overview = { 'CT-01': entry({ ageMs: 60_000 }) };
+
+    expect(hasDimmedAsset([ct01], overview, null)).toBe(false);
+  });
+
+  it('is false for no asset', () => {
+    expect(hasDimmedAsset([], {}, NOW)).toBe(false);
   });
 });
 
