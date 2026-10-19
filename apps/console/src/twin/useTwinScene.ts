@@ -20,8 +20,8 @@ export interface TwinScene {
   /** Empty while they load or if they fail: the markers appear when they arrive. */
   cameras: readonly Camera[];
   /**
-   * Every asset placed and posed (V2-14.6), `inside` ones included: which of them a level draws is
-   * `visibleAssets`'s answer. Empty while the catalogue loads or if it fails.
+   * Every asset placed and posed (V2-14.6), `inside` ones included: which of them a level draws, and how, is
+   * `presenceOf`'s answer (`lib/twinLevel.ts`). Empty while the catalogue loads or if it fails.
    */
   assets: readonly PlacedAsset[];
   /**

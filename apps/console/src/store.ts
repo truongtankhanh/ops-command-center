@@ -6,9 +6,9 @@ import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/camer
 import { readCriticalSound, writeCriticalSound } from './lib/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/density';
 import type { FeedFilter } from './lib/incidents';
-import type { LayerVisibility, MapLayerKey } from './lib/mapLayers';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
 import { type TwinFault, twinCapability } from './lib/twinCapability';
+import type { SceneLayerKey, SceneLayers } from './lib/twinLayers';
 import { levelOf } from './lib/twinLevel';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
 
@@ -151,11 +151,15 @@ interface ConsoleState extends ReportLocation {
    */
   twinFault: TwinFault | null;
   /**
-   * Which map layers are drawn (frame 14's "Show"). Not remembered: a console opens with all three,
+   * Which layers are drawn (frame 14's "Show"). Not remembered: a console opens with all of them shown,
    * so a layer hidden for a while is never found hidden by the next person (Open question 4).
-   * Selecting an incident, and a new critical one arriving, turn Incidents back on.
+   * Selecting an incident, and a new critical one arriving, turn Incidents back on. `inside` is the 3D
+   * view's (V2-15.9): off draws the building in focus opaque with its equipment hidden. It governs the
+   * building level only; at asset and part level the isolated asset is drawn whatever it says (`focusOf`), so
+   * selecting an asset does not turn it on and `Esc` back to the building finds it as it was left. The 2D map
+   * reads this as a `LayerVisibility` and ignores it.
    */
-  layers: LayerVisibility;
+  layers: SceneLayers;
 
   /**
    * Selecting an incident (not `null`) also closes the report form and the selected asset, and
@@ -259,9 +263,9 @@ interface ConsoleState extends ReportLocation {
    * device allow. Nothing calls it yet; a context that restores in time never raises the fault.
    */
   clearTwinLost(): void;
-  toggleLayer(key: MapLayerKey): void;
+  toggleLayer(key: SceneLayerKey): void;
   /** Turns a layer on and does nothing when it is. There is no "hide": only the toggle hides. */
-  showLayer(key: MapLayerKey): void;
+  showLayer(key: SceneLayerKey): void;
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
@@ -293,7 +297,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
   twinFault: null,
-  layers: { incidents: true, cameras: true, assets: true },
+  layers: { incidents: true, cameras: true, assets: true, inside: true },
   ...NO_REPORT_LOCATION,
 
   select: (id) =>
@@ -485,7 +489,7 @@ function leave(state: Pick<ConsoleState, 'assetZoneId' | 'focusFilterZoneId'>) {
 }
 
 /** `layers` with `key` on; the same object when it already is, so nothing re-renders for it. */
-function shown(layers: LayerVisibility, key: MapLayerKey): LayerVisibility {
+function shown(layers: SceneLayers, key: SceneLayerKey): SceneLayers {
   return layers[key] ? layers : { ...layers, [key]: true };
 }
 

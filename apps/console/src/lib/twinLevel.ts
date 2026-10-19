@@ -5,8 +5,8 @@ import type { PlacedAsset } from './twinPlacement';
  * The 3D view's four levels as plain data (V2-15.2, ADR-0020 § Scene, "Settled in V2-15.1"): no `three`
  * and no store, so the store, the breadcrumb (V2-15.6) and the scene read one definition and it tests
  * without WebGL. It also holds the visibility rule: how every thing the scene draws looks at each level
- * (`presenceOf`, V2-15.8: as it is, faded, see-through or not drawn), which the shells, the boxes, the models,
- * the markers and the pick scope all read, so they cannot disagree. `isolationOf` and `Isolation` are the
+ * (`presenceOf`, V2-15.8: as it is, faded, see-through or not drawn; V2-15.9 adds the `Inside` layer to it), which the
+ * shells, the boxes, the models, the markers, the pick scope and the hover tint all read, so they cannot disagree. `isolationOf` and `Isolation` are the
  * narrower question the legend and the markers ask: is an asset isolated, and which.
  */
 
@@ -120,24 +120,34 @@ export interface SceneFocus {
   zoneId: string | null;
   /** The isolated asset, or `null` at building level. */
   assetCode: string | null;
+  /**
+   * The `Inside` layer (V2-15.9): off draws the focused shell opaque and not the equipment inside it. It is the
+   * building level's layer: at asset and part level `focusOf` makes it `true`, because the isolated asset is drawn
+   * and the shell stays see-through whatever the operator chose, who finds the layer as they left it on going up.
+   */
+  inside: boolean;
 }
 
-/** The focus the level means: nothing at campus level, the building at building level, the asset (and its building) below. */
-export function focusOf(state: LevelState): SceneFocus | null {
+/**
+ * The focus the level means: nothing at campus level, the building at building level, the asset (and its building)
+ * below. `inside` is the `Inside` layer (it defaults to shown); only building level reads it.
+ */
+export function focusOf(state: LevelState, inside = true): SceneFocus | null {
   switch (levelOf(state)) {
     case 'campus':
       return null;
     case 'building':
-      return { zoneId: state.focusZoneId, assetCode: null };
+      return { zoneId: state.focusZoneId, assetCode: null, inside };
     case 'asset':
     case 'part':
-      return { zoneId: state.focusZoneId, assetCode: state.selectedAssetCode };
+      return { zoneId: state.focusZoneId, assetCode: state.selectedAssetCode, inside: true };
   }
 }
 
 /**
  * How a thing is drawn: `drawn` as it is, `faded` at `--tw-ghost-opacity`, `xray` see-through (the shell of the building
- * in focus), `hidden` not at all (an `inside` asset of a building that is not in focus).
+ * in focus), `hidden` not at all (an `inside` asset of a building that is not in focus, or of the one in focus with
+ * `Inside` off).
  */
 export type Presence = 'drawn' | 'faded' | 'xray' | 'hidden';
 
@@ -151,10 +161,11 @@ export type Drawable =
  * The one rule for what is drawn and how (V2-15.8, ADR-0020 "Settled in V2-15.8", which replaces V2-15.7's `isFaded`).
  *
  * - **Building:** with nothing in focus as it is; the building in focus is `xray`, at building, asset and part level
- *   (frames 12 and 15); every other building is `faded`. An isolated asset outside every building has no building in
- *   focus, so all of them are faded.
+ *   (frames 12 and 15), except at building level with `Inside` off, where it is `drawn` (opaque: V2-15.9); every other
+ *   building is `faded`. An isolated asset outside every building has no building in focus, so all of them are faded.
  * - **Asset:** an `inside` asset is drawn only with its building in focus, else `hidden` (nothing of it is drawn at
- *   campus level, ADR-0020 "Settled in V2-15.1"). Otherwise, at asset and part level the isolated asset is `drawn` and
+ *   campus level, ADR-0020 "Settled in V2-15.1"), and `hidden` too at building level with `Inside` off (the roof and
+ *   outdoor equipment stay). Otherwise, at asset and part level the isolated asset is `drawn` and
  *   every other `faded`; at building level an asset of the building in focus is `drawn` (`GEN-01`, which stands outside
  *   the footprint, and the roof's `CT-01` included, by zone) and every other `faded`.
  * - **Marker:** the camera markers recede only while an asset is isolated, not at building level (the frames' scene
@@ -166,9 +177,12 @@ export function presenceOf(target: Drawable, focus: SceneFocus | null): Presence
   switch (target.kind) {
     case 'building':
       if (focus === null) return 'drawn';
-      return target.zoneId === focus.zoneId ? 'xray' : 'faded';
+      if (target.zoneId !== focus.zoneId) return 'faded';
+      return insideOff(focus) ? 'drawn' : 'xray';
     case 'asset':
-      if (target.placement === 'inside' && target.zoneId !== focus?.zoneId) return 'hidden';
+      if (target.placement === 'inside' && (target.zoneId !== focus?.zoneId || insideOff(focus))) {
+        return 'hidden';
+      }
       if (focus === null) return 'drawn';
       if (focus.assetCode !== null) return target.code === focus.assetCode ? 'drawn' : 'faded';
       return target.zoneId === focus.zoneId ? 'drawn' : 'faded';
@@ -176,6 +190,10 @@ export function presenceOf(target: Drawable, focus: SceneFocus | null): Presence
       return focus !== null && focus.assetCode !== null ? 'faded' : 'drawn';
   }
 }
+
+/** `Inside` is off and nothing is isolated: building level, the only level that layer governs. */
+const insideOff = (focus: SceneFocus | null): boolean =>
+  focus !== null && focus.assetCode === null && !focus.inside;
 
 /** The presence of every placed asset, by code: one map per change of focus, shared by the boxes and the models. */
 export function presenceMap(

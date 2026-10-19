@@ -149,8 +149,8 @@ describe('groupsForLooks (V2-15.8)', () => {
       count: BOX_INDICES,
     }));
     const total = SEED.length * BOX_INDICES;
-    const looksFor = (zoneId: string | null): SpanLook[] => {
-      const focus = zoneId === null ? null : { zoneId, assetCode: null };
+    const looksFor = (zoneId: string | null, inside = true): SpanLook[] => {
+      const focus = zoneId === null ? null : { zoneId, assetCode: null, inside };
       const presence = presenceMap(
         SEED.map(([code, zone, placement]) => ({ code, zoneId: zone, placement })),
         focus,
@@ -182,6 +182,22 @@ describe('groupsForLooks (V2-15.8)', () => {
 
         expect([code, first]).toEqual([code, expected]);
       }
+    });
+
+    it('with Inside off draws only the roof and outdoor boxes of the Data Center and hides its five inside ones (V2-15.9)', () => {
+      const looks = looksFor('BLD-DC', false);
+      const groups = groupsForLooks(spans, looks, total);
+      const material = painted(groups, total);
+      const inside = ['BAT-01', 'CRAC-01', 'CRAC-02', 'ICS-DC', 'UPS-01'];
+      const drawn = looks.filter((look) => look === 'drawn').length;
+
+      expect(drawn).toBe(3);
+      for (const [index, [code]] of SEED.entries()) {
+        const first = material[index * BOX_INDICES];
+        if (inside.includes(code)) expect([code, first]).toEqual([code, null]);
+        if (['CT-01', 'CT-02', 'GEN-01'].includes(code)) expect([code, first]).toEqual([code, 0]);
+      }
+      expect(groups.length).toBeLessThanOrEqual(2 * drawn + 1);
     });
 
     it('draws every remaining box as it is at campus level, with the inside ones left out', () => {

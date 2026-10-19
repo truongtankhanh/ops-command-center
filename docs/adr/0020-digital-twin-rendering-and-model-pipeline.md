@@ -124,8 +124,8 @@ their author, checked in CI, and served by nginx as immutable files.
       assets; `inside` assets appear with their building in focus (V2-15.8). Every asset stays in the Assets tab.
     - **Labels** are DOM overlays (the console's fonts and tokens, no new dependency, a hard cap on their number,
       `pointer-events: none`), not canvas text.
-    - **Layers in 3D** are Incidents and Cameras (Heat arrives with V2-17, Inside with V2-15.9). There is no Assets
-      toggle: equipment is the scene.
+    - **Layers in 3D** are Incidents and Cameras, and Inside at building level (V2-15.9; Heat arrives with V2-17). There
+      is no Assets toggle: equipment is the scene.
     - **The loading card** lists the site plan, the 3D code and, from V2-14.7, one row per equipment model. It has no
       rows for buildings, which have no models.
     - **Not drawn, for lack of data:** frame 12's rack rows, and the prototype's substation, utility yard and gate posts.
@@ -424,6 +424,47 @@ their author, checked in CI, and served by nginx as immutable files.
       appears on focusing and leaving; clicking `UPS-01` from outside; the labels; and the draw-call figures.
     - **Chunk.** The twin chunk gains the rule, the third material, the log and the labels' fade; see the figure `-verify`
       reports for this task (336,916 bytes gzip of 350,000 after V2-15.7).
+  - Settled in V2-15.9 (2026-10-19), without changing the decision: the building summary and the Inside layer.
+    - **Inside is the building level's layer.** `SceneFocus` carries `inside` (`lib/twinLevel.ts`) and `presenceOf` reads
+      it: with it off and no asset isolated, the building in focus is `drawn` (opaque) instead of `xray` and its `inside`
+      assets are `hidden`; its roof and outdoor assets (`CT-01/02`, `GEN-01`) stay drawn and the other buildings stay
+      faded. At asset and part level `focusOf` makes it `true`: the isolated asset is drawn and the shell stays
+      see-through (frame 15), whatever the operator chose. The store keeps the operator's value, so `Esc` back to the
+      building finds Inside as it was left, and selecting an asset does not turn it on (the precedent of Incidents and
+      Assets, which do, is for a layer whose marker the map is about to centre on; here isolation already shows the
+      asset). Nothing is rebuilt: the shells, boxes and models follow the groups and the mounted instances, as in
+      V2-15.8. The focused walls are still not a target (V2-15.8), so with Inside off a click on them does nothing.
+      The hover of an `inside` row in the Assets tab tints the opaque shell (`hoveredShellZone` asks `presenceOf`).
+    - **The scene layers are a type of their own.** `SceneLayers` (`lib/twinLayers.ts`) is the map's `LayerVisibility`
+      plus `inside`, so the 2D map reads the store as it did and has no layer it cannot draw; `layersOf(view, level)` is
+      the control's list: 2D the three map layers; 3D Incidents and Cameras, plus Inside at building level only, where
+      it does something. Frame 12 draws "Incidents · Inside · Heat" with no Cameras: Cameras stays, because
+      `CameraMarkers` still reads it and a hidden toggle for a layer that is off would strand it (a "Frames to revise"
+      row). Heat joins the list with V2-17.4 the same way.
+    - **The building summary** (`lib/twinBuilding.ts`, `twin/BuildingSummary.tsx`) is shown at building level only: at
+      asset level the inspector carries the asset and frame 15 has no card, and at part level the callout of V2-15.10
+      does. A region named "{zone} summary", an eyebrow ("Building · data center", the zone's `use` as a word, "Building"
+      without one), the name and three rows; not a live region. It stands at the top right like frame 12 and is
+      offset by the open sheet (`--sheet-inset`) as the camera controls are.
+    - **What the rows count.** "Assets" counts the zone's assets, `GEN-01` included (8 in the seed's Data Center, the
+      frame's 7 being the frame's), and "without data" those the Assets tab lists under "No data" (`nodata` and
+      `offline`), so the two give one number. Because a fault is never hidden by a stale reading, a stale fault counts as
+      reporting here, although the scene draws it grey. "Open incidents" counts the active ones (`open` and
+      `acknowledged`, the tiles' rule) raised in the zone or at one of its assets, once each, and names the first in the
+      feed's order (most severe, then newest); with none it reads "None", under the label, not the echo "No open
+      incidents" of "Settled in V2-15.1". While the incident list has not loaded the row is left out rather than read as
+      "None".
+    - **The interim indoor rule** (until V2-17.2's `buildingReadings` replaces it, and V2-17.1 settles the heat reading):
+      the zone's assets that have an `indoorTempC` point (not a list of class codes), in code order, the first that is
+      online and not stale on the server clock; one decimal. A stale or offline source is skipped and no source omits the
+      row, so a stale temperature is never shown beside "all reporting". The mean of the fresh sources is V2-17.1's
+      proposal, not this rule.
+    - **Tests.** The pure rules (`twinBuilding`, `twinLayers`, `presenceOf`, `hoveredShellZone`, a group case), the store,
+      `LayersControl` and a DOM test of the card, which needs no canvas. `visibleAssets` had no reader left once the hover
+      asked `presenceOf`, and is gone.
+    - **By eye, still to do in a browser:** the shell going opaque and the boxes disappearing with no flash or hole when
+      Inside is toggled, the roof equipment staying, the hover of an `inside` row on the opaque shell, the draw calls at
+      building level with Inside off, and the card's place beside the incident sheet and on a narrow stage.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

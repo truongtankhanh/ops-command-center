@@ -117,7 +117,9 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
     invalidate();
   }, [shell, focus, invalidate]);
 
-  // The hover tint (V2-15.5): follows the hovered asset's building, repainting only when the zone changes.
+  // The hover tint (V2-15.5): follows the hovered asset's building, repainting only when the zone changes. An `inside`
+  // asset that is not drawn lights its building: at campus level, with another building in focus, and (V2-15.9) in
+  // the focused building with the `Inside` layer off, where the shell is opaque.
   useFrame(() => {
     if (shell === null) return;
     const last = painted.current;
@@ -125,7 +127,7 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
       last.shell = shell;
       last.zone = null;
     }
-    const zone = hoveredShellZone(hover.current.asset, assets, focus?.zoneId ?? null);
+    const zone = hoveredShellZone(hover.current.asset, assets, focus);
     if (zone === last.zone) return;
     paintShell(shell.colours, shell.ranges, zone, last.zone);
     last.zone = zone;
