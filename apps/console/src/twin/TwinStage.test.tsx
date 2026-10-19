@@ -8,11 +8,15 @@ import type {
   TelemetryPoint,
   Zone,
 } from '@occ/contracts';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
+import { initialTelemetryState } from '../lib/telemetryState';
+import type { Binding } from '../lib/twinBindings';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
+import type { TelemetryClient } from '../realtime/telemetryClient';
+import { useTelemetryStore } from '../realtime/telemetryStore';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { TwinCanvas } from './TwinCanvas';
 import TwinStage from './TwinStage';
@@ -292,6 +296,78 @@ describe('TwinStage', () => {
       );
 
       expect(last()?.classPoints).toEqual({ cooling_tower: points });
+    });
+  });
+
+  describe('the telemetry feed (V2-14.8)', () => {
+    const last = () => vi.mocked(TwinCanvas).mock.lastCall?.[0];
+
+    /** A telemetry client with nothing behind it that hands out layout ids. */
+    const fakeClient = (): TelemetryClient => ({
+      subscribe: () => () => undefined,
+      getView: () => ({ state: initialTelemetryState, series: new Map() }),
+      setWatch: vi.fn(),
+      retry: vi.fn(),
+      setLayout: vi.fn(() => 1),
+      onTargets: () => () => undefined,
+      getTargets: () => null,
+      getStats: () => ({ messages: 0, targetPosts: 0 }),
+      dispose: vi.fn(),
+    });
+
+    let stop: (() => void) | null = null;
+    const adopt = () => {
+      act(() => {
+        stop = useTelemetryStore.getState().adopt(fakeClient());
+      });
+    };
+
+    beforeEach(() => {
+      vi.mocked(TwinCanvas).mockClear();
+    });
+
+    afterEach(() => {
+      act(() => stop?.());
+      stop = null;
+    });
+
+    it('hands the canvas no feed while there is no telemetry client', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+
+      expect(last()?.feed).toBeNull();
+    });
+
+    it('hands the canvas the feed once there is a client', () => {
+      adopt();
+
+      renderStage([zone(0, 'building', 'Library')]);
+
+      expect(last()?.feed).not.toBeNull();
+    });
+
+    it('wakes the canvas through the invalidate it hands back, and is harmless before it does', () => {
+      adopt();
+      const zones = [zone(0, 'building', 'Library')];
+      const binding: Binding = {
+        node: 'FanBlade',
+        key: 'fanSpeedRpm',
+        motion: 'spin',
+        axis: 'y',
+        range: [0, 1800],
+        point: { kind: 'number', min: 0, max: 1800, enumValues: null },
+        parent: null,
+      };
+      renderStage(zones, [], [modelled('CT-01', 'zone-0', zones[0]!.center)]);
+      const feed = last()!.feed!;
+
+      // The canvas has not said it exists yet: a change in the layout asks for a frame nobody can draw.
+      expect(() => feed.setBindings('cooling_tower', [binding])).not.toThrow();
+
+      const invalidate = vi.fn();
+      last()!.onInvalidate(invalidate);
+      feed.setBindings('cooling_tower', [{ ...binding, key: 'motorTempC' }]);
+
+      expect(invalidate).toHaveBeenCalledTimes(1);
     });
   });
 

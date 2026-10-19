@@ -241,6 +241,22 @@ their author, checked in CI, and served by nginx as immutable files.
     - **When it looks.** On each telemetry change, once a second (an age is a function of the clock), and on `refresh()`, which the stage's hook calls when the query
       cache changes for the assets, the incidents or an incident's detail. A stored flags object keeps its identity until a field changes. Disposing the feed sends an
       empty layout so the worker stops posting buffers nobody reads.
+  - Settled in V2-14.8 (2026-10-19), without changing the decision: how the bound parts move.
+    - **One loop, no React.** `twin/useBoundParts.ts` is one `useFrame` for every model instance. Per frame it reads the feed and, for each bound part, steps its
+      eased value toward the reading in its slot (`stepBound` in `lib/twinMotion.ts`: `turn` and `slide` ease the encoded value, `spin` eases the visual speed and
+      integrates the angle) and writes the pose onto the node. Nothing is allocated in the frame and no React state is set. The targets buffer already holds
+      encoded numbers (the worker encodes against the layout's `enumValues`), so the loop does not encode.
+    - **What moves, what rests.** A part's rotation is the rotation it was authored with followed by a rotation about its own axis; a slide runs along that axis. A
+      part with no slot or whose reading is `NaN` (no value yet, which is every non-headline key of an asset nobody watches) stays at its authored pose and
+      holds, and a spinning part with no data stops integrating rather than turning on. A stale or offline asset is skipped, so it freezes at its last pose and
+      a spin stops (V2-14.1); a `tint` is not moved here.
+    - **Asleep unless something moves.** The canvas is drawn on demand: the feed's `invalidate` wakes it when a reading, a layout or a flag changes, and the loop
+      asks for the next frame only while a value has not settled or a part spins, so an idle scene draws nothing; a turning fan keeps the canvas drawing every
+      frame for as long as it turns. The first value of a part, and the first after the telemetry socket comes back to `live`, snap instead of easing; the
+      socket is watched on its store, so an outage while the canvas sleeps is not missed. A frame's `delta` is clamped to 0.1 s (`MAX_FRAME_DT_S`).
+    - **Where the feed lives.** `TwinStage` mounts `useTwinFeed` (it reads the query cache, which does not reach the canvas's reconciler) and hands the feed down by
+      prop; the canvas gives its `invalidate` back through `onCreated`, which the feed calls through a ref. Slots are looked up once per layout
+      (`TwinFeedReader.layout`), because `slotOf` builds a string per call. `Equipment` tells the feed each ready class's bindings (`setBindings`).
 - **Model contract.**
   - glTF 2.0 binary, **one file per asset class**, instanced for every asset of that class.
   - **Node names are part roles, unique within the file** (`FanBlade`, `FanMotor`, `Pump`, `Valve`, `Switch`), under
