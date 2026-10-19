@@ -174,11 +174,33 @@ describe('focusOf (V2-15.8)', () => {
     expect(focusOf({ ...none, focusZoneId: 'BLD-DC' })).toEqual({
       zoneId: 'BLD-DC',
       assetCode: null,
+      inside: true,
     });
   });
 
+  it('carries the Inside layer at building level (V2-15.9), shown unless it is told otherwise', () => {
+    expect(focusOf({ ...none, focusZoneId: 'BLD-DC' }, false)).toEqual({
+      zoneId: 'BLD-DC',
+      assetCode: null,
+      inside: false,
+    });
+    expect(focusOf({ ...none, focusZoneId: 'BLD-DC' }, true)?.inside).toBe(true);
+  });
+
+  it('ignores the Inside layer at asset and part level: isolation wins (V2-15.9)', () => {
+    const selected = { focusZoneId: 'BLD-DC', selectedAssetCode: 'UPS-01' };
+
+    expect(focusOf({ ...selected, selectedPart: null }, false)?.inside).toBe(true);
+    expect(focusOf({ ...selected, selectedPart: 'Door' }, false)?.inside).toBe(true);
+    expect(focusOf({ ...none, selectedAssetCode: 'TR-01' }, false)?.inside).toBe(true);
+  });
+
+  it('has no focus at campus level whatever the layer says', () => {
+    expect(focusOf(none, false)).toBeNull();
+  });
+
   it('is the asset and its building at asset and part level, so the building stays in focus', () => {
-    const asset = { zoneId: 'BLD-DC', assetCode: 'CT-01' };
+    const asset = { zoneId: 'BLD-DC', assetCode: 'CT-01', inside: true };
 
     expect(focusOf({ ...none, focusZoneId: 'BLD-DC', selectedAssetCode: 'CT-01' })).toEqual(asset);
     expect(
@@ -190,6 +212,7 @@ describe('focusOf (V2-15.8)', () => {
     expect(focusOf({ ...none, selectedAssetCode: 'TR-01' })).toEqual({
       zoneId: null,
       assetCode: 'TR-01',
+      inside: true,
     });
   });
 });
@@ -202,7 +225,8 @@ describe('presenceOf (V2-15.8)', () => {
     placement: 'outdoor' | 'roof' | 'inside' = 'outdoor',
   ) => ({ kind: 'asset' as const, code, zoneId, placement });
   const campus: SceneFocus | null = null;
-  const dataCenter: SceneFocus = { zoneId: 'BLD-DC', assetCode: null };
+  const dataCenter: SceneFocus = { zoneId: 'BLD-DC', assetCode: null, inside: true };
+  const dataCenterOpaque: SceneFocus = { ...dataCenter, inside: false };
 
   describe('at campus level', () => {
     it('draws every building as it is', () => {
@@ -244,8 +268,40 @@ describe('presenceOf (V2-15.8)', () => {
     });
   });
 
+  describe('at building level with Inside off (V2-15.9)', () => {
+    it('draws the focused shell opaque, and the other buildings faded as before', () => {
+      expect(presenceOf(building('BLD-DC'), dataCenterOpaque)).toBe('drawn');
+      expect(presenceOf(building('BLD-LAB'), dataCenterOpaque)).toBe('faded');
+    });
+
+    it('hides the equipment inside the building', () => {
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), dataCenterOpaque)).toBe('hidden');
+      expect(presenceOf(asset('ICS-DC', 'BLD-DC', 'inside'), dataCenterOpaque)).toBe('hidden');
+    });
+
+    it('keeps the roof and the outdoor equipment of the building drawn', () => {
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), dataCenterOpaque)).toBe('drawn');
+      expect(presenceOf(asset('GEN-01', 'BLD-DC'), dataCenterOpaque)).toBe('drawn');
+    });
+
+    it('fades the equipment of other buildings as before, and hides their inside ones', () => {
+      expect(presenceOf(asset('AHU-H1', 'BLD-HUB', 'roof'), dataCenterOpaque)).toBe('faded');
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), dataCenterOpaque)).toBe('faded');
+      expect(presenceOf(asset('LKS-B3', 'BLD-DORB', 'inside'), dataCenterOpaque)).toBe('hidden');
+    });
+
+    it('leaves the markers as they are', () => {
+      expect(presenceOf({ kind: 'marker' }, dataCenterOpaque)).toBe('drawn');
+    });
+
+    it('changes nothing with Inside on', () => {
+      expect(presenceOf(building('BLD-DC'), dataCenter)).toBe('xray');
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), dataCenter)).toBe('drawn');
+    });
+  });
+
   describe('at asset and part level', () => {
-    const isolated: SceneFocus = { zoneId: 'BLD-DORB', assetCode: 'LKS-B3' };
+    const isolated: SceneFocus = { zoneId: 'BLD-DORB', assetCode: 'LKS-B3', inside: true };
 
     it('keeps the asset’s building see-through, as frame 15 draws it, and fades the others', () => {
       expect(presenceOf(building('BLD-DORB'), isolated)).toBe('xray');
@@ -263,7 +319,7 @@ describe('presenceOf (V2-15.8)', () => {
     });
 
     it('fades every building for an asset in none, and draws the asset', () => {
-      const outdoor: SceneFocus = { zoneId: null, assetCode: 'TR-01' };
+      const outdoor: SceneFocus = { zoneId: null, assetCode: 'TR-01', inside: true };
 
       expect(presenceOf(building('BLD-DC'), outdoor)).toBe('faded');
       expect(presenceOf(asset('TR-01', 'UTL-PLANT'), outdoor)).toBe('drawn');
@@ -272,6 +328,13 @@ describe('presenceOf (V2-15.8)', () => {
 
     it('fades the camera markers', () => {
       expect(presenceOf({ kind: 'marker' }, isolated)).toBe('faded');
+    });
+
+    it('keeps the shell see-through and the isolated inside asset drawn even if Inside is off (V2-15.9)', () => {
+      const off: SceneFocus = { ...isolated, inside: false };
+
+      expect(presenceOf(building('BLD-DORB'), off)).toBe('xray');
+      expect(presenceOf(asset('LKS-B3', 'BLD-DORB', 'inside'), off)).toBe('drawn');
     });
   });
 });
@@ -284,7 +347,7 @@ describe('presenceMap (V2-15.8)', () => {
   ];
 
   it('gives every asset its presence, by code', () => {
-    expect(presenceMap(placed, { zoneId: 'BLD-DC', assetCode: null })).toEqual(
+    expect(presenceMap(placed, { zoneId: 'BLD-DC', assetCode: null, inside: true })).toEqual(
       new Map([
         ['CT-01', 'drawn'],
         ['UPS-01', 'drawn'],
@@ -296,6 +359,16 @@ describe('presenceMap (V2-15.8)', () => {
         ['CT-01', 'drawn'],
         ['UPS-01', 'hidden'],
         ['TR-01', 'drawn'],
+      ]),
+    );
+  });
+
+  it('hides the building`s inside assets with Inside off and keeps the roof (V2-15.9)', () => {
+    expect(presenceMap(placed, { zoneId: 'BLD-DC', assetCode: null, inside: false })).toEqual(
+      new Map([
+        ['CT-01', 'drawn'],
+        ['UPS-01', 'hidden'],
+        ['TR-01', 'faded'],
       ]),
     );
   });

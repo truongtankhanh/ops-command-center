@@ -1,0 +1,70 @@
+/*
+ * The 3D view's building summary (V2-15.9), frame 12's `.tw-callout` in the console's tokens (`mockups/twin.css` is
+ * the mockups' stylesheet, not the console's): a popover-family surface (`Tips.module.css`) with the accent border
+ * of a callout. It stands at the top right under the tools row, offset by the open sheet (`--sheet-inset`, set on
+ * the stage and inherited) like the camera controls, and never wider than the stage leaves it. It comes after the
+ * canvas in the stage, so it paints over it without a z-index (`StageView.module.css .twin`), and it takes pointer
+ * events like any text: the drag hint and the tooltip layer are not over it.
+ */
+.card {
+  position: absolute;
+  top: calc(64px * var(--ui-scale));
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
+  width: calc(264px * var(--ui-scale));
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+  color: var(--text-primary);
+}
+
+.head {
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+.head p {
+  margin: 0;
+}
+
+.eyebrow {
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+.name {
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+/* A name and its figure on one line each; the `div` around each pair keeps them one row of the grid. */
+.rows {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.row dt {
+  color: var(--text-secondary);
+}
+
+.row dd {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  color: var(--text-primary);
+}

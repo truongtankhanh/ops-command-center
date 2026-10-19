@@ -3,6 +3,7 @@ import type { FitBox } from '../lib/twinCamera';
 import { assetBoxes, buildingBoxes } from '../lib/twinLevelCamera';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import type { LabelAnchor } from '../lib/twinScene';
+import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
 import { TwinCanvas } from './TwinCanvas';
 import { TwinControls } from './TwinControls';
@@ -30,9 +31,9 @@ const NO_INVALIDATE = (): void => undefined;
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
  * bindings of V2-14.7) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
  * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
- * camera controls and the hover tooltip (V2-15.5). The canvas gets the same scene and two refs for what it
- * keeps in step from its frame loop without a React render: the labels' layer (`LabelProjector`, V2-12.7) and
- * the compass (`CompassSync`, V2-12.10).
+ * building summary (V2-15.9, at building level only), the camera controls and the hover tooltip (V2-15.5). The
+ * canvas gets the same scene and two refs for what it keeps in step from its frame loop without a React render:
+ * the labels' layer (`LabelProjector`, V2-12.7) and the compass (`CompassSync`, V2-12.10).
  *
  * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
  * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
@@ -82,6 +83,8 @@ export default function TwinStage() {
       <DragHint />
       {/* The legend explains what is drawn: with no scene there is nothing to explain (frame 06 has none while loading). */}
       {scene && <TwinLegend />}
+      {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
+      {scene && <BuildingSummary />}
       <TwinControls compassRef={compass} />
       {/* Last, so it paints over the legend and the controls; it draws nothing until a hover rests (V2-15.5). */}
       <TwinTooltip />

@@ -17,6 +17,7 @@ describe('LayersControl', () => {
     for (const name of ['Incidents', 'Cameras', 'Assets']) {
       expect(toggle(name)).toHaveAttribute('aria-pressed', 'true');
     }
+    expect(screen.queryByRole('button', { name: 'Inside' })).toBeNull();
   });
 
   it('hides one layer and leaves the others', async () => {
@@ -28,7 +29,7 @@ describe('LayersControl', () => {
     expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
     expect(toggle('Incidents')).toHaveAttribute('aria-pressed', 'true');
     expect(toggle('Assets')).toHaveAttribute('aria-pressed', 'true');
-    expect(layers()).toEqual({ incidents: true, cameras: false, assets: true });
+    expect(layers()).toEqual({ incidents: true, cameras: false, assets: true, inside: true });
   });
 
   it('shows the layer again on a second press', async () => {
@@ -135,7 +136,7 @@ describe('LayersControl', () => {
       await user.click(toggle('Cameras'));
 
       expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
-      expect(layers()).toEqual({ incidents: true, cameras: false, assets: true });
+      expect(layers()).toEqual({ incidents: true, cameras: false, assets: true, inside: true });
     });
 
     it('leaves the Assets layer as it was, and offers it again in 2D', async () => {
@@ -166,6 +167,75 @@ describe('LayersControl', () => {
       render(<LayersControl view="3d" />);
 
       await expectNoAxeViolations();
+    });
+
+    describe('at building level (V2-15.9)', () => {
+      beforeEach(() => act(() => useConsole.getState().focusBuilding('BLD-DC')));
+
+      it('adds Inside after Cameras, shown', () => {
+        render(<LayersControl view="3d" />);
+
+        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+          'Incidents',
+          'Cameras',
+          'Inside',
+        ]);
+        expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      it('hides Inside through the store and leaves the others', async () => {
+        const user = userEvent.setup();
+        render(<LayersControl view="3d" />);
+
+        await user.click(toggle('Inside'));
+
+        expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'false');
+        expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'true');
+        expect(layers()).toEqual({ incidents: true, cameras: true, assets: true, inside: false });
+      });
+
+      it('is reachable by keyboard and toggles on Space', async () => {
+        const user = userEvent.setup();
+        render(<LayersControl view="3d" />);
+
+        await user.tab();
+        await user.tab();
+        await user.tab();
+        expect(toggle('Inside')).toHaveFocus();
+        await user.keyboard(' ');
+
+        expect(layers().inside).toBe(false);
+      });
+
+      it('does not offer it at campus, asset or part level, and keeps its state', () => {
+        act(() => useConsole.getState().toggleLayer('inside'));
+        render(<LayersControl view="3d" />);
+        expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'false');
+
+        act(() => useConsole.getState().selectAsset('UPS-01', 'BLD-DC'));
+        expect(screen.queryByRole('button', { name: 'Inside' })).toBeNull();
+
+        act(() => useConsole.getState().selectPart('Door'));
+        expect(screen.queryByRole('button', { name: 'Inside' })).toBeNull();
+
+        act(() => useConsole.getState().goCampus());
+        expect(screen.queryByRole('button', { name: 'Inside' })).toBeNull();
+
+        act(() => useConsole.getState().focusBuilding('BLD-DC'));
+        expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      it('is not offered in the 2D view, whatever the level', () => {
+        render(<LayersControl view="2d" />);
+
+        expect(screen.queryByRole('button', { name: 'Inside' })).toBeNull();
+      });
+
+      it('has no accessibility violations', async () => {
+        render(<LayersControl view="3d" />);
+
+        await expectNoAxeViolations();
+      });
     });
   });
 });

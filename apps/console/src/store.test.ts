@@ -1113,20 +1113,31 @@ describe('useConsole', () => {
   });
 
   describe('layers', () => {
-    it('opens with incidents, cameras and assets all shown', () => {
+    it('opens with incidents, cameras, assets and inside all shown', () => {
       expect(useConsole.getInitialState().layers).toEqual({
         incidents: true,
         cameras: true,
         assets: true,
+        inside: true,
       });
     });
 
     it('hides and shows one layer and leaves the others', () => {
       state().toggleLayer('cameras');
-      expect(state().layers).toEqual({ incidents: true, cameras: false, assets: true });
+      expect(state().layers).toEqual({
+        incidents: true,
+        cameras: false,
+        assets: true,
+        inside: true,
+      });
 
       state().toggleLayer('cameras');
-      expect(state().layers).toEqual({ incidents: true, cameras: true, assets: true });
+      expect(state().layers).toEqual({
+        incidents: true,
+        cameras: true,
+        assets: true,
+        inside: true,
+      });
     });
 
     it('is not remembered in this browser', () => {
@@ -1162,7 +1173,12 @@ describe('useConsole', () => {
 
       state().select('a');
 
-      expect(state().layers).toEqual({ incidents: true, cameras: false, assets: true });
+      expect(state().layers).toEqual({
+        incidents: true,
+        cameras: false,
+        assets: true,
+        inside: true,
+      });
     });
 
     it('shows the assets again when an asset is selected', () => {
@@ -1179,7 +1195,12 @@ describe('useConsole', () => {
 
       state().selectAsset('CT-01', null);
 
-      expect(state().layers).toEqual({ incidents: false, cameras: true, assets: true });
+      expect(state().layers).toEqual({
+        incidents: false,
+        cameras: true,
+        assets: true,
+        inside: true,
+      });
     });
 
     it('does not show the assets again when the asset is deselected', () => {
@@ -1196,6 +1217,69 @@ describe('useConsole', () => {
       state().select(null);
 
       expect(state().layers.incidents).toBe(false);
+    });
+
+    describe('inside (V2-15.9)', () => {
+      it('hides and shows Inside and leaves the others', () => {
+        state().toggleLayer('inside');
+        expect(state().layers).toEqual({
+          incidents: true,
+          cameras: true,
+          assets: true,
+          inside: false,
+        });
+
+        state().toggleLayer('inside');
+        expect(state().layers.inside).toBe(true);
+      });
+
+      it('shows it again, and keeps the same object when it already is shown', () => {
+        state().toggleLayer('inside');
+
+        state().showLayer('inside');
+        expect(state().layers.inside).toBe(true);
+
+        const before = state().layers;
+        state().showLayer('inside');
+        expect(state().layers).toBe(before);
+      });
+
+      it('is not remembered in this browser', () => {
+        localStorage.clear();
+
+        state().toggleLayer('inside');
+
+        expect(localStorage.length).toBe(0);
+      });
+
+      it('stays as the operator left it when an incident or an asset is selected', () => {
+        state().toggleLayer('inside');
+
+        state().select('a');
+        expect(state().layers.inside).toBe(false);
+
+        state().selectAsset('UPS-01', 'BLD-DC');
+        expect(state().layers.inside).toBe(false);
+      });
+
+      it('stays as it was through focusing a building, leaving it and going to the campus', () => {
+        state().toggleLayer('inside');
+
+        state().focusBuilding('BLD-DC');
+        state().goUp();
+        state().focusBuilding('BLD-DC');
+        state().goCampus();
+
+        expect(state().layers.inside).toBe(false);
+      });
+
+      it('is shown again after a reset of the store', () => {
+        state().toggleLayer('inside');
+
+        resetStore(useConsole);
+
+        expect(state().layers.inside).toBe(true);
+      });
     });
   });
 

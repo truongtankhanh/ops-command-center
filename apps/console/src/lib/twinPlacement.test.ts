@@ -2,14 +2,7 @@ import type { Asset, LngLat, Zone, ZoneKind } from '@occ/contracts';
 import { offsetM } from './geo';
 import { fanOutAssets } from './mapFeatures';
 import { DEFAULT_BUILDING_HEIGHT_M, makeFrame } from './twinScene';
-import {
-  assetPose,
-  boxOf,
-  type PlacedAsset,
-  placeAssets,
-  placementOf,
-  visibleAssets,
-} from './twinPlacement';
+import { assetPose, boxOf, type PlacedAsset, placeAssets, placementOf } from './twinPlacement';
 
 /*
  * The demo campus, copied: the zones the 31 assets stand in and the assets themselves, in metres east and north
@@ -179,31 +172,6 @@ describe('the demo campus', () => {
     expect(inPlacement('inside')).toHaveLength(22);
   });
 
-  it('draws 9 at campus level and the others only with their building in focus', () => {
-    expect(visibleAssets(placed)).toHaveLength(9);
-    expect(visibleAssets(placed, null)).toHaveLength(9);
-    expect(placed.filter((p) => p.placement === 'inside')).toHaveLength(22);
-
-    const dataCenter = visibleAssets(placed, 'BLD-DC');
-    expect(codesOf(dataCenter)).toEqual(
-      [...inPlacement('roof'), ...inPlacement('outdoor')]
-        .concat(['UPS-01', 'BAT-01', 'CRAC-01', 'CRAC-02', 'ICS-DC'])
-        .sort(),
-    );
-  });
-
-  it('shows no inside asset for a zone that is not in focus, and each one with its own building', () => {
-    const insideOf = (zoneId: string) =>
-      placed.filter((p) => p.placement === 'inside' && p.zoneId === zoneId).length;
-    const total = ZONES.reduce((sum, zone) => sum + insideOf(zone.id), 0);
-
-    expect(total).toBe(22);
-    expect(visibleAssets(placed, 'NOWHERE')).toHaveLength(9);
-    expect(visibleAssets(placed, 'BLD-DORB').map((p) => p.code)).toEqual(
-      expect.arrayContaining(['LKS-B3', 'LFT-B1', 'ICS-DORB']),
-    );
-  });
-
   it('stands the cooling towers on the Data Center roof, 14 m up', () => {
     for (const code of ['CT-01', 'CT-02']) {
       expect(byCode(code).placement).toBe('roof');
@@ -370,12 +338,5 @@ describe('placeAssets', () => {
 
   it('does not depend on the order it is given', () => {
     expect(placeAssets([...ASSETS].reverse(), ZONES, frame)).toEqual(placed);
-  });
-});
-
-describe('visibleAssets', () => {
-  it('keeps the order it is given', () => {
-    const codes = visibleAssets(placed).map((p) => p.code);
-    expect(codes).toEqual([...codes].sort());
   });
 });

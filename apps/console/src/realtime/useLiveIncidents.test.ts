@@ -273,6 +273,7 @@ describe('useLiveIncidents', () => {
           incidents: true,
           cameras: false,
           assets: true,
+          inside: true,
         });
       });
 

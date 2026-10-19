@@ -1,4 +1,5 @@
 import { assetHover, hoveredShellZone, hoverOf, NO_HOVER } from './twinHover';
+import type { SceneFocus } from './twinLevel';
 import type { PlacedAsset, Placement } from './twinPlacement';
 
 const placed = (code: string, placement: Placement, zoneId = 'BLD-DC'): PlacedAsset => ({
@@ -71,6 +72,12 @@ describe('assetHover', () => {
 });
 
 describe('hoveredShellZone', () => {
+  /** The building level, with the `Inside` layer shown unless it is told otherwise. */
+  const focusOn = (zoneId: string, inside = true): SceneFocus => ({
+    zoneId,
+    assetCode: null,
+    inside,
+  });
   const scene = [
     placed('PMP-S1', 'inside', 'BLD-STU'),
     placed('CT-01', 'roof'),
@@ -87,11 +94,26 @@ describe('hoveredShellZone', () => {
   });
 
   it('is nothing for an asset inside the building in focus, which draws it', () => {
-    expect(hoveredShellZone('PMP-S1', scene, 'BLD-STU')).toBeNull();
+    expect(hoveredShellZone('PMP-S1', scene, focusOn('BLD-STU'))).toBeNull();
   });
 
   it('still tints the building of an inside asset when another building is in focus', () => {
-    expect(hoveredShellZone('PMP-S1', scene, 'BLD-DC')).toBe('BLD-STU');
+    expect(hoveredShellZone('PMP-S1', scene, focusOn('BLD-DC'))).toBe('BLD-STU');
+  });
+
+  it('tints the focused building for its inside asset when Inside is off: the equipment is not drawn (V2-15.9)', () => {
+    expect(hoveredShellZone('PMP-S1', scene, focusOn('BLD-STU', false))).toBe('BLD-STU');
+  });
+
+  it('never tints for a roof or outdoor asset, with Inside off either', () => {
+    expect(hoveredShellZone('CT-01', scene, focusOn('BLD-DC', false))).toBeNull();
+    expect(hoveredShellZone('GEN-01', scene, focusOn('BLD-DC', false))).toBeNull();
+  });
+
+  it('is nothing for the isolated asset itself, even an inside one, whatever Inside says', () => {
+    const isolated: SceneFocus = { zoneId: 'BLD-STU', assetCode: 'PMP-S1', inside: false };
+
+    expect(hoveredShellZone('PMP-S1', scene, isolated)).toBeNull();
   });
 
   it('is nothing for no hover or an asset the scene does not hold', () => {

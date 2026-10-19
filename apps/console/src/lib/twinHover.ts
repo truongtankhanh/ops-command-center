@@ -1,4 +1,5 @@
-import { type PlacedAsset, visibleAssets } from './twinPlacement';
+import { presenceOf, type SceneFocus } from './twinLevel';
+import type { PlacedAsset } from './twinPlacement';
 
 /*
  * What the 3D scene makes of the store's hover (V2-15.5), as plain data: no `three` and no WebGL, so the rules
@@ -47,18 +48,20 @@ export function assetHover(code: string, hover: HoverState): AssetHover {
 }
 
 /**
- * The zone whose building takes the hover tint for the hovered asset `code`: its own, when the asset is
- * `inside` a building that is not the one in focus, because nothing of it is drawn then (ADR-0020, V2-15.1).
- * `null` for an asset that is drawn (`outdoor`, `roof`, or inside the focused building, which V2-15.8 draws), one
- * the scene does not hold, and no asset. `focusedZoneId` is the building in focus, `null` at campus level.
+ * The zone whose building takes the hover tint for the hovered asset `code`: its own, when the asset is `inside` a
+ * building and the scene does not draw it (`presenceOf` says `hidden`: at campus level, with another building in
+ * focus, or, since V2-15.9, in the building in focus with the `Inside` layer off, whose shell is opaque then), because
+ * nothing of it is on screen to light (ADR-0020, V2-15.1). `null` for an asset that is drawn (`outdoor`, `roof`, or
+ * inside the focused building with the layer on), one the scene does not hold, and no asset. `focus` is the scene's
+ * (`useSceneFocus`), `null` at campus level.
  */
 export function hoveredShellZone(
   code: string | null,
   placed: readonly PlacedAsset[],
-  focusedZoneId: string | null = null,
+  focus: SceneFocus | null = null,
 ): string | null {
   if (code === null) return null;
   const asset = placed.find((candidate) => candidate.code === code);
   if (asset === undefined || asset.placement !== 'inside') return null;
-  return visibleAssets([asset], focusedZoneId).length === 0 ? asset.zoneId : null;
+  return presenceOf({ kind: 'asset', ...asset }, focus) === 'hidden' ? asset.zoneId : null;
 }
