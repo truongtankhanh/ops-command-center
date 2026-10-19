@@ -133,6 +133,64 @@ their author, checked in CI, and served by nginx as immutable files.
       pure helpers stay in `src/lib/twin*.ts`, so they test without WebGL.
     - **Camera floor.** The written limit, 78° from vertical (12° above the ground), stands; frame 00's note "never
       below 8° above" is a drawing note.
+  - Settled in V2-15.1 (2026-10-19, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the four levels, picking, hover, the callout and building focus fit together. The brief fixes the
+    levels, hover, click, Escape and the BVH rule; this block adds what a build needs to start.
+    - **Level is derived, never stored twice.** `part` when a part is selected, else `asset` when `selectedAssetCode`
+      is set, else `building` when a building is in focus, else `campus`. The store gains `focusZoneId` (the id of a
+      `building` zone, else `null`), `selectedPart` (a node name, only ever set with an asset selected) and
+      `hoveredPart`; `hoveredAssetCode` and `selectedAssetCode` exist. Selecting another asset, or none, clears
+      `selectedPart`. `lib/twinLevels.ts` (V2-15.2) holds the derivation and the transitions, pure.
+    - **The middle crumb is the focused building.** Selecting an asset (scene, Assets tab or inspector) flies to fit
+      it and, when its zone is a `building`, focuses that building, so `Campus › Data Center › CT-01` and
+      `Campus › Data Center › GEN-01`: `GEN-01` stands 3 m outside the footprint, but its zone is `BLD-DC` and the
+      Assets tab groups it there. An asset whose zone is not a building has no middle crumb (`Campus › TR-01`; Utility
+      Plant is `kind: utility` and has no building level, its assets are outdoors at campus level). Focusing a
+      building also sets the Assets tab's zone filter (`assetZoneId`, as asset-classes.md § Order, filter and search
+      says); leaving it clears the filter only while it still equals the building's id, so a filter the operator chose
+      in between stays.
+    - **The rest of the campus is faded, not removed.** At building, asset and part level everything but the subject
+      is drawn at `--tw-ghost-opacity` (0.18), the token's own description. Frames 03 and 17 say "Isolated — the
+      campus is hidden"; the legend line becomes "Isolated — the rest of the campus is faded. `Esc` returns to Data
+      Center" (without a middle crumb: "… `Esc` returns to Campus"). Frame 08's "Enclosure shown see-through" is the
+      model's `Enclosure` node in the `Xray` material (V2-13.9), not a state of the scene. Frame 12 and 15's "Walls
+      see-through, other buildings faded. `Esc` returns to Campus" stand.
+    - **Escape is one ladder, one step a press.** Close the callout and deselect the part → deselect the asset
+      (closes the inspector) → leave the building → nothing. With focus in the inspector sheet, Escape takes the first
+      two steps and stops there (V1's rule: the sheet is a panel); leaving the building by Escape works only while the
+      3D view has focus, like every key the brief scopes there, so no panel's Escape is taken. At campus level Escape
+      does nothing: it never switches to 2D. **Home**, while the 3D view has focus, goes to the campus level and the
+      home view: it deselects the part and the asset, leaves the building (the zone filter clears by the rule above) and
+      keeps an open incident and an open report form. Its help word is "Reset to the campus view" (frame 16's "starting view"
+      and `Main`'s wording merge into this one).
+    - **Picking precedence.** Beacon (V2-16) > part > asset > camera > building. Beacons and camera markers are
+      sprites hit-tested in screen space (`lib/twinMarkers.ts`); everything else is one BVH raycast, at most once a
+      frame, and the nearest surface on the ray wins, so a wall hides what is behind it. Kind decides only between a
+      sprite and a ray hit under the same pixel. At campus level an asset is one target: its parts are pickable only
+      while the asset is isolated, and a static part (merged at load, ADR-0020 § Model contract) is never a target;
+      its Parts row stays read-only. At asset and part level only the isolated asset is pickable (the faded rest is
+      not, and a click on nothing selects nothing and deselects nothing; Escape, Close, the crumbs and Home leave). At
+      building level the faded buildings stay pickable, so a click moves the focus.
+    - **Hover** shows the tooltip after 150 ms: name, code, the state word with its glyph of asset-classes.md § State
+      of an asset (none when the state is unknown), the asset's first two headline readings as the Assets list writes
+      them (the 1 Hz overview, no watch; one row when it has one, none when it has none), and a foot "Click to inspect
+      · {place line}" (§ Place line, so `GEN-01` reads "Data Center" and `CT-01` "Data Center · roof"; frame 02's
+      "east yard" and the bare "Click to inspect" of an inside asset are not data). An asset with no model ends "No 3D
+      model · drawn as a box" instead (frame 15). The tooltip is never interactive and never a new source of a number
+      (Principle 1). An `inside` asset hovered in the Assets tab at campus level tints its building, because nothing of
+      it is drawn.
+    - **The callout** (a part) reads "CT-01 · FanBlade" over the part's label (the `extras.label` the Parts row shows),
+      the bound reading large with its unit and its age (or "last …" when stale), and "Limit 85 °C" or "Low at
+      20 %" when a rule watches the key, as a Reading row writes it. Nothing else: no "Blade pitch", "Next service",
+      "Rating", "Trips" or "Last operated" (no data), and no set point row (`fanSetpointRpm` is a point of the asset,
+      not of the part; a candidate for the model's `extras` later). A part the console holds no reading for reads "—".
+    - **The building summary** (frame 12) is three rows: "Assets — n · all reporting" (or "· k without data"), where
+      _n_ counts the assets whose zone is the building, `GEN-01` included, as the Assets tab's zone filter counts them;
+      "Open incidents — 1 · INC-000105" (none: "No open incidents"); and "Indoor — 22.1 °C", the building's heat
+      reading (V2-17.1; omitted when it has none). No "IT load" and no "Power" row: no point is a building's load, and
+      `powerSource` is not a headline. The frame's 7 assets is the frame's; the seed has 8 in `BLD-DC`.
+    - **Focus** (the inspector's button, "added in V2-12" in asset-classes.md § Inspector words) is built in V2-15.11
+      and shown only in the 3D view: it flies to the selection (`F` is V2-18.2's).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

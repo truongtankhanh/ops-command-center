@@ -573,6 +573,17 @@ Settled 2026-10-15 (V2-09.10), the foot of the sheet:
   opened with, so an untouched one closes on Escape too; the form starts at its title.
 - **"Focus"** (V2-12) is not drawn and has no key: it is added to the foot's row, at its end.
 
+Proposed 2026-10-19 (V2-15.1), the tech lead to confirm: the words the 3D view adds to the sections above, as ADR-0020
+§ Scene settles them.
+
+- **Callout and summary words.** The hover tooltip reads the asset's name and code, the state word of § State of an
+  asset, its first two headline readings written as the list writes them, and "Click to inspect · {place line}"
+  (§ Place line); an asset with no model ends "No 3D model · drawn as a box" instead. A part's callout reads
+  "{code} · {node name}" over the part's label, its one bound reading as a Reading row writes it, its age (or "last …"
+  while the asset is not live) and the rule's line ("Limit 85 °C", "Low at 20 %"); it has no other row. A building's
+  summary reads "Assets — n · all reporting" or "· k without data", "Open incidents — 1 · INC-000105" and "Indoor —
+  22.1 °C", where _n_ counts the assets whose zone is the building, as the zone filter does.
+
 ## Open questions
 
 1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that
