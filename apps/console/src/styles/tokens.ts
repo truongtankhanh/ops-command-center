@@ -89,7 +89,8 @@ interface Faces {
  *
  * `ground` and `road` have the same hex as `mapColors.site.boundaryFill` and `road` because the
  * mockups drew them alike; they are not linked, so the 2D map and the 3D scene can diverge later.
- * `--tw-blade` has no consumer before the equipment models (V2-13) and is not copied yet.
+ * The model contract's material names (`lib/twinMaterials.ts`, V2-14.7) are `Part` = `idle`, `Steel`, `Concrete`,
+ * `Rail`, `Blade`, `Hub`, `Screen` and `Xray` (`idle` at `xrayOpacity`).
  */
 export const twinColors = {
   /** `--tw-ground`: the site boundary's fill. */
@@ -104,6 +105,14 @@ export const twinColors = {
   rail: '#8199aa',
   /** `--tw-neutral`: the base of an asset with no model, drawn as a box (frame 15). */
   neutral: '#4b5d6b',
+  /** `--tw-blade`: fan blades. */
+  blade: '#4d6a80',
+  /** `--tw-hub`: a rotor's hub, and the edge of a see-through shell. */
+  hub: '#5a7488',
+  /** `--tw-screen`: a display. */
+  screen: '#2b3f66',
+  /** `--tw-xray-opacity`: a see-through shell, such as the generator's enclosure. */
+  xrayOpacity: 0.14,
   /** `--tw-top` / `-south` / `-east`: the idle part material. */
   idle: { top: '#2a4658', south: '#1f3748', east: '#172b3a' } satisfies Faces,
   /** `--tw-steel-*`: motors, pumps, pipes, valves and cabinets. */

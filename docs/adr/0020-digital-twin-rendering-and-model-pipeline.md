@@ -146,6 +146,22 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Campus level draws `outdoor` and `roof` assets.** `inside` assets are placed but not drawn until a building is
       in focus (V2-15.8). An asset whose zone is not in the list is `outdoor`, a building too small to have a footprint
       has nothing `inside`, and a missing height is the shell's `DEFAULT_BUILDING_HEIGHT_M`.
+  - Settled in V2-14.7 (2026-10-19), without changing the decision: how the class models get into the scene.
+    - **One request per class, nearest first.** The classes that have a `modelUrl` are listed once, nearest the middle
+      of the campus first (`lib/twinLoadQueue.ts`), and the stage fetches their files two at a time in that order; two
+      assets of one class, or two calls, cost one request. The models stream after the site plan, so the boxes of
+      V2-14.6 are the placeholders and an asset's box is replaced by its model in the render in which its class
+      becomes ready (`twin/Equipment.tsx`): never both, never neither.
+    - **A model that fails stays a box.** A 404, a parse error or a decoder error is logged once for the class
+      (`console.error`) and is never asked for again; the Assets tab and the inspector do not change. The loading card
+      shows such a class as a finished row ("drawn as a box"), so a model that cannot load never holds the card up.
+    - **The card has bytes.** The stage loads with its own loader (three's `GLTFLoader`, `twin/loadGltf.ts`), not drei's
+      `useGLTF`, because only its progress events give a class's bytes ("0.6 / 1.4 MB"). The cache writes them,
+      throttled, to a store of its own (`lib/twinModelStore.ts`) that the card, which is main-chunk code, reads.
+    - **Bindings are built and kept, not applied.** Once a class's model has arrived and its points are known (the
+      detail of one asset of the class, through the inspector's cache entry), its bindings are built from its `extras`
+      and kept with the class; V2-14.8 mounts the telemetry feed and applies them. A bound part the catalogue cannot
+      bind is logged once for the class, and the model loads without that binding.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
@@ -265,6 +281,17 @@ their author, checked in CI, and served by nginx as immutable files.
         (`varchar(64)`). A replacement is a new name, never an edit.
   - Each bound node's pivot sits on its axis of motion; +Y up; 1 unit = 1 m; origin at the centre of the footprint.
   - Static nodes are merged at load; only bound nodes stay separate.
+    - Settled in V2-14.7 (2026-10-19), without changing the decision: what "merged at load" means.
+      - **Once per class.** The static meshes (no `bind` on them or on an ancestor) are merged into one mesh per console
+        material, with their transform relative to the class root baked in; every asset's copy shares that geometry, so
+        an instance costs a transform and its bound parts. A bound part is moved under the new root keeping its world
+        transform, and its own children, static or bound, stay under it and are not merged: they move with it.
+      - **Materials by name are applied.** The eight names (`lib/twinMaterials.ts`) are the console's materials from
+        `twinColors`; `Hub`, `Screen` and the `Xray` opacity are tokens (`--tw-hub`, `--tw-screen`, `--tw-xray-opacity`).
+        The vendor's material is replaced whole: baked occlusion textures are not applied yet, and whether they will be
+        is for the first delivery that has some (V2-13.8).
+      - **LOD1 is ignored.** The `_LOD1` sibling is dropped when the model is built; level of detail is V2-19.5. A
+        helper node whose name starts with `_` is not special at load.
 - **Budgets, checked by `pnpm models:check` in CI** (added in V2-13; no such script exists yet) on every `.glb` under
   `ops/models/`: at most 50,000 triangles, textures KTX2 and at most 1024², at most 4 materials, at most 1.5 MB,
   Meshopt-compressed geometry, every `extras.bind` a valid key of its class, every node name unique. The authoring
@@ -277,6 +304,10 @@ their author, checked in CI, and served by nginx as immutable files.
     directory and sets `asset_class.model_key`.
   - The Meshopt decoder and the Basis transcoder (WASM) are copied from `node_modules` into the console build under
     `/decoders/` at build time, so they always match the installed three.js.
+  - Settled in V2-14.7 (2026-10-19), without changing the decision: the console loads a model with three's
+    `GLTFLoader` and its own `MeshoptDecoder`, which embeds its WebAssembly and needs no file, and the Basis transcoder
+    from `/decoders/basis/`; Draco is off. A class's file is fetched once per stage; the browser's HTTP cache answers
+    when the stage is opened again, since the name is content-addressed.
 - **Testing.**
   - Pure modules carry the logic and are unit-tested in Vitest: easing, bindings built from `extras`, the
     east-north-up projection, staleness, camera clamps.

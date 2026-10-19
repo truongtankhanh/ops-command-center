@@ -397,6 +397,9 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
     ['edge', twinColors.edge, '--tw-edge'],
     ['rail', twinColors.rail, '--tw-rail'],
     ['neutral', twinColors.neutral, '--tw-neutral'],
+    ['blade', twinColors.blade, '--tw-blade'],
+    ['hub', twinColors.hub, '--tw-hub'],
+    ['screen', twinColors.screen, '--tw-screen'],
     ...idleFaces,
     ...faces('steel'),
     ...faces('concrete'),
@@ -425,6 +428,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       copy: '`twinColors.ghostOpacity` (src/styles/tokens.ts)',
       actual: String(twinColors.ghostOpacity),
       expected: css.get('--tw-ghost-opacity') ?? 'missing',
+    },
+    {
+      copy: '`twinColors.xrayOpacity` (src/styles/tokens.ts)',
+      actual: String(twinColors.xrayOpacity),
+      expected: css.get('--tw-xray-opacity') ?? 'missing',
     },
     {
       copy: '`mapMotion.pulseMs` (src/styles/tokens.ts)',

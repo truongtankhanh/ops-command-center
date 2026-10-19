@@ -7,6 +7,7 @@ const box = (
   size: Partial<PlacedAsset['size']> = {},
 ): PlacedAsset => ({
   code,
+  classCode: 'ups',
   zoneId: 'Z',
   placement: 'outdoor',
   pose: { x: 0, y: 0, z: 0, rotationY: 0, ...pose },

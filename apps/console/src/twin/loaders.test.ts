@@ -1,7 +1,7 @@
 import type { WebGLRenderer } from 'three';
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { DECODER_BASE_PATH } from '../../vite.decoders';
-import { DECODER_BASE_URL, gltfLoaders, MODEL_LOADER_FLAGS } from './loaders';
+import { DECODER_BASE_URL, gltfLoaders } from './loaders';
 
 // WebGL does not exist here. `detectSupport` only asks the renderer which compressed formats it has.
 const renderer = () =>
@@ -13,10 +13,6 @@ const gltfLoader = () => ({ setKTX2Loader: vi.fn() });
 describe('the model loaders', () => {
   it('look for the transcoder where the build and the dev server put it', () => {
     expect(DECODER_BASE_URL).toBe(DECODER_BASE_PATH);
-  });
-
-  it('leave Draco off, whose decoder defaults to a CDN, and Meshopt on, which needs no file', () => {
-    expect(MODEL_LOADER_FLAGS).toEqual({ useDraco: false, useMeshopt: true });
   });
 
   it('give the glTF loader a KTX2 loader on this origin that knows the renderer', () => {

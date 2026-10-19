@@ -157,6 +157,15 @@ describe('the demo campus', () => {
     }
   });
 
+  it('carries each asset’s class code, which is what a model replaces the box by', () => {
+    expect(byCode('CT-01').classCode).toBe('cooling_tower');
+    expect(byCode('GEN-01').classCode).toBe('standby_generator');
+    expect(byCode('ICS-DC').classCode).toBe('indoor_climate');
+    expect(placed.map((p) => p.classCode)).toEqual(
+      [...ASSETS].sort((a, b) => (a.code < b.code ? -1 : 1)).map((a) => a.class.code),
+    );
+  });
+
   it('puts three assets on a roof, six outdoors and 22 inside', () => {
     expect(inPlacement('roof')).toEqual(['AHU-H1', 'CT-01', 'CT-02']);
     expect(inPlacement('outdoor')).toEqual([
