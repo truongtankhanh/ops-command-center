@@ -1,16 +1,22 @@
 import {
   clearTwinMarks,
   createChangeTracker,
+  createDprController,
   createFrameDemand,
   createFrameWindow,
   createPerfSampler,
+  DPR_BUDGET_MS,
+  DPR_STEPS,
   debugTwinRequested,
+  forgetDprStep,
   type FrameDemand,
   type HudInput,
   markTwin,
   MAX_FRAME_GAP_MS,
   needsFrame,
   percentile,
+  rememberDprStep,
+  rememberedDprStep,
 } from './twinPerf';
 
 describe('percentile', () => {
@@ -147,6 +153,7 @@ describe('createPerfSampler', () => {
     calls: 96,
     triangles: 182_000,
     stats: null,
+    pixelRatio: 1.25,
     ...overrides,
   });
   const drawFrames = (sampler: ReturnType<typeof createPerfSampler>, count: number, dt = 16.7) => {
@@ -200,6 +207,11 @@ describe('createPerfSampler', () => {
 
     expect(reading.fps).toBe(60);
     expect(reading.frameP95Ms).toBe(16);
+  });
+
+  it('passes the pixel ratio through, and a missing one as null', () => {
+    expect(createPerfSampler().read(0, input()).pixelRatio).toBe(1.25);
+    expect(createPerfSampler().read(0, input({ pixelRatio: null })).pixelRatio).toBeNull();
   });
 
   it('passes the draw calls and triangles through', () => {
@@ -421,5 +433,248 @@ describe('createFrameDemand', () => {
     first.bound = true;
 
     expect(createFrameDemand().bound).toBe(false);
+  });
+});
+
+describe('createDprController', () => {
+  type Controller = ReturnType<typeof createDprController>;
+  interface Move {
+    at: number;
+    step: number;
+  }
+
+  /** Frames of `dt` ms for `seconds` of the clock, from `from`; every step the controller returns, and when. */
+  function run(
+    controller: Controller,
+    { dt, seconds, from = 0 }: { dt: number; seconds: number; from?: number },
+  ) {
+    const moves: Move[] = [];
+    for (let now = from; now <= from + seconds * 1000; now += dt) {
+      const step = controller.frame(dt, now);
+      if (step !== null) moves.push({ at: now, step });
+    }
+    return moves;
+  }
+
+  /** The task's examples count from the first frame: no grace. */
+  const make = (options: Parameters<typeof createDprController>[0] = {}) =>
+    createDprController({ graceMs: 0, ...options });
+
+  afterEach(() => forgetDprStep());
+
+  it('starts at the sharpest step and uses the brief’s steps and an interval budget above a 60 Hz frame', () => {
+    expect(createDprController().step).toBe(1.5);
+    expect(DPR_STEPS).toEqual([1.5, 1.25, 1.0]);
+    expect(DPR_BUDGET_MS).toBeGreaterThan(1000 / 60);
+    expect(DPR_BUDGET_MS).toBeLessThan(20);
+  });
+
+  describe('the task’s examples', () => {
+    it('frames of 20 ms: 1.5 drops to 1.25 after 2 s and to 1.0 after 4 s, and stops', () => {
+      const controller = make();
+
+      expect(run(controller, { dt: 20, seconds: 14 })).toEqual([
+        { at: 2000, step: 1.25 },
+        { at: 4000, step: 1.0 },
+      ]);
+      expect(controller.step).toBe(1.0);
+    });
+
+    it('frames of 8 ms: never moves', () => {
+      const controller = make();
+
+      expect(run(controller, { dt: 8, seconds: 30 })).toEqual([]);
+      expect(controller.step).toBe(1.5);
+    });
+  });
+
+  describe('a healthy display', () => {
+    it('a 60 Hz display (16.7 ms frames) never moves, with the defaults and without the grace', () => {
+      expect(run(createDprController(), { dt: 16.7, seconds: 60 })).toEqual([]);
+      expect(run(make(), { dt: 16.7, seconds: 60 })).toEqual([]);
+    });
+
+    it('a 120 Hz display (8.3 ms frames) never moves', () => {
+      expect(run(createDprController(), { dt: 8.3, seconds: 30 })).toEqual([]);
+    });
+
+    it('a display that holds only 30 fps (33 ms frames) steps down', () => {
+      expect(run(make(), { dt: 33, seconds: 5 })).toHaveLength(2);
+    });
+  });
+
+  describe('the budget', () => {
+    it('does not step at exactly the budget and steps just above it', () => {
+      expect(run(make({ budgetMs: 18 }), { dt: 18, seconds: 10 })).toEqual([]);
+      expect(run(make({ budgetMs: 18 }), { dt: 18.1, seconds: 3 })).toHaveLength(1);
+    });
+
+    it('does not step for a few long frames among many short ones (under 5 %)', () => {
+      const controller = make();
+      const moves: Move[] = [];
+      for (let i = 0; i <= 100; i += 1) {
+        const step = controller.frame(i % 30 === 0 ? 30 : 10, i * 20);
+        if (step !== null) moves.push({ at: i * 20, step });
+      }
+
+      expect(moves).toEqual([]);
+    });
+  });
+
+  describe('what it does not judge', () => {
+    it('a window with fewer frames than the minimum, however slow, and judges the next full one', () => {
+      const controller = make();
+
+      expect(run(controller, { dt: 100, seconds: 2 })).toEqual([]);
+      expect(run(controller, { dt: 20, seconds: 2, from: 2020 })).toEqual([
+        { at: 4000, step: 1.25 },
+      ]);
+    });
+
+    it('a frame time above the gap is not a frame: a run of them keeps nothing', () => {
+      const controller = make();
+      const moves: Move[] = [];
+      for (let now = 0; now <= 6000; now += 20) {
+        const step = controller.frame(300, now);
+        if (step !== null) moves.push({ at: now, step });
+      }
+
+      expect(moves).toEqual([]);
+    });
+
+    it.each([0, -5, Number.NaN])('a frame time of %s is not a frame', (dt) => {
+      const controller = make();
+      const moves: Move[] = [];
+      for (let now = 0; now <= 6000; now += 20) {
+        const step = controller.frame(dt, now);
+        if (step !== null) moves.push({ at: now, step });
+      }
+
+      expect(moves).toEqual([]);
+    });
+  });
+
+  describe('the grace', () => {
+    it('by default nothing is judged before a window of grace and a window: 20 ms frames step at 4 s and 6 s', () => {
+      expect(run(createDprController(), { dt: 20, seconds: 10 })).toEqual([
+        { at: 4000, step: 1.25 },
+        { at: 6000, step: 1.0 },
+      ]);
+    });
+
+    it('a slow load inside the grace is ignored', () => {
+      const controller = createDprController();
+
+      expect(run(controller, { dt: 50, seconds: 1.9 })).toEqual([]);
+      expect(run(controller, { dt: 10, seconds: 10, from: 2000 })).toEqual([]);
+      expect(controller.step).toBe(1.5);
+    });
+
+    it('counts the grace from the first frame, whenever that is', () => {
+      const controller = createDprController();
+
+      expect(run(controller, { dt: 20, seconds: 10, from: 60_000 })).toEqual([
+        { at: 64_000, step: 1.25 },
+        { at: 66_000, step: 1.0 },
+      ]);
+    });
+  });
+
+  describe('a step', () => {
+    it('is followed by one full window before the next', () => {
+      const moves = run(make(), { dt: 20, seconds: 10 });
+
+      expect(moves[1]!.at - moves[0]!.at).toBe(2000);
+    });
+
+    it('is never undone: frames that get fast again leave the ratio where it is', () => {
+      const controller = make();
+      run(controller, { dt: 20, seconds: 2 });
+      expect(controller.step).toBe(1.25);
+
+      expect(run(controller, { dt: 8, seconds: 20, from: 2020 })).toEqual([]);
+      expect(controller.step).toBe(1.25);
+    });
+
+    it('returns the new step from frame, and null otherwise', () => {
+      const controller = make({ minFrames: 1 });
+
+      expect(controller.frame(20, 0)).toBeNull();
+      expect(controller.frame(20, 2000)).toBe(1.25);
+      expect(controller.frame(20, 2020)).toBeNull();
+    });
+  });
+
+  describe('the device ratio', () => {
+    it('a laptop at 1.25 goes 1.25 → 1.0 and spends no window on a step that changes nothing', () => {
+      const controller = make({ deviceRatio: 1.25 });
+
+      expect(controller.step).toBe(1.25);
+      expect(run(controller, { dt: 20, seconds: 10 })).toEqual([{ at: 2000, step: 1.0 }]);
+    });
+
+    it('a display at 1 has nothing to give up: it never moves, however slow', () => {
+      const controller = make({ deviceRatio: 1 });
+
+      expect(controller.step).toBe(1);
+      expect(run(controller, { dt: 50, seconds: 10 })).toEqual([]);
+    });
+
+    it('a display at 2 keeps all three steps', () => {
+      const controller = make({ deviceRatio: 2 });
+
+      expect(controller.step).toBe(1.5);
+      expect(run(controller, { dt: 20, seconds: 10 }).map(({ step }) => step)).toEqual([1.25, 1.0]);
+    });
+
+    it('never goes below a ratio of 1', () => {
+      expect(make({ deviceRatio: 0.8 }).step).toBe(1);
+    });
+  });
+
+  describe('starting where an earlier stage ended', () => {
+    it('starts at the first step at or below the one given', () => {
+      expect(make({ initial: 1.25 }).step).toBe(1.25);
+      expect(make({ initial: 1.4 }).step).toBe(1.25);
+      expect(make({ initial: 1.5 }).step).toBe(1.5);
+      expect(make({ initial: 3 }).step).toBe(1.5);
+    });
+
+    it('starts at the last step when the one given is below them all', () => {
+      expect(make({ initial: 0.5 }).step).toBe(1.0);
+    });
+
+    it('continues from there: from 1.25 one more step is the last', () => {
+      expect(run(make({ initial: 1.25 }), { dt: 20, seconds: 10 })).toEqual([
+        { at: 2000, step: 1.0 },
+      ]);
+    });
+  });
+
+  describe('the video wall', () => {
+    it('is pinned to the last step from the start and never judges', () => {
+      const controller = make({ wall: true });
+
+      expect(controller.step).toBe(1.0);
+      expect(run(controller, { dt: 100, seconds: 10 })).toEqual([]);
+      expect(controller.step).toBe(1.0);
+    });
+  });
+});
+
+describe('the remembered pixel-ratio step', () => {
+  afterEach(() => forgetDprStep());
+
+  it('is none until a step is remembered, then the last one, until it is forgotten', () => {
+    expect(rememberedDprStep()).toBeNull();
+
+    rememberDprStep(1.25);
+    expect(rememberedDprStep()).toBe(1.25);
+
+    rememberDprStep(1.0);
+    expect(rememberedDprStep()).toBe(1.0);
+
+    forgetDprStep();
+    expect(rememberedDprStep()).toBeNull();
   });
 });

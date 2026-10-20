@@ -1,10 +1,16 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { lazy, type RefObject, Suspense, useRef, useState } from 'react';
+import { lazy, type RefObject, Suspense, useCallback, useRef, useState } from 'react';
 import type { Beacon } from '../lib/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
 import type { HeatScene } from '../lib/twinHeat';
 import type { LeaderStart } from '../lib/twinLeader';
-import { debugTwinRequested, markTwin } from '../lib/twinPerf';
+import {
+  debugTwinRequested,
+  DPR_STEPS,
+  markTwin,
+  rememberDprStep,
+  rememberedDprStep,
+} from '../lib/twinPerf';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Beacons } from './Beacons';
@@ -18,6 +24,7 @@ import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
 import { PickLayer } from './PickLayer';
+import { PixelRatio } from './PixelRatio';
 import { Pointer } from './Pointer';
 import { ReportPin } from './ReportPin';
 import { Rig } from './Rig';
@@ -138,8 +145,12 @@ interface TwinCanvasProps {
  *   easing value, the camera), so an idle scene costs nothing. `FrameDriver` (V2-19.2) is the one place that keeps it
  *   going for the loops that sustain themselves (the bound parts and their spin, the fly-to, the beacon pulse); every
  *   other `invalidate` here is a one-shot after a change. Frame demand: `onCreated` hands the stage the raw `invalidate`
- *   (the stage's wrapper is a no-op while the tab is hidden); `FirstFrameMark` and `HudProbe` ask for none.
- * - `dpr={[1, 1.5]}`: the pixel ratio never exceeds 1.5 (brief § Performance); V2-19.3 steps it down.
+ *   (the stage's wrapper is a no-op while the tab is hidden); `FirstFrameMark`, `PixelRatio` and `HudProbe` ask for none.
+ * - `dpr={[1, ratio]}`: the pixel ratio starts at 1.5 and never exceeds it (brief § Performance). `PixelRatio` (V2-19.3)
+ *   watches the frame times and steps `ratio` down when they run long; it is state here because R3F applies the `dpr`
+ *   prop again on every configure, so a ratio set from inside the canvas would be undone by the next render. R3F
+ *   clamps the display's ratio into the range, so the canvas draws at `min(devicePixelRatio, ratio)`. The step is
+ *   remembered for the life of the page (`rememberDprStep`), so a switch to 2D and back does not start again at 1.5.
  * - `flat`: no tone mapping, so the colours on screen are the token colours.
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
@@ -162,11 +173,16 @@ export function TwinCanvas({
   hudRef,
 }: TwinCanvasProps) {
   const [hudRequested] = useState(() => HudProbe !== null && debugTwinRequested(location.search));
+  const [ratio, setRatio] = useState(() => rememberedDprStep() ?? DPR_STEPS[0] ?? 1.5);
+  const onStep = useCallback((step: number) => {
+    rememberDprStep(step);
+    setRatio(step);
+  }, []);
   return (
     <Canvas
       camera={LENS}
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={[1, ratio]}
       flat
       onCreated={({ invalidate }) => onInvalidate(invalidate)}
     >
@@ -182,6 +198,7 @@ export function TwinCanvas({
       {scene && (
         <FrameDriver>
           <FirstFrameMark />
+          <PixelRatio initial={ratio} onStep={onStep} />
           <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} beacons={beacons} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />

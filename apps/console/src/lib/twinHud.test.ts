@@ -8,11 +8,12 @@ const reading = (overrides: Partial<HudReading> = {}): HudReading => ({
   triangles: 182_000,
   messagesPerSecond: 84,
   postsPerFrame: 1,
+  pixelRatio: 1.25,
   ...overrides,
 });
 
 describe('HUD_ROWS', () => {
-  it('lists the six rows in frame 00 order and words', () => {
+  it('lists frame 00’s six rows in its order and words, then the pixel ratio of V2-19.3', () => {
     expect(HUD_ROWS.map(({ label }) => label)).toEqual([
       'FPS',
       'Frame (p95)',
@@ -20,6 +21,7 @@ describe('HUD_ROWS', () => {
       'Triangles',
       'Telemetry msgs/s',
       'Worker → main',
+      'Pixel ratio',
     ]);
   });
 
@@ -46,6 +48,7 @@ describe('formatHud', () => {
       triangles: '182 k',
       messages: '84',
       posts: '1 / frame',
+      ratio: '1.25',
     });
   });
 
@@ -81,15 +84,32 @@ describe('formatHud', () => {
     expect(formatHud(reading({ postsPerFrame })).posts).toBe(expected);
   });
 
+  it.each([
+    [1.5, '1.5'],
+    [1.25, '1.25'],
+    [1, '1'],
+    [1.0, '1'],
+    [4 / 3, '1.33'],
+  ])('shows a pixel ratio of %d as %s', (pixelRatio, expected) => {
+    expect(formatHud(reading({ pixelRatio })).ratio).toBe(expected);
+  });
+
   it('shows a dash for what has no value', () => {
     const shown = formatHud(
-      reading({ fps: null, frameP95Ms: null, messagesPerSecond: null, postsPerFrame: null }),
+      reading({
+        fps: null,
+        frameP95Ms: null,
+        messagesPerSecond: null,
+        postsPerFrame: null,
+        pixelRatio: null,
+      }),
     );
 
     expect(shown.fps).toBe(NO_VALUE);
     expect(shown.frame).toBe(NO_VALUE);
     expect(shown.messages).toBe(NO_VALUE);
     expect(shown.posts).toBe(NO_VALUE);
+    expect(shown.ratio).toBe(NO_VALUE);
   });
 
   it('shows a dash for NaN and for infinity, never the word', () => {
@@ -101,6 +121,7 @@ describe('formatHud', () => {
         triangles: Number.NaN,
         messagesPerSecond: Number.POSITIVE_INFINITY,
         postsPerFrame: Number.NaN,
+        pixelRatio: Number.NaN,
       }),
     );
 

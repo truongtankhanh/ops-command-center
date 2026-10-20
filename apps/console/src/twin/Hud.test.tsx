@@ -14,7 +14,11 @@ import HudProbe from './HudProbe';
 const canvas = vi.hoisted(() => ({
   frame: null as ((state: unknown, delta: number) => void) | null,
   priority: undefined as unknown,
-  gl: { info: { render: { calls: 0, triangles: 0 } } },
+  pixelRatio: 1.25,
+  gl: {
+    info: { render: { calls: 0, triangles: 0 } },
+    getPixelRatio: (): number => canvas.pixelRatio,
+  },
 }));
 
 vi.mock('@react-three/fiber', () => ({
@@ -52,7 +56,7 @@ const clientWith = (read: () => TelemetryStats) =>
   ({ getStats: read }) as unknown as TelemetryClient;
 
 describe('Hud (the readout)', () => {
-  it('is a named group of six labelled values, in frame 00 order, each a dash before the first sample', () => {
+  it('is a named group of seven labelled values, in frame 00 order and then the pixel ratio, each a dash before the first sample', () => {
     render(<Hud listRef={{ current: null }} />);
 
     const group = screen.getByRole('group', { name: HUD_LABEL });
@@ -67,6 +71,7 @@ describe('Hud (the readout)', () => {
       'Triangles',
       'Telemetry msgs/s',
       'Worker → main',
+      'Pixel ratio',
     ]);
     expect(
       within(group)
@@ -95,6 +100,7 @@ describe('HudProbe (the measuring)', () => {
     canvas.frame = null;
     canvas.priority = undefined;
     canvas.gl.info.render = { calls: 96, triangles: 182_000 };
+    canvas.pixelRatio = 1.25;
     useTelemetryStore.setState({ client: null });
     // jsdom's own answer depends on how the window was made; the probe reads it, so a case states it.
     setHidden(false);
@@ -158,6 +164,18 @@ describe('HudProbe (the measuring)', () => {
 
     expect(cell('calls')).toBe('17');
     expect(cell('triangles')).toBe('640');
+  });
+
+  it('shows the renderer’s pixel ratio at the first tick, and follows a step down', () => {
+    render(<Harness />);
+    draw(10);
+    advance(500);
+    expect(cell('ratio')).toBe('1.25');
+
+    canvas.pixelRatio = 1;
+    advance(500);
+
+    expect(cell('ratio')).toBe('1');
   });
 
   it('does not let the first frame after an idle spell own the p95', () => {
