@@ -47,6 +47,8 @@ function setup(options: { concurrency?: number; buildFails?: boolean } = {}) {
     if (options.buildFails) throw new Error(`cannot parse ${scene}`);
     const template: ClassTemplate = {
       root: new Group(),
+      lod1: null,
+      switchDistanceM: Infinity,
       info: { name: scene },
       materials: createMaterialTable(),
       dispose: vi.fn(),

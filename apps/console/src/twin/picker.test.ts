@@ -3,6 +3,7 @@ import {
   EdgesGeometry,
   Group,
   LineSegments,
+  LOD,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
@@ -736,5 +737,53 @@ describe('picker with the report’s pin (V2-16.7)', () => {
     picker.setPin(tip);
 
     expect(picker.pick(at(50, 70), view, campus)).toBeNull();
+  });
+});
+
+describe('picker with a model that has a LOD1 (V2-19.5)', () => {
+  const parts = new Set(['FanBlade']);
+
+  /** A LOD of a 4 × 2 × 4 m body with a bound fan, and a LOD1 silhouette 6 × 2 × 6 m (wider, to tell the levels apart). */
+  function instance(withLod1 = true) {
+    const near = new Group();
+    near.name = 'CoolingTower';
+    const fan = new Group();
+    fan.name = 'FanBlade';
+    fan.add(new Mesh(box(1, 1, 1, 0, 2.5, 0), material));
+    near.add(new Mesh(box(4, 2, 4), material), fan);
+    const lod = new LOD();
+    lod.name = 'CoolingTower';
+    lod.addLevel(near, 0);
+    if (withLod1) {
+      const far = new Group();
+      far.add(new Mesh(box(6, 2, 6), material));
+      lod.addLevel(far, 100);
+    }
+    lod.updateMatrixWorld(true);
+    return { lod, near };
+  }
+
+  it('registers the meshes of both levels, so the silhouette answers a ray the body does not', () => {
+    const outsideBody = at(53, 50); // about 2.8 m east of the centre: past the body (2 m), inside the silhouette (3 m)
+    const without = createPicker();
+    without.addModel('CT-01', instance(false).lod, parts);
+    const withIt = createPicker();
+    withIt.addModel('CT-01', instance().lod, parts);
+
+    expect(without.pick(outsideBody, view, campus)).toBeNull();
+    expect(withIt.pick(outsideBody, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+  });
+
+  it('still answers a ray on level 0 while it is not the level drawn: three’s raycast ignores `visible`, which changes nothing where a part can be picked', () => {
+    const { lod, near } = instance();
+    near.visible = false;
+    const picker = createPicker();
+    picker.addModel('CT-01', lod, parts);
+
+    expect(picker.pick(centre, view, isolated('CT-01'))).toEqual({
+      kind: 'part',
+      id: 'FanBlade',
+      assetCode: 'CT-01',
+    });
   });
 });

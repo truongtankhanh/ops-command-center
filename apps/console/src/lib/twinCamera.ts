@@ -64,6 +64,36 @@ const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 const toDegrees = (radians: number) => (radians * 180) / Math.PI;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+/** A model switches to its LOD1 once its bounding sphere is below this share of the screen's height (brief § Model contract). */
+export const LOD_SCREEN_FRACTION = 0.05;
+
+/**
+ * How far back the switch has to be undone, as a share of the switch distance (three's `hysteresis`): LOD1 is shown from
+ * the distance `d` and LOD0 comes back only below `0.9 d`, so a camera resting near the line does not toggle the level
+ * at every small move. `unverified` until looked at in a browser; one line to change.
+ */
+export const LOD_HYSTERESIS = 0.1;
+
+/**
+ * The camera distance at which a sphere of `radius` metres spans `fraction` of the screen's height (V2-19.5): the
+ * distance a model switches to its LOD1. A sphere's projected height is `radius / (d · tan(fov / 2))` of the view's
+ * (its diameter over the view's height at `d`), so `d = radius / (fraction · tan(fov / 2))`. The viewport's size in pixels
+ * does not enter: "screen height" is a share of it. three measures the distance to the LOD's origin (the base's centre
+ * of the model), not to the sphere's centre; at these ranges the difference is 1 – 2 % and is not corrected.
+ *
+ * `Infinity` ("never LOD1") for a radius, a field of view (degrees) or a fraction that is not a positive finite number,
+ * as `fitDistance` answers a bad aspect.
+ */
+export function lodDistance(
+  radius: number,
+  fovDeg: number,
+  fraction: number = LOD_SCREEN_FRACTION,
+): number {
+  const valid = [radius, fovDeg, fraction].every((value) => Number.isFinite(value) && value > 0);
+  if (!valid || fovDeg >= 180) return Infinity;
+  return radius / (fraction * Math.tan(toRadians(fovDeg) / 2));
+}
+
 /** `degrees` as an angle in (−180, 180]: 190 is −170, −180 is 180. */
 export function normalizeYaw(degrees: number): number {
   const wrapped = ((((degrees + 180) % 360) + 360) % 360) - 180;

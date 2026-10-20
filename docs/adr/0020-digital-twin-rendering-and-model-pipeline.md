@@ -1179,6 +1179,55 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       tests stub `gl.info.render`, as jsdom has no WebGL); that the `data-over` bar is visible and clear of the labels, the
       callout and the controls. V2-19.5 reduces triangles (LOD1 and culling); V2-19.7's scenes should read both figures in
       each view.
+  - Settled in V2-19.5 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: a lower level of detail below 5 % of the screen's height, and what frustum culling can and cannot do. Each
+    question of the ticket's analysis was answered with its recommendation.
+    - **The LOD.** `buildTemplate` merges the model's `<Root>_LOD1` sibling (the node named exactly so; its meshes at any
+      depth, taken in the class root's frame) into one mesh per console material, as it does the statics, and keeps it as
+      the template's `lod1` with its hidden outlines (the stale dash and the severity edge read at a distance too).
+      `instantiate` returns a three.js `LOD` for a class that has one: level 0 a copy of the root, level 1 a copy of
+      `lod1`, which starts hidden (three lowers a shown level's threshold by the hysteresis, so a LOD1 that began visible
+      would be chosen 10 % early). A class with no LOD1 (the checker makes it optional), or one that cannot be merged, or
+      with no sphere to measure, is the plain copy as before: LOD1 is an optimisation and never costs a model.
+    - **Where it switches.** `lodDistance(radius, fov)` in `lib/twinCamera.ts`: a sphere's projected height is
+      `r / (d · tan(fov / 2))` of the screen's, so 5 % is `d = r / (0.05 · tan(fov / 2))`, about 43 times the radius at the
+      fixed lens (`HOME_FOV_DEG`). The sphere is the circumscribed sphere of the LOD0 root's bounding box (a little loose,
+      which errs towards keeping the better level), measured once when the template is built. For the demo's seed
+      footprints that is about 162 m for a cooling tower and about 154 m for the generator, inside the campus range of
+      60 – 900 m, so the overview draws LOD1 and building level and below draw LOD0 (`unverified` until read with the HUD).
+      three measures the distance to the instance's origin, not the sphere's centre: 1 – 2 % at these ranges, not
+      corrected.
+    - **The hysteresis is 10 %** (`LOD_HYSTERESIS`): LOD1 from `d`, LOD0 again below `0.9 d`, so a camera resting near the
+      line does not toggle at each small move. `unverified`, tuned by eye; one constant.
+    - **What is lost below the threshold, and what is kept.** The bound parts live in level 0 only, so their **motion and
+      their state tint are not drawn**. The brief calls that sub-pixel; at the threshold a model is 5 % of the screen, about
+      54 px on a 1080p display, so a fan of some twenty pixels freezes in view: small, not sub-pixel, and accepted. The
+      asset-level look is **kept**: `useModelLooks` paints every mesh of the instance, so the silhouette takes stale, the
+      severity tint and edge, hover and the ghost of a faded asset. A part-level look (a hovered or selected part) is
+      level 0's. The stand-in models' LOD1 is one `Part` mesh, so the generator's see-through enclosure is opaque at a
+      distance: content (V2-13.8, V2-13.9), not code.
+    - **The picker is unchanged.** It registers every mesh under an instance, so level 1's are registered (an extra bounds
+      tree each) and level 0's stay registered while it is not drawn, because three's raycast ignores `visible`. A hit on
+      either names the asset; a part is only pickable in the asset and part scopes, where the camera is 4 – 40 m away,
+      which is level 0. "What can be hit is what is drawn" (V2-15.3) therefore holds where it matters, and the two
+      outlines differ by the simplification only.
+    - **Culling: three's default, per object, and nothing turns it off for a model.** The merged static meshes have exact
+      spheres (float positions), a bound part carries its sphere with its transform, and a quantised part's sphere is in
+      its node's scale, which `matrixWorld` applies; tests state each, and a `Frustum` case shows an instance beside or
+      behind the camera is culled copy by copy. **The shells (`Buildings`) and the boxes (`AssetBoxes`) are one merged
+      mesh each, with groups for the looks (V2-15.8), so a building is never culled on its own**: their sphere is the
+      campus's. Splitting them per building would add draw calls (just budgeted, V2-19.4) and undo V2-15.8 for a few
+      thousand triangles in a scene estimated at about 10 k. So "looking away from the Data Center" removes the three
+      modelled assets beside it (`CT-01`, `CT-02`, `GEN-01`: about 1,600 triangles at LOD0), not the building.
+    - **Correction of V2-19.4's arithmetic.** The 7 and 10 draw calls of a cooling tower and a generator are LOD0's; at LOD1 a
+      model is one call per console material (one, for the stand-ins), so the demo's three models are about 24 calls near
+      and about 3 at the overview. The budget guard reads the frame as drawn, so it sees both.
+    - **For V2-19.7.** A live spin asks for a frame on every frame (V2-19.2) even while LOD1 hides the fan, so a scene at the
+      overview with a spinning model still draws continuously: read what it costs with LOD1 in place before capping or
+      culling the spin.
+    - **Not done here and `unverified`:** the thresholds and the hysteresis in a browser, that the swap shows no flicker and
+      no pop beyond the simplification, that looking away lowers the HUD's triangles by the models', and how the far
+      silhouettes look. Level 1 is `lod1`'s clone per instance: V2-19.6 frees it with the rest.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

@@ -84,6 +84,11 @@ geometry at a quarter of its triangles or less. Make it in your tool (a Decimate
 root, `gltf-transform simplify root.glb lod1.glb --ratio 0.25 --error 0.05` (the ratio is of vertices, so check the
 triangle count), then bring those meshes in as `<Root>_LOD1`.
 
+The console draws `<Root>_LOD1` instead of the root once the model's bounding sphere is below 5 % of the screen's height
+(about 43 times its radius from the camera), as a static silhouette in the console's materials: it has no bound parts, so
+the motion and the state tint of the parts are not shown there. Keep its outline close to the root's, since the swap is
+the only place the difference shows.
+
 ### Name, check, deliver
 
 The name carries the hash of the final bytes, so name the file **after** its last change; changing a single byte means
