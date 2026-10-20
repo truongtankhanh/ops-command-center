@@ -28,13 +28,15 @@ import {
   type RuleEvidence,
 } from '../lib/telemetryEvidence';
 import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
+import { twinCommands } from '../lib/twinCommands';
 import { buildingFocusOf } from '../lib/twinLevel';
+import { useTwinCapability } from '../lib/useTwinCapability';
 import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
-import { assetClassIcon } from '../ui/icons';
+import { assetClassIcon, Box } from '../ui/icons';
 import { SheetSection } from '../ui/SheetSection';
 import { Skeleton } from '../ui/Skeleton';
 import { Sparkline } from '../ui/Sparkline';
@@ -299,6 +301,13 @@ function Card({
  * is the way back while the incident is unresolved. Focus moves on its own: this button goes with
  * the sheet, and the inspector's sheet takes focus when it is lost (`Sheet`).
  *
+ * "Show in 3D" (V2-16.6) is beside it, for every role and wherever the twin is available, even from the 2D map (it
+ * is the way in): it switches to the 3D view if needed and frames the asset, and **selects nothing**, so this sheet
+ * stays open and the incident's beacon stays ringed (frame 10). The flight is asked for only once the view really is
+ * 3D (`setView` does nothing where the twin cannot be drawn), and if the stage is still loading it waits for it
+ * (`twinCommands.showAsset`). Its name puts the visible words first, like "Open asset", so a voice command matches
+ * (WCAG 2.5.3).
+ *
  * A `div` with a real button, not frame 10's button around a button, which is invalid markup and
  * two tab stops. The accessible name says which asset; it contains the visible words (WCAG 2.5.3).
  */
@@ -314,6 +323,7 @@ function AssetLink({
 }) {
   const { data: zones } = useZones();
   const selectAsset = useConsole((s) => s.selectAsset);
+  const canShow = useTwinCapability().available;
   const zone = zones?.find((candidate) => candidate.id === asset.zoneId);
   const { data: model } = useModelParts(asset.class.modelUrl);
   const partLabel = useMemo(
@@ -324,6 +334,11 @@ function AssetLink({
     [points, model, evidenceKey],
   );
   const { heading, detail } = assetLinkLines(asset, zone, partLabel);
+  const showIn3d = () => {
+    const { view, setView } = useConsole.getState();
+    if (view !== '3d') setView('3d');
+    if (useConsole.getState().view === '3d') twinCommands.showAsset(asset.code);
+  };
   return (
     <div className={styles.assetLink}>
       <span className={styles.assetGlyph}>
@@ -333,7 +348,6 @@ function AssetLink({
         <b className={styles.assetName}>{heading}</b>
         {detail !== null && <small className={styles.assetDetail}>{detail}</small>}
       </span>
-      {/* V2-16's "Show in 3D" (F) goes beside this button, in this cell: no layout change then. */}
       <div className={styles.assetActions}>
         <Button
           size="sm"
@@ -342,6 +356,11 @@ function AssetLink({
         >
           Open asset
         </Button>
+        {canShow && (
+          <Button size="sm" icon={Box} aria-label={`Show in 3D ${asset.code}`} onClick={showIn3d}>
+            Show in 3D
+          </Button>
+        )}
       </div>
     </div>
   );

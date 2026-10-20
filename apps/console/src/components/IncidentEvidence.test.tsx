@@ -13,6 +13,7 @@ import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
 import type { NodeInfo } from '../lib/twinBindings';
+import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -21,6 +22,8 @@ import {
   expectNoAxeViolations,
   renderWithQueryClient,
   resetStore,
+  stubTwinAvailable,
+  unstubTwin,
 } from '../test-utils';
 import { IncidentEvidence } from './IncidentEvidence';
 
@@ -669,6 +672,148 @@ describe('IncidentEvidence', () => {
       hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
       renderBlock(incident());
 
+      await expectNoAxeViolations();
+    });
+  });
+
+  // V2-16.6: beside "Open asset", for every role, wherever the twin is available.
+  describe('Show in 3D', () => {
+    const SHOW_CT = { name: 'Show in 3D CT-01' };
+    const OPEN_CT = { name: 'Open asset CT-01' };
+
+    /** A rig that records what it is asked, registered for the case and taken away after it. */
+    const rigs: (() => void)[] = [];
+    const fakeCommands = () =>
+      ({
+        flyTo: vi.fn(),
+        home: vi.fn(),
+        fit: vi.fn(),
+        fitAsset: vi.fn(),
+        flyToIncident: vi.fn(),
+        showAsset: vi.fn(),
+        zoomBy: vi.fn(),
+        rotateBy: vi.fn(),
+        faceNorth: vi.fn(),
+        current: vi.fn(() => null),
+      }) satisfies TwinCommands;
+    const fakeRig = () => {
+      const rig = fakeCommands();
+      rigs.push(registerTwinCommands(rig));
+      return rig;
+    };
+
+    beforeEach(() => {
+      stubTwinAvailable();
+      useConsole.setState({ selectedIncidentId: 'incident-1' });
+    });
+
+    afterEach(() => {
+      rigs.splice(0).forEach((unregister) => unregister());
+      // A request nobody took is module state: a throwaway rig takes it.
+      registerTwinCommands(fakeCommands())();
+      unstubTwin();
+      vi.restoreAllMocks();
+      try {
+        localStorage.removeItem('occ.console.view');
+      } catch {
+        // No storage: nothing was remembered.
+      }
+    });
+
+    it.each(['operator', 'supervisor', 'technician', 'viewer'] as const)(
+      'is beside "Open asset" for a %s',
+      (role) => {
+        useSession.getState().signedIn({ displayName: 'Signed-in user', roles: [role] });
+
+        renderBlock(incident());
+
+        expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+        expect(screen.getByRole('button', SHOW_CT)).toBeInTheDocument();
+      },
+    );
+
+    it('says which asset in its name, and "Show in 3D" in its words (WCAG 2.5.3)', () => {
+      renderBlock(incident());
+
+      const show = screen.getByRole('button', SHOW_CT);
+      expect(show).toHaveTextContent('Show in 3D');
+      expect(show.getAttribute('aria-label')).toContain(show.textContent!);
+    });
+
+    it('is not drawn on an incident that is not raised by telemetry', () => {
+      renderBlock(incident({ timeline: [] }));
+
+      expect(screen.queryByRole('button', { name: /^Show in 3D/ })).toBeNull();
+    });
+
+    it('is not drawn where the twin is unavailable, while "Open asset" stays', () => {
+      unstubTwin();
+
+      renderBlock(incident());
+
+      expect(screen.queryByRole('button', { name: /^Show in 3D/ })).toBeNull();
+      expect(screen.getByRole('button', OPEN_CT)).toBeInTheDocument();
+    });
+
+    it('from the 3D view only asks the camera to frame the asset, and selects nothing', async () => {
+      useConsole.setState({ view: '3d' });
+      const rig = fakeRig();
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', SHOW_CT));
+
+      expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+      expect(useConsole.getState()).toMatchObject({
+        view: '3d',
+        selectedIncidentId: 'incident-1',
+        selectedAssetCode: null,
+        focusZoneId: null,
+      });
+    });
+
+    it('from the 2D map switches to 3D, and the flight waits for the stage', async () => {
+      useConsole.setState({ view: '2d' });
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', SHOW_CT));
+
+      expect(useConsole.getState()).toMatchObject({
+        view: '3d',
+        selectedIncidentId: 'incident-1',
+        selectedAssetCode: null,
+      });
+      // The stage mounts later and its rig registers: the request is waiting for it.
+      const rig = fakeRig();
+      expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+    });
+
+    it('asks for no flight when the switch to 3D is refused', async () => {
+      useConsole.setState({ view: '2d' });
+      renderBlock(incident());
+      // The twin stopped working after the button was drawn: `setView` does nothing.
+      unstubTwin();
+
+      await userEvent.click(screen.getByRole('button', SHOW_CT));
+
+      expect(useConsole.getState().view).toBe('2d');
+      const rig = fakeRig();
+      expect(rig.showAsset).not.toHaveBeenCalled();
+    });
+
+    it('leaves "Open asset" as it was', async () => {
+      renderBlock(incident());
+
+      await userEvent.click(screen.getByRole('button', OPEN_CT));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      expect(useConsole.getState().focusZoneId).toBe('zone-dc');
+    });
+
+    it('has no accessibility violation with both buttons', async () => {
+      hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+      renderBlock(incident());
+
+      expect(screen.getByRole('button', SHOW_CT)).toBeInTheDocument();
       await expectNoAxeViolations();
     });
   });

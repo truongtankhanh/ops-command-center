@@ -1,6 +1,11 @@
 import type { Mock } from 'vitest';
 import type { FitBox, Pose } from './twinCamera';
-import { registerTwinCommands, type TwinCommands, twinCommands } from './twinCommands';
+import {
+  PENDING_SHOW_MS,
+  registerTwinCommands,
+  type TwinCommands,
+  twinCommands,
+} from './twinCommands';
 
 const POSE: Pose = { target: [1, 0, 2], distance: 300, yaw: 45, tilt: 55 };
 const BOX: FitBox = { bounds: { minX: 0, maxX: 40, minZ: 0, maxZ: 40 }, heightM: 24 };
@@ -15,6 +20,7 @@ function fakeCommands(pose: Pose | null = POSE): FakeCommands {
     fit: vi.fn<TwinCommands['fit']>(),
     fitAsset: vi.fn<TwinCommands['fitAsset']>(),
     flyToIncident: vi.fn<TwinCommands['flyToIncident']>(),
+    showAsset: vi.fn<TwinCommands['showAsset']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
@@ -32,6 +38,9 @@ const register = (commands: TwinCommands) => {
 
 afterEach(() => {
   cleanups.splice(0).forEach((unregister) => unregister());
+  // A `showAsset` request that no rig took is module state: a throwaway rig takes it, so no case sees the last one's.
+  registerTwinCommands(fakeCommands())();
+  vi.useRealTimers();
 });
 
 describe('twinCommands with nothing registered', () => {
@@ -42,6 +51,7 @@ describe('twinCommands with nothing registered', () => {
       twinCommands.fit(BOX);
       twinCommands.fitAsset(BOX);
       twinCommands.flyToIncident('incident-1');
+      twinCommands.showAsset('CT-01');
       twinCommands.zoomBy(2);
       twinCommands.rotateBy(30);
       twinCommands.faceNorth();
@@ -60,6 +70,7 @@ describe('registerTwinCommands', () => {
     twinCommands.fit(BOX);
     twinCommands.fitAsset(BOX);
     twinCommands.flyToIncident('incident-1');
+    twinCommands.showAsset('CT-01');
     twinCommands.zoomBy(0.5);
     twinCommands.rotateBy(-30);
     twinCommands.faceNorth();
@@ -69,6 +80,7 @@ describe('registerTwinCommands', () => {
     expect(rig.fit).toHaveBeenCalledWith(BOX);
     expect(rig.fitAsset).toHaveBeenCalledWith(BOX);
     expect(rig.flyToIncident).toHaveBeenCalledWith('incident-1');
+    expect(rig.showAsset).toHaveBeenCalledWith('CT-01');
     expect(rig.zoomBy).toHaveBeenCalledWith(0.5);
     expect(rig.rotateBy).toHaveBeenCalledWith(-30);
     expect(rig.faceNorth).toHaveBeenCalledTimes(1);
@@ -119,11 +131,13 @@ describe('registerTwinCommands', () => {
     twinCommands.fit(BOX);
     twinCommands.fitAsset(BOX);
     twinCommands.flyToIncident('incident-1');
+    twinCommands.showAsset('CT-01');
 
     expect(rig.home).not.toHaveBeenCalled();
     expect(rig.fit).not.toHaveBeenCalled();
     expect(rig.fitAsset).not.toHaveBeenCalled();
     expect(rig.flyToIncident).not.toHaveBeenCalled();
+    expect(rig.showAsset).not.toHaveBeenCalled();
     expect(twinCommands.current()).toBeNull();
   });
 
@@ -138,5 +152,101 @@ describe('registerTwinCommands', () => {
     twinCommands.faceNorth();
 
     expect(second.faceNorth).toHaveBeenCalledTimes(1);
+  });
+});
+
+// V2-16.6: "Show in 3D" from the 2D map switches the view and asks in the same tick, before the stage has a rig.
+describe('a showAsset request with no rig', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+
+  it('waits for a rig, and runs once when one registers', () => {
+    twinCommands.showAsset('CT-01');
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+  });
+
+  it('runs with the rig already registered, so what it asks in return reaches that rig', () => {
+    twinCommands.showAsset('CT-01');
+    const rig = fakeCommands();
+    rig.showAsset.mockImplementation(() => twinCommands.home());
+
+    register(rig);
+
+    expect(rig.home).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps only the latest request', () => {
+    twinCommands.showAsset('CT-01');
+    twinCommands.showAsset('GEN-01');
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('GEN-01');
+  });
+
+  it('is still run just inside the window', () => {
+    twinCommands.showAsset('CT-01');
+    vi.advanceTimersByTime(PENDING_SHOW_MS);
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.showAsset).toHaveBeenCalledWith('CT-01');
+  });
+
+  it('expires: after the window it is dropped, not run, and does not come back', () => {
+    twinCommands.showAsset('CT-01');
+    vi.advanceTimersByTime(PENDING_SHOW_MS + 1);
+    const late = fakeCommands();
+
+    const unregister = register(late);
+    unregister();
+    const next = fakeCommands();
+    register(next);
+
+    expect(late.showAsset).not.toHaveBeenCalled();
+    expect(next.showAsset).not.toHaveBeenCalled();
+  });
+
+  it('is run once only: a rig registered again does not run it again', () => {
+    twinCommands.showAsset('CT-01');
+    const first = fakeCommands();
+    const unregister = register(first);
+    unregister();
+    const second = fakeCommands();
+
+    register(second);
+
+    expect(first.showAsset).toHaveBeenCalledTimes(1);
+    expect(second.showAsset).not.toHaveBeenCalled();
+  });
+
+  it('is not queued when a rig is already registered: it runs at once', () => {
+    const rig = fakeCommands();
+    register(rig);
+
+    twinCommands.showAsset('CT-01');
+    const later = fakeCommands();
+    register(later);
+
+    expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+    expect(later.showAsset).not.toHaveBeenCalled();
+  });
+
+  it('is kept while a rig comes and goes, and not by the other commands', () => {
+    twinCommands.showAsset('CT-01');
+    twinCommands.home();
+    twinCommands.flyToIncident('incident-1');
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.home).not.toHaveBeenCalled();
+    expect(rig.flyToIncident).not.toHaveBeenCalled();
+    expect(rig.showAsset).toHaveBeenCalledWith('CT-01');
   });
 });

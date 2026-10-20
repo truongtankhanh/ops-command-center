@@ -126,6 +126,10 @@ interface RigProps {
  * - **Fly to an incident** (V2-16.5, `flyToIncident`) is a fly-to like the others: the beacon's ground point as the
  *   target, the camera's own yaw and tilt, no farther than 120 m (`incidentView`), through the same limits. A flight is
  *   only ever asked for by a person (the toast's "Fly to"): an incident that arrives moves nothing.
+ * - **Show asset** (V2-16.6, `showAsset`) frames an asset without isolating it: the asset fit's view (its box's middle, the
+ *   camera's own yaw and tilt) flown through the level's limits, so from at least 60 m. A request made before this rig
+ *   existed (the switch from 2D) runs when it registers (`lib/twinCommands.ts`). It selects nothing and moves nothing
+ *   by itself.
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing.
  */
@@ -138,6 +142,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   const initialBoxes = useRef(boxes);
   const initialAssetBoxes = useRef(assetBoxes);
   const latestBeacons = useRef(beacons);
+  const latestAssetBoxes = useRef(assetBoxes);
   const get = useThree((state) => state.get);
   const pan = useMemo(() => panBounds(bounds), [bounds]);
 
@@ -150,6 +155,11 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   useEffect(() => {
     latestBeacons.current = beacons;
   }, [beacons]);
+
+  // The latest boxes, for "Show in 3D": a request that was waiting for this rig runs as its commands register, below.
+  useEffect(() => {
+    latestAssetBoxes.current = assetBoxes;
+  }, [assetBoxes]);
 
   // The first view, before the first paint so the default camera is never drawn. Once: later changes of the
   // data or the stage's shape do not move a view the user may have set (acceptance criterion 5).
@@ -285,6 +295,14 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
       flyToIncident: (id) => {
         const beacon = latestBeacons.current.find((candidate) => candidate.id === id);
         if (beacon !== undefined) flyTo(incidentView(beacon.position, currentPose(rig)));
+      },
+      showAsset: (code) => {
+        const box = latestAssetBoxes.current.get(code);
+        if (box === undefined) return;
+        const now = currentPose(rig);
+        // The isolated fit's view, flown at the level the store is at: no asset is isolated, so the campus limits raise it
+        // to 60 m. The incident sheet is already open, so the stage's current inset is the right one (`aspect`).
+        flyTo(fitAssetView(box, aspect(), { yaw: now.yaw, tilt: now.tilt }));
       },
       zoomBy: (factor) => {
         flight.current = null;
