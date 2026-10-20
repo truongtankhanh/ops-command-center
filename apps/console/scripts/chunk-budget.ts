@@ -15,7 +15,7 @@
  * reference. Plain Node 24 with type stripping and no dependency, like `contrast.ts`; `scripts/` is outside
  * `tsc`, so the types here are for the reader and ESLint.
  */
-import { readFileSync, rmSync } from 'node:fs';
+import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 /**
@@ -33,6 +33,14 @@ export const TWIN_SRC = 'src/twin/TwinStage.tsx';
  * lazy chunk. A heuristic on minified code: the structural check (`graphProblems`) is the guarantee.
  */
 export const HEAVY_MARKERS = ['WebGLRenderer', 'BufferGeometry', 'Object3D'] as const;
+
+/**
+ * Text that only the developer HUD (V2-19.1) contains: its accessible name (`HUD_LABEL`, which holds the address
+ * that switches it on) and the label of one of its rows. Neither is in shipped code, so either one in `dist` means the
+ * development-only HUD reached a production build. `chunk-budget.test.ts` keeps them in step with the HUD's words
+ * (`src/lib/twinHud.ts`).
+ */
+export const DEBUG_MARKERS = ['debug=twin', 'Frame (p95)'] as const;
 
 /** The part of Vite's manifest this check reads (`ManifestChunk` in vite's types). */
 export interface ManifestChunk {
@@ -133,6 +141,27 @@ export function graphProblems(
   return problems;
 }
 
+/** One line for each marker found in each emitted file; none when the HUD is nowhere in `files`. */
+export function debugMarkerProblems(files: readonly { file: string; code: string }[]): string[] {
+  return files.flatMap(({ file, code }) =>
+    DEBUG_MARKERS.filter((marker) => code.includes(marker)).map(
+      (marker) =>
+        `${file} contains "${marker}": the development-only HUD (V2-19.1) is in the production build.`,
+    ),
+  );
+}
+
+/** Every `.js` and `.css` under `dist/assets/`; throws when there is none, because a scan of nothing proves nothing. */
+function readEmittedFiles(dist: URL): { file: string; code: string }[] {
+  const assets = new URL('assets/', dist);
+  const files = readdirSync(assets, { recursive: true })
+    .map(String)
+    .filter((name) => name.endsWith('.js') || name.endsWith('.css'))
+    .map((name) => ({ file: `assets/${name}`, code: readFileSync(new URL(name, assets), 'utf8') }));
+  if (files.length === 0) throw new Error('dist/assets has no .js or .css file to scan.');
+  return files;
+}
+
 const kB = (bytes: number): string => `${(bytes / 1000).toFixed(2)} kB`;
 
 /** The report, and whether the twin is within its budget with no structural problem. */
@@ -185,9 +214,14 @@ function main(): void {
     const problems = graphProblems(manifest, entryKey, TWIN_SRC, (file) =>
       readFileSync(new URL(file, dist), 'utf8'),
     );
-    const { ok, lines } = evaluate({ sizes, budget: BUDGET_BYTES, problems });
+    const { ok: withinBudget, lines } = evaluate({ sizes, budget: BUDGET_BYTES, problems });
+    const emitted = readEmittedFiles(dist);
+    const hudProblems = debugMarkerProblems(emitted);
+    if (hudProblems.length === 0)
+      lines.push(`ok: no developer HUD in ${emitted.length} emitted files.`);
+    for (const problem of hudProblems) lines.push(`FAIL: ${problem}`);
     console.log(lines.join('\n'));
-    if (!ok) {
+    if (!withinBudget || hudProblems.length > 0) {
       process.exitCode = 1;
       return;
     }

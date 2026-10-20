@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import { type Binding, bindingsFromNodes, type Problem } from '../lib/twinBindings';
 import type { ModelClass } from '../lib/twinLoadQueue';
 import { useTwinModelStore } from '../lib/twinModelStore';
+import { markTwin } from '../lib/twinPerf';
 import { buildTemplate, type ClassTemplate, createMaterialTable } from './classModel';
 import { loadGltf } from './loadGltf';
 import { createModelCache, type ModelCache } from './modelCache';
@@ -129,6 +130,20 @@ export function useClassModels(
   useEffect(() => {
     cache?.start(classes);
   }, [cache, classes]);
+
+  // The load mark of V2-19.7: every class is ready or has failed (a failure is final), or there is none to load.
+  useEffect(() => {
+    const check = (): void => {
+      const { byClass } = useTwinModelStore.getState();
+      const settled = classes.every(({ code }) => {
+        const state = byClass[code]?.state;
+        return state === 'ready' || state === 'failed';
+      });
+      if (settled) markTwin('twin:models-done');
+    };
+    check();
+    return useTwinModelStore.subscribe(check);
+  }, [classes]);
 
   const ready = useMemo(
     () => readyClasses(cache, version, classes, points),

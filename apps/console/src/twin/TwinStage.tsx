@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FitBox } from '../lib/twinCamera';
 import type { LeaderStart } from '../lib/twinLeader';
 import { assetBoxes, buildingBoxes } from '../lib/twinLevelCamera';
 import type { ModelClass } from '../lib/twinLoadQueue';
+import { clearTwinMarks, debugTwinRequested, markTwin } from '../lib/twinPerf';
 import type { LabelAnchor } from '../lib/twinScene';
 import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
@@ -28,6 +29,13 @@ const NO_ANCHORS: LabelAnchor[] = [];
 const NO_BOXES: ReadonlyMap<string, FitBox> = new Map();
 const NO_CLASSES: ModelClass[] = [];
 const NO_INVALIDATE = (): void => undefined;
+
+/**
+ * The developer HUD's readout (V2-19.1): development builds only, with a literal `import.meta.env.MODE` at the
+ * `import()` so the production build holds neither (see `TwinCanvas`, which has the probe). `?debug=twin` is the other
+ * half of the gate.
+ */
+const HudReadout = import.meta.env.MODE === 'development' ? lazy(() => import('./Hud')) : null;
 
 /**
  * The 3D twin, as the lazy chunk's entry (ADR-0020): `StageView` loads it with `React.lazy` when the
@@ -86,6 +94,16 @@ export default function TwinStage() {
     invalidateRef.current();
   }, []);
   const compass = useRef<HTMLButtonElement>(null);
+  // The developer HUD (V2-19.1): the readout is here, its probe in the canvas; the list is theirs to share.
+  const hudRef = useRef<HTMLDListElement>(null);
+  const [hudRequested] = useState(() => HudReadout !== null && debugTwinRequested(location.search));
+  // The load marks of V2-19.7: `twin:data` is the first time this stage has a scene (the queries are shared with
+  // the 2D map and can be older than the stage), and the marks are forgotten with the stage.
+  const hasScene = scene !== null;
+  useEffect(() => {
+    if (hasScene) markTwin('twin:data');
+  }, [hasScene]);
+  useEffect(() => clearTwinMarks, []);
   return (
     <div className={styles.fill}>
       <TwinView heat={heat}>
@@ -108,6 +126,7 @@ export default function TwinStage() {
             leaderLineRef={leaderLineRef}
             leaderDotRef={leaderDotRef}
             leaderStartRef={leaderStartRef}
+            hudRef={hudRef}
           />
         </div>
         <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} heat={heat} />
@@ -132,6 +151,11 @@ export default function TwinStage() {
       <LeaderOverlay lineRef={leaderLineRef} dotRef={leaderDotRef} />
       {scene && <TwinCallout onStart={onLeaderStart} />}
       <TwinControls compassRef={compass} />
+      {hudRequested && HudReadout && (
+        <Suspense fallback={null}>
+          <HudReadout listRef={hudRef} />
+        </Suspense>
+      )}
       {/* Last, so it paints over the legend and the controls; it draws nothing until a hover rests (V2-15.5). */}
       <TwinTooltip />
     </div>

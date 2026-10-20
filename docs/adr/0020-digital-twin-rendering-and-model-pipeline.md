@@ -1044,6 +1044,34 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the feel of 15° / 5° / a tenth of the distance with a held key,
       the clamps and the pan box under a held key, that a press on the canvas focuses the group, the ring over the canvas,
       and the description read once by a screen reader. The app-level axe, role and keyboard-only cases are V2-18.4's.
+  - Settled in V2-19.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: the developer HUD and the load marks. Each question of the ticket's analysis was answered with its
+    recommendation.
+    - **The HUD is absent from production by construction and by a check.** Its two pieces (`Hud`, the readout, and `HudProbe`,
+      inside the canvas) are dynamic imports under a literal `import.meta.env.MODE === 'development'` at each import site,
+      plus `?debug=twin`. A check that is local to the module is what the build folds away (the draw-call log of V2-15.8 and
+      the pick timing of V2-15.3 are not in `dist`); a helper, or a constant shared between modules, would not be, and the
+      chunk would ship. `MODE` and not `DEV`, which Vitest sets too. `scripts/chunk-budget.ts` fails `pnpm build` when `debug=twin` or the label of a HUD row
+      is anywhere in `dist/assets`, and when there is nothing to scan.
+    - **What a frame time is.** The canvas draws on demand and R3F's `delta` spans the idle time before a frame, so a delta
+      above 250 ms is a gap and is left out of the window of 120 times (`unverified` as a cut-off until read in a browser);
+      FPS is the frames drawn per window, so an idle canvas reads 0. The p95 is therefore a figure for continuous motion, which
+      is what the budget describes. Draw calls and triangles are read from the HUD's timer between frames, so they are the last
+      completed frame's. The HUD's `useFrame` stays at priority 0: a higher one stops R3F rendering.
+    - **Telemetry figures.** Messages per second and worker posts per frame come from the client's cumulative counts, which the
+      engine posts at most once a second: a rate is the change between two changes of the count over the real time between them
+      (and, for posts, over the frames drawn in that span), a decrease (a replaced client) starts over, and no client is a dash.
+    - **The marks ship.** `twin:data` (the stage's first scene), `twin:first-frame` (the first frame drawn with a scene) and
+      `twin:models-done` (every class ready or failed) are three `performance.mark` calls in every build, so the cold load of
+      V2-19.7 can be measured on the production build. `twin:data` is when the stage first has the zones, not when the queries
+      arrived (the 2D map shares them).
+    - **`DrawCallLog` is gone.** The HUD shows the same figure. The two sentences above that name it ("Settled in V2-15.8" and
+      "Settled in V2-17.3") describe what was true then and are not rewritten. The pick timing of V2-15.3 stays in `PickLayer`'s
+      development log: the HUD's six values do not include it.
+    - **Not done here and `unverified`:** the HUD's own cost (under 0.2 ms a frame) and that its numbers move, both in a
+      browser; the HUD exists in `pnpm dev` only (React in development mode), so a figure read there is pessimistic and
+      V2-19.7 must say which build it measured; the production build's `dist` has not been scanned until `pnpm build` is run.
+      Logging telemetry worker faults once per change (the open item of Phase 3) is **not** part of this ticket and has no owner.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
