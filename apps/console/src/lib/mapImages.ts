@@ -41,7 +41,7 @@ export type MarkerForm =
 type GlyphForm = Exclude<MarkerForm, { kind: 'asset' }>;
 
 /** Incident images are drawn in a square of this many CSS px, centred on the feature. */
-const MARKER_BOX = 28;
+export const MARKER_BOX = 28;
 const CAMERA_BOX = 14;
 /** The asset diamond: 8 px square turned 45° (11.3 px across) plus its 1.5 px stroke. */
 const ASSET_BOX = 14;
@@ -65,6 +65,14 @@ const GLYPH_SIZE: Record<IncidentSeverity, number> = {
   critical: 14,
 };
 const RESOLVED = { radius: 10, glyph: 12 };
+
+/**
+ * The radius of the disc an incident marker draws, in CSS px: the severity's step for an active incident (10, 10, 11,
+ * 12) and the neutral 10 for a resolved one. The 3D beacons place their rings and tags from it (V2-16.3).
+ */
+export const discRadiusOf = (
+  form: Extract<MarkerForm, { kind: 'incident' | 'resolved' }>,
+): number => (form.kind === 'resolved' ? RESOLVED.radius : DISC_RADIUS[form.severity]);
 
 /** Cluster count labels: `--weight-semibold`, `--type-s`, `--font-ui` (canvas cannot read tokens). */
 const COUNT_FONT = '600 13px "Barlow Semi Condensed"';
