@@ -14,8 +14,9 @@ interface PointerProps {
 }
 
 /**
- * The pointer of the 3D canvas (V2-15.4): hover, click and drag on `gl.domElement`, through the pick seam
- * (`lib/twinPicker.ts`, answered by `PickLayer`) and the store's actions. It renders nothing; the logic is
+ * The pointer of the 3D canvas (V2-15.4; a click on a beacon selects its incident, V2-16.4): hover, click and
+ * drag on `gl.domElement`, through the pick seam (`lib/twinPicker.ts`, answered by `PickLayer`) and the store's
+ * actions. It renders nothing; the logic is
  * `lib/twinPointer.ts`, which has no `three` and is tested with synthetic events, and this is only the wiring:
  * the canvas element, the store, and the scene's lookup from an asset to its building. The cursor is refreshed
  * when `picking` changes, which no pointer event announces (the report form opening under a still pointer).
@@ -36,7 +37,11 @@ export function Pointer({ assets, zones }: PointerProps) {
       onPick,
       lastPick,
       isPicking: () => store().picking,
-      selection: () => ({ assetCode: store().selectedAssetCode, part: store().selectedPart }),
+      selection: () => ({
+        assetCode: store().selectedAssetCode,
+        part: store().selectedPart,
+        incidentId: store().selectedIncidentId,
+      }),
       focusZoneOf: (code) => {
         const zoneId = zoneOfAsset.get(code);
         return zoneId === undefined ? null : buildingFocusOf({ zoneId }, zones);
@@ -48,6 +53,7 @@ export function Pointer({ assets, zones }: PointerProps) {
         selectPart: (node) => store().selectPart(node),
         focusBuilding: (zoneId) => store().focusBuilding(zoneId),
         openViewer: (cameraId) => store().openViewer(cameraId),
+        selectIncident: (id) => store().select(id),
       },
     });
     const stopWatching = useConsole.subscribe((state, previous) => {

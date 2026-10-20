@@ -12,6 +12,9 @@ import { cursorOf, isClick, type PickRef, type ScreenPoint } from './twinPicking
  * - Hover asks for a pick on each move with no button down; the answer comes through `onPick`. A click asks for
  *   the pick **at its own point** and acts on the answer (`requestPick`'s completion), because `onPick` is silent
  *   when the winner did not change.
+ * - A click on a beacon (V2-16.4) selects its incident, and a second click on the selected one deselects it, as the
+ *   2D map's click does; it writes no hover (the tooltip follows the pick). It is not role-gated: the sheet's footer
+ *   and the API decide what the role may do.
  * - The pointer clears only the hover it wrote, so a hover set by an Assets row is never taken away by the
  *   pointer leaving the canvas.
  */
@@ -24,6 +27,8 @@ export interface PointerActions {
   selectPart(node: string | null): void;
   focusBuilding(zoneId: string): void;
   openViewer(cameraId: string): void;
+  /** Selects the incident, or closes the sheet with `null` (the store's `select`). */
+  selectIncident(id: string | null): void;
 }
 
 export interface PointerDeps {
@@ -34,7 +39,7 @@ export interface PointerDeps {
   /** The report location is being picked: nothing is clicked, the cursor is a crosshair (V2-16.7 adds the ground). */
   isPicking(): boolean;
   /** What is selected now, read at the moment of a click. */
-  selection(): { assetCode: string | null; part: string | null };
+  selection(): { assetCode: string | null; part: string | null; incidentId: string | null };
   /** The building zone an asset is in (`buildingFocusOf`), or `null`. */
   focusZoneOf(code: string): string | null;
   actions: PointerActions;
@@ -128,6 +133,9 @@ export function attachPointer(element: HTMLElement, deps: PointerDeps): PointerH
         return;
       case 'camera':
         actions.openViewer(ref.id);
+        return;
+      case 'beacon':
+        actions.selectIncident(selected.incidentId === ref.id ? null : ref.id);
         return;
     }
   };

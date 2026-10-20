@@ -1,19 +1,27 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import type { Beacon } from '../lib/twinBeacons';
-import { beaconCells, beaconPlacements, pulseRunning } from '../lib/twinBeaconSprites';
+import {
+  type BeaconTarget,
+  beaconCells,
+  beaconPlacements,
+  beaconTargets,
+  pulseRunning,
+} from '../lib/twinBeaconSprites';
 import { GROUND_LAYERS } from '../lib/twinGround';
 import type { MarkerPlacement } from '../lib/twinMarkers';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapMotion } from '../styles/tokens';
 import { Markers } from './Markers';
+import { usePicker } from './PickContext';
 import { useBeaconAtlas } from './useBeaconAtlas';
 
 /** After the camera markers (the ground, the buildings, then the cameras), so a beacon paints over a camera. */
 const BEACONS_ORDER = GROUND_LAYERS.length + 3;
 
 const NO_PLACEMENTS: readonly MarkerPlacement[] = [];
+const NO_TARGETS: readonly BeaconTarget[] = [];
 
 /** Sets the clock to `ms`. A function of its own so the frame loop does not write to a value a hook made. */
 function advance(clock: { value: number }, ms: number): void {
@@ -41,8 +49,12 @@ interface BeaconsProps {
  *   in view and a beacon pulses (`pulseRunning`); at rest it draws nothing. Under reduced motion the pulse ring is not
  *   placed at all: the critical beacon keeps its size and its ring.
  * - No React render per frame: the clock is an object this owns and the frame loop writes.
+ * - **Picked in screen space** (V2-16.4). Inside `PickLayer`, this registers with the picker the beacons that are
+ *   drawn (`beaconTargets`: a beacon whose bitmap has not decoded yet is not a target) and takes them away when it
+ *   goes, so what can be hit is what is seen. Whether they may be hit now (the Incidents layer, an isolated asset, a
+ *   location being picked) is the pick scope's (`scopeOf`), read when the ray is cast, so this does not follow it.
  *
- * Hover, click and Fly to are V2-16.4's and V2-16.5's; nothing here is pickable.
+ * Fly to is V2-16.5's.
  */
 export function Beacons({ beacons }: BeaconsProps) {
   const cells = useMemo(() => beaconCells(beacons), [beacons]);
@@ -51,6 +63,7 @@ export function Beacons({ beacons }: BeaconsProps) {
   const animate = !usePrefersReducedMotion();
   const invalidate = useThree((state) => state.invalidate);
   const clock = useMemo(() => ({ value: 0 }), []);
+  const picker = usePicker();
 
   const placements = useMemo(
     () =>
@@ -59,6 +72,12 @@ export function Beacons({ beacons }: BeaconsProps) {
         : beaconPlacements(beacons, atlas.layout, atlas.ratio, { animate }),
     [atlas, beacons, animate],
   );
+
+  const targets = useMemo(() => beaconTargets(beacons, placements), [beacons, placements]);
+  useEffect(() => {
+    picker?.setBeacons(targets);
+    return () => picker?.setBeacons(NO_TARGETS);
+  }, [picker, targets]);
 
   // A change of what is drawn (or a layer switched) needs one frame, and it starts the pulse loop below.
   useEffect(() => {

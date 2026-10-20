@@ -20,6 +20,7 @@ import { Pointer } from './Pointer';
 import { Rig } from './Rig';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
+import { ZoneHighlight } from './ZoneHighlight';
 
 /**
  * The lens (V2-12.9): the home view is fitted for this field of view. `far` reaches past the longest distance
@@ -35,6 +36,8 @@ interface TwinCanvasProps {
   classPoints: ClassPoints;
   /** The incident beacons in scene metres (`useTwinBeacons`, the stage's: V2-16.3), drawn once the zones are there. */
   beacons: readonly Beacon[];
+  /** The zone outlined on the ground (`useTwinHighlightZone`, the stage's: V2-16.4), or `null` for none. */
+  highlightZoneId: string | null;
   /** The telemetry feed the models' bound parts follow (`useTwinFeed`, the stage's); `null` without a telemetry client. */
   feed: TwinFeed | null;
   /** The box of every building (`buildingBoxes`), for the rig's first view when the stage starts at building level (V2-15.6). */
@@ -71,7 +74,11 @@ interface TwinCanvasProps {
  *   stage's too, for the same reason (`useTwinFeed` reads the query cache); the canvas hands its `invalidate`
  *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
  * - The incident beacons (V2-16.3) are the stage's too (`useTwinBeacons`): `Beacons` draws them over everything, after the
- *   camera markers, independent of the models, as one draw call, and asks for frames only while one pulses.
+ *   camera markers, independent of the models, as one draw call, and asks for frames only while one pulses. It sits
+ *   inside `PickLayer` (V2-16.4) so that it can register what it draws as picks, tested in screen space before any
+ *   geometry; `renderOrder` decides what is painted over what, not the place in the tree.
+ * - `ZoneHighlight` outlines the zone of the selected incident, or the report's, on the ground (V2-16.4): a ribbon
+ *   after the building faces, with no regard for the Incidents layer.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
  * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5). With a building
@@ -101,6 +108,7 @@ export function TwinCanvas({
   scene,
   classPoints,
   beacons,
+  highlightZoneId,
   feed,
   boxes,
   assetBoxes,
@@ -140,10 +148,11 @@ export function TwinCanvas({
               leaderDotRef={leaderDotRef}
               leaderStartRef={leaderStartRef}
             />
+            <Beacons beacons={beacons} />
           </PickLayer>
           <Pointer assets={scene.assets} zones={scene.zones} />
+          <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
-          <Beacons beacons={beacons} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />
         </>

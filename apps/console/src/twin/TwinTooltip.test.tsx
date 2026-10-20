@@ -257,6 +257,58 @@ describe('TwinTooltip', () => {
     expect(tooltip()).toHaveTextContent('CAM-D02 · Library · Offline');
   });
 
+  it('names an incident under a beacon after 150 ms, with the map’s tooltip body (V2-16.4)', () => {
+    const { canvas } = renderTooltip({ incidents: [incident()] });
+
+    pick({ kind: 'beacon', id: 'inc' });
+    move(canvas);
+    wait(149);
+    expect(tooltip()).toBeNull();
+    wait(1);
+
+    const tip = tooltip()!;
+    expect(tip).toHaveTextContent('Motor overheating');
+    expect(tip).toHaveTextContent('High');
+    expect(tip).toHaveTextContent('Open');
+    expect(tip).toHaveTextContent('INC-000108 · Library');
+  });
+
+  it('shows none for an incident that has left the picture: resolved and not selected, or unknown', () => {
+    const { canvas } = renderTooltip({ incidents: [incident({ status: 'resolved' })] });
+    move(canvas);
+
+    pick({ kind: 'beacon', id: 'inc' });
+    wait(500);
+    expect(tooltip()).toBeNull();
+
+    pick({ kind: 'beacon', id: 'NOT-THERE' });
+    wait(500);
+    expect(tooltip()).toBeNull();
+  });
+
+  it('shows a resolved incident while it is selected, as the map draws it', () => {
+    useConsole.setState({ selectedIncidentId: 'inc' });
+    const { canvas } = renderTooltip({ incidents: [incident({ status: 'resolved' })] });
+
+    pick({ kind: 'beacon', id: 'inc' });
+    move(canvas);
+    wait(150);
+
+    expect(tooltip()).toHaveTextContent('Motor overheating');
+  });
+
+  it('hides the incident tooltip on a press, as the others', () => {
+    const { canvas, stage } = renderTooltip({ incidents: [incident()] });
+    pick({ kind: 'beacon', id: 'inc' });
+    move(canvas);
+    wait(150);
+    expect(tooltip()).not.toBeNull();
+
+    fireEvent.pointerDown(stage);
+
+    expect(tooltip()).toBeNull();
+  });
+
   it('shows none for a part, a building or nothing', () => {
     const { canvas } = renderTooltip();
     move(canvas);
