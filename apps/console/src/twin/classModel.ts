@@ -1,4 +1,5 @@
 import {
+  Box3,
   type BufferAttribute,
   BufferGeometry,
   EdgesGeometry,
@@ -8,16 +9,19 @@ import {
   LineBasicMaterial,
   LineDashedMaterial,
   LineSegments,
+  LOD,
   type Material,
   type Matrix4,
   Mesh,
   MeshLambertMaterial,
   type Object3D,
+  Sphere,
   Texture,
   Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { NodeInfo } from '../lib/twinBindings';
+import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twinCamera';
 import {
   type AssetLook,
   EDGE_DASH_M,
@@ -144,8 +148,16 @@ export function createMaterialTable(): MaterialTable {
 
 /** A model ready to be placed once per asset. */
 export interface ClassTemplate {
-  /** The class root: the merged static parts and the bound parts, at the model's own origin. */
+  /** The class root: the merged static parts and the bound parts, at the model's own origin. It is level 0 (LOD0). */
   root: Group;
+  /**
+   * The lower level of detail (V2-19.5): the model's `<Root>_LOD1` sibling with its meshes merged, one per console
+   * material, in the class root's frame, each with a hidden outline. A static silhouette: it has no bound parts. `null`
+   * when the model has no LOD1 (the checker allows that) or it cannot be merged: the class is then LOD0 only.
+   */
+  lod1: Group | null;
+  /** The camera distance, in metres, from which `lod1` is drawn (`lodDistance`); `Infinity` when there is none. */
+  switchDistanceM: number;
   /**
    * The model's nodes as plain data, as they were **before** the static parts were merged: what
    * `bindingsFromNodes` reads (the hierarchy and the `extras`), so the bindings can be built once the
@@ -238,6 +250,68 @@ function outlineOf(mesh: Mesh, table: MaterialTable): LineSegments {
   return outline;
 }
 
+/** The suffix of the lower level of detail's node: `<Root>_LOD1` (V2-13.1; `ops/model-tools/rules.ts` checks the same). */
+const LOD1_SUFFIX = '_LOD1';
+
+/** Meshes of a model waiting to be merged: each one's geometry and its transform relative to the class root. */
+type MergeList = Map<string, { geometry: BufferGeometry; matrix: Matrix4 }[]>;
+
+/**
+ * One merged mesh per console material of `parts`, named `<prefix><Material>`: the geometry of the pieces is brought to
+ * the class root's frame and joined, and the pieces are freed. Throws when a material's pieces cannot be joined.
+ */
+function mergedMeshes(parts: MergeList, table: MaterialTable, prefix: string): Mesh[] {
+  const made: Mesh[] = [];
+  for (const [name, list] of parts) {
+    const pieces = list.map(({ geometry, matrix }) => plain(geometry).applyMatrix4(matrix));
+    const merged = mergeGeometries(pieces);
+    for (const piece of pieces) piece.dispose();
+    if (merged === null) {
+      for (const mesh of made) mesh.geometry.dispose();
+      throw new Error(`the parts in ${name} could not be merged`);
+    }
+    const mesh = new Mesh(merged, table.get(name));
+    mesh.name = `${prefix}${name}`;
+    made.push(mesh);
+  }
+  return made;
+}
+
+/**
+ * The lower level of detail as a group of merged meshes (V2-19.5), or `null` when `sibling` is missing, holds no mesh, or
+ * cannot be merged: LOD1 is an optimisation, so a bad one costs the class its lower level and never its model. Meshes are
+ * taken wherever they sit under the sibling (the node itself may be the mesh), with the transform relative to the class
+ * root (`toRoot`), which is right whatever the sibling's own pivot or nesting. Their vendor materials are added to
+ * `vendorMaterials`, to be freed with the others.
+ */
+function mergeLod1(
+  sibling: Object3D | undefined,
+  toRoot: Matrix4,
+  table: MaterialTable,
+  vendorMaterials: Set<Material>,
+): Group | null {
+  if (sibling === undefined) return null;
+  const parts: MergeList = new Map();
+  sibling.traverse((node) => {
+    if (!isMesh(node)) return;
+    const given = Array.isArray(node.material) ? node.material[0] : node.material;
+    if (given) vendorMaterials.add(given);
+    const name = table.get(given?.name).name;
+    const list = parts.get(name) ?? [];
+    list.push({ geometry: node.geometry, matrix: toRoot.clone().multiply(node.matrixWorld) });
+    parts.set(name, list);
+  });
+  if (parts.size === 0) return null;
+  try {
+    const level = new Group();
+    level.name = '_lod1';
+    level.add(...mergedMeshes(parts, table, '_lod1_'));
+    return level;
+  } catch {
+    return null;
+  }
+}
+
 /** Everything a vendor material owns that holds memory: itself and its textures. */
 function disposeVendorMaterial(material: Material): void {
   for (const value of Object.values(material)) {
@@ -249,8 +323,12 @@ function disposeVendorMaterial(material: Material): void {
 /**
  * Makes a class template of a loaded glTF scene.
  *
- * - The class root is the scene's child that is not a `…_LOD1` sibling. LOD1 is dropped here (V2-19.5 owns
- *   level of detail). A scene with no class root throws, which the caller treats as a failed model.
+ * - The class root is the scene's child that is not a `…_LOD1` sibling. A scene with no class root throws, which the
+ *   caller treats as a failed model.
+ * - **LOD1** (V2-19.5) is the sibling named exactly `<root>_LOD1`: its meshes, wherever they sit under it, are merged
+ *   like the statics (one mesh per console material, in the class root's frame) into `lod1`; with none, or one that
+ *   cannot be merged, the class is LOD0 only. Its outlines are made like LOD0's, so the stale and severity edges read
+ *   at a distance too. `switchDistanceM` comes from the sphere around the LOD0 model (`lodDistance`).
  * - Every mesh's material is replaced by the console's of the same name (`table`).
  * - **Static** meshes (no `bind` on them or on an ancestor) are merged, with their transform relative to the
  *   class root baked in, into one mesh per console material: ADR-0020's "static nodes are merged at load".
@@ -260,11 +338,11 @@ function disposeVendorMaterial(material: Material): void {
  *   (static or bound) stay under it and move with it: they are not merged.
  * - Every mesh gets a hidden outline (`OUTLINE_NAME`), built once and shared by the copies: the looks of
  *   V2-14.9 show it when they need an edge.
- * - What is not kept (the original static meshes, LOD1, the vendor's materials and their textures) is
+ * - What is not kept (the original static meshes, the loaded LOD1, the vendor's materials and their textures) is
  *   disposed, so a parsed file does not stay in memory twice.
  */
 export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTemplate {
-  const source = scene.children.find((child) => !child.name.endsWith('_LOD1'));
+  const source = scene.children.find((child) => !child.name.endsWith(LOD1_SUFFIX));
   if (source === undefined) throw new Error('the model has no class root');
 
   const info = nodeInfoOf(source);
@@ -274,7 +352,7 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
   const root = new Group();
   root.name = source.name;
   const vendorMaterials = new Set<Material>();
-  const statics = new Map<string, { geometry: BufferGeometry; matrix: Matrix4 }[]>();
+  const statics: MergeList = new Map();
 
   /** Replaces the materials of `object` and everything under it. */
   const swapMaterials = (object: Object3D): void => {
@@ -307,21 +385,29 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
   };
   walk(source);
 
-  for (const [name, parts] of statics) {
-    const pieces = parts.map(({ geometry, matrix }) => plain(geometry).applyMatrix4(matrix));
-    const merged = mergeGeometries(pieces);
-    for (const piece of pieces) piece.dispose();
-    if (merged === null) throw new Error(`the static parts in ${name} could not be merged`);
-    const mesh = new Mesh(merged, table.get(name));
-    mesh.name = `_static_${name}`;
-    root.add(mesh);
-  }
+  root.add(...mergedMeshes(statics, table, '_static_'));
 
-  // A hidden outline on every mesh, for the looks that need one (V2-14.9). A bound part's outline moves with it.
+  // The lower level (V2-19.5), merged the same way, into its own group: a LOD1 that cannot be merged is no LOD1.
+  const lod1 = mergeLod1(
+    scene.children.find((child) => child.name === `${source.name}${LOD1_SUFFIX}`),
+    toRoot,
+    table,
+    vendorMaterials,
+  );
+  // 5 % of the screen's height is measured on the sphere around the LOD0 model, at its authored pose.
+  const sphere =
+    lod1 === null ? null : new Box3().setFromObject(root).getBoundingSphere(new Sphere());
+  const switchDistanceM = sphere === null ? Infinity : lodDistance(sphere.radius, HOME_FOV_DEG);
+
+  // A hidden outline on every mesh of both levels, for the looks that need one (V2-14.9). A bound part's outline moves
+  // with it. A level that is not drawn draws no outline, whatever the look.
+  const levels = lod1 === null ? [root] : [root, lod1];
   const meshes: Mesh[] = [];
-  root.traverse((node) => {
-    if (isMesh(node)) meshes.push(node);
-  });
+  for (const level of levels) {
+    level.traverse((node) => {
+      if (isMesh(node)) meshes.push(node);
+    });
+  }
   for (const mesh of meshes) mesh.add(outlineOf(mesh, table));
 
   // What is left of the loaded scene is not used by the template.
@@ -332,12 +418,16 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
 
   return {
     root,
+    lod1,
+    switchDistanceM,
     info,
     materials: table,
     dispose() {
-      root.traverse((node) => {
-        if (isMesh(node) || isLines(node)) node.geometry.dispose();
-      });
+      for (const level of levels) {
+        level.traverse((node) => {
+          if (isMesh(node) || isLines(node)) node.geometry.dispose();
+        });
+      }
     },
   };
 }
@@ -346,7 +436,24 @@ export function buildTemplate(scene: Object3D, table: MaterialTable): ClassTempl
  * A copy of the template for one asset. Geometry and materials are shared with the template and with every
  * other copy; the bound parts are separate objects with their own transform, found by name
  * (`getObjectByName`), so V2-14.8 can move one asset's fan without touching the other's.
+ *
+ * A class with a LOD1 gets a three.js `LOD` (V2-19.5) named as the class root: level 0 is the copy of the root, level
+ * 1 a copy of `lod1`, drawn from `switchDistanceM` (the renderer updates it, with `LOD_HYSTERESIS` against flicker).
+ * **The bound parts are in level 0 only**, so below the threshold their motion and their state tint are not drawn
+ * (a static silhouette; sub-pixel by the brief's reckoning, small by the arithmetic: Q3 of the ticket). The looks of the
+ * asset reach level 1 anyway: `useModelLooks` paints every mesh of the instance, and `addModel` registers every one.
+ * A class without a LOD1 gets the plain copy of the root, as before.
  */
 export function instantiate(template: ClassTemplate): Object3D {
-  return template.root.clone(true);
+  const { root, lod1, switchDistanceM } = template;
+  if (lod1 === null || !Number.isFinite(switchDistanceM)) return root.clone(true);
+  const lod = new LOD();
+  lod.name = root.name;
+  const far = lod1.clone(true);
+  // Level 1 starts hidden: three lowers a level's threshold by the hysteresis while it is shown, so a LOD1 that began
+  // visible would be chosen from 10 % short of the distance on the first update, and the swap would not be symmetric.
+  far.visible = false;
+  lod.addLevel(root.clone(true), 0);
+  lod.addLevel(far, switchDistanceM, LOD_HYSTERESIS);
+  return lod;
 }

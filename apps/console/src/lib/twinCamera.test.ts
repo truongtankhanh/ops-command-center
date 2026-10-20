@@ -19,6 +19,9 @@ import {
   INCIDENT_FLY_DISTANCE_M,
   incidentView,
   limitPose,
+  LOD_HYSTERESIS,
+  LOD_SCREEN_FRACTION,
+  lodDistance,
   normalizeYaw,
   type Pose,
   poseToPosition,
@@ -626,5 +629,66 @@ describe('compassLabel', () => {
     expect(compassLabel(-60)).toBe('Face north — the view is rotated 60°');
     expect(compassLabel(60.4)).toBe('Face north — the view is rotated 60°');
     expect(compassLabel(180)).toBe('Face north — the view is rotated 180°');
+  });
+});
+
+describe('lodDistance', () => {
+  const tanHalf = (fovDeg: number) => Math.tan((fovDeg * Math.PI) / 360);
+
+  it('holds the brief’s 5 % of the screen’s height and a hysteresis of a tenth', () => {
+    expect(LOD_SCREEN_FRACTION).toBe(0.05);
+    expect(LOD_HYSTERESIS).toBe(0.1);
+  });
+
+  it('is the distance at which a sphere of the radius spans the fraction of the view’s height', () => {
+    expect(lodDistance(5, 50)).toBeCloseTo(5 / (0.05 * tanHalf(50)), 9);
+    expect(lodDistance(3, 60, 0.1)).toBeCloseTo(3 / (0.1 * tanHalf(60)), 9);
+  });
+
+  it('is about 43 times the radius at the twin’s lens', () => {
+    expect(lodDistance(1, HOME_FOV_DEG)).toBeCloseTo(42.89, 1);
+  });
+
+  it('puts a sphere at the fraction of the screen exactly there (the round trip)', () => {
+    for (const [radius, fov] of [
+      [1, 50],
+      [3.8, 50],
+      [12, 35],
+    ] as const) {
+      const distance = lodDistance(radius, fov);
+      // A sphere's diameter over the view's height at that distance.
+      expect((2 * radius) / (2 * distance * tanHalf(fov))).toBeCloseTo(LOD_SCREEN_FRACTION, 9);
+    }
+  });
+
+  it('is further for a bigger sphere, nearer for a wider lens and nearer for a larger share', () => {
+    expect(lodDistance(8, 50)).toBeGreaterThan(lodDistance(4, 50));
+    expect(lodDistance(4, 70)).toBeLessThan(lodDistance(4, 50));
+    expect(lodDistance(4, 50, 0.1)).toBeLessThan(lodDistance(4, 50, 0.05));
+  });
+
+  it('never switches (Infinity) for a radius, a lens or a fraction that cannot be used', () => {
+    for (const radius of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(lodDistance(radius, 50)).toBe(Infinity);
+    }
+    for (const fov of [0, -50, Number.NaN, Number.POSITIVE_INFINITY, 180, 200]) {
+      expect(lodDistance(4, fov)).toBe(Infinity);
+    }
+    for (const fraction of [0, -0.05, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(lodDistance(4, 50, fraction)).toBe(Infinity);
+    }
+  });
+
+  it('puts the demo’s towers and generator at about 160 m, inside the campus range', () => {
+    // Half the diagonal of the seed's footprints: 4 × 4 × 5 m and 6 × 2.5 × 3 m.
+    const tower = lodDistance(Math.hypot(4, 4, 5) / 2, HOME_FOV_DEG);
+    const generator = lodDistance(Math.hypot(6, 2.5, 3) / 2, HOME_FOV_DEG);
+
+    expect(tower).toBeGreaterThan(160);
+    expect(tower).toBeLessThan(165);
+    expect(generator).toBeGreaterThan(150);
+    expect(generator).toBeLessThan(156);
+    expect(tower).toBeGreaterThan(CAMERA_LIMITS.campus.minDistance);
+    expect(tower).toBeLessThan(CAMERA_LIMITS.campus.maxDistance);
   });
 });

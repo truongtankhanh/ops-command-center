@@ -77,6 +77,20 @@ function makeTemplate() {
   return { template: buildTemplate(loaded, table), table };
 }
 
+/** The model of `makeTemplate` with its LOD1 sibling (V2-19.5): a static silhouette beside the class root. */
+function makeLodTemplate() {
+  const root = new Group();
+  root.name = 'CoolingTower';
+  root.add(meshOf('Casing', 'Part'));
+  const fan = meshOf('FanBlade', 'Blade');
+  fan.userData = { bind: 'fanSpeedRpm', motion: 'spin', axis: 'y', range: [0, 1800] };
+  root.add(fan);
+  const loaded = new Group();
+  loaded.add(root, meshOf('CoolingTower_LOD1', 'Part'));
+  const table = createMaterialTable();
+  return { template: buildTemplate(loaded, table), table };
+}
+
 /**
  * A model of two **bound** parts (a fan blade and a motor) and one static one. The template merges static parts, so the
  * static one is no node of the instance and cannot take a look of its own; two parts that can are what a selected part
@@ -211,6 +225,31 @@ describe('useModelLooks', () => {
       expect(mesh.material).toBe(table.get(baseName(mesh)));
     }
     for (const outline of outlines(tower.object)) expect(outline.visible).toBe(false);
+  });
+
+  it('paints the LOD1 silhouette of a model in the asset’s look too, tint and edge, and clears it with the incident (V2-19.5)', () => {
+    const lodModel = makeLodTemplate();
+    const tower = targetOf('CT-01', lodModel.template);
+    const silhouette = meshes(tower.object).find((mesh) => mesh.name === '_lod1_Part')!;
+    expect(silhouette).toBeDefined();
+    const { feed, flags } = createRig();
+    mount(feed, [tower]);
+    flags.set('CT-01', alarmed('high'));
+
+    tick();
+
+    expect(silhouette.material).toBe(
+      lodModel.table.look('Part', { face: 'alarm', severity: 'high' }),
+    );
+    const edge = silhouette.children.find((child) => child.name === OUTLINE_NAME) as LineSegments;
+    expect(edge.visible).toBe(true);
+    expect(edge.material).toBe(lodModel.table.line({ edge: 'severity', severity: 'high' }));
+
+    flags.set('CT-01', LIVE);
+    tick();
+
+    expect(silhouette.material).toBe(lodModel.table.get('Part'));
+    expect(edge.visible).toBe(false);
   });
 
   it('greys a stale asset and dashes its outlines, and restores it when it is live (AC2)', () => {

@@ -1,16 +1,21 @@
 import {
   BoxGeometry,
   BufferGeometry,
+  Frustum,
   Group,
   Int16BufferAttribute,
   LineBasicMaterial,
   type LineSegments,
+  type LOD,
+  Matrix4,
   Mesh,
   MeshLambertMaterial,
   MeshStandardMaterial,
   type Object3D,
+  PerspectiveCamera,
   Vector3,
 } from 'three';
+import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twinCamera';
 import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY, mixInto, tintFor } from '../lib/twinMaterials';
 import { mapColors, twinColors } from '../styles/tokens';
 import {
@@ -49,7 +54,7 @@ function group(name: string, at: [number, number, number] = [0, 0, 0]): Group {
 }
 
 /** What the loader returns: the scene, the class root, and an LOD1 sibling. */
-function scene(root: Object3D, lod1 = part('Root_LOD1', 'Part')): Group {
+function scene(root: Object3D, lod1: Object3D = part('Root_LOD1', 'Part')): Group {
   const loaded = new Group();
   loaded.add(root, lod1);
   return loaded;
@@ -692,5 +697,377 @@ describe('the outlines of a template', () => {
     root.add(part('Casing', 'Part'));
 
     expect(buildTemplate(scene(root), table).materials).toBe(table);
+  });
+});
+
+// --- levels of detail (V2-19.5) --------------------------------------------------------------------------------
+
+describe('levels of detail (V2-19.5)', () => {
+  /** The LOD1 sibling as a single mesh node, 4 × 5 × 4 m like the casing, called `Root_LOD1` so that it matches `Root`. */
+  const lodMesh = (material = 'Part', name = 'Root_LOD1'): Mesh => {
+    const mesh = part(name, material);
+    mesh.scale.set(4, 5, 4);
+    return mesh;
+  };
+
+  /** A class root of a 4 × 5 × 4 m casing and a bound fan, with a LOD1 that matches it (or the one given). */
+  function modelOf(lod1: Object3D | null = lodMesh()) {
+    const root = group('Root');
+    const casing = part('Casing', 'Part');
+    casing.scale.set(4, 5, 4);
+    root.add(casing, part('FanBlade', 'Blade', [0, 2, 0], FAN));
+    const loaded = lod1 === null ? new Group() : scene(root, lod1);
+    if (lod1 === null) loaded.add(root);
+    return { template: buildTemplate(loaded, createMaterialTable()), lod1 };
+  }
+
+  const verticesOf = (mesh: Mesh): Vector3[] => {
+    const position = mesh.geometry.getAttribute('position');
+    return Array.from({ length: position.count }, (_, i) =>
+      new Vector3().fromBufferAttribute(position, i),
+    );
+  };
+  const meshesOf = (object: Object3D): Mesh[] => {
+    const found: Mesh[] = [];
+    object.traverse((node) => {
+      if ((node as Mesh).isMesh === true) found.push(node as Mesh);
+    });
+    return found;
+  };
+
+  describe('the template', () => {
+    it('merges a LOD1 that is a single mesh node into one mesh, in the class root’s frame', () => {
+      const { template } = modelOf();
+
+      const meshes = template.lod1!.children as Mesh[];
+      expect(meshes.map((mesh) => mesh.name)).toEqual(['_lod1_Part']);
+      const geometry = meshes[0]!.geometry;
+      geometry.computeBoundingBox();
+      expect(geometry.boundingBox!.min.toArray()).toEqual([-2, -2.5, -2]);
+      expect(geometry.boundingBox!.max.toArray()).toEqual([2, 2.5, 2]);
+    });
+
+    it('merges a LOD1 made of a group, wherever it sits, relative to the class root and not the scene', () => {
+      const root = group('Root', [100, 0, 0]);
+      root.add(part('Casing', 'Part'));
+      const lod1 = group('Root_LOD1', [100, 0, 0]);
+      lod1.add(part('Body', 'Part', [0, 3, 0]));
+
+      const template = buildTemplate(scene(root, lod1), createMaterialTable());
+
+      const geometry = (template.lod1!.children[0] as Mesh).geometry;
+      geometry.computeBoundingBox();
+      expect(geometry.boundingBox!.min.y).toBeCloseTo(2.5, 6);
+      expect(geometry.boundingBox!.max.y).toBeCloseTo(3.5, 6);
+      expect(geometry.boundingBox!.min.x).toBeCloseTo(-0.5, 6);
+    });
+
+    it('makes one mesh per console material', () => {
+      const lod1 = group('Root_LOD1');
+      lod1.add(part('A', 'Part'), part('B', 'Steel'), part('C', 'Part'));
+
+      const { template } = modelOf(lod1);
+
+      expect(template.lod1!.children.map((mesh) => mesh.name).sort()).toEqual([
+        '_lod1_Part',
+        '_lod1_Steel',
+      ]);
+    });
+
+    it('has no LOD1 for a model without a sibling, with one of another name, or with one that holds no mesh', () => {
+      for (const lod1 of [null, lodMesh('Part', 'Other_LOD1'), group('Root_LOD1')]) {
+        const { template } = modelOf(lod1);
+
+        expect(template.lod1).toBeNull();
+        expect(template.switchDistanceM).toBe(Infinity);
+      }
+    });
+
+    it('keeps the LOD1 out of the root, which is still the statics and the bound parts', () => {
+      const { template } = modelOf();
+
+      expect(template.root.getObjectByName('_lod1')).toBeUndefined();
+      expect(template.root.getObjectByName('_lod1_Part')).toBeUndefined();
+      expect(staticMeshes(template.root)).toHaveLength(1);
+      expect(template.root.getObjectByName('FanBlade')).toBeDefined();
+    });
+
+    it('takes the switch distance from the sphere around the LOD0 model', () => {
+      const { template } = modelOf();
+
+      expect(template.switchDistanceM).toBeCloseTo(
+        lodDistance(Math.hypot(4, 5, 4) / 2, HOME_FOV_DEG),
+        6,
+      );
+    });
+
+    it('never switches when there is no model to measure', () => {
+      const template = buildTemplate(scene(group('Root'), lodMesh()), createMaterialTable());
+
+      expect(template.lod1).not.toBeNull();
+      expect(template.switchDistanceM).toBe(Infinity);
+      expect((instantiate(template) as Partial<LOD>).isLOD).toBeUndefined();
+    });
+
+    it('frees the loaded LOD1’s own geometry once it is merged', () => {
+      const lod1 = lodMesh();
+      const dispose = vi.spyOn(lod1.geometry, 'dispose');
+
+      modelOf(lod1);
+
+      expect(dispose).toHaveBeenCalled();
+    });
+
+    it('gives every LOD1 mesh a hidden outline in the idle line, like LOD0’s, so the edges read far away too', () => {
+      const table = createMaterialTable();
+      const root = group('Root');
+      root.add(part('Casing', 'Part'));
+      const template = buildTemplate(scene(root), table);
+
+      for (const mesh of template.lod1!.children) {
+        const outlines = mesh.children.filter((child) => child.name === OUTLINE_NAME);
+        expect(outlines).toHaveLength(1);
+        const outline = outlines[0] as LineSegments;
+        expect(outline.visible).toBe(false);
+        expect(outline.material).toBe(table.line({ edge: 'idle', severity: null }));
+      }
+    });
+
+    it('frees the merged LOD1 geometry and its outline on dispose', () => {
+      const { template } = modelOf();
+      const mesh = template.lod1!.children[0] as Mesh;
+      const geometry = vi.spyOn(mesh.geometry, 'dispose');
+      const outline = vi.spyOn((mesh.children[0] as LineSegments).geometry, 'dispose');
+
+      template.dispose();
+
+      expect(geometry).toHaveBeenCalledTimes(1);
+      expect(outline).toHaveBeenCalledTimes(1);
+    });
+
+    it('still builds the class when there is no LOD1, as before', () => {
+      const { template } = modelOf(null);
+
+      expect(template.lod1).toBeNull();
+      expect(staticMeshes(template.root)).toHaveLength(1);
+      expect(template.root.getObjectByName('FanBlade')).toBeDefined();
+    });
+  });
+
+  describe('an instance', () => {
+    it('is a LOD named for the class root: level 0 its copy of the root, level 1 its copy of the LOD1', () => {
+      const { template } = modelOf();
+
+      const instance = instantiate(template) as LOD;
+
+      expect(instance.isLOD).toBe(true);
+      expect(instance.name).toBe('Root');
+      expect(instance.levels).toHaveLength(2);
+      expect(instance.levels[0]).toMatchObject({ distance: 0 });
+      expect(instance.levels[1]).toMatchObject({
+        distance: template.switchDistanceM,
+        hysteresis: LOD_HYSTERESIS,
+      });
+      expect(instance.levels[0]!.object.getObjectByName('_static_Part')).toBeDefined();
+      expect(instance.levels[1]!.object.getObjectByName('_lod1_Part')).toBeDefined();
+    });
+
+    it('starts on level 0, with level 1 hidden until the renderer’s first update', () => {
+      const { template } = modelOf();
+
+      const instance = instantiate(template) as LOD;
+
+      expect(instance.levels[0]!.object.visible).toBe(true);
+      expect(instance.levels[1]!.object.visible).toBe(false);
+      expect(template.lod1!.visible).toBe(true);
+    });
+
+    it('has its bound parts in level 0 only, found by name from the instance', () => {
+      const { template } = modelOf();
+
+      const instance = instantiate(template) as LOD;
+
+      const fan = instance.getObjectByName('FanBlade');
+      expect(fan).toBeDefined();
+      expect(instance.levels[0]!.object.getObjectByName('FanBlade')).toBe(fan);
+      expect(instance.levels[1]!.object.getObjectByName('FanBlade')).toBeUndefined();
+    });
+
+    it('shares the geometry and the materials of both levels with every copy, and has its own levels', () => {
+      const { template } = modelOf();
+
+      const one = instantiate(template) as LOD;
+      const two = instantiate(template) as LOD;
+
+      expect(one.levels[0]!.object).not.toBe(two.levels[0]!.object);
+      expect(one.levels[1]!.object).not.toBe(two.levels[1]!.object);
+      const [far] = meshesOf(one.levels[1]!.object);
+      expect(far!.geometry).toBe(meshesOf(two.levels[1]!.object)[0]!.geometry);
+      expect(far!.geometry).toBe((template.lod1!.children[0] as Mesh).geometry);
+      expect(far!.material).toBe(meshesOf(two.levels[1]!.object)[0]!.material);
+      const [near] = staticMeshes(one.levels[0]!.object);
+      expect(near!.geometry).toBe(staticMeshes(template.root)[0]!.geometry);
+    });
+
+    it('is the plain copy of the root, with the statics as its children, when the class has no LOD1', () => {
+      const { template } = modelOf(null);
+
+      const instance = instantiate(template);
+
+      expect((instance as Partial<LOD>).isLOD).toBeUndefined();
+      expect(staticMeshes(instance)).toHaveLength(1);
+    });
+  });
+
+  describe('the swap, without a renderer', () => {
+    /** `lod.update(camera)` from `distance` away along z, as the renderer does when it visits the LOD. */
+    function swap() {
+      const { template } = modelOf();
+      const lod = instantiate(template) as LOD;
+      const camera = new PerspectiveCamera(HOME_FOV_DEG, 1.6, 1, 2500);
+      const threshold = template.switchDistanceM;
+      const at = (distance: number, from: [number, number, number] = [0, 0, 0]): number => {
+        lod.position.set(...from);
+        camera.position.set(from[0], from[1], from[2] + distance);
+        camera.updateMatrixWorld(true);
+        lod.updateMatrixWorld(true);
+        lod.update(camera);
+        return lod.getCurrentLevel();
+      };
+      return { lod, at, threshold };
+    }
+
+    it('shows LOD0 below the threshold and LOD1 from it', () => {
+      const { lod, at, threshold } = swap();
+
+      expect(at(threshold - 1)).toBe(0);
+      expect(lod.levels[0]!.object.visible).toBe(true);
+      expect(lod.levels[1]!.object.visible).toBe(false);
+
+      expect(at(threshold + 1)).toBe(1);
+      expect(lod.levels[0]!.object.visible).toBe(false);
+      expect(lod.levels[1]!.object.visible).toBe(true);
+    });
+
+    it('holds LOD1 until the camera is a tenth nearer than the threshold, then returns to LOD0', () => {
+      const { at, threshold } = swap();
+      at(threshold + 1);
+
+      expect(at(threshold * 0.95)).toBe(1);
+      expect(at(threshold * 0.91)).toBe(1);
+      expect(at(threshold * 0.89)).toBe(0);
+    });
+
+    it('does not hold LOD0 past the threshold: the hysteresis only keeps the level that is shown', () => {
+      const { at, threshold } = swap();
+      at(threshold - 1);
+
+      expect(at(threshold * 0.95)).toBe(0);
+      expect(at(threshold + 1)).toBe(1);
+    });
+
+    it('measures the distance to the instance, not to the world’s origin', () => {
+      const { at, threshold } = swap();
+
+      expect(at(threshold - 1, [500, 0, 0])).toBe(0);
+      expect(at(threshold + 1, [500, 0, 0])).toBe(1);
+    });
+  });
+
+  describe('culling', () => {
+    const frustumOf = (camera: PerspectiveCamera): Frustum => {
+      camera.updateMatrixWorld(true);
+      return new Frustum().setFromProjectionMatrix(
+        new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse),
+      );
+    };
+
+    it('gives a merged static mesh a bounding sphere that holds every vertex of what was baked in', () => {
+      const root = group('Root');
+      root.add(
+        part('A', 'Part', [-3, 0, 0]),
+        part('B', 'Part', [4, 1, 2]),
+        part('C', 'Part', [0, 5, -2]),
+      );
+      const merged = staticMeshes(buildTemplate(scene(root), createMaterialTable()).root)[0]!;
+
+      merged.geometry.computeBoundingSphere();
+
+      const { center, radius } = merged.geometry.boundingSphere!;
+      for (const vertex of verticesOf(merged)) {
+        expect(vertex.distanceTo(center)).toBeLessThanOrEqual(radius + 1e-6);
+      }
+    });
+
+    it('moves a bound part’s sphere with the part, so a turned or shifted part is culled where it is', () => {
+      const { template } = modelOf();
+      const fan = (instantiate(template) as LOD).getObjectByName('FanBlade') as Mesh;
+      fan.geometry.computeBoundingSphere();
+      const local = fan.geometry.boundingSphere!;
+
+      fan.rotation.y = 1.2;
+      fan.position.x += 30;
+      fan.updateMatrixWorld(true);
+
+      const world = local.clone().applyMatrix4(fan.matrixWorld);
+      expect(world.center.x).toBeGreaterThan(29);
+      for (const vertex of verticesOf(fan)) {
+        expect(vertex.applyMatrix4(fan.matrixWorld).distanceTo(world.center)).toBeLessThanOrEqual(
+          world.radius + 1e-6,
+        );
+      }
+    });
+
+    it('gives a quantised bound part a sphere that is in metres through its node’s scale', () => {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute(
+        'position',
+        new Int16BufferAttribute([-32767, 0, 0, 32767, 0, 0, 0, 32767, 0], 3, true),
+      );
+      const quantised = new Mesh(geometry, new MeshStandardMaterial({ name: 'Blade' }));
+      quantised.name = 'Quantised';
+      quantised.scale.set(5, 5, 5);
+      quantised.userData = FAN;
+      const root = group('Root');
+      root.add(quantised);
+      const template = buildTemplate(scene(root), createMaterialTable());
+      const blade = template.root.getObjectByName('Quantised') as Mesh;
+
+      blade.geometry.computeBoundingSphere();
+      blade.updateMatrixWorld(true);
+
+      const world = blade.geometry.boundingSphere!.clone().applyMatrix4(blade.matrixWorld);
+      expect(world.radius).toBeGreaterThanOrEqual(5 - 1e-3);
+      for (const point of [new Vector3(-5, 0, 0), new Vector3(5, 0, 0), new Vector3(0, 5, 0)]) {
+        expect(point.distanceTo(world.center)).toBeLessThanOrEqual(world.radius + 1e-3);
+      }
+    });
+
+    it('culls the meshes of an instance that stands off to the side and keeps those in front, copy by copy', () => {
+      const { template } = modelOf(null);
+      const near = instantiate(template);
+      const aside = instantiate(template);
+      aside.position.set(500, 0, 0);
+      const camera = new PerspectiveCamera(HOME_FOV_DEG, 1.6, 1, 2500);
+      camera.position.set(0, 0, 60);
+      const frustum = frustumOf(camera);
+      near.updateMatrixWorld(true);
+      aside.updateMatrixWorld(true);
+
+      for (const mesh of meshesOf(near)) expect(frustum.intersectsObject(mesh)).toBe(true);
+      for (const mesh of meshesOf(aside)) expect(frustum.intersectsObject(mesh)).toBe(false);
+    });
+
+    it('culls everything of an instance when the camera turns away from it', () => {
+      const { template } = modelOf(null);
+      const instance = instantiate(template);
+      const camera = new PerspectiveCamera(HOME_FOV_DEG, 1.6, 1, 2500);
+      camera.position.set(0, 0, 60);
+      camera.lookAt(0, 0, 200);
+      const frustum = frustumOf(camera);
+      instance.updateMatrixWorld(true);
+
+      for (const mesh of meshesOf(instance)) expect(frustum.intersectsObject(mesh)).toBe(false);
+    });
   });
 });
