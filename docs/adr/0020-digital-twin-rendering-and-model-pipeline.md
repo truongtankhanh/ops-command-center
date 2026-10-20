@@ -1144,6 +1144,41 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Not done here and `unverified` until looked at in a browser:** that a healthy 60 Hz display never steps, that a
       throttled one steps down and stays, that the step survives a remount, that a cold load does not step. The
       video wall's `wall: true` pin exists in the controller and nothing passes it in until V2-21.
+  - Settled in V2-19.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: the draw-call and triangle budgets are held by estimate and guarded in development. Each question of the
+    ticket's analysis was answered with its recommendation.
+    - **The demo is under budget by estimate, so the ticket adds a guard and changes no scene.** Read from the code and from
+      the two demo files in `ops/models`: the ground is at most 9 calls (one per layer), the shells and the boxes a handful
+      each (their draw calls are groups: V2-15.8), the markers and the zone highlight at most 4, and the three modelled
+      assets 24 (below). That is about 50 – 60 calls on the campus view, which is the "under 60" the task assumed, and about
+      10 k triangles against 250,000. `unverified` until the three views (campus with Heat on; the Data Center in focus with
+      every asset shown; an asset isolated) are read with the HUD: the tech lead records them in the PR.
+    - **What a modelled asset costs, and where 150 is.** An instance is a clone of its class's template: the statics merged
+      once per console material (one mesh each) plus every bound part as a mesh of its own, so a cooling tower is 7 calls
+      (2 + 5) and the standby generator 10 (3 + 7), and calls grow with the number of modelled assets: with about 30 of base,
+      150 is reached at about 12 – 17 modelled assets, fewer while outlines are shown (each visible outline is one more call
+      per mesh). `InstancedMesh` for the merged statics would save 2 – 3 calls an asset and nothing on the bound parts, which
+      cannot be instanced; going further is a change to the model contract (parts merged into fewer meshes), a decision of its
+      own. Neither is done: the demo does not need it, and the guard shows the day a site does.
+    - **The guard.** `budgetBreaches` (`lib/twinPerf.ts`) compares `gl.info.render.calls` and `.triangles` with the brief's 150
+      and 250,000 (strictly above: "at most" is within budget; a figure that is not a number is never a breach).
+      `createBudgetGuard` warns on the rising edge, per figure, and arms a figure again when it is back within budget, so a
+      scene that stays over warns once and not twice a second. It runs in `HudProbe`'s tick, so **in a development build with
+      `?debug=twin` only**; a probe for every development session is a few lines later. The HUD marks an over-budget value
+      with `data-over` (a `--sev-critical` bar under the figure; the text keeps `--text-primary`; the pair is in
+      `scripts/contrast.ts`). The text of the warning is in `lib/twinHud.ts`, which production drops, and never names the
+      address that switches the HUD on. It judges the last frame's reading, twice a second: a budget about steady views, so
+      a one-frame spike can be missed. It is not a CI check: that would need a headless render, which the V2 plan does not
+      have.
+    - **What the task listed and was not needed.** Statics are already merged per class (`buildTemplate`); materials are
+      already pooled by name, face and severity (`createMaterialTable`; a material does not change the draw-call count in
+      three.js anyway); outlines are hidden by default, so an idle model has none, and the boxes' edges are two merged
+      line meshes; there is no drei `Html` in the twin (the zone labels are DOM elements placed by `LabelProjector`), so there
+      is no label cost in `gl.info`.
+    - **Not done here and `unverified`:** the three views' figures; that the warning fires on a real over-budget scene (the
+      tests stub `gl.info.render`, as jsdom has no WebGL); that the `data-over` bar is visible and clear of the labels, the
+      callout and the controls. V2-19.5 reduces triangles (LOD1 and culling); V2-19.7's scenes should read both figures in
+      each view.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

@@ -2,9 +2,9 @@
  * What the developer HUD of the 3D twin measures and how (V2-19.1, ADR-0020 § Budgets, brief § Performance): a window of
  * frame times, the rate of a cumulative counter, the six values of frame 00, the `?debug=twin` request and the load
  * marks. Pure: no clock (the caller passes `now`, as `createPickStats` does), no React, no three, so it tests without
- * WebGL. V2-19.2 added `needsFrame`; V2-19.3 and V2-19.4 add the pixel-ratio controller and the budget guard to this
- * file: every export stands alone, so the build keeps only what shipped code imports. The labels and formats of the HUD are in
- * `twinHud.ts`, on purpose not here (see there).
+ * WebGL. V2-19.2 added `needsFrame`; V2-19.3 the pixel-ratio controller; V2-19.4 the budget guard: every export stands
+ * alone, so the build keeps only what shipped code imports (the guard is imported by the development-only probe, so it
+ * never reaches `dist`). The labels, formats and warning text of the HUD are in `twinHud.ts`, on purpose not here (see there).
  */
 
 /**
@@ -400,4 +400,70 @@ export function rememberDprStep(step: number): void {
 /** Forgets it. For tests, which share the module. */
 export function forgetDprStep(): void {
   rememberedStep = null;
+}
+
+/**
+ * The most draw calls a frame may cost, and the most triangles it may put on screen (brief § Model contract, budgets
+ * table: "Draw calls ≤ 150 per frame", "Triangles on screen ≤ 250,000"; ADR-0020 § Budgets). "At most" means a reading
+ * equal to the limit is within budget.
+ */
+export const DRAW_CALL_BUDGET = 150;
+export const TRIANGLE_BUDGET = 250_000;
+
+/** The two budgeted figures, named as the HUD's rows are (`calls`, `triangles`), which is how the probe finds the cell. */
+export type BudgetFigure = 'calls' | 'triangles';
+
+export interface BudgetBreach {
+  figure: BudgetFigure;
+  value: number;
+  limit: number;
+}
+
+/** What `gl.info.render` reports; a figure that is not a finite number is not measured, so it is never a breach. */
+export interface BudgetReading {
+  calls: number | null | undefined;
+  triangles: number | null | undefined;
+}
+
+const LIMITS: readonly { figure: BudgetFigure; limit: number }[] = [
+  { figure: 'calls', limit: DRAW_CALL_BUDGET },
+  { figure: 'triangles', limit: TRIANGLE_BUDGET },
+];
+
+/** Every figure of `reading` above its budget (V2-19.4), calls first; empty when the frame is within both. */
+export function budgetBreaches(reading: BudgetReading): BudgetBreach[] {
+  const breaches: BudgetBreach[] = [];
+  for (const { figure, limit } of LIMITS) {
+    const value = reading[figure];
+    if (typeof value === 'number' && Number.isFinite(value) && value > limit) {
+      breaches.push({ figure, value, limit });
+    }
+  }
+  return breaches;
+}
+
+/**
+ * Remembers which figures were over budget at the last reading, so a scene that stays over warns once and not twice a
+ * second: `check` returns every breach (`over`, for marking) and the ones that **began** at this reading (`fresh`, for the
+ * warning). The edge is per figure: calls going over while triangles already were is news, and a figure that returns
+ * within budget is armed again on its own. No clock. It judges the last frame's reading, taken twice a second between
+ * frames: right for a budget about steady views, and it can miss a one-frame spike. A guard that lives as long as its
+ * probe warns once per mount.
+ */
+export function createBudgetGuard() {
+  let was = new Set<BudgetFigure>();
+  return {
+    check(reading: BudgetReading): {
+      over: readonly BudgetBreach[];
+      fresh: readonly BudgetBreach[];
+    } {
+      const over = budgetBreaches(reading);
+      const fresh = over.filter(({ figure }) => !was.has(figure));
+      was = new Set(over.map(({ figure }) => figure));
+      return { over, fresh };
+    },
+    reset(): void {
+      was = new Set();
+    },
+  };
 }

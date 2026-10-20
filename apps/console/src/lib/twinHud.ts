@@ -1,10 +1,11 @@
-import type { HudReading } from './twinPerf';
+import type { BudgetBreach, BudgetFigure, HudReading } from './twinPerf';
 
 /*
  * The words and figures of the developer HUD (V2-19.1, frame 00). A file of its own, apart from `twinPerf.ts`, on
  * purpose: only the HUD imports it, so a production build drops it, and what it holds (`HUD_LABEL`, the row labels) is
  * what `scripts/chunk-budget.ts` looks for in `dist` to prove that the HUD was not shipped. If a label here changes, the
- * script's markers must follow; a spec in `scripts/chunk-budget.test.ts` fails until they do.
+ * script's markers must follow; a spec in `scripts/chunk-budget.test.ts` fails until they do. The text of the budget
+ * warning (V2-19.4) lives here too, for the same reason: development-only words stay in the file production drops.
  */
 
 /** The HUD's accessible name; `debug=twin` is the address that switches it on, and the first marker of the build check. */
@@ -52,4 +53,21 @@ export function formatHud(reading: HudReading): Record<HudRowId, string> {
       : NO_VALUE,
     ratio: isValue(reading.pixelRatio) ? String(Number(reading.pixelRatio.toFixed(2))) : NO_VALUE,
   };
+}
+
+const FIGURE_NAME: Record<BudgetFigure, string> = { calls: 'draw calls', triangles: 'triangles' };
+
+/**
+ * The development warning for a frame over budget (V2-19.4): each figure with its value and its limit, and where the
+ * budget is written. Never names the address that switches the HUD on: `scripts/chunk-budget.ts` looks for that text in
+ * `dist`, and a message that carried it would be a false alarm on the day this file ships by mistake.
+ */
+export function formatBudgetWarning(breaches: readonly BudgetBreach[]): string {
+  const figures = breaches
+    .map(
+      ({ figure, value, limit }) =>
+        `${value.toLocaleString('en-US')} ${FIGURE_NAME[figure]} (limit ${limit.toLocaleString('en-US')})`,
+    )
+    .join(', ');
+  return `3D budget exceeded in the last frame: ${figures}. The budget is in the brief § Model contract and ADR-0020 § Budgets.`;
 }
