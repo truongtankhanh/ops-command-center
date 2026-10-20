@@ -20,6 +20,7 @@ import { useSession } from './auth/store';
 import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
 import type { Beacon } from './lib/twinBeacons';
+import type { HeatScene } from './lib/twinHeat';
 import { publishPick } from './lib/twinPicker';
 import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
 import { initialTelemetryState } from './lib/telemetryState';
@@ -386,6 +387,89 @@ function holdTelemetry(readings: Record<string, Reading>, upstream: 'live' | 'pa
   );
 }
 
+/*
+ * What the heat overlay's cases (V2-17.5) read: three buildings and the indoor climate sensors in them, so the
+ * overlay has numbers to colour and the Assets tab has the rows they must equal. The Library is the console's own
+ * building and has two sensors (its line is their mean); the Science Lab has one, on a whole degree (the line writes
+ * "21.0 °C", the row "21 °C"); the Security Office's only sensor last spoke ten minutes ago, past the 180 s a 60 s
+ * point allows, so the building is silent.
+ */
+const INDOOR_TEMP: TelemetryPoint = {
+  key: 'indoorTempC',
+  label: 'Indoor temperature',
+  unit: '°C',
+  kind: 'number',
+  min: null,
+  max: null,
+  enumValues: null,
+  expectedIntervalS: 60,
+  headline: 1,
+};
+
+/** A building like the Library's, `index` squares to the east of it. */
+function heatBuilding(index: number, id: string, code: string, name: string): Zone {
+  const [lng, lat] = [108.4415 + index * 0.001, 11.953];
+  const half = 0.0003;
+  return {
+    id,
+    code,
+    name,
+    kind: 'building',
+    heightM: 12,
+    polygon: [
+      [lng - half, lat - half],
+      [lng + half, lat - half],
+      [lng + half, lat + half],
+      [lng - half, lat + half],
+      [lng - half, lat - half],
+    ],
+    center: [lng, lat],
+  };
+}
+
+const HEAT_ZONES: Zone[] = [
+  ZONES[0]!,
+  heatBuilding(1, 'z2', 'BLD-LAB', 'Science Lab'),
+  heatBuilding(2, 'z3', 'BLD-SEC', 'Security Office'),
+];
+
+/** An indoor climate sensor at the centre of its building. */
+const heatSensor = (code: string, name: string, zone: Zone): Asset => ({
+  id: `asset-${code}`,
+  code,
+  name,
+  class: {
+    id: 'class-indoor-climate',
+    code: 'indoor_climate',
+    name: 'Indoor climate sensor',
+    modelUrl: null,
+    footprintM: { width: 0.3, depth: 0.3, height: 0.3 },
+  },
+  zoneId: zone.id,
+  position: zone.center,
+  elevationM: 2,
+  headingDeg: 0,
+  headline: [INDOOR_TEMP],
+});
+
+const HEAT_ASSETS: Asset[] = [
+  heatSensor('ICS-LIB-A', 'Library sensor A', HEAT_ZONES[0]!),
+  heatSensor('ICS-LIB-B', 'Library sensor B', HEAT_ZONES[0]!),
+  heatSensor('ICS-LAB', 'Science Lab sensor', HEAT_ZONES[1]!),
+  heatSensor('ICS-SEC', 'Security Office sensor', HEAT_ZONES[2]!),
+];
+
+const HEAT_READINGS: Record<string, Reading> = {
+  'ICS-LIB-A': { ageMs: 400, values: { indoorTempC: 22.2 } },
+  'ICS-LIB-B': { ageMs: 400, values: { indoorTempC: 23 } },
+  'ICS-LAB': { ageMs: 400, values: { indoorTempC: 21 } },
+  'ICS-SEC': { ageMs: 600_000, values: { indoorTempC: 19.8 } },
+};
+
+/** The fixture's readings, with `changes` laid over them: the telemetry the heat cases start from. */
+const holdHeatTelemetry = (changes: Record<string, Reading> = {}) =>
+  holdTelemetry({ ...HEAT_READINGS, ...changes });
+
 /**
  * The state word is announced, the age is not: no live region holds a ticking age ("… ago",
  * "… old"), which a screen reader would read out every few seconds (brief § Accessibility).
@@ -405,6 +489,7 @@ function renderConsole({
   details = [],
   incidentDetails = [],
   models = {},
+  zones = ZONES,
   reference = true,
 }: {
   role?: Role;
@@ -415,6 +500,8 @@ function renderConsole({
   incidentDetails?: IncidentDetail[];
   /** Node trees of model files by URL, cached as `useModelParts` resolves them (V2-14.10). */
   models?: Record<string, NodeInfo>;
+  /** The site's zones; the heat cases bring three buildings (V2-17.5). */
+  zones?: Zone[];
   /** `false` leaves the zones and the site plan out of the cache, so they are still loading. */
   reference?: boolean;
 } = {}) {
@@ -425,7 +512,7 @@ function renderConsole({
   for (const detail of details) client.setQueryData(queryKeys.asset(detail.code), detail);
   for (const [url, tree] of Object.entries(models)) client.setQueryData(queryKeys.model(url), tree);
   if (reference) {
-    client.setQueryData(queryKeys.zones, ZONES);
+    client.setQueryData(queryKeys.zones, zones);
     client.setQueryData(queryKeys.sitePlan, SITE_PLAN);
   }
   client.setQueryData(queryKeys.cameras, CAMERAS);
@@ -1152,6 +1239,216 @@ describe('the console', () => {
               for (const { code } of canvasBeacons()) {
                 expect(within(feed()).getByText(code)).toBeInTheDocument();
               }
+            });
+          });
+        });
+
+        // V2-17.5: the heat overlay in the whole console. The canvas is the mock above, so what is checked is the DOM that
+        // carries the overlay's meaning: the toggle, the legend, the picker, the zone labels' lines and the group's name.
+        describe('the heat overlay (V2-17.5)', () => {
+          const heatOn = () => act(() => consoleState().toggleLayer('heat'));
+          const group = () => screen.getByRole('group', { name: /^3D view of/ });
+          const picker = () => screen.getByRole('button', { name: 'Colour by Indoor temperature' });
+          const heatToggle = () => screen.getByRole('button', { name: 'Heat' });
+          /** What the stage handed the canvas in its last render. */
+          const canvasHeat = (): HeatScene | null =>
+            (twinCanvas.mock.lastCall?.[0] as { heat: HeatScene | null } | undefined)?.heat ?? null;
+          const SCALE =
+            'Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer.';
+          const SILENT = 'Security Office faded: its sensor is silent.';
+
+          /** The 3D view of the fixture's three buildings, with its readings, and the layer on. */
+          async function openHeat(role: Role = 'operator') {
+            renderConsole({ role, assets: HEAT_ASSETS, zones: HEAT_ZONES });
+            holdHeatTelemetry();
+            show3d();
+            await view();
+            heatOn();
+            await waitFor(() => expect(canvasHeat()).not.toBeNull());
+          }
+
+          // The stage reads no session or permission: the same lines, legend and name for both roles.
+          it.each<Role>(['operator', 'viewer'])(
+            'on at the campus level: the legend, the closed picker, the lines and the name, as a %s',
+            async (role) => {
+              await openHeat(role);
+
+              expect(heatToggle()).toHaveAttribute('aria-pressed', 'true');
+              const legend = screen.getByRole('note');
+              expect(legend).toHaveTextContent('Indoor temperature, by building');
+              expect(legend).toHaveTextContent(/19 °C.*23 °C.*27 °C/);
+              expect(legend).toHaveTextContent('The Assets tab lists each reading.');
+              expect(picker()).toHaveAttribute('aria-expanded', 'false');
+              expect(group().getAttribute('aria-label')).toContain(`${SCALE} ${SILENT}`);
+              expect(Object.fromEntries(canvasHeat()?.labels ?? [])).toEqual({
+                z1: '22.6 °C',
+                z2: '21.0 °C',
+                z3: 'No data',
+              });
+              await checkPage();
+            },
+          );
+
+          it('with the picker open: focus is in its list, with the one option selected', async () => {
+            const user = userEvent.setup();
+            await openHeat();
+            act(() => picker().focus());
+
+            await user.keyboard('{ArrowDown}');
+
+            const list = screen.getByRole('listbox', { name: 'Colour by' });
+            expect(picker()).toHaveAttribute('aria-expanded', 'true');
+            expect(list).toHaveFocus();
+            expect(within(list).getAllByRole('option')).toHaveLength(1);
+            expect(within(list).getByRole('option')).toHaveAttribute('aria-selected', 'true');
+            expect(screen.getByRole('note')).toBeInTheDocument();
+            expect(group().getAttribute('aria-label')).toContain(SCALE);
+            await checkPage();
+          });
+
+          it('when a sensor stops: the name gains the faded sentence and the line reads No data', async () => {
+            renderConsole({ assets: HEAT_ASSETS, zones: HEAT_ZONES });
+            holdHeatTelemetry({ 'ICS-SEC': { ageMs: 400, values: { indoorTempC: 19.8 } } });
+            show3d();
+            await view();
+            heatOn();
+            // Every sensor speaks: the scale is said, and no building is faded.
+            await waitFor(() => expect(group().getAttribute('aria-label')).toContain(SCALE));
+            expect(group().getAttribute('aria-label')).not.toContain('faded');
+            expect(within(group()).queryByText('No data')).toBeNull();
+
+            // `ICS-SEC` goes quiet: its last reading is now ten minutes old.
+            holdHeatTelemetry();
+
+            await waitFor(() => expect(group().getAttribute('aria-label')).toContain(SILENT));
+            expect(within(group()).getByText('No data')).toBeInTheDocument();
+            await checkPage();
+          });
+
+          it('with a building in focus: the legend over the building line and the card with its Indoor row, and nothing at asset level', async () => {
+            await openHeat();
+
+            act(() => consoleState().focusBuilding('z2'));
+
+            expect(screen.getByRole('note')).toBeInTheDocument();
+            expect(screen.getByText(/Walls see-through/)).toBeInTheDocument();
+            const card = screen.getByRole('region', { name: 'Science Lab summary' });
+            expect(within(card).getByText('Indoor')).toBeInTheDocument();
+            expect(within(card).getByText('21.0 °C')).toBeInTheDocument();
+            expect(heatToggle()).toHaveAttribute('aria-pressed', 'true');
+            await checkPage();
+
+            // With an asset isolated the layer stays on and draws nothing different: no legend, no picker.
+            act(() => consoleState().selectAsset('ICS-LAB', 'z2'));
+
+            expect(screen.queryByRole('note')).toBeNull();
+            expect(screen.queryByRole('button', { name: /^Colour by/ })).toBeNull();
+            expect(heatToggle()).toHaveAttribute('aria-pressed', 'true');
+          });
+
+          // Principle 1 of the brief and the checklist's "No second source of truth": a number the picture states is the
+          // number the Assets tab lists. Compared as numbers, because the two write them differently (case 1).
+          describe('the numbers match the lists', () => {
+            /** The line under a building's name in the zone labels' layer: its temperature, or "No data". */
+            const lineOf = (building: string) =>
+              within(within(group()).getByText(building)).getByText(/°C$|^No data$/);
+            /** The Assets tab's row of a sensor. */
+            const rowOf = (sensor: string) => {
+              const list = within(screen.getByRole('region', { name: 'Assets' }));
+              const row = list.getByText(sensor).closest('button');
+              if (row === null) throw new Error(`No row for ${sensor}`);
+              return row;
+            };
+            /** The row's reading, as the list writes it. */
+            const rowReading = (sensor: string) => within(rowOf(sensor)).getByText(/°C$/);
+            /** Whether the list shows the sensor as reporting, which is the heat overlay's own test of a source. */
+            const speaks = (sensor: string) =>
+              within(rowOf(sensor)).queryByText(/^No data/) === null;
+            const figureOf = (text: string | null) => parseFloat(text ?? '');
+            /** The 3D view with the layer on and the Assets tab beside it. */
+            async function openBoth() {
+              await openHeat();
+              await openAssetsTab();
+            }
+
+            it('one source: the line is the reading of its sensor, the same number written two ways', async () => {
+              await openBoth();
+
+              // The line always writes one decimal (V2-17.1); the row drops a trailing zero (`formatReading`, at most one
+              // fraction digit). Same number, two ways of writing it: for the tech lead to settle (V2-17.5, D8), and
+              // locked as it is here so a change of either is a decision and not an accident.
+              expect(lineOf('Science Lab').textContent).toBe('21.0 °C');
+              expect(rowReading('Science Lab sensor').textContent).toBe('21 °C');
+              expect(figureOf(lineOf('Science Lab').textContent)).toBe(
+                figureOf(rowReading('Science Lab sensor').textContent),
+              );
+            });
+
+            it('two sources: the line is the mean of their rows, and neither of them', async () => {
+              await openBoth();
+
+              const first = figureOf(rowReading('Library sensor A').textContent);
+              const second = figureOf(rowReading('Library sensor B').textContent);
+              const line = figureOf(lineOf('Library').textContent);
+
+              expect(line).toBeCloseTo((first + second) / 2, 1);
+              expect(line).not.toBe(first);
+              expect(line).not.toBe(second);
+            });
+
+            it('a silent source: the line says No data, and so does the row, which keeps its last known reading', async () => {
+              await openBoth();
+
+              expect(lineOf('Security Office').textContent).toBe('No data');
+              expect(Number.isNaN(figureOf(lineOf('Security Office').textContent))).toBe(true);
+              const row = rowOf('Security Office sensor');
+              expect(within(row).getByText(/^No data/)).toBeInTheDocument();
+              expect(rowReading('Security Office sensor')).toHaveTextContent('19.8 °C');
+            });
+
+            it('move together: a new reading changes the line and the row in the same render', async () => {
+              await openBoth();
+
+              holdHeatTelemetry({ 'ICS-LAB': { ageMs: 400, values: { indoorTempC: 24 } } });
+
+              await waitFor(() => expect(lineOf('Science Lab').textContent).toBe('24.0 °C'));
+              expect(rowReading('Science Lab sensor').textContent).toBe('24 °C');
+            });
+
+            it('at building level the Indoor row of the card is the same number as the line and the row', async () => {
+              await openBoth();
+
+              act(() => consoleState().focusBuilding('z2'));
+
+              const card = screen.getByRole('region', { name: 'Science Lab summary' });
+              const indoor = within(card).getByText('Indoor').nextElementSibling;
+              expect(indoor?.textContent).toBe(lineOf('Science Lab').textContent);
+              expect(figureOf(indoor?.textContent ?? null)).toBe(
+                figureOf(rowReading('Science Lab sensor').textContent),
+              );
+            });
+
+            // The rule applied to every building at once, from the rows alone: the mean of the sensors that speak, or
+            // "No data" when none does. A building added to the fixture with a line and no row here fails the count.
+            it('every building: its line is derived from the rows of its sensors', async () => {
+              const sensorsOf: Record<string, string[]> = {
+                Library: ['Library sensor A', 'Library sensor B'],
+                'Science Lab': ['Science Lab sensor'],
+                'Security Office': ['Security Office sensor'],
+              };
+              await openBoth();
+
+              for (const [building, sensors] of Object.entries(sensorsOf)) {
+                const figures = sensors
+                  .filter(speaks)
+                  .map((sensor) => figureOf(rowReading(sensor).textContent));
+                const mean = figures.reduce((sum, figure) => sum + figure, 0) / figures.length;
+                const expected = figures.length === 0 ? 'No data' : `${mean.toFixed(1)} °C`;
+                expect(lineOf(building).textContent).toBe(expected);
+              }
+              expect(within(group()).getAllByText(/°C$|^No data$/)).toHaveLength(
+                Object.keys(sensorsOf).length,
+              );
             });
           });
         });
