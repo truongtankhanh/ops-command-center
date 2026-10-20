@@ -589,6 +589,37 @@ Proposed 2026-10-19 (V2-15.1), the tech lead to confirm: the words the 3D view a
   summary reads "Assets — n · all reporting" or "· k without data", "Open incidents — 1 · INC-000105" and "Indoor —
   22.1 °C", where _n_ counts the assets whose zone is the building, as the zone filter does.
 
+### Heat overlay
+
+Proposed 2026-10-20 (V2-17.1), the tech lead to confirm: what the 3D view's Heat layer reads and how it writes it, as
+ADR-0020 § Scene settles it. Heat colours buildings by indoor temperature (frame 13) and is a reading, never a severity.
+
+| Question             | Rule                                                                                                                                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which assets feed it | Every asset whose zone is the building and that has an `indoorTempC` point: today the air handlers (a roof one too) and the indoor climate sensors. The reading is the overview's `headline.indoorTempC`.                   |
+| Which of them count  | The fresh ones: online, and not stale by the asset's own rule (three times its shortest headline interval, on the server's clock): 90 s for an air handler, 180 s for a sensor. A fault does not matter here.               |
+| The value            | The mean of the fresh sources' raw values; none fresh means the building is **silent**.                                                                                                                                     |
+| The scale            | Fixed 19 – 27 °C, clamped: `t = (mean − 19) / 8` held to 0 – 1. The six `--heat-*` stops sit evenly at 0, 0.2, … 1 and the colour is linear in sRGB between them. Lightness carries the value.                              |
+| The label            | The real mean to one decimal, "22.0 °C", even above 27 or below 19 (the colour clamps, the number does not); a silent building reads "No data".                                                                             |
+| A silent building    | Faded at `--tw-ghost-opacity`, whether it has no source, a stale one or an offline one. The Assets tab filtered to the zone says which.                                                                                     |
+| What else Heat does  | Equipment is ghosted unless it is in alarm, hovered or selected; beacons never fade; cameras follow their own layer. At building level the focused building's own equipment keeps its look; at asset level nothing differs. |
+| Off, and the picker  | Heat is off by default and not remembered. "Colour by" shows while it is on and offers one measure, "Indoor temperature"; `humidityPct` is not offered, because an air handler has no such point.                           |
+
+Worked examples, from frame 13's buildings:
+
+| Building         | Fresh sources            | Mean    | `t`   | Reads                                     |
+| ---------------- | ------------------------ | ------- | ----- | ----------------------------------------- |
+| Innovation Hub   | AHU-H1 at 22.0 °C        | 22.0 °C | 0.375 | "22.0 °C"                                 |
+| Library          | AHU-L1 at 21.4 °C        | 21.4 °C | 0.300 | "21.4 °C"                                 |
+| Dormitory B      | ICS-DORB at 26.4 °C      | 26.4 °C | 0.925 | "26.4 °C"                                 |
+| Two sources      | 22.0 °C and 24.0 °C      | 23.0 °C | 0.500 | "23.0 °C", the middle of the ramp         |
+| One of two stale | the fresh one at 25.0 °C | 25.0 °C | 0.750 | "25.0 °C": the stale one is not counted   |
+| Hotter than 27   | 29.3 °C                  | 29.3 °C | 1.000 | "29.3 °C", the brightest, no alarm colour |
+| Security Office  | ICS-SEC stale or offline | none    | none  | faded, "No data"                          |
+
+The building card's "Indoor" row (ADR-0020 "Settled in V2-15.9") is the same number: V2-17.2's `buildingReadings`
+replaces the card's interim rule (the first fresh source) so the card and the overlay cannot disagree.
+
 ## Open questions
 
 1. ~~**Running and standby.** The mockups show assets as Running or Standby, but ADR-0018 does not say where that

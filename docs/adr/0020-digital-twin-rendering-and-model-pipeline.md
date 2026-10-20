@@ -863,6 +863,61 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       drop in another zone selects that zone, a drop outside returns it; Esc stops picking and the form and its draft
       stay; the hint and "Pick in 3D"; 2D unchanged; a viewer has no form; the twin chunk's gzip size after `pnpm build`
       (6,617 B were left).
+  - Settled in V2-17.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: what the heat overlay reads, how it colours a building and what it does to the rest of the scene. Each
+    proposal of the task is accepted unless a bullet says "changed" or "rejected". The same facts are written as rules in
+    `asset-classes.md` § Heat overlay.
+    - **Source: accepted, with the key and not the class.** The sources of a building are the assets whose `zoneId` is the
+      building and that have an `indoorTempC` point (today the air handlers and the indoor climate sensors; the roof air
+      handler counts, it measures the zone), and the reading is the overview's `headline.indoorTempC`, which the 1 Hz
+      overview already carries for every asset, so Heat asks for no watch and adds nothing to the telemetry path
+      ("Settled in V2-14.5"). A class added later with the key counts with no change here. The building card's "Indoor" row
+      ("Settled in V2-15.9") is the **same number** as the heat label, and `buildingReadings` (V2-17.2) replaces that row's
+      interim "first fresh source" rule for both, so the two cannot disagree.
+    - **Aggregate: accepted, the mean of the fresh sources.** A source is fresh when it is online and not stale on the
+      server's clock by its own asset's rule (three times the shortest headline interval: 90 s for an air handler, 180 s for
+      a sensor); with no clock yet a reading cannot be judged and is not stale, as the building card and `hasDimmedAsset`
+      say. An asset in fault with a fresh reading counts: a reading is a reading, the overview's state does not matter
+      here; a stale or offline source never does, and a source with no value yet is not a source. The mean is taken on the
+      raw values and rounded only for the label. Rejected: the maximum (one hot sensor would hide a cool building, and a
+      breach is an incident's business), the median (it means nothing with one or two sources, which is the demo), and the
+      first source (the interim rule: it lets the code order choose the number).
+    - **Silent: accepted.** A building with no fresh source is silent, whether it has no source at all, a stale one or an
+      offline one: faded at `--tw-ghost-opacity` (0.18) and labelled "No data", the word the Assets tab uses for an asset
+      with no data. One word for "no sensor" and "sensor silent" is deliberate: the Assets tab, filtered to the zone, says
+      which. Zones that are not buildings have no shell and no reading.
+    - **Scale: accepted, fixed 19 – 27 °C, clamped; the colour spelt out.** `t = clamp((mean − 19) / 8, 0, 1)`; fixed so
+      that two days compare and the legend's 19 · 23 · 27 °C is true of every frame (frame 13's `heat` values are exactly
+      this: 22.0 °C is 0.375, 21.4 °C is 0.300, 26.4 °C is 0.925). The six `--heat-0 … --heat-5` stops sit evenly at
+      `t` = 0, 0.2, 0.4, 0.6, 0.8, 1; the colour is **piecewise linear in sRGB** between neighbours and converted to the
+      working space as the zone fills are, so a shell's colour is the legend's swatch at a stop and continuous between
+      them (the legend shows the six stops, not six bands). Lightness carries the value (the ramp's pairs against the
+      ground are reported only, `docs/design/tokens.md`). Rejected: a data-driven range (a cool day and a hot day would
+      look alike). The **label** is the real mean to one decimal, "22.0 °C", also above 27 or below 19: the colour clamps,
+      the number does not. 27 °C is the air handler rule's limit but the overlay draws no breach.
+    - **Layer: accepted, with the building and asset levels spelt out.** Heat is a layer of the 3D stage, off by default and
+      not remembered, like the others. On, at campus level: every shell takes its colour, equipment is ghosted at
+      `--tw-ghost-opacity` unless it is in alarm (an open incident of its own), hovered or selected, beacons are unchanged
+      (never faded, "Settled in V2-16.3") and cameras follow their own layer, not Heat (the mockup turned Cameras off by
+      choice; that is not a rule). **Changed, at building level:** the focused building stays see-through and its edge and
+      label carry the colour, and **its own equipment keeps its look** (it is the subject; ghosting it under an X-ray shell
+      would leave nothing to look at); the other buildings keep the level's fade and their colour at that fade, and a silent
+      one is the level's neutral fade, so only its "No data" label tells it from a non-heat fade. **Changed, at asset and
+      part level:** the layer stays on but draws nothing different: the isolated asset is the subject, the shells keep
+      V2-15.7's neutral fade and the legend stays, so toggling Heat is never a surprise there.
+    - **Picker: accepted as drawn.** "Colour by" is a control that opens a listbox with one option, "Indoor temperature",
+      shown while Heat is on (frame 13 draws it only then; off, it would be a dead control). A second measure is a data
+      addition, not a redesign. Rejected for now: `humidityPct`, although it is the sensor's second headline, because the
+      air handler has no such point (its second headline is `supplyAirTempC`), so a building with an air handler would
+      always be silent for it; it needs a source rule and a scale of its own when it is wanted.
+    - **Not alarms: accepted.** The ramp is the accent's hue; no severity hue is used, so no warm building looks like a
+      fault (`docs/design/tokens.md`). A building above 27 °C is the brightest and nothing more. A building with only a
+      sensor never raises an incident for being hot: the sensor has no rule on purpose ("comfort alerts would flood the
+      feed", `asset-classes.md`), and an air handler's "Zone too warm" is its own incident.
+    - **Where the numbers also are.** The legend, the building card's "Indoor" row and the Assets tab's readings carry
+      every number the colours stand for; the canvas stays `aria-hidden`.
+    - **Left for the tickets, `unverified` until looked at:** the continuous colour against the legend's six stops, a
+      silent building's look at campus level next to the 0.18 fade of the level, and where the labels stand.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
