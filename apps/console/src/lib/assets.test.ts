@@ -5,6 +5,7 @@ import {
   countAssetFilters,
   groupByZone,
   hasDimmedAsset,
+  hasFreshReading,
   matchesAssetFilter,
   matchesAssetQuery,
   openIncidentOf,
@@ -316,6 +317,61 @@ describe('hasDimmedAsset', () => {
 
   it('is false for no asset', () => {
     expect(hasDimmedAsset([], {}, NOW)).toBe(false);
+  });
+});
+
+describe('hasFreshReading', () => {
+  const ct01 = asset();
+
+  it('is true for an online entry that is not stale', () => {
+    expect(hasFreshReading(ct01, entry(), NOW)).toBe(true);
+  });
+
+  it('is false with no entry', () => {
+    expect(hasFreshReading(ct01, undefined, NOW)).toBe(false);
+  });
+
+  it('is false when the device is offline, however recent its last reading', () => {
+    expect(hasFreshReading(ct01, entry({ online: false }), NOW)).toBe(false);
+  });
+
+  it('is false from the asset`s threshold on, and true just before it', () => {
+    // 1 s and 5 s headline points: stale from the 5 s floor.
+    expect(hasFreshReading(ct01, entry({ ageMs: 4_999 }), NOW)).toBe(true);
+    expect(hasFreshReading(ct01, entry({ ageMs: 5_000 }), NOW)).toBe(false);
+  });
+
+  it('uses the asset`s own threshold: a slower class stays fresh longer', () => {
+    // A 60 s point: 180 s, as an indoor climate sensor.
+    const sensor = asset({ headline: [point('indoorTempC', 1, 60)] });
+
+    expect(hasFreshReading(sensor, entry({ ageMs: 179_999 }), NOW)).toBe(true);
+    expect(hasFreshReading(sensor, entry({ ageMs: 180_000 }), NOW)).toBe(false);
+  });
+
+  it('cannot judge without a server clock, so a reading is not stale', () => {
+    expect(hasFreshReading(ct01, entry({ ageMs: 60_000 }), null)).toBe(true);
+  });
+
+  it('still says an offline device is not fresh without a clock', () => {
+    expect(hasFreshReading(ct01, entry({ online: false }), null)).toBe(false);
+  });
+
+  it('does not look at an open incident: a fault with a fresh reading is fresh', () => {
+    const overview = { 'CT-01': entry() };
+
+    expect(assetStates([ct01], [incident()], overview, NOW).get('CT-01')).toBe('fault');
+    expect(hasFreshReading(ct01, overview['CT-01'], NOW)).toBe(true);
+  });
+
+  it('narrows the entry, so a caller can read it after the check', () => {
+    const held: AssetTelemetryState | undefined = entry({ values: { indoorTempC: 22 } });
+
+    if (hasFreshReading(ct01, held, NOW)) {
+      expect(held.values.indoorTempC).toBe(22);
+    } else {
+      expect.unreachable('the reading is fresh');
+    }
   });
 });
 

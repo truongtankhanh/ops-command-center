@@ -1,12 +1,7 @@
 import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
 import { assetStates } from './assets';
-import {
-  assetsText,
-  buildingEyebrow,
-  buildingSummary,
-  incidentsText,
-  indoorText,
-} from './twinBuilding';
+import { assetsText, buildingEyebrow, buildingSummary, incidentsText } from './twinBuilding';
+import { buildingReadings, heatLabel, tempText } from './twinHeat';
 import type { AssetTelemetryState } from './telemetryState';
 
 const NOW = Date.parse('2026-10-19T08:00:00.000Z');
@@ -84,7 +79,16 @@ const entry = ({
   keyReceivedAt: {},
 });
 
-/** The summary of `zone` with the states `assetStates` gives, as the card computes it. */
+/** The heat reading of `zone`, as the card asks for it. */
+function readingOf(
+  assets: Asset[],
+  overview: Record<string, AssetTelemetryState>,
+  now: number | null = NOW,
+) {
+  return buildingReadings([{ ...zone, kind: 'building' }], assets, overview, now).get(zone.id);
+}
+
+/** The summary of `zone` with the states `assetStates` gives and the heat reading, as the card computes it. */
 function summaryOf(
   assets: Asset[],
   overview: Record<string, AssetTelemetryState>,
@@ -92,7 +96,7 @@ function summaryOf(
   now: number | null = NOW,
 ) {
   const states = assetStates(assets, incidents, overview, now);
-  return buildingSummary(zone, assets, states, incidents, overview, now);
+  return buildingSummary(zone, assets, states, incidents, readingOf(assets, overview, now));
 }
 
 /** Eight assets as the seed's Data Center holds them: five inside, two on the roof, one outdoors. */
@@ -241,17 +245,17 @@ describe('buildingSummary', () => {
       expect(summaryOf(DATA_CENTER, allReporting()).indoorC).toBe(22.1);
     });
 
-    it('takes the first source in code order', () => {
-      const assets = [sensor('ICS-B'), sensor('ICS-A')];
+    it('averages the fresh sources, whatever their order: the code order does not choose the number', () => {
       const overview = {
         'ICS-A': entry({ values: { indoorTempC: 21 } }),
         'ICS-B': entry({ values: { indoorTempC: 25 } }),
       };
 
-      expect(summaryOf(assets, overview).indoorC).toBe(21);
+      expect(summaryOf([sensor('ICS-B'), sensor('ICS-A')], overview).indoorC).toBe(23);
+      expect(summaryOf([sensor('ICS-A'), sensor('ICS-B')], overview).indoorC).toBe(23);
     });
 
-    it('skips a stale source and takes the next fresh one', () => {
+    it('skips a stale source and reads the fresh one alone', () => {
       const assets = [sensor('ICS-A'), sensor('ICS-B')];
       const overview = {
         'ICS-A': entry({ ageMs: 60_000, values: { indoorTempC: 21 } }),
@@ -303,6 +307,29 @@ describe('buildingSummary', () => {
 
       expect(summaryOf([handler], overview).indoorC).toBe(23.4);
     });
+
+    it('is null when the reading is silent or there is none to give', () => {
+      const states = assetStates(DATA_CENTER, [], allReporting(), NOW);
+
+      expect(buildingSummary(zone, DATA_CENTER, states, [], 'silent').indoorC).toBeNull();
+      expect(buildingSummary(zone, DATA_CENTER, states, [], undefined).indoorC).toBeNull();
+    });
+
+    it('is the number the heat overlay shows for the building: the card and the overlay agree', () => {
+      const assets = [sensor('ICS-A'), sensor('ICS-B')];
+      const overview = {
+        'ICS-A': entry({ values: { indoorTempC: 22.04 } }),
+        'ICS-B': entry({ values: { indoorTempC: 24.1 } }),
+      };
+
+      const { indoorC } = summaryOf(assets, overview);
+      const reading = readingOf(assets, overview) ?? 'silent';
+
+      expect(reading).not.toBe('silent');
+      expect(indoorC).toBeCloseTo(23.07, 10);
+      expect(indoorC === null ? 'none' : tempText(indoorC)).toBe(heatLabel(reading));
+      expect(heatLabel(reading)).toBe('23.1 °C');
+    });
   });
 });
 
@@ -347,13 +374,5 @@ describe('incidentsText', () => {
 
   it('says "None" when there is no incident', () => {
     expect(incidentsText({ count: 0, firstCode: null })).toBe('None');
-  });
-});
-
-describe('indoorText', () => {
-  it('shows one decimal and the unit', () => {
-    expect(indoorText(22.1)).toBe('22.1 °C');
-    expect(indoorText(22)).toBe('22.0 °C');
-    expect(indoorText(22.14)).toBe('22.1 °C');
   });
 });

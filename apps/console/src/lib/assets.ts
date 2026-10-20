@@ -104,6 +104,25 @@ export function openIncidentOf(
 }
 
 /**
+ * Whether the asset's reading is current: it has an entry in the overview, its device is online, and the entry
+ * is not stale on the server's clock by the asset's own rule (`staleAfterMs`). No server clock yet cannot judge,
+ * and "cannot judge" is not stale.
+ *
+ * It is the bare freshness, not `assetStates`: that puts a fault first, so a stale fault reads "Fault" and an
+ * open incident hides how old the reading is. The scene's "not live" look (`hasDimmedAsset`) and the heat
+ * overlay's sources (`buildingReadings`, V2-17.2, ADR-0020 "Settled in V2-17.1": "a reading is a reading")
+ * both need that, so the test lives here once. `entry` is narrowed, so a caller can read it after the check.
+ */
+export function hasFreshReading(
+  asset: Pick<Asset, 'headline'>,
+  entry: AssetTelemetryState | undefined,
+  serverNow: number | null,
+): entry is AssetTelemetryState {
+  if (entry === undefined || !entry.online) return false;
+  return serverNow === null || !isStale(entry.receivedAt, staleAfterMs(asset.headline), serverNow);
+}
+
+/**
  * Whether any asset is drawn as "not live" in 3D (V2-14.9): it has no entry in the overview, its device is
  * offline, or its latest reading is stale on the server's clock. This is the feed's own rule (`twinFeed.ts`),
  * not `assetStates`, whose fault-first order would call a stale fault "Fault" and hide the legend entry while
@@ -114,11 +133,7 @@ export function hasDimmedAsset(
   overview: TelemetryState['assets'],
   serverNow: number | null,
 ): boolean {
-  return assets.some((asset) => {
-    const entry = overview[asset.code];
-    if (entry === undefined || !entry.online) return true;
-    return serverNow !== null && isStale(entry.receivedAt, staleAfterMs(asset.headline), serverNow);
-  });
+  return assets.some((asset) => !hasFreshReading(asset, overview[asset.code], serverNow));
 }
 
 /** `zone` is `null` for the assets whose zone this console does not have. */

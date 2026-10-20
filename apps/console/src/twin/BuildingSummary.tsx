@@ -1,13 +1,8 @@
 import { useMemo } from 'react';
 import { useAssets, useIncidents, useZones } from '../api/queries';
 import { assetStates } from '../lib/assets';
-import {
-  assetsText,
-  buildingEyebrow,
-  buildingSummary,
-  incidentsText,
-  indoorText,
-} from '../lib/twinBuilding';
+import { assetsText, buildingEyebrow, buildingSummary, incidentsText } from '../lib/twinBuilding';
+import { buildingReadings, tempText } from '../lib/twinHeat';
 import { levelOf } from '../lib/twinLevel';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -28,7 +23,8 @@ const NO_INCIDENTS: never[] = [];
  * - **Nothing is said that is not known.** While the zone, the catalogue or the zones are on their way there is no
  *   card; while the incident list has not loaded the incidents row is left out rather than read as "None", which
  *   would tell an operator the building is quiet (as `twinSummary` leaves an unknown count out). The indoor row is
- *   left out when the building has no fresh reading.
+ *   left out when the building has no fresh reading (silent): it is the heat overlay's own number
+ *   (`lib/twinHeat.ts`, V2-17.2), so the two cannot disagree; the overlay's "No data" is its label, not a row here.
  * - **A named region, not a live region.** The figures change every second, and a new incident is announced by the
  *   feed and the toasts; the stage's own summary is no live region either (`TwinView`).
  * - **Where it stands:** frame 12's top right, offset by the open sheet (`--sheet-inset`) as the camera controls are,
@@ -48,7 +44,8 @@ export function BuildingSummary() {
     if (zone === undefined || assets.data === undefined) return null;
     const raised = incidents.data ?? NO_INCIDENTS;
     const states = assetStates(assets.data, raised, overview, serverNow);
-    return buildingSummary(zone, assets.data, states, raised, overview, serverNow);
+    const reading = buildingReadings([zone], assets.data, overview, serverNow).get(zone.id);
+    return buildingSummary(zone, assets.data, states, raised, reading);
   }, [zone, assets.data, incidents.data, overview, serverNow]);
 
   if (level !== 'building' || zone === undefined || figures === null) return null;
@@ -72,7 +69,7 @@ export function BuildingSummary() {
         {figures.indoorC !== null && (
           <div className={styles.row}>
             <dt>Indoor</dt>
-            <dd>{indoorText(figures.indoorC)}</dd>
+            <dd>{tempText(figures.indoorC)}</dd>
           </div>
         )}
       </dl>
