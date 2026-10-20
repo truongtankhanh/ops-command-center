@@ -45,6 +45,17 @@ export interface ShortcutRow {
    * the description (ADR-0021), so nothing is marked here.
    */
   permission?: Permission;
+  /**
+   * Shown only while the 3D view can be drawn (`twinCapability`, ADR-0020): the key does nothing in
+   * the 2D view or where 3D is unavailable, so the help does not list it there (V2-18.1). The help
+   * reads this; each handler checks availability itself (V2-18.2, V2-18.3).
+   */
+  requires?: 'twin';
+  /**
+   * The keys are pressed together and drawn joined with "+", as frame 16 draws "Shift + arrows".
+   * Without it, `keys` are alternatives drawn side by side.
+   */
+  chord?: boolean;
 }
 
 export interface ShortcutGroup {
@@ -55,7 +66,10 @@ export interface ShortcutGroup {
 /**
  * What the help dialog lists. It documents the keys; each component still handles its own
  * (`useShortcut`, `Sheet`, `Dialog`, `Tabs`, the feed's rows, MapLibre's canvas), so a key added
- * there is added here too.
+ * there is added here too. The groups and their order are frame 16's; its "New" tags are review
+ * annotations and are not shipped (V2-12.1). `V` and `F` are character keys, so they go with the
+ * others when single-key shortcuts are off; the 3D view's own keys act only while the stage has
+ * focus and stay.
  */
 export const SHORTCUTS: readonly ShortcutGroup[] = [
   {
@@ -68,7 +82,43 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
         permission: 'incident:report',
       },
       { keys: ['/'], description: 'Search incidents or assets', character: true },
+      {
+        keys: ['V'],
+        description: 'Switch between 3D and 2D',
+        character: true,
+        requires: 'twin',
+      },
+      { keys: ['F'], description: 'Fly to the selection', character: true, requires: 'twin' },
       { keys: ['?'], description: 'Show keyboard shortcuts', character: true },
+    ],
+  },
+  {
+    title: '3D view, while it has focus',
+    rows: [
+      { keys: ['←', '→'], description: 'Orbit around the target', requires: 'twin' },
+      { keys: ['↑', '↓'], description: 'Tilt (20°–78°)', requires: 'twin' },
+      { keys: ['Shift', 'arrows'], description: 'Pan', chord: true, requires: 'twin' },
+      { keys: ['+', '−'], description: 'Zoom in or out', requires: 'twin' },
+      { keys: ['Home'], description: 'Reset to the campus view', requires: 'twin' },
+      {
+        keys: ['Esc'],
+        description: 'Up one level: part → asset → building → campus',
+        requires: 'twin',
+      },
+    ],
+  },
+  {
+    title: '3D view, pointer and touch',
+    rows: [
+      { keys: ['Drag'], description: 'Rotate', requires: 'twin' },
+      {
+        keys: ['Shift', 'Drag'],
+        description: 'Pan (also right-drag, two-finger drag)',
+        chord: true,
+        requires: 'twin',
+      },
+      { keys: ['Wheel'], description: 'Zoom toward the pointer (also pinch)', requires: 'twin' },
+      { keys: ['Click'], description: 'Select a building, asset or part', requires: 'twin' },
     ],
   },
   {
@@ -81,7 +131,31 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
         permission: 'incident:acknowledge',
       },
       { keys: ['R'], description: 'Resolve', character: true, permission: 'incident:resolve' },
+      {
+        keys: ['F'],
+        description: "Show the incident's asset in 3D",
+        character: true,
+        requires: 'twin',
+      },
       { keys: ['Esc'], description: 'Close the panel (kept open while a draft is written)' },
+    ],
+  },
+  {
+    // Both rows need 3D: the callout exists only there, and the sheet's own Escape in 2D is
+    // already listed under "Incident panel" and "Dialogs and menus".
+    title: 'Asset inspector',
+    rows: [
+      {
+        keys: ['F'],
+        description: 'Fly to the asset or the selected part',
+        character: true,
+        requires: 'twin',
+      },
+      {
+        keys: ['Esc'],
+        description: 'Close the part callout, then the inspector',
+        requires: 'twin',
+      },
     ],
   },
   {
@@ -92,17 +166,17 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
     ],
   },
   {
+    title: '2D map, while it has focus',
+    rows: [
+      { keys: ['←', '↑', '→', '↓'], description: 'Move the map' },
+      { keys: ['+', '-'], description: 'Zoom in or out' },
+    ],
+  },
+  {
     title: 'Tabs',
     rows: [
       { keys: ['←', '→'], description: 'Previous or next tab' },
       { keys: ['Home', 'End'], description: 'First or last tab' },
-    ],
-  },
-  {
-    title: 'Map, while it has focus',
-    rows: [
-      { keys: ['←', '↑', '→', '↓'], description: 'Move the map' },
-      { keys: ['+', '-'], description: 'Zoom in or out' },
     ],
   },
   {

@@ -1,9 +1,10 @@
 import { INCIDENT_CATEGORIES, type Role } from '@occ/contracts';
-import { useId } from 'react';
+import { Fragment, useId } from 'react';
 import { useSession } from '../auth/store';
 import { categoriesInScope, categoriesLabel } from '../lib/incidents';
 import { SHORTCUTS, type ShortcutRow } from '../lib/shortcuts';
 import { useShortcut } from '../lib/useShortcut';
+import { useTwinCapability } from '../lib/useTwinCapability';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -14,7 +15,7 @@ import styles from './ShortcutHelp.module.css';
  * The keyboard shortcuts help, opened with `?` or from the account menu. Always mounted, so `?`
  * works anywhere outside a text field (and outside another dialog, which stops keys at its root).
  * It is also where the keys that are not announced are listed: the incident list's arrows, the
- * tabs' arrows, the map's keys.
+ * tabs' arrows, the map's keys and the 3D view's keys.
  */
 export function ShortcutHelp() {
   const open = useConsole((s) => s.shortcutHelpOpen);
@@ -24,12 +25,19 @@ export function ShortcutHelp() {
 }
 
 /**
- * What `row` reads as for a user holding `roles`, or `null` when it is not for them: a single-key
- * shortcut while they are off, or an action no role of theirs grants. An action limited to some
- * categories names them (a technician's `A` and `R`: "Acknowledge — Facilities and Environment
- * incidents", brief § Keyboard); the scope comes from the same maps the API enforces (ADR-0021).
+ * What `row` reads as for a user holding `roles`, or `null` when it is not for them: a key for the
+ * 3D view while 3D cannot be drawn (`twinOn`, V2-18.1), a single-key shortcut while they are off,
+ * or an action no role of theirs grants. An action limited to some categories names them (a
+ * technician's `A` and `R`: "Acknowledge — Facilities and Environment incidents", brief §
+ * Keyboard); the scope comes from the same maps the API enforces (ADR-0021).
  */
-function describeRow(row: ShortcutRow, roles: readonly Role[], keysOn: boolean): string | null {
+function describeRow(
+  row: ShortcutRow,
+  roles: readonly Role[],
+  keysOn: boolean,
+  twinOn: boolean,
+): string | null {
+  if (row.requires === 'twin' && !twinOn) return null;
   if (row.character && !keysOn) return null;
   if (!row.permission) return row.description;
   const scope = categoriesInScope(roles, row.permission);
@@ -39,21 +47,22 @@ function describeRow(row: ShortcutRow, roles: readonly Role[], keysOn: boolean):
 }
 
 /**
- * Only the keys this user can use: single-key shortcuts while they are on, and actions their roles
- * grant (a viewer sees no `N`, `A` or `R`; a technician sees `A` and `R` for their categories). The
- * short intro, not the whole list, is the dialog's description, so opening it does not read every
- * row.
+ * Only the keys this user can use: single-key shortcuts while they are on, the 3D view's keys while
+ * 3D is available, and actions their roles grant (a viewer sees no `N`, `A` or `R`; a technician
+ * sees `A` and `R` for their categories). The short intro, not the whole list, is the dialog's
+ * description, so opening it does not read every row.
  */
 function ShortcutHelpDialog() {
   const close = useConsole((s) => s.closeShortcutHelp);
   const keysOn = useConsole((s) => s.keyboardShortcuts);
   const roles = useSession((s) => s.user?.roles);
+  const twinOn = useTwinCapability().available;
   const introId = useId();
 
   const groups = SHORTCUTS.map((group) => ({
     title: group.title,
     rows: group.rows.flatMap((row) => {
-      const description = describeRow(row, roles ?? [], keysOn);
+      const description = describeRow(row, roles ?? [], keysOn, twinOn);
       return description === null ? [] : [{ row, description }];
     }),
   })).filter((group) => group.rows.length > 0);
@@ -83,10 +92,12 @@ function ShortcutHelpDialog() {
               {group.rows.map(({ row, description }) => (
                 <div key={row.description} className={styles.row}>
                   <dt className={styles.keys}>
-                    {row.keys.map((key) => (
-                      <Kbd key={key} decorative={false}>
-                        {key}
-                      </Kbd>
+                    {row.keys.map((key, index) => (
+                      <Fragment key={key}>
+                        {/* A chord is read "Shift plus arrows": the plus is text, not decoration. */}
+                        {row.chord && index > 0 ? <span>+</span> : null}
+                        <Kbd decorative={false}>{key}</Kbd>
+                      </Fragment>
                     ))}
                   </dt>
                   <dd className={styles.description}>{description}</dd>
