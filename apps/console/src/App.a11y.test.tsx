@@ -14,6 +14,7 @@ import type {
 } from '@occ/contracts';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { Mock } from 'vitest';
 import { queryKeys } from './api/queries';
 import { App } from './App';
 import { useSession } from './auth/store';
@@ -21,7 +22,13 @@ import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
 import type { Beacon } from './lib/twinBeacons';
 import type { HeatScene } from './lib/twinHeat';
+import { SHORTCUTS } from './lib/shortcuts';
+import type { FitBox } from './lib/twinCamera';
+import { registerTwinCommands, type TwinCommands } from './lib/twinCommands';
+import { type FocusResolver, registerFocusResolver } from './lib/twinFocus';
+import { levelOf } from './lib/twinLevel';
 import { publishPick } from './lib/twinPicker';
+import { TWIN_VIEW_KEYS } from './lib/twinSummary';
 import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
 import { initialTelemetryState } from './lib/telemetryState';
 import type { NodeInfo } from './lib/twinBindings';
@@ -1632,6 +1639,583 @@ describe('the console', () => {
 
       expect(screen.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
       await checkPage();
+    });
+
+    // V2-18.4: the keyboard at the level of the whole console. The units are proved elsewhere (`shortcuts.test.ts`,
+    // `ShortcutHelp.test.tsx`, `TwinShortcuts.test.tsx`, `TwinView.test.tsx`); what is proved here is that the dialog the
+    // user opens with `?` lists, in the real console, what the real handlers do. The canvas is a mock (jsdom has no
+    // WebGL), so the camera is a fake rig and "which box?" a fake resolver, registered by the case that needs them.
+    describe('the keyboard (V2-18.4)', () => {
+      const BOX: FitBox = { bounds: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 }, heightM: 5 };
+      type FakeRig = { [K in keyof TwinCommands]: Mock<TwinCommands[K]> };
+      const cleanups: (() => void)[] = [];
+
+      /** A rig that answers every camera command, registered until the case ends. */
+      function fakeRig(): FakeRig {
+        const rig: FakeRig = {
+          flyTo: vi.fn<TwinCommands['flyTo']>(),
+          home: vi.fn<TwinCommands['home']>(),
+          fit: vi.fn<TwinCommands['fit']>(),
+          fitAsset: vi.fn<TwinCommands['fitAsset']>(),
+          flyToIncident: vi.fn<TwinCommands['flyToIncident']>(),
+          showAsset: vi.fn<TwinCommands['showAsset']>(),
+          zoomBy: vi.fn<TwinCommands['zoomBy']>(),
+          rotateBy: vi.fn<TwinCommands['rotateBy']>(),
+          tiltBy: vi.fn<TwinCommands['tiltBy']>(),
+          panBy: vi.fn<TwinCommands['panBy']>(),
+          faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+          current: vi.fn<TwinCommands['current']>(() => null),
+        };
+        cleanups.push(registerTwinCommands(rig));
+        return rig;
+      }
+
+      /** What the canvas would answer to "which box is this asset or part?". */
+      function fakeResolver() {
+        const resolver = vi.fn<FocusResolver>(() => BOX);
+        cleanups.push(registerFocusResolver(resolver));
+        return resolver;
+      }
+
+      /** Every call any camera command got. `current` only reads, so it is left out. */
+      const cameraCalls = (rig: FakeRig): unknown[][] =>
+        Object.entries(rig)
+          .filter(([name]) => name !== 'current')
+          .flatMap(([, command]) => (command as Mock<(...args: never[]) => unknown>).mock.calls);
+
+      /**
+       * Forgets what the rig was asked so far. Selecting an asset or leaving a level makes the level camera fly by itself
+       * (V2-15.6); a case that checks what a *key* asked for sets its state up first and clears the rig.
+       */
+      const clearRig = (rig: FakeRig) =>
+        Object.values(rig).forEach((command) => command.mockClear());
+
+      afterEach(() => {
+        cleanups.splice(0).forEach((cleanup) => cleanup());
+        unstubTwin();
+        localStorage.clear();
+      });
+
+      const stage = () => screen.findByRole('group', { name: /^3D view of Langbiang Tech Campus/ });
+
+      const helpDialog = () => screen.getByRole('dialog', { name: 'Keyboard shortcuts' });
+      const openHelp = () => act(() => consoleState().openShortcutHelp());
+      const closeHelp = () => act(() => consoleState().closeShortcutHelp());
+      /** What the open help lists under `title`, in order, or `null` when it does not list that group at all. */
+      const helpRows = (title: string): string[] | null => {
+        const heading = within(helpDialog()).queryByRole('heading', { level: 3, name: title });
+        if (heading === null) return null;
+        return [...heading.parentElement!.querySelectorAll('dd')].map(
+          (row) => row.textContent ?? '',
+        );
+      };
+      /** What the table of keys (`SHORTCUTS`) says the group reads, for the groups that are listed whole. */
+      const descriptionsOf = (title: string): string[] =>
+        SHORTCUTS.find((group) => group.title === title)!.rows.map((row) => row.description);
+
+      const THREE_D_GROUPS = [
+        '3D view, while it has focus',
+        '3D view, pointer and touch',
+        'Asset inspector',
+      ];
+
+      /** What the help shows each role: reporting, and acknowledging and resolving (a technician's are scoped, ADR-0021). */
+      const ROLES: readonly {
+        role: Role;
+        report: boolean;
+        acknowledge: string | null;
+        resolve: string | null;
+      }[] = [
+        { role: 'operator', report: true, acknowledge: 'Acknowledge', resolve: 'Resolve' },
+        { role: 'supervisor', report: true, acknowledge: 'Acknowledge', resolve: 'Resolve' },
+        {
+          role: 'technician',
+          report: true,
+          acknowledge: 'Acknowledge — Facilities and Environment incidents',
+          resolve: 'Resolve — Facilities and Environment incidents',
+        },
+        { role: 'viewer', report: false, acknowledge: null, resolve: null },
+      ];
+
+      describe('the help, with 3D available', () => {
+        it.each(ROLES)(
+          'lists what applies to a $role and has no axe violations',
+          async ({ role, report, acknowledge, resolve }) => {
+            stubTwinAvailable();
+            renderConsole({ role });
+
+            openHelp();
+
+            // V, F and the 3D keys need no permission; N, A and R follow the role.
+            expect(helpRows('Anywhere')).toEqual([
+              ...(report ? ['Report an incident'] : []),
+              'Search incidents or assets',
+              'Switch between 3D and 2D',
+              'Fly to the selection',
+              'Show keyboard shortcuts',
+            ]);
+            expect(helpRows('Incident panel')).toEqual([
+              ...(acknowledge === null ? [] : [acknowledge]),
+              ...(resolve === null ? [] : [resolve]),
+              "Show the incident's asset in 3D",
+              'Close the panel (kept open while a draft is written)',
+            ]);
+            for (const title of THREE_D_GROUPS) {
+              expect(helpRows(title)).toEqual(descriptionsOf(title));
+            }
+            await checkPage();
+          },
+        );
+
+        it('lists the pointer and touch rows with 3D, and no 3D group without it', () => {
+          stubTwinAvailable();
+          renderConsole();
+
+          openHelp();
+          expect(helpRows('3D view, pointer and touch')).toEqual(
+            descriptionsOf('3D view, pointer and touch'),
+          );
+          closeHelp();
+
+          unstubTwin();
+          openHelp();
+          for (const title of THREE_D_GROUPS) expect(helpRows(title)).toBeNull();
+        });
+      });
+
+      describe('with single-key shortcuts off (WCAG 2.1.4)', () => {
+        it('takes V and F out of the help and out of the console, and keeps the 3D keys listed and working', async () => {
+          stubTwinAvailable();
+          renderConsole({ details: [TOWER] });
+          act(() => consoleState().setView('3d'));
+          const view = await stage();
+          act(() => {
+            consoleState().selectAsset('CT-01', null);
+            consoleState().setKeyboardShortcuts(false);
+          });
+          const rig = fakeRig();
+          const resolver = fakeResolver();
+
+          openHelp();
+          // Every key of "Anywhere" is a character key; the panels keep only their Escape.
+          expect(helpRows('Anywhere')).toBeNull();
+          expect(helpRows('Incident panel')).toEqual([
+            'Close the panel (kept open while a draft is written)',
+          ]);
+          expect(helpRows('Asset inspector')).toEqual([
+            'Close the part callout, then the inspector',
+          ]);
+          expect(helpRows('3D view, while it has focus')).toEqual(
+            descriptionsOf('3D view, while it has focus'),
+          );
+          closeHelp();
+
+          fireEvent.keyDown(document.body, { key: 'v' });
+          fireEvent.keyDown(document.body, { key: 'f' });
+          expect(consoleState().view).toBe('3d');
+          expect(resolver).not.toHaveBeenCalled();
+          expect(cameraCalls(rig)).toEqual([]);
+
+          // The stage's own keys act only on its focus, so the switch does not touch them.
+          act(() => view.focus());
+          fireEvent.keyDown(view, { key: 'ArrowLeft' });
+          expect(rig.rotateBy).toHaveBeenCalledExactlyOnceWith(15);
+        });
+      });
+
+      // The guard of the ticket: every keyboard row that frame 16 adds for 3D is listed in the real help *and* done by the
+      // real handler. Each case asserts both halves, so removing the handler or the row turns one of them red; the
+      // completeness case below turns a new row, or a dropped entry, red. The pointer and touch rows have no keyboard
+      // handler to test here (camera-controls and the picker need WebGL) and V1's rows have tests of their own.
+      describe('every key of frame 16 (V2-18.4)', () => {
+        interface KeyContext {
+          rig: FakeRig;
+          resolver: Mock<FocusResolver>;
+          view: HTMLElement;
+        }
+        interface KeyEntry {
+          group: string;
+          description: string;
+          render?: Parameters<typeof renderConsole>[0];
+          /** Sets the console up, presses the key and checks what it did. */
+          run: (context: KeyContext) => void;
+        }
+
+        /** A key pressed on the focused stage, the only place the view's own keys are heard. */
+        const onStage = (view: HTMLElement, init: KeyboardEventInit) => {
+          act(() => view.focus());
+          fireEvent.keyDown(view, init);
+        };
+        const select = (action: () => void, rig: FakeRig) => {
+          act(action);
+          clearRig(rig);
+        };
+        const level = () => levelOf(consoleState());
+
+        const FRAME_16_KEYS: readonly KeyEntry[] = [
+          {
+            group: 'Anywhere',
+            description: 'Switch between 3D and 2D',
+            run: () => {
+              fireEvent.keyDown(document.body, { key: 'v' });
+              expect(consoleState().view).toBe('2d');
+              fireEvent.keyDown(document.body, { key: 'v' });
+              expect(consoleState().view).toBe('3d');
+            },
+          },
+          {
+            group: 'Anywhere',
+            description: 'Fly to the selection',
+            render: { details: [TOWER] },
+            run: ({ rig, resolver }) => {
+              select(() => consoleState().selectAsset('CT-01', null), rig);
+
+              fireEvent.keyDown(document.body, { key: 'f' });
+
+              expect(resolver).toHaveBeenCalledExactlyOnceWith('CT-01', null);
+              expect(rig.fitAsset).toHaveBeenCalledExactlyOnceWith(BOX);
+            },
+          },
+          {
+            group: 'Incident panel',
+            description: "Show the incident's asset in 3D",
+            render: {
+              incidents: [...INCIDENTS, RAISED_BY_RULE],
+              incidentDetails: [raisedDetail()],
+              details: [TOWER],
+            },
+            run: ({ rig }) => {
+              select(() => consoleState().select('i-tel'), rig);
+
+              fireEvent.keyDown(document.body, { key: 'f' });
+
+              expect(rig.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+            },
+          },
+          {
+            group: 'Asset inspector',
+            description: 'Fly to the asset or the selected part',
+            render: { details: [TOWER] },
+            run: ({ rig, resolver }) => {
+              select(() => {
+                consoleState().selectAsset('CT-01', null);
+                consoleState().selectPart('FanBlade');
+              }, rig);
+
+              fireEvent.keyDown(document.body, { key: 'f' });
+
+              expect(resolver).toHaveBeenCalledExactlyOnceWith('CT-01', 'FanBlade');
+              expect(rig.fitAsset).toHaveBeenCalledExactlyOnceWith(BOX);
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Orbit around the target',
+            run: ({ rig, view }) => {
+              onStage(view, { key: 'ArrowLeft' });
+              onStage(view, { key: 'ArrowRight' });
+
+              expect(rig.rotateBy.mock.calls).toEqual([[15], [-15]]);
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Tilt (20°–78°)',
+            run: ({ rig, view }) => {
+              onStage(view, { key: 'ArrowUp' });
+              onStage(view, { key: 'ArrowDown' });
+
+              expect(rig.tiltBy.mock.calls).toEqual([[-5], [5]]);
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Pan',
+            run: ({ rig, view }) => {
+              onStage(view, { key: 'ArrowLeft', shiftKey: true });
+              onStage(view, { key: 'ArrowUp', shiftKey: true });
+
+              expect(rig.panBy.mock.calls).toEqual([
+                [-0.1, 0],
+                [0, 0.1],
+              ]);
+              // Shift turns an arrow into a pan; it is not also an orbit or a tilt.
+              expect(rig.rotateBy).not.toHaveBeenCalled();
+              expect(rig.tiltBy).not.toHaveBeenCalled();
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Zoom in or out',
+            run: ({ rig, view }) => {
+              onStage(view, { key: '+' });
+              onStage(view, { key: '-' });
+
+              expect(rig.zoomBy.mock.calls).toEqual([[0.8], [1.25]]);
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Reset to the campus view',
+            render: { details: [TOWER] },
+            run: ({ rig, view }) => {
+              select(() => consoleState().selectAsset('CT-01', null), rig);
+              expect(level()).toBe('asset');
+
+              onStage(view, { key: 'Home' });
+
+              expect(level()).toBe('campus');
+              expect(rig.home).toHaveBeenCalled();
+            },
+          },
+          {
+            group: '3D view, while it has focus',
+            description: 'Up one level: part → asset → building → campus',
+            render: { details: [TOWER] },
+            run: ({ rig, view }) => {
+              select(() => {
+                consoleState().selectAsset('CT-01', 'z1');
+                consoleState().selectPart('FanBlade');
+              }, rig);
+              expect(level()).toBe('part');
+
+              for (const next of ['asset', 'building', 'campus']) {
+                onStage(view, { key: 'Escape' });
+                expect(level()).toBe(next);
+              }
+              // The level camera flew home when the building was left; the key asked for nothing else.
+              expect(rig.home).toHaveBeenCalled();
+
+              // At the campus there is nothing to close, and Escape does not leave the 3D view.
+              const before = consoleState();
+              onStage(view, { key: 'Escape' });
+              expect(consoleState()).toBe(before);
+              expect(consoleState().view).toBe('3d');
+            },
+          },
+          {
+            group: 'Asset inspector',
+            description: 'Close the part callout, then the inspector',
+            render: { details: [TOWER] },
+            run: ({ rig }) => {
+              select(() => {
+                consoleState().selectAsset('CT-01', null);
+                consoleState().selectPart('FanBlade');
+              }, rig);
+              const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+
+              fireEvent.keyDown(sheet, { key: 'Escape' });
+              expect(consoleState().selectedPart).toBeNull();
+              expect(consoleState().selectedAssetCode).toBe('CT-01');
+
+              fireEvent.keyDown(sheet, { key: 'Escape' });
+              expect(consoleState().selectedAssetCode).toBeNull();
+            },
+          },
+        ];
+
+        it.each(FRAME_16_KEYS)(
+          'lists "$description" under "$group", and the key does it',
+          async ({ group, description, render, run }) => {
+            stubTwinAvailable();
+            renderConsole(render);
+            act(() => consoleState().setView('3d'));
+            const view = await stage();
+            const rig = fakeRig();
+            const resolver = fakeResolver();
+
+            // The row is in the help the user would open with `?`. The dialog swallows every key, so it is closed
+            // before the key is pressed.
+            openHelp();
+            expect(helpRows(group)).toContain(description);
+            closeHelp();
+
+            run({ rig, resolver, view });
+          },
+        );
+
+        it('has an entry for every keyboard row that frame 16 lists for 3D, and for nothing else', () => {
+          const rows = SHORTCUTS.filter((group) => group.title !== '3D view, pointer and touch')
+            .flatMap((group) =>
+              group.rows
+                .filter((row) => row.requires === 'twin')
+                .map((row) => `${group.title} › ${row.description}`),
+            )
+            .sort();
+
+          expect(
+            FRAME_16_KEYS.map((entry) => `${entry.group} › ${entry.description}`).sort(),
+          ).toEqual(rows);
+        });
+
+        it('has no entry twice', () => {
+          const names = FRAME_16_KEYS.map((entry) => `${entry.group} › ${entry.description}`);
+
+          expect(new Set(names).size).toBe(names.length);
+        });
+      });
+
+      // What the keyboard user does, with the keyboard alone and the real console: no `focus()` to get to a control, no
+      // store call to select or to climb. The canvas, the camera and "which box?" are the fakes above, so this proves the
+      // keys, their scoping and the hand-offs, not the camera itself (by eye, V2-19.7).
+      describe('by keyboard alone (V2-18.4)', () => {
+        /** Presses Tab until `found` is true (Tab wraps round the page), and says where it got lost if it never is. */
+        const tabTo = async (found: () => boolean) => {
+          for (let presses = 0; presses < 120; presses += 1) {
+            if (found()) return;
+            await userEvent.tab();
+          }
+          throw new Error(
+            `Tab did not reach its target in 120 presses; focus is on ${document.activeElement?.outerHTML.slice(0, 160)}`,
+          );
+        };
+
+        it('reaches the stage, orbits, picks an asset, flies to it with F and goes back up with Escape', async () => {
+          stubTwinAvailable();
+          renderConsole({ details: [TOWER] });
+          act(() => consoleState().setView('3d'));
+          const view = await stage();
+          const rig = fakeRig();
+          const resolver = fakeResolver();
+
+          // The stage is one tab stop, described by the sentence that names its keys.
+          await tabTo(() => document.activeElement === view);
+          expect(view).toHaveAccessibleDescription(TWIN_VIEW_KEYS);
+          await userEvent.keyboard('{ArrowLeft}');
+          expect(rig.rotateBy).toHaveBeenCalledExactlyOnceWith(15);
+
+          // The Assets tab with the arrow (automatic activation), then its first asset with Enter.
+          await tabTo(() => document.activeElement?.getAttribute('role') === 'tab');
+          expect(document.activeElement).toHaveAccessibleName(/^Incidents/);
+          await userEvent.keyboard('{ArrowRight}');
+          expect(screen.getByRole('tab', { name: /^Assets/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+          );
+          const assets = within(screen.getByRole('region', { name: 'Assets' }));
+          const row = assets.getByRole('button', { name: /Cooling tower 1/ });
+          // The list is one tab stop (a roving tabindex, headers among its items): Tab reaches that stop and the arrows
+          // walk to the row.
+          const stop = () =>
+            assets.getAllByRole('button').find((button) => button.getAttribute('tabindex') === '0');
+          await tabTo(() => document.activeElement === stop());
+          for (let steps = 0; steps < 10 && document.activeElement !== row; steps += 1) {
+            await userEvent.keyboard('{ArrowDown}');
+          }
+          expect(row).toHaveFocus();
+          await userEvent.keyboard('{Enter}');
+          const sheet = await screen.findByRole('complementary', { name: 'Asset CT-01' });
+          expect(consoleState().selectedAssetCode).toBe('CT-01');
+          // Selecting made the level camera fly by itself; what comes next is the key's.
+          clearRig(rig);
+
+          // F flies to the selection, and the button that does the same says so.
+          expect(within(sheet).getByRole('button', { name: /^Focus/ })).toHaveAttribute(
+            'aria-keyshortcuts',
+            'F',
+          );
+          await userEvent.keyboard('f');
+          expect(resolver).toHaveBeenCalledExactlyOnceWith('CT-01', null);
+          expect(rig.fitAsset).toHaveBeenCalledExactlyOnceWith(BOX);
+
+          // Back to the stage by Tab, and Escape climbs: the asset, then the building the row put in focus, if any.
+          await tabTo(() => document.activeElement === view);
+          clearRig(rig);
+          await userEvent.keyboard('{Escape}');
+          expect(consoleState().selectedAssetCode).toBeNull();
+          if (consoleState().focusZoneId !== null) await userEvent.keyboard('{Escape}');
+          expect(levelOf(consoleState())).toBe('campus');
+          expect(rig.home).toHaveBeenCalled();
+
+          // At the campus Escape does nothing, and the operator is still in the 3D view.
+          const before = consoleState();
+          await userEvent.keyboard('{Escape}');
+          expect(consoleState()).toBe(before);
+          expect(consoleState().view).toBe('3d');
+        });
+
+        it('fires no handler from a text field', async () => {
+          stubTwinAvailable();
+          renderConsole({ details: [TOWER] });
+          act(() => consoleState().setView('3d'));
+          await stage();
+          act(() => consoleState().selectAsset('CT-01', null));
+          const rig = fakeRig();
+          const resolver = fakeResolver();
+
+          for (const [tab, placeholder] of [
+            [/^Incidents/, 'Search code, title or zone'],
+            [/^Assets/, 'Search asset, code or zone'],
+          ] as const) {
+            await userEvent.click(screen.getByRole('tab', { name: tab }));
+            const box = screen.getByPlaceholderText(placeholder);
+            await userEvent.click(box);
+
+            // The single-key shortcuts only type: V, F, N, A, R, ? and /.
+            await userEvent.type(box, 'vfnar?/');
+            expect(box).toHaveValue('vfnar?/');
+            expect(consoleState()).toMatchObject({
+              view: '3d',
+              selectedAssetCode: 'CT-01',
+              reporting: false,
+              shortcutHelpOpen: false,
+            });
+            expect(resolver).not.toHaveBeenCalled();
+            expect(cameraCalls(rig)).toEqual([]);
+
+            // The stage's keys are heard on the stage only: sent to the box they reach no camera and no level.
+            await userEvent.clear(box);
+            for (const init of [
+              { key: 'Home' },
+              { key: 'ArrowLeft' },
+              { key: 'ArrowUp', shiftKey: true },
+              { key: '+' },
+              { key: '-' },
+              { key: 'Escape' },
+            ]) {
+              fireEvent.keyDown(box, init);
+            }
+            expect(levelOf(consoleState())).toBe('asset');
+            expect(cameraCalls(rig)).toEqual([]);
+          }
+        });
+
+        it('keeps Home for the lists, and gives it to the stage only while the stage has focus', async () => {
+          stubTwinAvailable();
+          renderConsole({ details: [TOWER] });
+          act(() => consoleState().setView('3d'));
+          const view = await stage();
+          const rig = fakeRig();
+
+          // A list's rows are the buttons with a roving tabindex; the headers of the Assets list are among them.
+          const items = (name: string) =>
+            within(screen.getByRole('region', { name }))
+              .getAllByRole('button')
+              .filter((button) => button.hasAttribute('tabindex'));
+          for (const [tab, region] of [
+            [/^Incidents/, 'Incidents'],
+            [/^Assets/, 'Assets'],
+          ] as const) {
+            await userEvent.click(screen.getByRole('tab', { name: tab }));
+            const rows = items(region);
+            expect(rows.length).toBeGreaterThan(1);
+            act(() => rows.at(-1)!.focus());
+
+            await userEvent.keyboard('{Home}');
+
+            expect(rows[0]).toHaveFocus();
+          }
+          expect(cameraCalls(rig)).toEqual([]);
+
+          // With the stage focused the same key is the reset.
+          act(() => consoleState().selectAsset('CT-01', null));
+          clearRig(rig);
+          act(() => view.focus());
+          await userEvent.keyboard('{Home}');
+          expect(levelOf(consoleState())).toBe('campus');
+          expect(rig.home).toHaveBeenCalled();
+        });
+      });
     });
   });
 });
