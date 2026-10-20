@@ -552,6 +552,54 @@ their author, checked in CI, and served by nginx as immutable files.
       3D marks the row; a row hover tints the part and leaving clears it; closing the inspector under the pointer leaves
       no stuck hover; "Focus" re-frames the part, and the asset after Escape; the viewer's note and "Focus" share one
       row; the foot in 2D has no "Focus"; the ghost button reads on the foot's surface.
+  - Settled in V2-16.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how incidents are drawn in 3D, when the camera moves for them, and how a location is picked. Each proposal
+    of the task is accepted unless a bullet says "changed".
+    - **Beacon height: accepted, with the asset's height from the box the camera already fits.** An incident that
+      belongs to an asset (`assetId`, resolved in the Assets list) stands at the top of that asset: the base elevation
+      plus the model's height, which is the box's (`assetBoxes`: `baseM + heightM`; the footprint follows the model,
+      Model contract). An incident whose position is inside a building's footprint (the footprint ring `placementOf`
+      uses, so 2D and 3D agree) stands at the building's roof (`heightOf(zone)`); any other is at 0. An incident whose
+      asset the console does not hold yet is placed by its position. The shipped cooling-tower stand-in is 5 m tall on
+      a 14 m roof, so `CT-01`'s beacon is at 19 m; frame 04's 20.8 m is the frame's 6.8 m stack (a "Frames to revise"
+      row), and the other heights in the frames (0, 14, 16, 20 m) are the frames', not a rule.
+    - **Set and look: accepted, with the pulse rule stated as the map's.** The set and the fan-out are the 2D map's
+      (`incidentFeatures`, `fanOut`: active incidents, and the selected one even when resolved). A beacon is a filled
+      disc while the incident is `open` and hollow while `acknowledged`; a critical one is larger and **pulses while it
+      is critical and open** (`isPulsing`, the map's own rule; the task's "while fresh" is not a second rule), and the
+      pulse stops under reduced motion. A telemetry incident carries a tag with its asset's code (frame 04); the
+      selected one has an accent ring (frame 10). The Incidents layer switches the beacons, as it does the markers.
+    - **The camera moves only when asked: accepted, with the level rule kept.** Selecting an incident (feed, search,
+      toast, beacon) opens its sheet and rings its beacon and **does not fly to it**; a new incident never moves the
+      camera (principle 4). The camera moves for "Fly to", `F` and "Show in 3D". Selecting an asset flies, because the
+      Levels table says so. One thing is unchanged and is not "flying to the incident": `select` clears the asset (the
+      sheet is exclusive), so an incident selected while an asset is isolated leaves the asset, and the camera leaves
+      with the level (the parent's fit, "Settled in V2-15.7"). At campus and building level nothing is isolated, the
+      level does not change and the camera stays where it is. This closes the phase's open question 9.
+    - **Fly to, Open incident, Show in 3D: accepted, with the order fixed.** "Fly to" (toast) selects the incident and
+      then flies to its beacon: the flight is asked for after the selection, so it replaces the leaving flight above
+      (the rig holds one flight). It keeps the camera's yaw and tilt and takes the beacon as target, from the current
+      distance but no farther than 120 m (`unverified`, judged by eye). "Open incident" selects only. "Show in 3D"
+      (the sheet's asset link) flies to the incident's asset **without selecting it**, so the sheet stays open (frame 10) and no asset is isolated: the level is campus or building, whose distance limits (60 m and up) apply, so the
+      asset is shown from at least 60 m. With no rig (the 2D view, a stage that has not loaded) a flight is a no-op and
+      the selection still happens.
+    - **Pick in 3D: accepted, with the scope rules unchanged.** A click hits the nearest of the building shells (roofs
+      included) and the ground plane, under the scope of "Settled in V2-15.8" (the walls of the focused building are
+      not a target); the pin takes that hit's east and north through the scene frame (`fromLocal`, the exact inverse of
+      `toLocal`) and is drawn at the hit's height, so a click on a roof lands inside the building and stands at the
+      roof. The incident keeps only its longitude and latitude; the API's zone containment check (`400` outside) is the
+      control. Frame 09's z = 20 m is the frame's roof, not a rule (a "Frames to revise" row).
+    - **Non-telemetry incidents: accepted, and `F` made consistent with the brief's keyboard table.** An incident with
+      no asset has no "Show in 3D" (frame 10 draws it on the asset link only). `F` with an incident open flies to its
+      asset when it has one (the brief: "Incident panel: show the incident's asset in 3D") and to its beacon when it
+      does not; with an asset or a part selected it is "Focus" (V2-15.11).
+    - **The toast: accepted.** In 2D the toast keeps its single action, "View incident". In 3D it offers "Fly to" and
+      "Open incident" (frame 04), for every role, because both only read. The actions are chosen when the toast is
+      shown, from the view in effect; if the operator switches to 2D while it is up, "Fly to" still selects and the
+      flight is a no-op.
+    - **Not settled here:** the beacon's model (a sprite or a mesh, its size on screen) and its place in the pick
+      precedence beyond "Beacon (V2-16) > part" are V2-16.3 and V2-16.5; beacons stay out of the pick scope while an
+      asset is isolated, as every other target, so a beacon is reached then through the feed, the search or the toast.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
