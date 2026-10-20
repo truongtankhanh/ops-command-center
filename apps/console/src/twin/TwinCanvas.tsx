@@ -17,6 +17,7 @@ import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
 import { PickLayer } from './PickLayer';
 import { Pointer } from './Pointer';
+import { ReportPin } from './ReportPin';
 import { Rig } from './Rig';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
@@ -77,6 +78,8 @@ interface TwinCanvasProps {
  *   camera markers, independent of the models, as one draw call, and asks for frames only while one pulses. It sits
  *   inside `PickLayer` (V2-16.4) so that it can register what it draws as picks, tested in screen space before any
  *   geometry; `renderOrder` decides what is painted over what, not the place in the tree.
+ * - `ReportPin` draws the report's pin whenever the report form has a position (V2-16.7), over the beacons, as a
+ *   screen-sized sprite; it sits inside `PickLayer` so that it can be grabbed while the location is picked.
  * - `ZoneHighlight` outlines the zone of the selected incident, or the report's, on the ground (V2-16.4): a ribbon
  *   after the building faces, with no regard for the Incidents layer.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
@@ -88,7 +91,8 @@ interface TwinCanvasProps {
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
  * - `Pointer` listens to the canvas element for hover, click and drag, and asks `PickLayer` what is under it
- *   (V2-15.4); it renders nothing.
+ *   (V2-15.4); it renders nothing. While the report's location is picked a click places the pin there (V2-16.7), so
+ *   it takes the scene's frame to turn the point into a longitude and latitude.
  * - `ContextGuard` watches the WebGL context: a lost one that does not come back within 5 s ends the 3D
  *   session (V2-12.11).
  * - The leader of the part callout (V2-15.10) is an SVG beside the canvas, drawn by `LeaderProjector` under `Equipment` from
@@ -149,8 +153,9 @@ export function TwinCanvas({
               leaderStartRef={leaderStartRef}
             />
             <Beacons beacons={beacons} />
+            <ReportPin zones={scene.zones} frame={scene.frame} />
           </PickLayer>
-          <Pointer assets={scene.assets} zones={scene.zones} />
+          <Pointer assets={scene.assets} zones={scene.zones} frame={scene.frame} />
           <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />

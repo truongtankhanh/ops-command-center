@@ -11,7 +11,6 @@ import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { isRateLimited } from '../api/client';
 import { useAssets, useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
 import { assetStates } from '../lib/assets';
-import { zoneAt } from '../lib/geo';
 import {
   assetFeatures,
   cameraFeatures,
@@ -44,6 +43,7 @@ import {
   zoneOverlayLayers,
 } from '../lib/mapLayers';
 import { startPulse } from '../lib/mapPulse';
+import { placePinAt } from '../lib/reportPin';
 import { siteBounds } from '../lib/sitePlan';
 import { serverNow } from '../lib/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
@@ -631,7 +631,7 @@ const PIN_TIP_OFFSET: [number, number] = [0, 3];
  * zone places the pin there and selects that zone; a click outside every zone places nothing. The
  * pin is a DOM marker, so MapLibre drags it (mouse and touch); a drop in another zone selects that
  * zone, a drop outside every zone puts the pin back. Zones are found by the API's own rule
- * (`zoneAt`), so a placed pin is never refused for lying outside its zone.
+ * (`placePinAt`, `lib/reportPin.ts`), so a placed pin is never refused for lying outside its zone.
  *
  * The marker exists only while there is a pin. Pointer-only: the zone select is the keyboard route,
  * and a report without a pin goes to the zone's centre.
@@ -700,15 +700,6 @@ function useReportPick(map: maplibregl.Map | null, zones: Zone[] | undefined) {
     marker.setDraggable(picking);
     marker.getElement().toggleAttribute('data-draggable', picking);
   }, [picking, hasPin]);
-}
-
-/** Places the report's pin at `point` if it lies in a zone, else reports a miss. True if placed. */
-function placePinAt(point: LngLat, zones: readonly Zone[] | undefined): boolean {
-  const zone = zoneAt(point, zones ?? []);
-  const { placePin, missPin } = useConsole.getState();
-  if (zone) placePin(point, zone.id);
-  else missPin();
-  return zone !== undefined;
 }
 
 /** Zooms to where a cluster breaks up. */

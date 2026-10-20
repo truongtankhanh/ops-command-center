@@ -804,6 +804,65 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       without WebGL 2 or the preview gate; an `inside` asset (the camera frames the building, the beacon shows where);
       the two buttons in a narrow sheet and at the wall scale (a wrap on `.assetActions` is the fix if they crowd the
       heading); reduced motion; the twin chunk's gzip size after `pnpm build` (6,655 B were left).
+  - Settled in V2-16.7 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the report's location is picked, shown and dragged in the 3D view.
+    - **A pick can answer with a place.** `PickKind` gained `'ground'` and `PickRef` a variant with coordinates (scene
+      metres, no id). While the location is picked the scope is the building shells and the ground, nothing else (no
+      asset, part, camera or beacon, as the 2D map hits nothing but the ground), and the picker answers with the
+      **nearest** of the shell crossings (roofs and walls, from the ray's own intersection points) and the ground plane
+      `y = 0` (an analytic ray–plane intersection: the ground is drawn but is not a mesh the ray meets). The rule is a
+      pure function, `nearestSurface`; `choose`, hover and every other kind are untouched. The building in focus is still
+      not a target ("Settled in V2-15.8"), so a click through its see-through walls lands on its floor.
+    - **A click places the pin by the map's rule.** The pointer controller, which did nothing while picking by design,
+      now asks for the pick at the release point as a click does and a `ground` answer calls `placePin`; an answer that is
+      a thing, or that arrives after picking ended, does nothing, and no hover is asked while picking. The point becomes a
+      longitude and latitude (`frame.fromLocal`) and goes through `placePinAt`, moved verbatim to `lib/reportPin.ts` so
+      the 2D map and the 3D view place pins by one rule (`zoneAt`, the API's own): the zone it is in is selected, outside
+      every zone the pin stays and the existing message shows. The function stays coupled to the console store, where the
+      location lives.
+    - **The pin is a screen-sized sprite at a derived height.** One `Markers` sprite with its own one-cell texture of the
+      2D marker's drop (the same path, the accent, a ground-coloured edge and centre), over the beacons, drawn whenever the
+      form is open and `reportPosition` is set however it was set (a click, the zone select, a preset), so it survives
+      orbiting. Its height is **derived, not stored**: the roof of the building whose footprint contains the position
+      (the ring the shells and the beacons use), else the ground, and the floor inside the building in focus (a roof that
+      is not drawn must not carry it). A click on a wall therefore snaps to the roof when inside the footprint, which is
+      "lands inside the building".
+    - **Dragging it without the camera orbiting.** Whether a press is on the pin is decided at once, by a screen-space
+      test of its tip (`pinHits`, 24 × 34 px, the picker projects the tip as it does the beacons') reached through a
+      second function on the pick seam, `pinUnderPoint`, because the press has to decide before the camera's controls
+      hear it. The controller's `pointerdown` listener is registered in the **capture phase**, and on a primary-button
+      press on the pin while picking it calls `stopImmediatePropagation()` so `camera-controls` never starts an orbit;
+      it takes pointer capture, asks for the place under each move and shows the pin there (a preview held in a small
+      module with `useSyncExternalStore`, not in the store, because it changes on every move and is not a location until
+      it is dropped), and on the release asks once more and drops it: `placePinAt` runs, so a drop outside every zone
+      puts the pin back where it was, as the 2D marker does. A cancel, a release the window lost, a second pointer (a
+      pinch) and tearing the controller down drop it nowhere. A move between the release and its answer is not a cancel.
+      **This depends on the capture-phase ordering against `camera-controls` and on touch, which no unit test can prove**:
+      it is checked by hand in a browser (mouse, pen, touch), and the fallback if it proves unreliable is no drag (the pin
+      moves by clicking elsewhere).
+    - **Escape stops picking, in 3D only.** A capture-phase `keydown` on the document, owned by the report form
+      (`useStopPickingOnEscape`, enabled while the 3D view is in effect and `picking`), ends picking and stops the key so
+      the sheet's own Escape does not also close the form or announce the kept draft; the next Escape is the sheet's. It
+      works wherever focus is (after a click on the canvas it is on the body). In 2D no listener is added, so Escape there
+      is exactly what it was.
+    - **The hint and the label.** A `PickHint` pill on the stage (frame 09's `.map-hint`: "Click the scene to place the
+      incident · Esc stops picking"), decoration like `DragHint`; the form's toggle reads "Pick in 3D" while the 3D view is
+      in effect and "Pick on map" otherwise. `aria-pressed` and the zone select stay the keyboard route. The report's
+      zone outline is "Settled in V2-16.4".
+    - **Tests.** `placePinAt`, the pin's height and hit rectangle, `nearestSurface`, the scope while picking, the seam's
+      `same()` for places, the picker with real `three` objects (a roof's point, the ground, the floor inside the excluded
+      building, a ray that goes up, the pin's tip), the controller with stub deps (a click places the pin, the whole drag
+      lifecycle, the capture-phase stop), the drag preview, the hint, Escape and the label are tested without WebGL.
+      `Pointer`, `PickLayer`, `ReportPin` and the pin texture are R3F glue and are not, as before. There were no cases of
+      `placePinAt` to move: it was private to `CampusMap`, so `reportPin.test.ts` is new and `CampusMap.test.tsx` is
+      unchanged.
+    - **By eye, still to do in a browser (and by hand on touch), and the chunk to measure:** a click on a roof of
+      Dormitory B puts the pin at that roof's east and north, zone Dormitory B; the lake and the lawn put it in theirs;
+      outside every zone leaves the pin and shows the message; the pin stands on the roof's height and stays put while
+      orbiting; a building in focus puts it on the floor; dragging it follows the pointer and the camera does not orbit, a
+      drop in another zone selects that zone, a drop outside returns it; Esc stops picking and the form and its draft
+      stay; the hint and "Pick in 3D"; 2D unchanged; a viewer has no form; the twin chunk's gzip size after `pnpm build`
+      (6,617 B were left).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

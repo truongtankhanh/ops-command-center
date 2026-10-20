@@ -11,12 +11,14 @@ import {
   cursorOf,
   entryAt,
   isClick,
+  nearestSurface,
   type PickHit,
   type PickRef,
   type PickScope,
   type ProjectedBeacon,
   scopeOf,
   type ScopeState,
+  type SurfaceHit,
   TIE_EPSILON_M,
 } from './twinPicking';
 
@@ -168,10 +170,24 @@ describe('scopeOf', () => {
     expect(scope.assetCode).toBe('CT-01');
   });
 
-  it('allows nothing while the report location is picked', () => {
-    expect(kinds(scopeOf({ ...base, picking: true }))).toEqual([]);
-    expect(kinds(scopeOf({ ...base, picking: true, selectedAssetCode: 'CT-01' }))).toEqual([]);
-    expect(scopeOf({ ...base, picking: true }).kinds.has('beacon')).toBe(false);
+  // V2-16.7: the 2D map hits nothing but the ground while picking; in 3D the ground is a place, and so are the roofs.
+  it('allows only the shells and the ground while the report location is picked', () => {
+    expect(kinds(scopeOf({ ...base, picking: true }))).toEqual(['building', 'ground']);
+    expect(scopeOf({ ...base, picking: true }).assetCode).toBeNull();
+  });
+
+  it('allows no asset, part, camera or beacon while picking, whatever the layers and the selection', () => {
+    const picking = scopeOf({
+      ...base,
+      picking: true,
+      selectedAssetCode: 'CT-01',
+      selectedPart: 'FanBlade',
+      layers: { cameras: true, incidents: true },
+    });
+
+    for (const kind of ['asset', 'part', 'camera', 'beacon'] as const) {
+      expect(picking.kinds.has(kind)).toBe(false);
+    }
   });
 
   describe('the building in focus (V2-15.8)', () => {
@@ -197,11 +213,84 @@ describe('scopeOf', () => {
       ).toBeNull();
     });
 
-    it('excludes nothing while a location is picked', () => {
-      expect(
-        scopeOf({ ...base, focusZoneId: 'BLD-DC', picking: true }).excludedBuildingId,
-      ).toBeNull();
+    it('is still not a target while a location is picked: a click through it lands on its floor (V2-16.7)', () => {
+      expect(scopeOf({ ...base, focusZoneId: 'BLD-DC', picking: true }).excludedBuildingId).toBe(
+        'BLD-DC',
+      );
     });
+
+    it('excludes nothing while a location is picked at campus level', () => {
+      expect(scopeOf({ ...base, picking: true }).excludedBuildingId).toBeNull();
+    });
+  });
+});
+
+describe('nearestSurface (V2-16.7)', () => {
+  const picking: PickScope = {
+    kinds: new Set(['building', 'ground']),
+    assetCode: null,
+    excludedBuildingId: null,
+  };
+  const roof = (distance: number, point: [number, number, number], id = 'BLD-DC'): SurfaceHit => ({
+    distance,
+    point,
+    buildingId: id,
+  });
+  const floor = (distance: number, point: [number, number, number]): SurfaceHit => ({
+    distance,
+    point,
+    buildingId: null,
+  });
+
+  it('is the point of the nearest hit: a roof above the ground behind it', () => {
+    expect(nearestSurface([floor(120, [5, 0, 5]), roof(100, [5, 18, 5])], picking)).toEqual([
+      5, 18, 5,
+    ]);
+  });
+
+  it('is the ground where no roof is in the way', () => {
+    expect(nearestSurface([floor(120, [40, 0, -10])], picking)).toEqual([40, 0, -10]);
+  });
+
+  it('takes a wall as it takes a roof: the nearest crossing', () => {
+    expect(
+      nearestSurface([roof(90, [0, 6, 3]), roof(95, [0, 18, 3]), floor(130, [0, 0, 3])], picking),
+    ).toEqual([0, 6, 3]);
+  });
+
+  it('does not depend on the order of the hits', () => {
+    const hits = [floor(120, [5, 0, 5]), roof(100, [5, 18, 5]), roof(110, [5, 4, 5], 'OTHER')];
+
+    expect(nearestSurface([...hits].reverse(), picking)).toEqual(nearestSurface(hits, picking));
+  });
+
+  it('skips the building the scope does not target and lands on what is behind it', () => {
+    const inFocus: PickScope = { ...picking, excludedBuildingId: 'BLD-DC' };
+
+    expect(nearestSurface([roof(100, [5, 18, 5]), floor(112, [5, 0, 5])], inFocus)).toEqual([
+      5, 0, 5,
+    ]);
+  });
+
+  it('still stops at another building while one is in focus', () => {
+    const inFocus: PickScope = { ...picking, excludedBuildingId: 'BLD-DC' };
+
+    expect(
+      nearestSurface(
+        [roof(90, [5, 12, 5], 'BLD-LAB'), roof(100, [5, 18, 5]), floor(112, [5, 0, 5])],
+        inFocus,
+      ),
+    ).toEqual([5, 12, 5]);
+  });
+
+  it('is null when nothing is hit, and a copy of the point when something is', () => {
+    expect(nearestSurface([], picking)).toBeNull();
+    const point: [number, number, number] = [1, 2, 3];
+
+    const found = nearestSurface([floor(10, point)], picking);
+
+    expect(found).toEqual(point);
+    expect(found).not.toBe(point);
   });
 });
 

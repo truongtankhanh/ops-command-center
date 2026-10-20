@@ -1,4 +1,5 @@
 import type { LayerVisibility } from './mapLayers';
+import type { Vec3 } from './twinCamera';
 import type { BoxRange } from './twinBoxes';
 import type { ShellRange } from './twinBuildings';
 import { levelOf } from './twinLevel';
@@ -11,15 +12,19 @@ import { levelOf } from './twinLevel';
  */
 
 /**
- * What can be hit. `'beacon'` is an incident's beacon (V2-16.4, `id` is the incident's id); V2-16.7 adds `'ground'`.
- * `choose` and the scope are written over this union so that neither changes for its callers.
+ * What can be hit. `'beacon'` is an incident's beacon (V2-16.4, `id` is the incident's id); `'ground'` (V2-16.7) is not
+ * a thing but a **place**: the point the ray meets while the report's location is being picked (the nearest of the
+ * roofs and the ground), so it has coordinates and no id. `choose` and the scope are written over this union so that
+ * neither changes for its callers; a ground ref never goes through `choose`.
  */
-export type PickKind = 'building' | 'asset' | 'part' | 'camera' | 'beacon';
+export type PickKind = 'building' | 'asset' | 'part' | 'camera' | 'beacon' | 'ground';
 
 /** The thing a hit names. A part also says whose it is: a node name alone is not unique across assets. */
 export type PickRef =
   | { kind: 'building' | 'asset' | 'camera' | 'beacon'; id: string }
-  | { kind: 'part'; id: string; assetCode: string };
+  | { kind: 'part'; id: string; assetCode: string }
+  /** A point in scene metres (`x` east, `y` up, `z` = −north), the surface under the pointer while picking a location. */
+  | { kind: 'ground'; x: number; y: number; z: number };
 
 /** A pointer position in CSS pixels from the canvas's top-left corner (`PointerEvent.offsetX / offsetY`). */
 export interface ScreenPoint {
@@ -151,24 +156,32 @@ export interface ScopeState {
   focusZoneId: string | null;
   selectedAssetCode: string | null;
   selectedPart: string | null;
-  /** The report location is being picked: the ground only, which V2-16.7 adds, so no hit until then. */
+  /** The report location is being picked (V2-16.7): the only targets are the roofs and the ground, as a place. */
   picking: boolean;
   layers: Pick<LayerVisibility, 'cameras' | 'incidents'>;
 }
-
-const NOTHING: PickScope = { kinds: new Set(), assetCode: null, excludedBuildingId: null };
 
 /**
  * What the level allows (V2-15.1, V2-15.8). At campus and building level a building, an asset (as one target) and,
  * while the Cameras layer is on, a camera: the faded buildings and the faded equipment of building level stay
  * pickable, so a click moves the focus, but **the building in focus is not a target**, so the equipment behind its
  * see-through walls is. At asset and part level only the isolated asset and its parts: the faded rest is not a
- * target. While a report location is picked, nothing. A beacon is a target at campus and building level while the
- * Incidents layer is on (V2-16.4), and never with an asset isolated, as every other target there.
+ * target. A beacon is a target at campus and building level while the Incidents layer is on (V2-16.4), and never
+ * with an asset isolated, as every other target there.
+ *
+ * While a report location is picked (V2-16.7) the targets are the building shells (roofs included) and the ground, as
+ * a place and not a thing (`nearestSurface`): no asset, part, camera or beacon, as the 2D map hits nothing but the
+ * ground. The focused building's see-through walls are still not a target, so a click through it lands on its floor.
  */
 export function scopeOf(state: ScopeState): PickScope {
-  if (state.picking) return NOTHING;
   const level = levelOf(state);
+  if (state.picking) {
+    return {
+      kinds: new Set<PickKind>(['building', 'ground']),
+      assetCode: null,
+      excludedBuildingId: level === 'building' ? state.focusZoneId : null,
+    };
+  }
   if (level === 'asset' || level === 'part') {
     return {
       kinds: new Set<PickKind>(['asset', 'part']),
@@ -296,6 +309,30 @@ export function cameraHits(point: ScreenPoint, markers: readonly ProjectedMarker
     hits.push({ ref: { kind: 'camera', id }, distance: Math.hypot(dx, dy) });
   }
   return hits;
+}
+
+/** A surface the ray crossed while a location is picked: how far, where, and which building's shell it is (if any). */
+export interface SurfaceHit {
+  /** Metres along the ray. */
+  distance: number;
+  point: Vec3;
+  /** The zone id of the building whose shell this is, `null` for the ground plane. */
+  buildingId: string | null;
+}
+
+/**
+ * The place the pointer is on while a location is picked (V2-16.7): the point of the **nearest** hit, a roof or a wall
+ * of a building shell or the ground plane, skipping the building the scope does not target (the one in focus, whose
+ * walls are see-through). `null` when nothing is hit (a ray that goes up and meets no shell). Plain data, so the rule
+ * is tested without `three`; `twin/picker.ts` builds the hits.
+ */
+export function nearestSurface(hits: readonly SurfaceHit[], scope: PickScope): Vec3 | null {
+  let nearest: SurfaceHit | null = null;
+  for (const hit of hits) {
+    if (hit.buildingId !== null && hit.buildingId === scope.excludedBuildingId) continue;
+    if (nearest === null || hit.distance < nearest.distance) nearest = hit;
+  }
+  return nearest === null ? null : [...nearest.point];
 }
 
 /** A beacon's disc, projected to CSS pixels from the canvas's top-left corner: its centre, radius and paint rank. */

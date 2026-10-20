@@ -597,3 +597,144 @@ describe('picker with the incident beacons (V2-16.4)', () => {
     expect(picker.pick(centre, view, withBeacons)).toBeNull();
   });
 });
+
+describe('picker with a location being picked (V2-16.7)', () => {
+  const picking: PickScope = {
+    kinds: new Set(['building', 'ground']),
+    assetCode: null,
+    excludedBuildingId: null,
+  };
+  // Overhead: a pixel is about 0.93 m on the ground plane and 0.93 m on the roof's plane too (a pixel of height 90 m
+  // is a little smaller), the screen centre is the origin, +x is right and screen down is +z.
+  const where = (picker: ReturnType<typeof createPicker>, x: number, y: number, scope = picking) =>
+    picker.pick(at(x, y), view, scope);
+
+  it('answers the roof under a ray that crosses a building, at the roof’s height', () => {
+    const { picker } = campusScene();
+
+    const found = where(picker, 50, 50);
+
+    expect(found).toMatchObject({ kind: 'ground' });
+    expect(found).toHaveProperty('y');
+    const { x, y, z } = found as Extract<PickRef, { kind: 'ground' }>;
+    expect(y).toBeCloseTo(10, 5);
+    expect(x).toBeCloseTo(0, 5);
+    expect(z).toBeCloseTo(0, 5);
+  });
+
+  it('ignores an asset on the roof: the roof behind it is the place', () => {
+    const { picker } = campusScene();
+
+    // The cooling tower stands on the roof at the origin; the box above it is not a target while picking.
+    expect(where(picker, 50, 50)).toMatchObject({ kind: 'ground' });
+    expect((where(picker, 50, 50) as Extract<PickRef, { kind: 'ground' }>).y).toBeCloseTo(10, 5);
+  });
+
+  it('answers the ground plane over open land', () => {
+    const { picker } = campusScene();
+
+    const found = where(picker, 80, 50) as Extract<PickRef, { kind: 'ground' }>;
+
+    expect(found.kind).toBe('ground');
+    expect(found.y).toBeCloseTo(0, 5);
+    expect(found.x).toBeGreaterThan(20);
+    expect(found.z).toBeCloseTo(0, 5);
+  });
+
+  it('answers the ground plane with no mesh registered at all', () => {
+    const picker = createPicker();
+
+    const found = where(picker, 50, 50) as Extract<PickRef, { kind: 'ground' }>;
+
+    expect(found.y).toBeCloseTo(0, 5);
+    expect(found.x).toBeCloseTo(0, 5);
+  });
+
+  it('lands on the floor inside the building in focus: its roof is not a target', () => {
+    const { picker } = campusScene();
+
+    const found = where(picker, 50, 50, { ...picking, excludedBuildingId: 'BLD-DC' }) as Extract<
+      PickRef,
+      { kind: 'ground' }
+    >;
+
+    expect(found.y).toBeCloseTo(0, 5);
+  });
+
+  it('answers nothing for a ray that goes up and meets no shell', () => {
+    const { picker } = campusScene();
+    const camera = new PerspectiveCamera(50, 1, 1, 1000);
+    camera.position.set(0, 100, 0);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(0, 200, 0);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+
+    expect(picker.pick(centre, { camera, width: SIZE, height: SIZE }, picking)).toBeNull();
+  });
+
+  it('changes nothing outside a pick of a location: the same scene answers things', () => {
+    const { picker } = campusScene();
+
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+  });
+
+  it('can be asked again for another point without leaving the first one behind', () => {
+    const { picker } = campusScene();
+
+    const first = where(picker, 50, 50) as Extract<PickRef, { kind: 'ground' }>;
+    const second = where(picker, 80, 50) as Extract<PickRef, { kind: 'ground' }>;
+
+    expect(second.y).toBeCloseTo(0, 5);
+    expect(first.y).toBeCloseTo(10, 5);
+  });
+});
+
+describe('picker with the report’s pin (V2-16.7)', () => {
+  // A tip 26 m south of the origin is about 28 px below the screen's centre.
+  const tip: [number, number, number] = [0, 0, 26];
+
+  it('is under a point on its sprite, which stands on the tip', () => {
+    const picker = createPicker();
+    picker.setPin(tip);
+
+    expect(picker.pinAt(at(50, 70), view)).toBe(true);
+    expect(picker.pinAt(at(50, 78), view)).toBe(true);
+  });
+
+  it('is not under a point beside, far above or well below it', () => {
+    const picker = createPicker();
+    picker.setPin(tip);
+
+    expect(picker.pinAt(at(80, 70), view)).toBe(false);
+    expect(picker.pinAt(at(50, 20), view)).toBe(false);
+    expect(picker.pinAt(at(50, 95), view)).toBe(false);
+  });
+
+  it('is nowhere with no pin, and after the pin is taken away or the picker cleared', () => {
+    const picker = createPicker();
+    expect(picker.pinAt(at(50, 70), view)).toBe(false);
+
+    picker.setPin(tip);
+    picker.setPin(null);
+    expect(picker.pinAt(at(50, 70), view)).toBe(false);
+
+    picker.setPin(tip);
+    picker.clear();
+    expect(picker.pinAt(at(50, 70), view)).toBe(false);
+  });
+
+  it('is not under a point when it is behind the camera', () => {
+    const picker = createPicker();
+    picker.setPin([0, 200, 0]);
+
+    expect(picker.pinAt(at(50, 50), view)).toBe(false);
+  });
+
+  it('is not a thing a pick finds: it is tested on its own', () => {
+    const picker = createPicker();
+    picker.setPin(tip);
+
+    expect(picker.pick(at(50, 70), view, campus)).toBeNull();
+  });
+});

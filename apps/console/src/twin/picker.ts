@@ -4,18 +4,22 @@ import {
   Matrix4,
   type Mesh,
   type Object3D,
+  Plane,
   Raycaster,
   Vector2,
   Vector3,
 } from 'three';
 import { acceleratedRaycast, MeshBVH } from 'three-mesh-bvh';
 import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twinBeaconSprites';
+import type { Vec3 } from '../lib/twinCamera';
 import type { MarkerPlacement } from '../lib/twinMarkers';
+import { pinHits } from '../lib/twinPin';
 import {
   beaconHits,
   cameraHits,
   choose,
   entryAt,
+  nearestSurface,
   type PickHit,
   type PickRef,
   type PickScope,
@@ -23,6 +27,7 @@ import {
   type ProjectedBeacon,
   type ProjectedMarker,
   type ScreenPoint,
+  type SurfaceHit,
 } from '../lib/twinPicking';
 
 /*
@@ -37,6 +42,13 @@ import {
  * projected with the camera of the pick and tested in screen space (`lib/twinPicking.ts`). The beacons it is given
  * are the ones that are drawn (`Beacons` registers them), a beacon's target is its disc, which stands
  * `DISC_CENTRE_PX` above its ground point on the screen.
+ *
+ * While the report's location is picked (V2-16.7) the same ray answers a different question, not "what is under the
+ * pointer" but "where": the nearest of the building shells (roofs and walls) and the ground plane `y = 0`, an
+ * analytic intersection since the ground is drawn but is not a mesh the ray meets. The answer is a `ground` ref with
+ * the point in scene metres (`nearestSurface`); assets and parts are ignored, so a pin goes behind an asset on a roof.
+ * The report's pin is a sprite too: it is tested in screen space (`pinAt`), at once, because a press on it must decide
+ * before the camera's controls hear it whether it starts a drag.
  *
  * No React and no WebGL: `PickLayer` (the canvas) drives it, and it tests with real `three` objects. The
  * rules of which hit wins are `lib/twinPicking.ts`'s.
@@ -61,6 +73,13 @@ export interface Picker {
   setCameras(markers: readonly Pick<MarkerPlacement, 'id' | 'position'>[]): void;
   /** The beacons to test in screen space, replacing the previous ones (V2-16.4). */
   setBeacons(beacons: readonly BeaconTarget[]): void;
+  /**
+   * The report's pin, by its tip in scene metres, or `null` for none (the pin is a target only while a location is
+   * picked, V2-16.7).
+   */
+  setPin(tip: Vec3 | null): void;
+  /** Whether the pin is under `point` on the screen right now, projected with `view`'s camera. */
+  pinAt(point: ScreenPoint, view: PickView): boolean;
   /** The winner under `point` (CSS pixels from the canvas's top-left corner), or `null`. */
   pick(point: ScreenPoint, view: PickView, scope: PickScope): PickRef | null;
   /** Forgets everything. */
@@ -73,6 +92,9 @@ interface Registration {
   meshes: readonly Mesh[];
   refOf(hit: Intersection): PickRef | undefined;
 }
+
+/** The ground plane `y = 0`, facing up: where a location picked in open land is (V2-16.7). */
+const GROUND = new Plane(new Vector3(0, 1, 0), 0);
 
 const isMesh = (node: Object3D): node is Mesh => (node as Mesh).isMesh === true;
 
@@ -89,12 +111,14 @@ export function createPicker(): Picker {
   let listStale = false;
   let cameras: readonly Pick<MarkerPlacement, 'id' | 'position'>[] = [];
   let beacons: readonly BeaconTarget[] = [];
+  let pin: Vec3 | null = null;
 
   // Reused by every pick: a pick allocates only its hit arrays.
   const raycaster = new Raycaster();
   const ndc = new Vector2();
   const anchor = new Vector3();
   const toView = new Matrix4();
+  const onGround = new Vector3();
 
   const add = (registration: Registration): (() => void) => {
     registrations.add(registration);
@@ -147,6 +171,45 @@ export function createPicker(): Picker {
       rank: item.rank,
     }));
 
+  /**
+   * Points the shared raycaster through `point` and returns every crossing of the registered meshes, nearest first.
+   * Not `firstHitOnly`: a merged mesh holds many things, and the nearest one may be out of scope (a faded box in
+   * front of the isolated asset), so every crossing is named and the caller filters.
+   */
+  const castRay = (point: ScreenPoint, view: PickView): Intersection[] => {
+    ndc.set((point.x / view.width) * 2 - 1, -(point.y / view.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, view.camera);
+    if (registrations.size === 0) return [];
+    if (listStale) {
+      list = [...owners.keys()];
+      listStale = false;
+    }
+    // The bound parts have moved since the last render, which is what updates their world matrices.
+    for (const { root } of registrations) root.updateWorldMatrix(true, true);
+    return raycaster.intersectObjects(list, false);
+  };
+
+  /** Where a location picked at `point` would be: the nearest of the shells and the ground, as a `ground` ref. */
+  const locate = (point: ScreenPoint, view: PickView, scope: PickScope): PickRef | null => {
+    const hits: SurfaceHit[] = [];
+    for (const intersection of castRay(point, view)) {
+      const ref = owners.get(intersection.object as Mesh)?.refOf(intersection);
+      if (ref?.kind !== 'building') continue;
+      const { x, y, z } = intersection.point;
+      hits.push({ distance: intersection.distance, point: [x, y, z], buildingId: ref.id });
+    }
+    // The plane, for a ray that goes down (one that goes up or along it meets nothing here).
+    if (raycaster.ray.intersectPlane(GROUND, onGround) !== null) {
+      hits.push({
+        distance: raycaster.ray.origin.distanceTo(onGround),
+        point: [onGround.x, onGround.y, onGround.z],
+        buildingId: null,
+      });
+    }
+    const found = nearestSurface(hits, scope);
+    return found === null ? null : { kind: 'ground', x: found[0], y: found[1], z: found[2] };
+  };
+
   return {
     addTable(mesh, table) {
       return add({
@@ -183,26 +246,26 @@ export function createPicker(): Picker {
       beacons = targets;
     },
 
+    setPin(tip) {
+      pin = tip;
+    },
+
+    pinAt(point, view) {
+      if (pin === null || view.width <= 0 || view.height <= 0) return false;
+      view.camera.updateMatrixWorld();
+      const [tip] = project([{ position: pin }], view);
+      return pinHits(point, tip === undefined ? null : { x: tip.x, y: tip.y });
+    },
+
     pick(point, view, scope) {
       if (scope.kinds.size === 0 || view.width <= 0 || view.height <= 0) return null;
       view.camera.updateMatrixWorld();
+      if (scope.kinds.has('ground')) return locate(point, view, scope);
       const hits: PickHit[] = [];
 
-      if (registrations.size > 0) {
-        if (listStale) {
-          list = [...owners.keys()];
-          listStale = false;
-        }
-        // The bound parts have moved since the last render, which is what updates their world matrices.
-        for (const { root } of registrations) root.updateWorldMatrix(true, true);
-        ndc.set((point.x / view.width) * 2 - 1, -(point.y / view.height) * 2 + 1);
-        raycaster.setFromCamera(ndc, view.camera);
-        // Not `firstHitOnly`: a merged mesh holds many things, and the nearest one may be out of scope
-        // (a faded box in front of the isolated asset), so every crossing is named and `choose` filters.
-        for (const intersection of raycaster.intersectObjects(list, false)) {
-          const ref = owners.get(intersection.object as Mesh)?.refOf(intersection);
-          if (ref !== undefined) hits.push({ ref, distance: intersection.distance });
-        }
+      for (const intersection of castRay(point, view)) {
+        const ref = owners.get(intersection.object as Mesh)?.refOf(intersection);
+        if (ref !== undefined) hits.push({ ref, distance: intersection.distance });
       }
 
       if (scope.kinds.has('camera') && cameras.length > 0) {
@@ -221,6 +284,7 @@ export function createPicker(): Picker {
       listStale = false;
       cameras = [];
       beacons = [];
+      pin = null;
     },
   };
 }
