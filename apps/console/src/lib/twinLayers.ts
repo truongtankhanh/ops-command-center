@@ -8,8 +8,7 @@ import type { ViewChoice } from './viewChoice';
  * `LayerVisibility` and `LAYER_GROUPS` are the 2D map's, which has no `Inside` to draw or hide, and widening them
  * would put a 3D layer in its toggle list and its layer groups. The store holds `SceneLayers`, a `LayerVisibility`
  * with the extra keys, so the map keeps reading it as it was. `heat` (V2-17.3) is the same kind of key: the state
- * is here and the overlay reads it, while the control for it joins `layersOf` with V2-17.4, so until then nothing
- * offers it.
+ * is here and the overlay reads it, and the control for it is in `layersOf` since V2-17.4.
  *
  * Main-chunk code (`LayersControl` reads it): imports types and the map's key list only, never `src/twin/`.
  */
@@ -30,8 +29,14 @@ export type SceneLayers = LayerVisibility & { inside: boolean; heat: boolean };
  * the isolated asset is drawn whatever it says (`presenceOf`), so a toggle there would do nothing. Its state is kept
  * while it is not offered. Cameras stays at every level: `CameraMarkers` still reads it, and a hidden toggle for a
  * layer that is off would strand it.
+ *
+ * Heat (V2-17.4) is offered at **every** 3D level, last, for the same reason as Cameras: at asset and part level it
+ * draws nothing different, but a toggle that vanishes while it is on would strand the state and make the next
+ * level change a surprise. What follows the level is the picker and the legend (`showsHeat`), not this list.
  */
 export function layersOf(view: ViewChoice, level: SceneLevel): readonly SceneLayerKey[] {
   if (view === '2d') return MAP_LAYER_KEYS;
-  return level === 'building' ? ['incidents', 'cameras', 'inside'] : ['incidents', 'cameras'];
+  return level === 'building'
+    ? ['incidents', 'cameras', 'inside', 'heat']
+    : ['incidents', 'cameras', 'heat'];
 }

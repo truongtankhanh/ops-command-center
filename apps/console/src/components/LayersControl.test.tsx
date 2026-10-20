@@ -116,12 +116,13 @@ describe('LayersControl', () => {
   });
 
   describe('in the 3D view', () => {
-    it('offers Incidents and Cameras, and no Assets', () => {
+    it('offers Incidents, Cameras and Heat, and no Assets', () => {
       render(<LayersControl view="3d" />);
 
       expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
       expect(toggle('Incidents')).toHaveAttribute('aria-pressed', 'true');
       expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'true');
+      expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'false');
       expect(screen.queryByRole('button', { name: 'Assets' })).toBeNull();
     });
 
@@ -133,6 +134,84 @@ describe('LayersControl', () => {
         'Cameras',
         'Assets',
       ]);
+    });
+
+    describe('Heat (V2-17.4)', () => {
+      it('is off at each start and last in the list', () => {
+        render(<LayersControl view="3d" />);
+
+        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+          'Incidents',
+          'Cameras',
+          'Heat',
+        ]);
+        expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'false');
+        expect(layers().heat).toBe(false);
+      });
+
+      it('turns on and off through the store and leaves the other layers as they were', async () => {
+        const user = userEvent.setup();
+        render(<LayersControl view="3d" />);
+
+        await user.click(toggle('Heat'));
+
+        expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'true');
+        expect(layers()).toEqual({
+          incidents: true,
+          cameras: true,
+          assets: true,
+          inside: true,
+          heat: true,
+        });
+
+        await user.click(toggle('Heat'));
+
+        expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'false');
+        expect(layers().heat).toBe(false);
+      });
+
+      it('is reachable by keyboard and toggles on Space', async () => {
+        const user = userEvent.setup();
+        render(<LayersControl view="3d" />);
+
+        await user.tab();
+        await user.tab();
+        await user.tab();
+        expect(toggle('Heat')).toHaveFocus();
+        await user.keyboard(' ');
+
+        expect(layers().heat).toBe(true);
+      });
+
+      it('stays offered with its state at asset and part level, where it draws nothing different', () => {
+        act(() => useConsole.getState().toggleLayer('heat'));
+        render(<LayersControl view="3d" />);
+
+        act(() => useConsole.getState().selectAsset('UPS-01', 'BLD-DC'));
+        expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'true');
+
+        act(() => useConsole.getState().selectPart('Door'));
+        expect(toggle('Heat')).toHaveAttribute('aria-pressed', 'true');
+      });
+
+      it('is not offered in the 2D view, and 2D keeps its three layers', () => {
+        act(() => useConsole.getState().toggleLayer('heat'));
+        render(<LayersControl view="2d" />);
+
+        expect(screen.queryByRole('button', { name: 'Heat' })).toBeNull();
+        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
+          'Incidents',
+          'Cameras',
+          'Assets',
+        ]);
+      });
+
+      it('has no accessibility violations, with Heat on too', async () => {
+        render(<LayersControl view="3d" />);
+        act(() => useConsole.getState().toggleLayer('heat'));
+
+        await expectNoAxeViolations();
+      });
     });
 
     it('hides the cameras through the same store as the 2D map', async () => {
@@ -184,13 +263,14 @@ describe('LayersControl', () => {
     describe('at building level (V2-15.9)', () => {
       beforeEach(() => act(() => useConsole.getState().focusBuilding('BLD-DC')));
 
-      it('adds Inside after Cameras, shown', () => {
+      it('adds Inside after Cameras and before Heat, shown', () => {
         render(<LayersControl view="3d" />);
 
         expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
           'Incidents',
           'Cameras',
           'Inside',
+          'Heat',
         ]);
         expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'true');
       });

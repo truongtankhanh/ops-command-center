@@ -1,0 +1,66 @@
+/*
+ * Frame 13's `.heat-legend` in the console's tokens (`mockups/twin.css` is the mockups' stylesheet, not the
+ * console's): a box in the 3D legend's look (`TwinLegend.module.css`). `TwinStage.module.css .legends` places it, so it
+ * sets no position of its own; it is 300 px wide at laptop size and never wider than the column the stage leaves it.
+ */
+.legend {
+  display: grid;
+  gap: var(--space-1-5);
+  box-sizing: border-box;
+  width: calc(300px * var(--ui-scale));
+  max-width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  box-shadow: var(--shadow-2);
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+.legend p {
+  margin: 0;
+}
+
+.title {
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  color: var(--text-primary);
+}
+
+/*
+ * The six stops are evenly spaced, which is what a gradient with no stated positions does, and `heatColor` puts them
+ * at t = 0, 0.2 … 1: this strip is the shells' colour at every temperature of the scale.
+ */
+.ramp {
+  height: calc(12px * var(--ui-scale));
+  border-radius: calc(3px * var(--ui-scale));
+  background: linear-gradient(
+    to right,
+    var(--heat-0),
+    var(--heat-1),
+    var(--heat-2),
+    var(--heat-3),
+    var(--heat-4),
+    var(--heat-5)
+  );
+}
+
+/* Three columns, so the middle tick is at the strip's middle whatever the widths of the labels. */
+.scale {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.scale span:first-child {
+  justify-self: start;
+}
+
+.scale span:last-child {
+  justify-self: end;
+}
+
+.text {
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+}

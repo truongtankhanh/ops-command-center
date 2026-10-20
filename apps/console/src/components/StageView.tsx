@@ -4,6 +4,7 @@ import { useTwinLoading } from '../lib/useTwinLoading';
 import { useConsole } from '../store';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { CampusMap } from './CampusMap';
+import { ColourBy } from './ColourBy';
 import { LayersControl } from './LayersControl';
 import { RegionFallback } from './LoadStates';
 import styles from './StageView.module.css';
@@ -50,6 +51,9 @@ const lazyStage = (onLoaded: () => void) =>
  * In the 3D view at building and asset level the scene's breadcrumb takes the switch's place (V2-15.6, frames 03,
  * 12 and 15), and the layers stay. The switch is back at campus level, which is one press of the breadcrumb's back
  * button away, and in the 2D view, where the levels do not exist.
+ *
+ * In the 3D view the "Colour by" picker (V2-17.4, frame 13) follows the layers in the same row, so it wraps with
+ * them; it draws nothing unless the Heat layer is on and the level shows it.
  */
 export function StageView() {
   const view = useConsole((s) => s.view);
@@ -60,6 +64,7 @@ export function StageView() {
       <div className={styles.tools} data-view={view}>
         {view === '3d' && level !== 'campus' ? <TwinBreadcrumb /> : <ViewSwitch />}
         <LayersControl view={view} />
+        {view === '3d' && <ColourBy />}
       </div>
     </>
   );

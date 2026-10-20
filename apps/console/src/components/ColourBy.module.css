@@ -1,0 +1,83 @@
+/*
+ * Frame 13's `.colour-by`: the "Colour by" button in the tools row, beside the layers (`StageView` places it), with its
+ * listbox under it in the popover family (`Popover.module.css`). Variants and state are attributes (ADR-0016 §4):
+ * `aria-expanded` on the button, `aria-selected` and `data-active` on an option.
+ */
+.root {
+  position: relative;
+}
+
+/* The accent border says this control belongs to the overlay that is on. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: var(--control-m);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+
+.value {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.trigger[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* No `display` here, so the `hidden` attribute keeps hiding the closed list. */
+.listbox {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-popover);
+  min-width: 100%;
+  margin: 0;
+  padding: var(--space-1-5);
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-3);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border-radius: var(--radius-s);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option:hover,
+.option[data-active] {
+  background: var(--surface-2);
+}
+
+/* The tick keeps its width when absent, so the labels of a longer list line up. */
+.mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: calc(16px * var(--ui-scale));
+  color: var(--accent);
+}

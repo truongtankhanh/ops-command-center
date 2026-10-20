@@ -12,6 +12,7 @@ import {
   presenceOf,
   type SceneFocus,
   type SceneLevel,
+  showsHeat,
 } from './twinLevel';
 
 const none = { focusZoneId: null, selectedAssetCode: null, selectedPart: null };
@@ -51,6 +52,25 @@ describe('parentOf', () => {
     }
     expect(order).toEqual(['part', 'asset', 'building', 'campus']);
     expect(parentOf('campus')).toBeNull();
+  });
+});
+
+describe('showsHeat (V2-17.4)', () => {
+  it('is true at the campus and with a building in focus, where the overlay is drawn', () => {
+    expect(showsHeat('campus')).toBe(true);
+    expect(showsHeat('building')).toBe(true);
+  });
+
+  it('is false with an asset isolated or one of its parts, where Heat draws nothing different', () => {
+    expect(showsHeat('asset')).toBe(false);
+    expect(showsHeat('part')).toBe(false);
+  });
+
+  it('agrees with the level the store derives', () => {
+    expect(showsHeat(levelOf(none))).toBe(true);
+    expect(showsHeat(levelOf({ ...none, focusZoneId: 'BLD-DC' }))).toBe(true);
+    const isolated = { ...none, focusZoneId: 'BLD-DC', selectedAssetCode: 'CT-01' };
+    expect(showsHeat(levelOf(isolated))).toBe(false);
   });
 });
 

@@ -966,6 +966,48 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's six stops, a
       silent building beside the 0.18 fade, the temperature line's place and size, and the draw calls with silent
       buildings (`DrawCallLog`, development build).
+  - Settled in V2-17.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: the Heat toggle, the "Colour by" picker and the legend. Each question of the ticket's analysis was answered
+    with its recommendation.
+    - **The toggle is `layersOf`'s, at every 3D level.** Heat is the last entry in the 3D list (frames 12 and 13:
+      `Incidents · Cameras · [Inside] · Heat`), at campus, building, asset and part level, for the reason Cameras stays:
+      at asset and part level it draws nothing different, but a toggle that vanishes while it is on would strand the
+      state. The 2D map never offers it. Off by default and not remembered, as V2-17.3 left the state.
+    - **The picker and the legend follow the level, not the list (Q3).** They show only where the overlay is drawn:
+      the layer is on and the level is the campus or a building (`showsHeat`, the one place the level is read), so
+      nothing explains colours that are not drawn. The "legend stays" of "Settled in V2-17.1" is read as the marker
+      legend and its lines: toggling Heat at asset level changes nothing on screen.
+    - **The picker is main-chunk code (Q1), and `showsHeat` moved.** "Colour by" stands in the tools row beside the layers
+      (frame 13), which `StageView` renders in the main chunk, and a main-chunk module cannot import the lazy chunk's
+      `twinHeat.ts`. So `components/ColourBy.tsx` is not in `src/twin/` as the task wrote, `showsHeat` is defined in
+      `lib/twinLevel.ts` beside `SceneLevel` and `twinHeat.ts` re-exports it (the overlay's readers did not move), and
+      the measures are `lib/heatMeasures.ts`, which imports nothing. The legend is lazy-chunk code (`twin/HeatLegend.tsx`).
+    - **The legends are stacked (Q2).** The heat legend is above the marker legend in one bottom-left column
+      (`TwinStage`'s `.legends`), which is the positioned box; neither sets its own position. Frame 13 shows the heat
+      legend alone, but the marker legend still explains the beacons and the cameras, and at building level it is the
+      line that says `Esc` returns to the campus: dropping it while Heat is on would remove the only hint. A "Frames to
+      revise" row of the brief records it.
+    - **The ramp is a gradient (Q4).** Six equal blocks, as drawn, would put the 23 °C tick on the border of blocks 3 and
+      4, while a shell at 23 °C is the colour halfway between stops 2 and 3. A `linear-gradient` over the six `--heat-*`
+      stops with no stated positions places them at 0, 0.2 … 1, which is where `heatColor` puts them, so the strip is
+      the shells' colour at every temperature of the scale. The ticks (19, the middle, 27 °C) come from
+      `HEAT_DOMAIN`, never typed twice. The strip is `aria-hidden`: the numbers are in words.
+    - **The note says where the numbers are (Q5).** Frame 13's sentence is kept verbatim and followed by "The Assets tab
+      lists each reading.", because the canvas is hidden from assistive technology and the Assets tab is the accessible
+      twin ("Settled in V2-17.1", "Where the numbers also are"). "Every building reports one" is frame 13's own wording
+      and stays; the next clause says what a silent building is.
+    - **The listbox.** The first one in the console: the WAI-ARIA APG collapsible dropdown listbox. The button has
+      `aria-haspopup="listbox"`, `aria-expanded` and `aria-controls`; opening moves focus to the list, whose active
+      option is `aria-activedescendant` (one focus target and no roving `tabindex` over a list of one); Escape closes it
+      and returns focus to the button, and while it is open it owns Escape in the capture phase, as `ui/Popover` does, so
+      the sheet, the search box, the part callout and the picking mode do not also act. The open and close logic is
+      written locally rather than extracted from `Popover`; a second listbox is the moment to extract it.
+    - **The choice is not state while there is one measure.** The selected option is a constant and choosing it only
+      closes the list. A second measure needs a source rule and a scale of its own (`humidityPct` stays rejected), a list
+      entry in `lib/heatMeasures.ts` and a store field for the choice; the ADR's "a data addition, not a redesign" holds.
+    - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's strip, the two
+      legends stacked at 1072 × 671 and narrower and with the sheet open, the picker beside the layers when the row
+      wraps, and the listbox with a screen reader. The cross-cutting accessibility cases with Heat on are V2-17.5's.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

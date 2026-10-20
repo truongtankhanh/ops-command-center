@@ -11,7 +11,6 @@ const LABELS: Record<SceneLayerKey, string> = {
   cameras: 'Cameras',
   assets: 'Assets',
   inside: 'Inside',
-  // Not offered yet: V2-17.4 adds it to `layersOf`; the label is here because the record covers every key.
   heat: 'Heat',
 };
 
@@ -30,7 +29,10 @@ const LABELS: Record<SceneLayerKey, string> = {
  * a layer on it, ADR-0020, V2-12.1, so `layers.assets` is left alone there and is as it was when the view goes back
  * to 2D), and **Inside** is offered at building level only (V2-15.9): it draws the building in focus opaque with its
  * equipment hidden, and at asset and part level the isolated asset is drawn whatever it says, so a toggle there would
- * do nothing. Its state is kept while it is not offered. Heat joins the 3D list with V2-17.4.
+ * do nothing. Its state is kept while it is not offered. **Heat** (V2-17.4) is the 3D view's last toggle at every
+ * level: off by default and not remembered, and where it draws nothing different (an asset or a part isolated) it is
+ * still offered, so a layer that is on is never out of sight. The picker and the legend follow the level, not this
+ * list (`ColourBy`, `HeatLegend`).
  *
  * The toggle's state is `aria-pressed`, and the tick beside the name is only a drawing of it.
  */
