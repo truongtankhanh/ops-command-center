@@ -14,6 +14,7 @@ function fakeCommands(pose: Pose | null = POSE): FakeCommands {
     home: vi.fn<TwinCommands['home']>(),
     fit: vi.fn<TwinCommands['fit']>(),
     fitAsset: vi.fn<TwinCommands['fitAsset']>(),
+    flyToIncident: vi.fn<TwinCommands['flyToIncident']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
@@ -40,6 +41,7 @@ describe('twinCommands with nothing registered', () => {
       twinCommands.home();
       twinCommands.fit(BOX);
       twinCommands.fitAsset(BOX);
+      twinCommands.flyToIncident('incident-1');
       twinCommands.zoomBy(2);
       twinCommands.rotateBy(30);
       twinCommands.faceNorth();
@@ -57,6 +59,7 @@ describe('registerTwinCommands', () => {
     twinCommands.home();
     twinCommands.fit(BOX);
     twinCommands.fitAsset(BOX);
+    twinCommands.flyToIncident('incident-1');
     twinCommands.zoomBy(0.5);
     twinCommands.rotateBy(-30);
     twinCommands.faceNorth();
@@ -65,6 +68,7 @@ describe('registerTwinCommands', () => {
     expect(rig.home).toHaveBeenCalledTimes(1);
     expect(rig.fit).toHaveBeenCalledWith(BOX);
     expect(rig.fitAsset).toHaveBeenCalledWith(BOX);
+    expect(rig.flyToIncident).toHaveBeenCalledWith('incident-1');
     expect(rig.zoomBy).toHaveBeenCalledWith(0.5);
     expect(rig.rotateBy).toHaveBeenCalledWith(-30);
     expect(rig.faceNorth).toHaveBeenCalledTimes(1);
@@ -114,10 +118,12 @@ describe('registerTwinCommands', () => {
     twinCommands.home();
     twinCommands.fit(BOX);
     twinCommands.fitAsset(BOX);
+    twinCommands.flyToIncident('incident-1');
 
     expect(rig.home).not.toHaveBeenCalled();
     expect(rig.fit).not.toHaveBeenCalled();
     expect(rig.fitAsset).not.toHaveBeenCalled();
+    expect(rig.flyToIncident).not.toHaveBeenCalled();
     expect(twinCommands.current()).toBeNull();
   });
 

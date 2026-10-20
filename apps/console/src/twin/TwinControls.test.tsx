@@ -15,6 +15,7 @@ function fakeCommands(): FakeCommands {
     home: vi.fn<TwinCommands['home']>(),
     fit: vi.fn<TwinCommands['fit']>(),
     fitAsset: vi.fn<TwinCommands['fitAsset']>(),
+    flyToIncident: vi.fn<TwinCommands['flyToIncident']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),

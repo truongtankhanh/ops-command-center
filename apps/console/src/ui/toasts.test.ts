@@ -95,6 +95,44 @@ describe('toasts', () => {
     });
   });
 
+  describe('a secondary action (V2-16.5)', () => {
+    const actions = () => ({
+      action: { label: 'Fly to', onAction: vi.fn() },
+      secondaryAction: { label: 'Open incident', onAction: vi.fn() },
+    });
+
+    it('is kept as given, beside the action', () => {
+      const given = actions();
+
+      showToast(toast('Motor over-temperature', given));
+
+      expect(toasts()[0]).toMatchObject(given);
+    });
+
+    it('is replaced with the toast about the same key, and gone when the new one has none', () => {
+      showToast(toast('A', { key: 'incident-1', ...actions() }));
+
+      showToast(
+        toast('B', { key: 'incident-1', action: { label: 'View incident', onAction: vi.fn() } }),
+      );
+
+      expect(toasts()[0]!.action!.label).toBe('View incident');
+      expect(toasts()[0]!.secondaryAction).toBeUndefined();
+    });
+
+    it('is left as it is by updateToast, which changes only the words', () => {
+      const given = actions();
+      showToast(toast('A', { key: 'incident-1', detail: 'CT-01', ...given }));
+
+      updateToast('incident-1', { detail: 'CT-01 · 92 °C for 60 s, limit 85 °C' });
+
+      expect(toasts()[0]).toMatchObject({
+        ...given,
+        detail: 'CT-01 · 92 °C for 60 s, limit 85 °C',
+      });
+    });
+  });
+
   describe('updateToast', () => {
     it('changes the words of the toast about the key, keeping its id and place', () => {
       showToast(toast('A'));

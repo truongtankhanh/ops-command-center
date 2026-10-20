@@ -2,7 +2,7 @@ import type { FitBox, Pose, Vec3 } from './twinCamera';
 
 /*
  * The 3D camera's command API (V2-12.9): what the on-screen buttons (V2-12.10), the keys (V2-18), the toast
- * and the incident sheet call to move the view, without any of them needing the canvas. The rig
+ * (V2-16.5) and the incident sheet call to move the view, without any of them needing the canvas. The rig
  * (`twin/Rig.tsx`) registers its implementation when it mounts and unregisters it when it goes; with no rig
  * (the 2D view, a stage that has not loaded, one that lost its context) every command does nothing and
  * `current()` is `null`, so a caller never has to know whether a 3D view exists.
@@ -42,6 +42,14 @@ export interface TwinCommands {
   rotateBy(degrees: number): void;
   /** Turns until north is up, keeping the target and the distance. */
   faceNorth(): void;
+  /**
+   * Flies to the beacon of the incident `id` (V2-16.5, "Fly to"): looking at the foot of its stem from the camera's
+   * own yaw and tilt, from the current distance but no farther than 120 m (`incidentView`), within the camera's
+   * limits. The rig resolves the beacon from the ones the stage draws, because a caller outside the canvas has the
+   * incident and not its place in the scene. An incident with no beacon (not drawn, or not known) does nothing;
+   * it is asked for after the selection, so the flight replaces the one a change of level starts.
+   */
+  flyToIncident(id: string): void;
   /** Where the camera is going: its end values, so a command issued while it eases is relative to that. */
   current(): Pose | null;
 }
@@ -66,6 +74,7 @@ export const twinCommands: TwinCommands = {
   home: () => registered?.home(),
   fit: (box) => registered?.fit(box),
   fitAsset: (box) => registered?.fitAsset(box),
+  flyToIncident: (id) => registered?.flyToIncident(id),
   zoomBy: (factor) => registered?.zoomBy(factor),
   rotateBy: (degrees) => registered?.rotateBy(degrees),
   faceNorth: () => registered?.faceNorth(),

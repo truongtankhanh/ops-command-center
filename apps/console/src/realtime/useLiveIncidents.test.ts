@@ -18,6 +18,7 @@ import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import type * as CriticalCue from '../lib/criticalCue';
 import { playCriticalCue } from '../lib/criticalCue';
+import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
 import { ToastRegion } from '../ui/Toast';
@@ -308,6 +309,31 @@ describe('useLiveIncidents', () => {
     const critical: Incident = { ...incident, severity: 'critical' };
     const toasts = () => useToasts.getState().toasts;
 
+    /** A rig that records every command, registered for the case and taken away after it. */
+    const rigs: (() => void)[] = [];
+    const fakeRig = () => {
+      const commands = {
+        flyTo: vi.fn<TwinCommands['flyTo']>(),
+        home: vi.fn<TwinCommands['home']>(),
+        fit: vi.fn<TwinCommands['fit']>(),
+        fitAsset: vi.fn<TwinCommands['fitAsset']>(),
+        flyToIncident: vi.fn<TwinCommands['flyToIncident']>(),
+        zoomBy: vi.fn<TwinCommands['zoomBy']>(),
+        rotateBy: vi.fn<TwinCommands['rotateBy']>(),
+        faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+        current: vi.fn<TwinCommands['current']>(() => null),
+      } satisfies TwinCommands;
+      rigs.push(registerTwinCommands(commands));
+      return commands;
+    };
+    /** How many camera commands were issued, `current()` (a read) not counted. */
+    const commandCalls = (rig: ReturnType<typeof fakeRig>) =>
+      Object.entries(rig)
+        .filter(([name]) => name !== 'current')
+        .reduce((total, [, spy]) => total + spy.mock.calls.length, 0);
+
+    afterEach(() => rigs.splice(0).forEach((unregister) => unregister()));
+
     beforeEach(() => client.setQueryData(queryKeys.zones, [zone]));
 
     it('shows an urgent toast for a new critical incident', () => {
@@ -326,6 +352,65 @@ describe('useLiveIncidents', () => {
           action: expect.objectContaining({ label: 'View incident' }),
         }),
       ]);
+    });
+
+    describe('in the 3D view (V2-16.5)', () => {
+      beforeEach(() => useConsole.setState({ view: '3d' }));
+
+      it.each(['critical', 'high'] as const)(
+        'offers "Fly to" and "Open incident" for a new %s incident',
+        (severity) => {
+          renderLive();
+
+          socket.fire(IncidentEvents.Created, { ...incident, severity });
+
+          expect(toasts()).toEqual([
+            expect.objectContaining({
+              action: { label: 'Fly to', onAction: expect.any(Function) },
+              secondaryAction: { label: 'Open incident', onAction: expect.any(Function) },
+            }),
+          ]);
+        },
+      );
+
+      it('moves the camera for nothing on arrival, and "Fly to" asks for the flight once, after the selection', () => {
+        const rig = fakeRig();
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+        expect(commandCalls(rig)).toBe(0);
+
+        toasts()[0]!.action!.onAction();
+
+        expect(rig.flyToIncident).toHaveBeenCalledExactlyOnceWith('incident-1');
+        expect(useConsole.getState().selectedIncidentId).toBe('incident-1');
+      });
+
+      it('leaves the toast of a reporter’s own incident alone: no second toast', () => {
+        renderLive();
+        showToast({ key: 'incident-1', title: 'Reported INC-000042' });
+
+        socket.fire(IncidentEvents.Created, critical);
+
+        expect(toasts().map((toast) => toast.title)).toEqual(['Reported INC-000042']);
+      });
+    });
+
+    describe('in the 2D view', () => {
+      beforeEach(() => useConsole.setState({ view: '2d' }));
+
+      it('keeps the single "View incident" action for a new critical and a new high incident', () => {
+        renderLive();
+
+        socket.fire(IncidentEvents.Created, critical);
+        socket.fire(IncidentEvents.Created, { ...incident, id: 'incident-2', severity: 'high' });
+
+        for (const toast of toasts()) {
+          expect(toast.action?.label).toBe('View incident');
+          expect(toast).not.toHaveProperty('secondaryAction');
+        }
+        expect(toasts()).toHaveLength(2);
+      });
     });
 
     it('reads a new critical incident out at once', () => {
@@ -608,10 +693,9 @@ describe('useLiveIncidents', () => {
         expect(toasts()).toEqual([first]);
       });
 
-      // V2-11.5. Today the toast does not depend on the role: every role gets the same one with one
-      // "View incident" action, which only opens the sheet (reading, not acting). The viewer's own toast
-      // ("Fly to" and "Open incident" only, brief § Viewer in V2) is V2-16's: this table is the one to
-      // change then, on purpose.
+      // V2-11.5, changed on purpose by V2-16.5. The toast does not depend on the role: in the 3D view every role gets
+      // "Fly to" and "Open incident" (both only read), in 2D the one "View incident". This is the table the V2-11.5
+      // comment said would change with V2-16.
       describe.each(['operator', 'supervisor', 'technician', 'viewer'] as const)(
         'for a %s',
         (role) => {
@@ -622,38 +706,147 @@ describe('useLiveIncidents', () => {
 
           afterEach(() => resetStore(useSession));
 
-          it('shows the same toast, with the one "View incident" action and no "Fly to"', async () => {
-            renderLive();
+          describe('in the 3D view', () => {
+            beforeEach(() => useConsole.setState({ view: '3d' }));
 
-            socket.fire(IncidentEvents.Created, raised);
-            await settle();
+            it('shows the same toast, with "Fly to" and "Open incident"', async () => {
+              renderLive();
 
-            expect(toasts()).toEqual([
-              expect.objectContaining({
-                kicker: 'Critical · raised by telemetry rule',
-                urgent: true,
-                detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C',
-                action: { label: 'View incident', onAction: expect.any(Function) },
-              }),
-            ]);
-            expect(playCriticalCue).toHaveBeenCalledTimes(1);
+              socket.fire(IncidentEvents.Created, raised);
+              await settle();
+
+              expect(toasts()).toEqual([
+                expect.objectContaining({
+                  kicker: 'Critical · raised by telemetry rule',
+                  urgent: true,
+                  detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C',
+                  action: { label: 'Fly to', onAction: expect.any(Function) },
+                  secondaryAction: { label: 'Open incident', onAction: expect.any(Function) },
+                }),
+              ]);
+              expect(playCriticalCue).toHaveBeenCalledTimes(1);
+            });
+
+            it('opens the incident from "Open incident" and moves the camera for nothing', async () => {
+              const rig = fakeRig();
+              renderLive();
+              socket.fire(IncidentEvents.Created, raised);
+              await settle();
+
+              toasts()[0]!.secondaryAction!.onAction();
+
+              expect(useConsole.getState()).toMatchObject({
+                selectedIncidentId: 'incident-1',
+                selectedAssetCode: null,
+                reporting: false,
+              });
+              expect(commandCalls(rig)).toBe(0);
+            });
+
+            it('selects the incident and then flies to its beacon from "Fly to"', async () => {
+              const rig = fakeRig();
+              let selectedAtTheFlight: string | null = null;
+              rig.flyToIncident.mockImplementation(() => {
+                selectedAtTheFlight = useConsole.getState().selectedIncidentId;
+              });
+              renderLive();
+              socket.fire(IncidentEvents.Created, raised);
+              await settle();
+
+              toasts()[0]!.action!.onAction();
+
+              expect(rig.flyToIncident).toHaveBeenCalledTimes(1);
+              expect(rig.flyToIncident).toHaveBeenCalledWith('incident-1');
+              // The selection comes first, so the flight replaces any flight the selection starts.
+              expect(selectedAtTheFlight).toBe('incident-1');
+              expect(commandCalls(rig)).toBe(1);
+            });
           });
 
-          it('opens the incident from the toast and nothing else', async () => {
-            renderLive();
-            socket.fire(IncidentEvents.Created, raised);
-            await settle();
+          describe('in the 2D view', () => {
+            beforeEach(() => useConsole.setState({ view: '2d' }));
 
-            toasts()[0]!.action!.onAction();
+            it('shows the same toast, with the one "View incident" action and no "Fly to"', async () => {
+              renderLive();
 
-            expect(useConsole.getState()).toMatchObject({
-              selectedIncidentId: 'incident-1',
-              selectedAssetCode: null,
-              reporting: false,
+              socket.fire(IncidentEvents.Created, raised);
+              await settle();
+
+              expect(toasts()).toEqual([
+                expect.objectContaining({
+                  kicker: 'Critical · raised by telemetry rule',
+                  urgent: true,
+                  detail: 'CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C',
+                  action: { label: 'View incident', onAction: expect.any(Function) },
+                }),
+              ]);
+              expect(toasts()[0]).not.toHaveProperty('secondaryAction');
+              expect(playCriticalCue).toHaveBeenCalledTimes(1);
+            });
+
+            it('opens the incident from the toast and nothing else', async () => {
+              const rig = fakeRig();
+              renderLive();
+              socket.fire(IncidentEvents.Created, raised);
+              await settle();
+
+              toasts()[0]!.action!.onAction();
+
+              expect(useConsole.getState()).toMatchObject({
+                selectedIncidentId: 'incident-1',
+                selectedAssetCode: null,
+                reporting: false,
+              });
+              expect(commandCalls(rig)).toBe(0);
             });
           });
         },
       );
+
+      // V2-16.5. The camera is the operator's: an arrival, its reading and its sound move nothing (Principle 4).
+      describe('in the 3D view, whatever arrives', () => {
+        beforeEach(() => useConsole.setState({ view: '3d' }));
+
+        it('moves the camera for nothing when the incident arrives or when its reading is added', async () => {
+          const rig = fakeRig();
+          renderLive();
+
+          socket.fire(IncidentEvents.Created, raised);
+          expect(commandCalls(rig)).toBe(0);
+          await settle();
+
+          expect(toasts()[0]!.detail).toContain('92 °C for 60 s');
+          expect(commandCalls(rig)).toBe(0);
+        });
+
+        it('keeps "Fly to" and "Open incident" when the reading is added to the same toast', async () => {
+          renderLive();
+          socket.fire(IncidentEvents.Created, raised);
+          const before = toasts()[0]!;
+          expect(before.action?.label).toBe('Fly to');
+          expect(before.detail).toBe('CT-01 · Main Gate');
+
+          await settle();
+
+          const after = toasts()[0]!;
+          expect(after.id).toBe(before.id);
+          expect(after.detail).toBe('CT-01 · Main Gate · 92 °C for 60 s, limit 85 °C');
+          expect(after.action?.label).toBe('Fly to');
+          expect(after.secondaryAction?.label).toBe('Open incident');
+        });
+
+        it('still selects, and fails nothing, when the view was switched to 2D while the toast was up', async () => {
+          renderLive();
+          socket.fire(IncidentEvents.Created, raised);
+          await settle();
+          useConsole.setState({ view: '2d' });
+
+          // No stage is mounted in 2D, so no rig is registered: the flight is a no-op.
+          expect(() => toasts()[0]!.action!.onAction()).not.toThrow();
+
+          expect(useConsole.getState().selectedIncidentId).toBe('incident-1');
+        });
+      });
 
       it('asks for nothing for an incident a person reported', async () => {
         renderLive();

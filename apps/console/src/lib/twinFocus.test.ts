@@ -89,6 +89,7 @@ describe('focusSelection', () => {
       home: vi.fn(),
       fit: vi.fn(),
       fitAsset,
+      flyToIncident: vi.fn(),
       zoomBy: vi.fn(),
       rotateBy: vi.fn(),
       faceNorth: vi.fn(),

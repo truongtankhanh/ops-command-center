@@ -16,6 +16,8 @@ import {
   HOME_TILT_DEG,
   HOME_YAW_DEG,
   homeView,
+  INCIDENT_FLY_DISTANCE_M,
+  incidentView,
   limitPose,
   normalizeYaw,
   type Pose,
@@ -414,6 +416,56 @@ describe('limitPose', () => {
     expect(limitPose(pose({ distance: 300 }), pan, asset).distance).toBe(40);
     expect(limitPose(pose({ distance: 12 }), pan).distance).toBe(60);
     expect(limitPose(pose({ distance: 12 }), pan, asset).tilt).toBe(55);
+  });
+});
+
+describe('incidentView (V2-16.5)', () => {
+  const beacon: [number, number, number] = [40, 19, -25];
+
+  it('looks at the beacon’s ground point', () => {
+    const view = incidentView(beacon, pose({ distance: 300, yaw: 30, tilt: 50 }));
+
+    expect(view.target).toEqual(beacon);
+    // A copy: the beacon's own position is not shared with the pose that is flown.
+    expect(view.target).not.toBe(beacon);
+  });
+
+  it('keeps the camera’s yaw and tilt', () => {
+    const view = incidentView(beacon, pose({ distance: 300, yaw: -120, tilt: 33 }));
+
+    expect(view).toMatchObject({ yaw: -120, tilt: 33 });
+  });
+
+  it('comes no farther than 120 m, from anywhere above that', () => {
+    expect(INCIDENT_FLY_DISTANCE_M).toBe(120);
+    expect(incidentView(beacon, pose({ distance: 900 })).distance).toBe(120);
+    expect(incidentView(beacon, pose({ distance: 121 })).distance).toBe(120);
+  });
+
+  it('keeps the distance when the camera is already nearer', () => {
+    expect(incidentView(beacon, pose({ distance: 120 })).distance).toBe(120);
+    expect(incidentView(beacon, pose({ distance: 85 })).distance).toBe(85);
+  });
+
+  it('changes nothing in its arguments', () => {
+    const now = pose({ target: [1, 2, 3], distance: 500, yaw: 10, tilt: 40 });
+    const position: [number, number, number] = [7, 8, 9];
+    const before = structuredClone({ now, position });
+
+    incidentView(position, now);
+
+    expect({ now, position }).toEqual(before);
+  });
+
+  it('is raised to the level’s floor by limitPose, and never beyond the pan box', () => {
+    const pan = panBounds(CAMPUS);
+    // Coming from an isolated asset (a 20 m view) the flight is asked for the 60 m floor of the campus level.
+    expect(limitPose(incidentView(beacon, pose({ distance: 20 })), pan).distance).toBe(
+      CAMERA_LIMITS.campus.minDistance,
+    );
+    expect(limitPose(incidentView([9999, 19, 0], pose({ distance: 300 })), pan).target[0]).toBe(
+      pan.maxX,
+    );
   });
 });
 

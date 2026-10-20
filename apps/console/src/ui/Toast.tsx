@@ -3,10 +3,10 @@ import { Button } from './Button';
 import { Icon } from './Icon';
 import { Check, X } from './icons';
 import styles from './Toast.module.css';
-import { dismissToast, type Toast, TOAST_MS, useToasts } from './toasts';
+import { dismissToast, type Toast, type ToastAction, TOAST_MS, useToasts } from './toasts';
 
 /** Which control of a toast had focus, so the same one in a neighbouring toast can take it. */
-type ToastControl = 'action' | 'dismiss';
+type ToastControl = 'action' | 'secondary' | 'dismiss';
 
 /**
  * Where toasts appear (frame 04): the top right of the stage, beside the open sheet. Mounted once
@@ -75,9 +75,9 @@ function controlIn(toast: HTMLElement, control: ToastControl | undefined): HTMLE
  * leaves it and focus is out of it, so it never vanishes while being read or while one of its
  * buttons has focus. An urgent one stays until dismissed.
  *
- * With an `action`, it has frame 04's actions row (the action, then Dismiss); without, UI-12's
- * icon-only Dismiss button. The action runs after focus has left the toast, so whatever the action
- * opens records a target that still exists as the place to return focus to.
+ * With an `action`, it has frame 04's actions row (the action, the secondary action if there is one, then
+ * Dismiss); without, UI-12's icon-only Dismiss button. An action runs after focus has left the toast, so whatever
+ * it opens records a target that still exists as the place to return focus to; the toast goes after either.
  */
 function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLElement) => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -101,11 +101,13 @@ function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLEl
     dismissToast(toast.id);
   };
 
-  const act = () => {
+  const run = (action: ToastAction) => {
     if (ref.current) onLeave(ref.current);
-    toast.action?.onAction();
+    action.onAction();
     dismissToast(toast.id);
   };
+
+  const { action, secondaryAction } = toast;
 
   return (
     <div
@@ -113,7 +115,7 @@ function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLEl
       className={styles.toast}
       data-toast=""
       data-severity={toast.severity}
-      data-actions={toast.action ? '' : undefined}
+      data-actions={action ? '' : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
@@ -127,11 +129,21 @@ function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLEl
         <p className={styles.title}>{toast.title}</p>
         {toast.detail && <p className={styles.detail}>{toast.detail}</p>}
       </div>
-      {toast.action ? (
+      {action ? (
         <div className={styles.actions}>
-          <Button variant="primary" size="sm" data-toast-control="action" onClick={act}>
-            {toast.action.label}
+          <Button
+            variant="primary"
+            size="sm"
+            data-toast-control="action"
+            onClick={() => run(action)}
+          >
+            {action.label}
           </Button>
+          {secondaryAction && (
+            <Button size="sm" data-toast-control="secondary" onClick={() => run(secondaryAction)}>
+              {secondaryAction.label}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" data-toast-control="dismiss" onClick={dismiss}>
             Dismiss
           </Button>

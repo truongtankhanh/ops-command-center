@@ -342,6 +342,28 @@ export function limitPose(
   };
 }
 
+/**
+ * How far the camera stands from an incident's beacon after "Fly to" at the most (V2-16.1, V2-16.5): the current
+ * distance is kept when it is nearer, so the beacon is seen in its surroundings and not from the campus view.
+ * `unverified`: judged by eye in the browser, then fixed here.
+ */
+export const INCIDENT_FLY_DISTANCE_M = 120;
+
+/**
+ * Where the camera goes for an incident's beacon (V2-16.5): looking at the beacon's ground point (the foot of its
+ * stem), from the camera's own yaw and tilt, from where it is now but no farther than `INCIDENT_FLY_DISTANCE_M`.
+ * Not limited here: the rig flies it through `limitPose`, which raises a distance under the level's floor (60 m at
+ * campus and building level) and keeps the target inside the pan box.
+ */
+export function incidentView(position: Vec3, now: Pose): Pose {
+  return {
+    target: [...position],
+    distance: Math.min(now.distance, INCIDENT_FLY_DISTANCE_M),
+    yaw: now.yaw,
+    tilt: now.tilt,
+  };
+}
+
 /** Cubic ease-out: quick at first, settling at the end. */
 export const ease = (t: number): number => 1 - (1 - clamp(t, 0, 1)) ** 3;
 

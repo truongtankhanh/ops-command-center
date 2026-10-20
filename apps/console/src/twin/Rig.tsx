@@ -2,6 +2,7 @@ import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Box3, MathUtils, Vector3 } from 'three';
+import type { Beacon } from '../lib/twinBeacons';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import {
   CAMERA_LIMITS,
@@ -16,6 +17,7 @@ import {
   HOME_TILT_DEG,
   HOME_YAW_DEG,
   homeView,
+  incidentView,
   limitPose,
   type Pose,
   poseToPosition,
@@ -91,6 +93,12 @@ interface RigProps {
   boxes: ReadonlyMap<string, FitBox>;
   /** The box of every asset (`assetBoxes`): read once, for the first view when the stage starts with an asset isolated (V2-15.7). */
   assetBoxes: ReadonlyMap<string, FitBox>;
+  /**
+   * The incident beacons the stage draws (`useTwinBeacons`), for "Fly to" (V2-16.5): `flyToIncident(id)` flies to the
+   * ground point of the one with that id. They change as incidents come and go, so the rig reads the latest at the
+   * moment of the command and does not register its commands again for each change.
+   */
+  beacons: readonly Pick<Beacon, 'id' | 'position'>[];
 }
 
 /**
@@ -115,10 +123,13 @@ interface RigProps {
  *   at asset level (the store keeps the level while the operator is in 2D). `fit` flies to a building's box with
  *   the stage's aspect and the sheet's inset, as `home` does; `fitAsset` flies to an asset's box from the
  *   camera's own yaw and tilt, with the width the inspector will take (it opens in the same update).
+ * - **Fly to an incident** (V2-16.5, `flyToIncident`) is a fly-to like the others: the beacon's ground point as the
+ *   target, the camera's own yaw and tilt, no farther than 120 m (`incidentView`), through the same limits. A flight is
+ *   only ever asked for by a person (the toast's "Fly to"): an incident that arrives moves nothing.
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing.
  */
-export function Rig({ bounds, boxes, assetBoxes }: RigProps) {
+export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   const controls = useRef<CameraControls>(null);
   const flight = useRef<Flight | null>(null);
   const reducedMotion = usePrefersReducedMotion();
@@ -126,6 +137,7 @@ export function Rig({ bounds, boxes, assetBoxes }: RigProps) {
   const initialBounds = useRef(bounds);
   const initialBoxes = useRef(boxes);
   const initialAssetBoxes = useRef(assetBoxes);
+  const latestBeacons = useRef(beacons);
   const get = useThree((state) => state.get);
   const pan = useMemo(() => panBounds(bounds), [bounds]);
 
@@ -134,6 +146,10 @@ export function Rig({ bounds, boxes, assetBoxes }: RigProps) {
   useEffect(() => {
     reduced.current = reducedMotion;
   }, [reducedMotion]);
+
+  useEffect(() => {
+    latestBeacons.current = beacons;
+  }, [beacons]);
 
   // The first view, before the first paint so the default camera is never drawn. Once: later changes of the
   // data or the stage's shape do not move a view the user may have set (acceptance criterion 5).
@@ -265,6 +281,10 @@ export function Rig({ bounds, boxes, assetBoxes }: RigProps) {
       fitAsset: (box) => {
         const now = currentPose(rig);
         flyTo(fitAssetView(box, assetAspect(), { yaw: now.yaw, tilt: now.tilt }));
+      },
+      flyToIncident: (id) => {
+        const beacon = latestBeacons.current.find((candidate) => candidate.id === id);
+        if (beacon !== undefined) flyTo(incidentView(beacon.position, currentPose(rig)));
       },
       zoomBy: (factor) => {
         flight.current = null;
