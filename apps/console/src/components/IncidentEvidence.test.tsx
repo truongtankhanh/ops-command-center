@@ -693,6 +693,8 @@ describe('IncidentEvidence', () => {
         showAsset: vi.fn(),
         zoomBy: vi.fn(),
         rotateBy: vi.fn(),
+        tiltBy: vi.fn(),
+        panBy: vi.fn(),
         faceNorth: vi.fn(),
         current: vi.fn(() => null),
       }) satisfies TwinCommands;

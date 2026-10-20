@@ -42,6 +42,18 @@ export interface TwinCommands {
   zoomBy(factor: number): void;
   /** Turns round the target by `degrees` (positive turns the camera towards the east). */
   rotateBy(degrees: number): void;
+  /**
+   * Tilts by `degrees` from the vertical (V2-18.3, the `↑` `↓` keys): positive lowers the camera towards the horizon,
+   * negative lifts it overhead. Relative to where the camera is going, and the controls clamp it to 20° – 78°, so a key
+   * held down stops at the limit instead of overshooting.
+   */
+  tiltBy(degrees: number): void;
+  /**
+   * Moves the target along the ground (V2-18.3, `Shift` and the arrows): `dx` to the camera's right and `dy` forward,
+   * each as a fraction of the current distance, so a step feels the same at 60 m and at 900 m and no caller needs to
+   * know the level's scale. The pan box (site + 40 m) clamps the target.
+   */
+  panBy(dx: number, dy: number): void;
   /** Turns until north is up, keeping the target and the distance. */
   faceNorth(): void;
   /**
@@ -116,6 +128,8 @@ export const twinCommands: TwinCommands = {
   },
   zoomBy: (factor) => registered?.zoomBy(factor),
   rotateBy: (degrees) => registered?.rotateBy(degrees),
+  tiltBy: (degrees) => registered?.tiltBy(degrees),
+  panBy: (dx, dy) => registered?.panBy(dx, dy),
   faceNorth: () => registered?.faceNorth(),
   current: () => registered?.current() ?? null,
 };

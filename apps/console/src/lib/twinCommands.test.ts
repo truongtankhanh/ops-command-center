@@ -23,6 +23,8 @@ function fakeCommands(pose: Pose | null = POSE): FakeCommands {
     showAsset: vi.fn<TwinCommands['showAsset']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
+    tiltBy: vi.fn<TwinCommands['tiltBy']>(),
+    panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
     current: vi.fn<TwinCommands['current']>(() => pose),
   };
@@ -54,6 +56,8 @@ describe('twinCommands with nothing registered', () => {
       twinCommands.showAsset('CT-01');
       twinCommands.zoomBy(2);
       twinCommands.rotateBy(30);
+      twinCommands.tiltBy(5);
+      twinCommands.panBy(0.1, -0.1);
       twinCommands.faceNorth();
     }).not.toThrow();
     expect(twinCommands.current()).toBeNull();
@@ -73,6 +77,8 @@ describe('registerTwinCommands', () => {
     twinCommands.showAsset('CT-01');
     twinCommands.zoomBy(0.5);
     twinCommands.rotateBy(-30);
+    twinCommands.tiltBy(-5);
+    twinCommands.panBy(0.1, -0.1);
     twinCommands.faceNorth();
 
     expect(rig.flyTo).toHaveBeenCalledWith({ target: [5, 0, 6], distance: 120 });
@@ -83,6 +89,8 @@ describe('registerTwinCommands', () => {
     expect(rig.showAsset).toHaveBeenCalledWith('CT-01');
     expect(rig.zoomBy).toHaveBeenCalledWith(0.5);
     expect(rig.rotateBy).toHaveBeenCalledWith(-30);
+    expect(rig.tiltBy).toHaveBeenCalledWith(-5);
+    expect(rig.panBy).toHaveBeenCalledWith(0.1, -0.1);
     expect(rig.faceNorth).toHaveBeenCalledTimes(1);
   });
 

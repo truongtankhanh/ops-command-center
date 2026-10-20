@@ -7,8 +7,20 @@ import type { SelectionTarget } from './twinSelection';
  * "Switch to the 3D view if you can, then fly" (V2-16.6 "Show in 3D", V2-18.2 `F`): the one place that knows it, so
  * a button and a key cannot drift. It reads the store outside React, like the other callers of `setView`, and is
  * the only module here that does: `twinCommands.ts` stays a leaf (the registry) and `twinFocus.ts` stays free of the
- * store (it is the part and asset flight's seam).
+ * store (it is the part and asset flight's seam). The reset (`resetView`) sits here for the same reason: it changes the
+ * level in the store and then asks for the camera.
  */
+
+/**
+ * Reset (Home, V2-15.1): back to the campus level and the home view. The level goes first, so an asset is
+ * deselected and a building left (an open incident and a report form stay), and the camera flies home even
+ * when the level was campus already, because the operator may have orbited away. The Reset button and the `Home` key
+ * (V2-18.3) both call it.
+ */
+export function resetView(): void {
+  useConsole.getState().goCampus();
+  twinCommands.home();
+}
 
 /**
  * Makes sure the 3D view is the one in effect, and says whether it is. `setView` does nothing where 3D cannot be

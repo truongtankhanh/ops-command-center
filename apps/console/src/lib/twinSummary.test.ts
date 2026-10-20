@@ -1,5 +1,6 @@
 import type { Incident } from '@occ/contracts';
-import { activeIncidentCount, twinSummary } from './twinSummary';
+import { SHORTCUTS } from './shortcuts';
+import { activeIncidentCount, TWIN_VIEW_KEYS, twinSummary } from './twinSummary';
 
 const incident = (overrides: Partial<Incident>): Incident => ({
   id: 'id',
@@ -140,6 +141,40 @@ describe('twinSummary with the heat overlay (V2-17.3)', () => {
   it('keeps the unknown count out of it, as before', () => {
     expect(twinSummary({ siteName: undefined, activeIncidents: null, heat: heatOf() })).toBe(
       `3D view of the campus. ${SCALE} ${POINTER}`,
+    );
+  });
+});
+
+// V2-18.3: the sentence that describes the view for a screen reader, and the help's group it must agree with.
+describe('TWIN_VIEW_KEYS', () => {
+  /** What each key of the help's group is called in the sentence; a new key in the help fails the first case. */
+  const WORDS: Record<string, string> = {
+    '←': 'Arrow keys',
+    '→': 'Arrow keys',
+    '↑': 'Arrow keys',
+    '↓': 'Arrow keys',
+    Shift: 'Shift with an arrow pans',
+    arrows: 'Arrow keys',
+    '+': 'Plus and minus',
+    '−': 'Plus and minus',
+    Home: 'Home resets to the campus view',
+    Esc: 'Escape goes up one level',
+  };
+  const group = SHORTCUTS.find((candidate) => candidate.title === '3D view, while it has focus');
+
+  it('names every key of the help\'s "3D view, while it has focus" group', () => {
+    const keys = group?.rows.flatMap((row) => row.keys) ?? [];
+
+    expect(keys.length).toBeGreaterThan(0);
+    for (const key of keys) {
+      expect(WORDS, `no word for ${key}`).toHaveProperty(key);
+      expect(TWIN_VIEW_KEYS).toContain(WORDS[key]);
+    }
+  });
+
+  it('is a description only: the summary does not mention the keys', () => {
+    expect(twinSummary({ siteName: 'Campus', activeIncidents: 0 })).not.toMatch(
+      /Escape|Home|Shift/,
     );
   });
 });

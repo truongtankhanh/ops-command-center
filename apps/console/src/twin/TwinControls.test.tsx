@@ -19,6 +19,8 @@ function fakeCommands(): FakeCommands {
     showAsset: vi.fn<TwinCommands['showAsset']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
+    tiltBy: vi.fn<TwinCommands['tiltBy']>(),
+    panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
     current: vi.fn<TwinCommands['current']>(() => null),
   };

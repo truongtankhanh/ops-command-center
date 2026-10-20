@@ -1,7 +1,15 @@
 import type { ReactNode } from 'react';
 import { useIncidents, useSitePlan } from '../api/queries';
 import { HEAT_DOMAIN, type HeatScene } from '../lib/twinHeat';
-import { activeIncidentCount, TWIN_VIEW_ID, twinSummary } from '../lib/twinSummary';
+import { keyCommand } from '../lib/twinKeys';
+import {
+  activeIncidentCount,
+  TWIN_VIEW_ID,
+  TWIN_VIEW_KEYS,
+  TWIN_VIEW_KEYS_ID,
+  twinSummary,
+} from '../lib/twinSummary';
+import { runKeyCommand } from './runKeyCommand';
 import styles from './TwinView.module.css';
 
 interface TwinViewProps {
@@ -29,8 +37,16 @@ interface TwinViewProps {
  *   sensor is silent (V2-17.3, `twinSummary`): the canvas is hidden, and the lists, the building card and the legend
  *   carry the numbers. The overlay is one object while nothing in it changes, so this wrapper does not render for a
  *   second that changed nothing.
- * - The keys that will operate the camera and a line that names them (`aria-describedby`) arrive with
- *   V2-18; there is nothing to describe yet.
+ * - **The keys (V2-18.3)** are handled here, on the group, because it is the element that has focus: arrows orbit, tilt
+ *   and (with Shift) pan, `+` and `-` zoom, `Home` resets and `Escape` goes up one level (`keyCommand`,
+ *   `runKeyCommand`). A key that is handled is `preventDefault`ed (the page must not scroll on an arrow); any other is
+ *   left alone, so `Tab`, `V`, `F`, `?`, `/` and `N` reach their own handlers, and an `Escape` with nothing to close
+ *   (the campus) is not taken. They work only while the group has focus, so `Home` and the arrows keep V1's meaning in
+ *   the lists, and they are not behind the single-key switch (active only on focus: WCAG 2.1.4). A hidden sentence
+ *   names them (`aria-describedby`; a description may point at hidden content, and the name stays the summary).
+ * - **A press on the picture focuses the group.** Nothing else would: the canvas library may stop the pointer event,
+ *   so the capture phase is used, and `preventDefault()` is not called, so a drag is not affected. Without it a mouse
+ *   user who orbited and then pressed an arrow would get nothing (V2-18.3, `unverified` in a browser).
  *
  * A wrapper of its own so the incident subscription re-renders only this component: `children` are
  * elements made by `TwinStage`, which keep their identity, so the canvas tree is not rendered again
@@ -52,9 +68,22 @@ export function TwinView({ children, heat }: TwinViewProps) {
       tabIndex={0}
       aria-roledescription="3D view"
       aria-label={summary}
+      aria-describedby={TWIN_VIEW_KEYS_ID}
       className={styles.view}
+      onKeyDown={(event) => {
+        const command = keyCommand(event.nativeEvent);
+        if (command !== null && runKeyCommand(command)) event.preventDefault();
+      }}
+      onPointerDownCapture={(event) => {
+        if (document.activeElement !== event.currentTarget) {
+          event.currentTarget.focus({ preventScroll: true });
+        }
+      }}
     >
       {children}
+      <p id={TWIN_VIEW_KEYS_ID} hidden>
+        {TWIN_VIEW_KEYS}
+      </p>
     </div>
   );
 }

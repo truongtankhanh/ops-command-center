@@ -37,6 +37,14 @@ export const HOME_MARGIN = 0.08;
 /** A fly-to lasts this long (brief § Camera limits); under reduced motion it lasts no time. */
 export const FLY_MS = 600;
 
+/**
+ * One zoom step's share of the distance (frame 01): coming closer is 0.8 of it, going away 1.25 of it. Shared by the
+ * on-screen buttons and the `+` / `-` keys (V2-18.3), which would otherwise drift. They multiply the **distance**, as
+ * `twinCommands.zoomBy` takes them: the prototype's key table writes the same steps as a scale, the other way round.
+ */
+export const ZOOM_IN_FACTOR = 0.8;
+export const ZOOM_OUT_FACTOR = 1.25;
+
 /** Brief § Camera limits. */
 export const CAMERA_LIMITS = {
   campus: { minDistance: 60, maxDistance: 900 },
