@@ -9,7 +9,7 @@ import type {
   ZoneKind,
 } from '@occ/contracts';
 import { offsetM } from './geo';
-import { fanOut, UNKNOWN_TYPE_IMAGE } from './mapFeatures';
+import { fanOut, incidentFeatures, UNKNOWN_TYPE_IMAGE } from './mapFeatures';
 import { type Beacon, beaconsOf } from './twinBeacons';
 import { DEFAULT_BUILDING_HEIGHT_M, makeFrame } from './twinScene';
 
@@ -501,5 +501,79 @@ describe('beaconsOf', () => {
 
       expect({ all, assets: [CT01], zones: ZONES }).toEqual(snapshot);
     });
+  });
+});
+
+// V2-16.8: the cross-cutting checklist's "No second source of truth": the beacons are the 2D map's markers, not a set of
+// their own. Both are `isActive(incident) || id === selectedId`; this says so by comparing what each one draws.
+describe('the same set as the 2D map', () => {
+  /** The ids the 2D map draws: the clustered set and the selected one. */
+  const mapIds = (all: readonly Incident[], selectedId: string | null): string[] => {
+    const { rest, selected } = incidentFeatures(all, selectedId);
+    return [...rest.features, ...selected.features].map((feature) => feature.properties.id).sort();
+  };
+  const beaconIds = (all: readonly Incident[], selectedId: string | null): string[] =>
+    run(all, { selectedId })
+      .map((beacon) => beacon.id)
+      .sort();
+
+  const RESOLVED = incident('INC-000099', 'crowding', 'low', 'resolved', 'GATE-MAIN', [0, -248]);
+  // A type a newer API may serve: it draws the unknown glyph on both.
+  const FUTURE = incident('INC-000098', 'crowding', 'high', 'open', 'GATE-MAIN', [0, -248], {
+    type: 'a_type_from_the_future' as string as IncidentType,
+  });
+  const MIXED = [...FRAME_01, TELEMETRY, RESOLVED, FUTURE];
+
+  it('draws the active incidents of frame 01 and frame 04 on both, and not a resolved one', () => {
+    const ids = beaconIds(MIXED, null);
+
+    expect(ids).toEqual(mapIds(MIXED, null));
+    expect(ids).toContain('id-INC-000107');
+    expect(ids).not.toContain(RESOLVED.id);
+  });
+
+  it('draws a type the console does not know on both', () => {
+    expect(beaconIds(MIXED, null)).toContain(FUTURE.id);
+    expect(mapIds(MIXED, null)).toContain(FUTURE.id);
+  });
+
+  it('draws the selected incident on both even when it is resolved', () => {
+    const ids = beaconIds(MIXED, RESOLVED.id);
+
+    expect(ids).toEqual(mapIds(MIXED, RESOLVED.id));
+    expect(ids).toContain(RESOLVED.id);
+  });
+
+  it('draws a selected active incident once on both', () => {
+    const selected = 'id-INC-000104';
+
+    expect(beaconIds(MIXED, selected)).toEqual(mapIds(MIXED, selected));
+    expect(beaconIds(MIXED, selected).filter((id) => id === selected)).toHaveLength(1);
+  });
+
+  it('is the same set for the same incidents in another order', () => {
+    const reversed = [...MIXED].reverse();
+
+    expect(beaconIds(reversed, null)).toEqual(beaconIds(MIXED, null));
+    expect(mapIds(reversed, null)).toEqual(mapIds(MIXED, null));
+  });
+
+  it('follows a status change on both: an acknowledged incident stays, a resolved one goes', () => {
+    const acknowledged = MIXED.map((i) =>
+      i.id === 'id-INC-000110' ? { ...i, status: 'acknowledged' as const } : i,
+    );
+    const resolved = MIXED.map((i) =>
+      i.id === 'id-INC-000110' ? { ...i, status: 'resolved' as const } : i,
+    );
+
+    expect(beaconIds(acknowledged, null)).toEqual(mapIds(acknowledged, null));
+    expect(beaconIds(acknowledged, null)).toContain('id-INC-000110');
+    expect(beaconIds(resolved, null)).toEqual(mapIds(resolved, null));
+    expect(beaconIds(resolved, null)).not.toContain('id-INC-000110');
+  });
+
+  it('is empty on both for no incidents', () => {
+    expect(beaconIds([], null)).toEqual([]);
+    expect(mapIds([], null)).toEqual([]);
   });
 });

@@ -12,13 +12,15 @@ import type {
   TelemetryValue,
   Zone,
 } from '@occ/contracts';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from './api/queries';
 import { App } from './App';
 import { useSession } from './auth/store';
 import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/attention';
+import type { Beacon } from './lib/twinBeacons';
+import { publishPick } from './lib/twinPicker';
 import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
 import { initialTelemetryState } from './lib/telemetryState';
 import type { NodeInfo } from './lib/twinBindings';
@@ -76,7 +78,17 @@ vi.mock('maplibre-gl', () => ({ default: { Map: fake.FakeMap, Marker: class {} }
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
 // R3F needs WebGL too. Only the 3D cases reach the canvas (the preview gate is closed otherwise); the rest of
 // the stage, its group, controls and legend, is the real one.
-vi.mock('./twin/TwinCanvas', () => ({ TwinCanvas: () => <canvas aria-label="3D canvas" /> }));
+// It records the props it is given (V2-16.8: the beacons the stage hands it), and draws the same canvas as ever.
+const twinCanvas = vi.hoisted(() => vi.fn());
+vi.mock('./twin/TwinCanvas', () => ({
+  TwinCanvas: (props: unknown) => {
+    twinCanvas(props);
+    return <canvas aria-label="3D canvas" />;
+  },
+}));
+/** The beacons the stage handed the canvas in its last render. */
+const canvasBeacons = (): readonly Beacon[] =>
+  (twinCanvas.mock.lastCall?.[0] as { beacons: readonly Beacon[] } | undefined)?.beacons ?? [];
 // Queries ask for a token; the gate's buttons sign in and out.
 vi.mock('./auth/session', () => ({
   getAccessToken: vi.fn(() => Promise.resolve(null)),
@@ -432,6 +444,7 @@ function renderConsole({
 
 describe('the console', () => {
   beforeEach(() => {
+    twinCanvas.mockClear();
     resetStore(useConsole);
     resetStore(useSession);
     resetStore(useToasts);
@@ -884,6 +897,263 @@ describe('the console', () => {
           expect(screen.getAllByText(reason)).toHaveLength(2);
           expect(screen.getByRole('button', { name: '3D' })).toHaveAccessibleDescription(reason);
           await checkPage();
+        });
+
+        // V2-16.8: the incident layer of the stage, with the canvas mocked. The beacons are not drawn here (no WebGL), so
+        // what is checked is the DOM that carries their meaning: the tooltip host, the toast, the sheet and the form.
+        describe('incidents in 3D (V2-16.8)', () => {
+          afterEach(() => {
+            act(() => publishPick(null));
+          });
+
+          it('with a beacon hovered: the tooltip host names the incident and the page is accessible', async () => {
+            renderConsole();
+            show3d();
+            await view();
+
+            act(() => publishPick({ kind: 'beacon', id: 'i1' }));
+            fireEvent.pointerMove(screen.getByLabelText('3D canvas'), {
+              clientX: 120,
+              clientY: 90,
+              pointerType: 'mouse',
+            });
+
+            // The tip waits 150 ms of rest on one target; real timers, as axe needs.
+            const tip = await screen.findByRole('tooltip', { hidden: true });
+            expect(tip).toHaveTextContent('Smoke in the stairwell');
+            expect(tip).toHaveTextContent('INC-000001');
+            // The stage hands the canvas one beacon for each active incident.
+            expect(canvasBeacons().map((beacon) => beacon.code)).toEqual([
+              'INC-000001',
+              'INC-000002',
+            ]);
+            await checkPage();
+          });
+
+          it('the toast of a new critical incident in 3D, with "Fly to" and "Open incident"', async () => {
+            renderConsole();
+            show3d();
+            await view();
+
+            act(() =>
+              showToast(
+                incidentToast(
+                  INCIDENTS[0]!,
+                  { zone: { name: 'Library', kind: 'building', heightM: null } },
+                  () => {},
+                  () => {},
+                )!,
+              ),
+            );
+
+            const notifications = screen.getByRole('region', { name: 'Notifications' });
+            expect(within(notifications).getByRole('button', { name: 'Fly to' })).toBeVisible();
+            expect(
+              within(notifications).getByRole('button', { name: 'Open incident' }),
+            ).toBeVisible();
+            expect(
+              within(notifications).queryByRole('button', { name: 'View incident' }),
+            ).toBeNull();
+            await checkPage();
+          });
+
+          it.each<Role>(['operator', 'viewer'])(
+            'the sheet of a telemetry incident over the stage has both buttons, as a %s',
+            async (role) => {
+              renderConsole({
+                role,
+                incidents: [...INCIDENTS, RAISED_BY_RULE],
+                incidentDetails: [raisedDetail()],
+                details: [TOWER],
+              });
+              holdTelemetry({ 'CT-01': { ageMs: 400, values: { motorTempC: 92 } } });
+              show3d();
+              await view();
+
+              act(() => consoleState().select('i-tel'));
+
+              const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+              expect(within(sheet).getByRole('button', { name: 'Open asset CT-01' })).toBeVisible();
+              expect(within(sheet).getByRole('button', { name: 'Show in 3D CT-01' })).toBeVisible();
+              expectNoTickingAgeAnnounced();
+              await checkPage();
+            },
+          );
+
+          it('the report form while the location is picked: the toggle is pressed and the stage says how to stop', async () => {
+            renderConsole();
+            show3d();
+            await view();
+            act(() => consoleState().startReport());
+
+            const pick = screen.getByRole('button', { name: 'Pick in 3D' });
+            await userEvent.click(pick);
+
+            expect(pick).toHaveAttribute('aria-pressed', 'true');
+            expect(screen.getByText(/Click the scene to place the incident/)).toBeInTheDocument();
+            await checkPage();
+          });
+
+          it.each<Role>(['operator', 'supervisor', 'technician', 'viewer'])(
+            'the sheet of a telemetry incident has "Open asset" and "Show in 3D", as a %s',
+            async (role) => {
+              renderConsole({
+                role,
+                incidents: [...INCIDENTS, RAISED_BY_RULE],
+                incidentDetails: [raisedDetail()],
+                details: [TOWER],
+              });
+              show3d();
+              await view();
+
+              act(() => consoleState().select('i-tel'));
+
+              const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+              expect(within(sheet).getByRole('button', { name: 'Open asset CT-01' })).toBeVisible();
+              expect(within(sheet).getByRole('button', { name: 'Show in 3D CT-01' })).toBeVisible();
+            },
+          );
+
+          // The brief's "Viewer in V2": everything that only reads stays, every action that writes goes.
+          it('a viewer has "Fly to", "Open incident" and "Show in 3D", and no report action', async () => {
+            renderConsole({
+              role: 'viewer',
+              incidents: [...INCIDENTS, RAISED_BY_RULE],
+              incidentDetails: [raisedDetail()],
+              details: [TOWER],
+            });
+            show3d();
+            await view();
+
+            act(() =>
+              showToast(
+                incidentToast(
+                  RAISED_BY_RULE,
+                  {},
+                  () => {},
+                  () => {},
+                )!,
+              ),
+            );
+            act(() => consoleState().select('i-tel'));
+
+            const notifications = screen.getByRole('region', { name: 'Notifications' });
+            expect(within(notifications).getByRole('button', { name: 'Fly to' })).toBeVisible();
+            expect(
+              within(notifications).getByRole('button', { name: 'Open incident' }),
+            ).toBeVisible();
+            const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+            expect(within(sheet).getByRole('button', { name: 'Show in 3D CT-01' })).toBeVisible();
+            // The view-only footer replaces the response; no way to start a report or to pick its location.
+            expect(within(sheet).getByRole('note')).toHaveTextContent('View only');
+            expect(within(sheet).queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Report incident' })).toBeNull();
+            expect(screen.queryByRole('heading', { name: 'Report an incident' })).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Pick in 3D' })).toBeNull();
+          });
+
+          // "No role changes what is drawn": the stage reads no session, so the canvas gets the same beacons.
+          it.each<Role>(['operator', 'technician', 'viewer'])(
+            'the canvas is handed one beacon for each active incident, as a %s',
+            async (role) => {
+              renderConsole({ role });
+              show3d();
+              await view();
+
+              expect(
+                canvasBeacons().map(({ code, form, selected }) => [code, form, selected]),
+              ).toEqual([
+                ['INC-000001', 'filled', false],
+                ['INC-000002', 'hollow', false],
+              ]);
+            },
+          );
+
+          // Frame 11: a technician selects a Fire & safety incident, which is not theirs to act on.
+          it('a technician selecting an incident out of their scope sees the same beacon and the view-only footer', async () => {
+            renderConsole({ role: 'technician' });
+            show3d();
+            await view();
+
+            act(() => consoleState().select('i1'));
+
+            expect(screen.getByRole('note')).toHaveTextContent(
+              'Fire & safety incidents are handled by operators',
+            );
+            expect(screen.queryByRole('form', { name: 'Response' })).toBeNull();
+            expect(
+              canvasBeacons().map(({ code, form, selected }) => [code, form, selected]),
+            ).toEqual([
+              ['INC-000001', 'filled', true],
+              ['INC-000002', 'hollow', false],
+            ]);
+            await checkPage();
+          });
+
+          // Principle 1: the feed is the accessible twin of the beacons. The summary counts by the feed's rule, and every
+          // beacon is a row of it.
+          describe('the summary and the feed', () => {
+            const feed = () => screen.getByRole('region', { name: 'Incidents' });
+            /** What the feed says: the Active tab's count, and how many rows it lists. */
+            const feedActive = (count: number) => {
+              expect(
+                within(feed()).getByRole('tab', { name: `Active ${count}` }),
+              ).toBeInTheDocument();
+              expect(within(feed()).getAllByRole('listitem')).toHaveLength(count);
+            };
+            /** Three active incidents (open, acknowledged, open) and a resolved one. */
+            const LIST = [...INCIDENTS, WATER_LEAK];
+
+            it('count the same active incidents, and every beacon has a row in the feed', async () => {
+              renderConsole({ incidents: LIST });
+              show3d();
+
+              expect(await view()).toHaveAccessibleName(/ with 3 active incidents\./);
+              feedActive(3);
+              const beacons = canvasBeacons();
+              expect(beacons).toHaveLength(3);
+              for (const { code } of beacons) {
+                expect(within(feed()).getByText(code)).toBeInTheDocument();
+              }
+            });
+
+            it('move together when an incident is acknowledged (still active) and when one is resolved', async () => {
+              const { client } = renderConsole({ incidents: LIST });
+              show3d();
+              await view();
+              const update = (id: string, patch: Partial<Incident>) => {
+                // A cached update must carry a higher version, or the list keeps the copy it has.
+                act(() => {
+                  client.setQueryData<Incident[]>(queryKeys.incidents, (list) =>
+                    (list ?? []).map((item) =>
+                      item.id === id ? { ...item, ...patch, version: item.version + 1 } : item,
+                    ),
+                  );
+                });
+              };
+
+              update('i1', { status: 'acknowledged' });
+              await waitFor(() =>
+                expect(screen.getByRole('group', { name: /^3D view of/ })).toHaveAccessibleName(
+                  / with 3 active incidents\./,
+                ),
+              );
+              feedActive(3);
+              expect(canvasBeacons()).toHaveLength(3);
+
+              update('i2', { status: 'resolved' });
+              await waitFor(() =>
+                expect(screen.getByRole('group', { name: /^3D view of/ })).toHaveAccessibleName(
+                  / with 2 active incidents\./,
+                ),
+              );
+              feedActive(2);
+              expect(canvasBeacons()).toHaveLength(2);
+              for (const { code } of canvasBeacons()) {
+                expect(within(feed()).getByText(code)).toBeInTheDocument();
+              }
+            });
+          });
         });
       });
 
