@@ -107,6 +107,8 @@ export interface HudReading {
   triangles: number;
   messagesPerSecond: number | null;
   postsPerFrame: number | null;
+  /** The renderer's actual pixel ratio (V2-19.3), which is `min(device ratio, step)` and not the controller's step. */
+  pixelRatio: number | null;
 }
 
 /** What `read` is given besides the time: `gl.info.render`, and the client's counts (`null` without a client). */
@@ -114,6 +116,8 @@ export interface HudInput {
   calls: number;
   triangles: number;
   stats: CounterStats | null;
+  /** `gl.getPixelRatio()`, or `null` when there is no renderer to ask. */
+  pixelRatio: number | null;
 }
 
 /**
@@ -139,7 +143,7 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
       totalFrames += 1;
       times.push(dtMs);
     },
-    read(now: number, { calls, triangles, stats }: HudInput): HudReading {
+    read(now: number, { calls, triangles, stats, pixelRatio }: HudInput): HudReading {
       let fps: number | null = null;
       if (windowStart !== null && now > windowStart) {
         fps = (framesInWindow * 1000) / (now - windowStart);
@@ -170,6 +174,7 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
         triangles,
         messagesPerSecond: messageRate,
         postsPerFrame: postRatio,
+        pixelRatio,
       };
     },
   };
@@ -264,3 +269,135 @@ export const needsFrame = (
   demand: Readonly<FrameDemand>,
   { hidden = false }: { hidden?: boolean } = {},
 ): boolean => !hidden && (demand.bound || demand.flying || demand.pulsing);
+
+/**
+ * The pixel-ratio steps (brief § Performance: "Pixel ratio ≤ 1.5; video wall 1.0"), from the sharpest down. The canvas
+ * starts at the first and the controller below only ever moves down the list.
+ */
+export const DPR_STEPS: readonly number[] = [1.5, 1.25, 1.0];
+
+/**
+ * How long a frame may take, at the 95th percentile of a window, before the pixel ratio goes down a step (V2-19.3).
+ * **18 ms, not the brief's 14.** The brief's "p95 ≤ 14 ms" is the *cost* of a frame; what the controller is fed is the
+ * interval between drawn frames, and a display fixes that: about 16.7 ms at 60 Hz whatever a frame costs, so a budget of
+ * 14 ms would step down every healthy 60 Hz machine, and the controller never steps up. 18 ms is above a 60 Hz frame and
+ * its jitter, below a 50 fps stutter (20 ms) and far above 120 Hz (8.3 ms): a device that misses vsyncs steps down, one
+ * that holds 60 does not. An interval also sees a GPU that cannot keep up (the browser queues the work and the frames come
+ * later), which is the usual reason to lower a ratio and which a CPU timer around the frame does not. `unverified` until
+ * read on the reference hardware (V2-19.7).
+ */
+export const DPR_BUDGET_MS = 18;
+
+export interface DprControllerOptions {
+  /** The ratios to move down through, sharpest first. Default `DPR_STEPS`. */
+  steps?: readonly number[];
+  /** The p95 of a window above which the ratio goes down a step. Default `DPR_BUDGET_MS`. */
+  budgetMs?: number;
+  /** The length of a window, in milliseconds. Default 2,000 (brief: "when frames run long for 2 s"). */
+  windowMs?: number;
+  /**
+   * Nothing is judged until this long after the first frame drawn with a scene. A step is never undone, so one caused
+   * by the stage's first seconds (shaders, models, the first layout) would last the whole session. Default one window.
+   */
+  graceMs?: number;
+  /** A window with fewer kept frames than this is not judged: a short fly-to does not decide. Default 30. */
+  minFrames?: number;
+  /** A frame time above this is an idle canvas waking up, not a frame. Default `MAX_FRAME_GAP_MS`. */
+  maxGapMs?: number;
+  /**
+   * The display's pixel ratio. A step above it changes nothing on screen (`min(device ratio, step)`), so the steps are
+   * clamped to it and the duplicates dropped: a laptop at 1.25 goes 1.25 → 1.0 and spends no window on 1.5 → 1.25.
+   */
+  deviceRatio?: number;
+  /** Start at the first step at or below this: where an earlier stage of the same page ended (`rememberedDprStep`). */
+  initial?: number;
+  /** The video wall (V2-21): pinned to the last step, never judged. */
+  wall?: boolean;
+}
+
+/** The steps clamped to the device ratio (and never below 1), in order, each once. */
+function effectiveSteps(steps: readonly number[], deviceRatio: number | undefined): number[] {
+  const clamped = steps.map((step) =>
+    deviceRatio === undefined ? step : Math.max(1, Math.min(step, deviceRatio)),
+  );
+  return clamped.filter((step, index) => clamped.indexOf(step) === index);
+}
+
+/**
+ * Steps the canvas's pixel ratio down when frames run long (V2-19.3, brief § Performance). Fed every drawn frame's time
+ * and the clock (`frame(dtMs, now)`), it judges in **tumbling windows**: a window runs for `windowMs`, and at its end, if
+ * it kept at least `minFrames` frames and their p95 is above `budgetMs`, the ratio goes one step down (`frame` returns the
+ * new step; otherwise `null`). The next window starts at once, so after a step one full window passes before the next
+ * judgment, and one frame's resize cost is not mistaken for the new ratio. **It never steps up**: a resolution that
+ * flapped would be worse than a stable lower one (`unverified` as a choice). At the last step it does nothing and keeps
+ * nothing. No clock inside: the caller passes `now`, so it tests without timers.
+ */
+export function createDprController({
+  steps = DPR_STEPS,
+  budgetMs = DPR_BUDGET_MS,
+  windowMs = 2000,
+  graceMs = windowMs,
+  minFrames = 30,
+  maxGapMs = MAX_FRAME_GAP_MS,
+  deviceRatio,
+  initial,
+  wall = false,
+}: DprControllerOptions = {}) {
+  const effective = effectiveSteps(steps, deviceRatio);
+  const last = effective.length - 1;
+  let index = 0;
+  if (wall) index = last;
+  else if (initial !== undefined) {
+    const found = effective.findIndex((step) => step <= initial);
+    index = found === -1 ? last : found;
+  }
+
+  // Preallocated, and capped: a 1,000 Hz clock still keeps 1,024 of a window's frames, which is plenty for a percentile.
+  const times = new Float64Array(1024);
+  let count = 0;
+  let startedAt: number | null = null;
+  let windowStart: number | null = null;
+
+  return {
+    /** The current ratio. */
+    get step(): number {
+      return effective[index] ?? 1;
+    },
+    frame(dtMs: number, now: number): number | null {
+      if (index >= last) return null;
+      startedAt ??= now;
+      if (now - startedAt < graceMs) return null;
+      windowStart ??= now;
+      // Written so that NaN, zero and a gap all fail the test.
+      if (dtMs > 0 && dtMs <= maxGapMs && count < times.length) {
+        times[count] = dtMs;
+        count += 1;
+      }
+      if (now - windowStart < windowMs) return null;
+
+      const over = count >= minFrames && percentile(times.subarray(0, count), 95) > budgetMs;
+      count = 0;
+      windowStart = now;
+      if (!over) return null;
+      index += 1;
+      return effective[index] ?? null;
+    },
+  };
+}
+
+// The step the controller has reached, for the life of the page (V2-19.3): a switch to 2D and back unmounts the stage,
+// and a stage that began again at 1.5 would flash a sharper picture and degrade a second time. Not in storage: a reload
+// is a fresh start and tries 1.5 again.
+let rememberedStep: number | null = null;
+
+/** The step an earlier stage of this page ended on, or `null` when none moved. */
+export const rememberedDprStep = (): number | null => rememberedStep;
+
+export function rememberDprStep(step: number): void {
+  rememberedStep = step;
+}
+
+/** Forgets it. For tests, which share the module. */
+export function forgetDprStep(): void {
+  rememberedStep = null;
+}

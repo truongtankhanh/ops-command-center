@@ -24,6 +24,8 @@ interface HudProbeProps {
  * - **Draw calls and triangles** are read from the timer, between frames: `gl.info.render` then still holds the last
  *   completed frame (it is reset when the next render starts), whereas a `useFrame` callback would see the frame
  *   before. The figures cover the whole scene, ground and markers included.
+ * - **Pixel ratio** (V2-19.3) is the renderer's own (`gl.getPixelRatio()`), not the controller's step: it is
+ *   `min(device ratio, step)`, which is what the operator actually sees.
  * - **Telemetry.** The client's cumulative counts (`getStats()`, V2-14.4; the engine posts them at most once a second)
  *   become messages per second and posts per frame in the sampler; without a client the cells show a dash.
  * - **Writes.** Twice a second, into the cells' `textContent`, and only where the text changed. Nothing is written
@@ -49,7 +51,10 @@ export default function HudProbe({ listRef }: HudProbeProps) {
       if (document.hidden || list === null) return;
       const { calls, triangles } = gl.info.render;
       const stats = useTelemetryStore.getState().client?.getStats() ?? null;
-      const shown = formatHud(sampler.read(performance.now(), { calls, triangles, stats }));
+      const pixelRatio = gl.getPixelRatio();
+      const shown = formatHud(
+        sampler.read(performance.now(), { calls, triangles, stats, pixelRatio }),
+      );
       for (const { id } of HUD_ROWS) {
         const cell = list.querySelector<HTMLElement>(`[data-hud="${id}"]`);
         if (cell !== null && cell.textContent !== shown[id]) cell.textContent = shown[id];

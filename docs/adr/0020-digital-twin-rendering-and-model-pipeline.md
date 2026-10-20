@@ -1109,6 +1109,41 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       moving) reads 0 frames on the HUD, that a background tab draws none, and that nothing stops short (a fan that spins
       down, a fly-to, a pulse). The demo is not idle by default: the Incidents layer is on and a critical open incident
       pulses at the display's rate.
+  - Settled in V2-19.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: the pixel ratio steps down when frames run long. Each question of the ticket's analysis was answered with
+    its recommendation.
+    - **The rule.** `createDprController` (`lib/twinPerf.ts`) is fed every drawn frame's time and the clock and judges in
+      tumbling windows of 2 s: at the end of a window with at least 30 kept frames whose p95 is above the budget, the ratio
+      goes one step down (1.5 → 1.25 → 1.0) and the next window starts at once, so one full window passes before the
+      next judgment. It never steps up: a ratio that flapped would be worse than a stable lower one (`unverified` as a
+      choice). Frame times above 250 ms are idle wake-ups, not frames, as in the HUD.
+    - **The budget is 18 ms, not the brief's 14.** What the controller is fed is the interval between drawn frames, which a
+      display fixes: about 16.7 ms at 60 Hz whatever a frame costs. A budget of 14 ms would step down every healthy 60 Hz
+      machine, and since a step is never undone, leave all of them at 1.0. 18 ms is above a 60 Hz frame and its jitter, below
+      a 50 fps stutter and far above 120 Hz. An interval also sees a GPU that cannot keep up (the frames come later), which
+      is the usual reason to lower a ratio and which a CPU timer around the frame does not; the brief's 14 ms is the
+      frame's _cost_. `unverified` until read on the reference hardware.
+    - **A grace, because a false step is permanent.** Nothing is judged until one window after the first frame drawn with
+      a scene (`PixelRatio` is mounted with the scene), so shader compiles, model parsing and the first layout are not mistaken
+      for a slow device. A window with fewer than 30 frames is not judged either: a short fly-to does not decide. Both
+      are options of the controller.
+    - **The step is state in `TwinCanvas`**, passed as `dpr={[1, step]}`. R3F applies the `dpr` prop again on every
+      configure, so a `setDpr` from inside the canvas would be undone by the next render. R3F clamps the display's ratio into
+      the range, so the canvas draws at `min(devicePixelRatio, step)` (and at least 1), and follows a change of display.
+      The controller clamps its steps to the device ratio and drops duplicates: a laptop at 1.25 (the reference laptop) goes
+      1.25 → 1.0, and a display at 1 has nothing to give up.
+    - **Remembered for the page.** The step reached is kept in a module variable, not in storage: a switch to 2D and back
+      unmounts the stage and would otherwise start again at 1.5 and degrade a second time. A reload tries 1.5 again.
+    - **The HUD** has a seventh row, "Pixel ratio", read from `gl.getPixelRatio()`: the renderer's actual ratio, which is
+      what the operator sees and is not the controller's step when the device is below it. Frame 00's six rows keep their
+      order.
+    - **For V2-19.7, not changed here:** the HUD's "Frame (p95)" is the same interval, so at 60 Hz it reads about 16.7 ms when
+      nothing is wrong and the budget row "p95 ≤ 14 ms" cannot be met with that metric. Read it as FPS near 60 while moving
+      and a p95 near or under 18 ms, or give the HUD a frame-cost row (`addEffect` / `addAfterEffect` around the loop);
+      the tech lead decides before V2-19.7.
+    - **Not done here and `unverified` until looked at in a browser:** that a healthy 60 Hz display never steps, that a
+      throttled one steps down and stays, that the step survives a remount, that a cold load does not step. The
+      video wall's `wall: true` pin exists in the controller and nothing passes it in until V2-21.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
