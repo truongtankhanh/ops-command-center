@@ -11,7 +11,16 @@ import type { BudgetBreach, BudgetFigure, HudReading } from './twinPerf';
 /** The HUD's accessible name; `debug=twin` is the address that switches it on, and the first marker of the build check. */
 export const HUD_LABEL = 'Twin performance (debug=twin)';
 
-export type HudRowId = 'fps' | 'frame' | 'calls' | 'triangles' | 'messages' | 'posts' | 'ratio';
+export type HudRowId =
+  | 'fps'
+  | 'frame'
+  | 'calls'
+  | 'triangles'
+  | 'messages'
+  | 'posts'
+  | 'ratio'
+  | 'geometries'
+  | 'textures';
 
 /**
  * The rows in frame 00's order and words. A list so that V2-19.3 (pixel ratio) and V2-19.6 (geometries and textures)
@@ -26,6 +35,9 @@ export const HUD_ROWS: readonly { id: HudRowId; label: string }[] = [
   { id: 'posts', label: 'Worker → main' },
   // Added in V2-19.3: not in frame 00, which has six; after them so those keep their places.
   { id: 'ratio', label: 'Pixel ratio' },
+  // Added in V2-19.6 (brief § Performance: memory is "checked in the dev HUD"): `gl.info.memory`'s counters.
+  { id: 'geometries', label: 'Geometries' },
+  { id: 'textures', label: 'Textures' },
 ];
 
 /** What a row shows when it has no value. */
@@ -52,6 +64,8 @@ export function formatHud(reading: HudReading): Record<HudRowId, string> {
       ? `${Number(reading.postsPerFrame.toFixed(1))} / frame`
       : NO_VALUE,
     ratio: isValue(reading.pixelRatio) ? String(Number(reading.pixelRatio.toFixed(2))) : NO_VALUE,
+    geometries: whole(reading.geometries),
+    textures: whole(reading.textures),
   };
 }
 

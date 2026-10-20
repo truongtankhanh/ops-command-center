@@ -1228,6 +1228,52 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Not done here and `unverified`:** the thresholds and the hysteresis in a browser, that the swap shows no flicker and
       no pop beyond the simplification, that looking away lowers the HUD's triangles by the models', and how the far
       silhouettes look. Level 1 is `lod1`'s clone per instance: V2-19.6 frees it with the rest.
+  - Settled in V2-19.6 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: what releases the twin's GPU resources, how that is seen, and why there is no registry. Each question of the
+    ticket's analysis was answered with its recommendation.
+    - **The audit: every site that creates a resource already releases it, in its own effect cleanup.** The ground's layers
+      (`Ground`), the shells (`Buildings`), the boxes (`AssetBoxes`), the marker quads (`Markers`: cameras, beacons, the
+      report pin), the zone outline (`ZoneHighlight`) and the three atlas textures (`useMarkerAtlas`, `usePinTexture`,
+      `useBeaconAtlas`, whose texture is replaced as the atlas grows: the previous one disposed when the new one is
+      committed, a stale one when its growth is discarded, the last one with the stage) dispose what a memo built when it
+      is replaced or unmounted; the stage's model cache, its material table and every template's merged geometry, outlines
+      and `lod1` are disposed in `useClassModels`' cleanup. R3F disposes a removed element's children on idle but **never a
+      geometry handed as a prop or a `<primitive>`**, which is why the first group is explicit.
+    - **A change of level creates nothing.** V2-15.8's rule ("a change of focus rebuilds nothing") means focusing mounts or
+      unmounts model instances as `<primitive>`s over geometry they share with the template, and the looks re-point at
+      pooled materials; so campus → Data Center → `CT-01` → campus should leave the counts where they were. Nothing is
+      per instance (the materials are pooled by name, face and severity), nothing is shared between owners (each texture
+      has one), and there is **no pick proxy** (V2-15.3 raycasts the drawn meshes).
+    - **The HUD shows it.** Two rows after "Pixel ratio", **Geometries** and **Textures**, read from `gl.info.memory` between
+      frames. They count what the GPU holds: a resource enters the count the first time it is **drawn** and stays until it is
+      disposed, so a view not yet visited has not added its own. A first round trip belongs before the baseline; after
+      it a **steady** count over the next trips is the evidence, a rise by a fixed amount per trip is the leak.
+    - **Three's `dispose()` releases the GPU copy, not the object.** A texture or geometry used again is uploaded again, so
+      disposing a shared one early costs a stall and a re-upload, not a blank scene.
+    - **The leak found: the KTX2 loader.** `loaders.ts` keeps one `KTX2Loader` per renderer in a `WeakMap`, which frees the
+      object and not the worker pool, the transcoder binary or the blob URL that a loader holds once it has transcoded. Every
+      switch to 2D and back makes a new renderer and so a new loader: with a model that has KTX2 textures each trip would
+      have left those behind, and three would have warned about several active loaders. `releaseGltfLoaders(gl)` is now
+      called in the stage's cleanup, after the cache and the table, and disposes the loader **only if it initialised**:
+      `KTX2Loader.dispose()` decrements three's module-level count of active loaders, which only initialising increments, so
+      disposing one that never started (every demo model: the stand-ins have no textures) would make the count wrong. Switching to 2D already
+      frees the GPU side, because R3F unmounts the canvas (`gl.dispose()` and `forceContextLoss()`); this is the part the
+      renderer's death does not free. `unverified` until a model with a texture exists (V2-13.8).
+    - **There is no `lib/twinDispose.ts`.** The task asked for a registry that counts owners. The audit found no resource with
+      two owners, no pick proxy, no per-instance materials, and a release at every site that creates one, written beside the
+      creation and in the file that knows what the resource is. The alternatives were to migrate about ten browser-only,
+      untested lifecycles to a registry for no change in behaviour, or to add one for the two that need an order (the
+      beacon atlas, the stage's resources): a second mechanism beside the pattern the folder already follows. The tech lead
+      chose to leave the working sites; a registry is the answer on the day a resource gets a second owner (a texture shared
+      between layers, a second site). AC3's tests are of what was built: the HUD rows and the loader's release.
+    - **A class's template is kept for the stage's life.** The task says "while any asset of the class exists"; assets and
+      classes are reference data (`staleTime: Infinity`), so a class cannot lose its last asset in a session without a
+      reload, which rebuilds everything. The models are released when `TwinStage` unmounts, and loaded again, from the
+      browser's immutable cache, when it comes back.
+    - **Not done here and `unverified`:** AC1 (20 round trips leave both counts where the warm-up ended) and AC2 (5 switches to
+      2D and back leave the browser's GPU memory steady and the counts as a fresh start's), both read with the HUD in a
+      browser; the KTX2 release (no model with a texture yet); and that the untested R3F sites really leave the counts
+      alone, which the HUD will now show. V2-19.7's scenes should read both rows.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

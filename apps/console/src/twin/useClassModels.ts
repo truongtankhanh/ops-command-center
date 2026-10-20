@@ -6,6 +6,7 @@ import { useTwinModelStore } from '../lib/twinModelStore';
 import { markTwin } from '../lib/twinPerf';
 import { buildTemplate, type ClassTemplate, createMaterialTable } from './classModel';
 import { loadGltf } from './loadGltf';
+import { releaseGltfLoaders } from './loaders';
 import { createModelCache, type ModelCache } from './modelCache';
 import type { ClassPoints } from './useClassPoints';
 
@@ -124,6 +125,8 @@ export function useClassModels(
       stop();
       made.dispose();
       table.dispose();
+      // The KTX2 loader's workers belong to this renderer's stage; a switch to 2D and back makes a new renderer (V2-19.6).
+      releaseGltfLoaders(gl);
       useTwinModelStore.getState().reset();
       holder.publish(NONE);
     };

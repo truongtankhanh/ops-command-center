@@ -109,6 +109,14 @@ export interface HudReading {
   postsPerFrame: number | null;
   /** The renderer's actual pixel ratio (V2-19.3), which is `min(device ratio, step)` and not the controller's step. */
   pixelRatio: number | null;
+  /**
+   * What the GPU holds right now (V2-19.6, `gl.info.memory`): geometries and textures uploaded and not yet disposed. A
+   * resource enters the count the first time it is drawn and stays until it is disposed, so a view not yet visited has
+   * not added its own: read it after a first round trip, and a steady count is the evidence that a change of level
+   * releases what it made.
+   */
+  geometries: number | null;
+  textures: number | null;
 }
 
 /** What `read` is given besides the time: `gl.info.render`, and the client's counts (`null` without a client). */
@@ -118,6 +126,9 @@ export interface HudInput {
   stats: CounterStats | null;
   /** `gl.getPixelRatio()`, or `null` when there is no renderer to ask. */
   pixelRatio: number | null;
+  /** `gl.info.memory.geometries` and `.textures`, or `null` when there is no renderer to ask. */
+  geometries: number | null;
+  textures: number | null;
 }
 
 /**
@@ -143,7 +154,10 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
       totalFrames += 1;
       times.push(dtMs);
     },
-    read(now: number, { calls, triangles, stats, pixelRatio }: HudInput): HudReading {
+    read(
+      now: number,
+      { calls, triangles, stats, pixelRatio, geometries, textures }: HudInput,
+    ): HudReading {
       let fps: number | null = null;
       if (windowStart !== null && now > windowStart) {
         fps = (framesInWindow * 1000) / (now - windowStart);
@@ -175,6 +189,8 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
         messagesPerSecond: messageRate,
         postsPerFrame: postRatio,
         pixelRatio,
+        geometries,
+        textures,
       };
     },
   };

@@ -17,7 +17,10 @@ const canvas = vi.hoisted(() => ({
   priority: undefined as unknown,
   pixelRatio: 1.25,
   gl: {
-    info: { render: { calls: 0, triangles: 0 } },
+    info: {
+      render: { calls: 0, triangles: 0 },
+      memory: { geometries: 0, textures: 0 },
+    },
     getPixelRatio: (): number => canvas.pixelRatio,
   },
 }));
@@ -57,7 +60,7 @@ const clientWith = (read: () => TelemetryStats) =>
   ({ getStats: read }) as unknown as TelemetryClient;
 
 describe('Hud (the readout)', () => {
-  it('is a named group of seven labelled values, in frame 00 order and then the pixel ratio, each a dash before the first sample', () => {
+  it('is a named group of nine labelled values, in frame 00 order, then the pixel ratio and the memory, each a dash before the first sample', () => {
     render(<Hud listRef={{ current: null }} />);
 
     const group = screen.getByRole('group', { name: HUD_LABEL });
@@ -73,6 +76,8 @@ describe('Hud (the readout)', () => {
       'Telemetry msgs/s',
       'Worker → main',
       'Pixel ratio',
+      'Geometries',
+      'Textures',
     ]);
     expect(
       within(group)
@@ -101,6 +106,7 @@ describe('HudProbe (the measuring)', () => {
     canvas.frame = null;
     canvas.priority = undefined;
     canvas.gl.info.render = { calls: 96, triangles: 182_000 };
+    canvas.gl.info.memory = { geometries: 31, textures: 4 };
     canvas.pixelRatio = 1.25;
     useTelemetryStore.setState({ client: null });
     // jsdom's own answer depends on how the window was made; the probe reads it, so a case states it.
@@ -177,6 +183,25 @@ describe('HudProbe (the measuring)', () => {
     advance(500);
 
     expect(cell('ratio')).toBe('1');
+  });
+
+  it('shows what the GPU holds at the first tick, and follows a rise and a return to where it was (V2-19.6)', () => {
+    render(<Harness />);
+    draw(10);
+    advance(500);
+    expect(cell('geometries')).toBe('31');
+    expect(cell('textures')).toBe('4');
+
+    canvas.gl.info.memory = { geometries: 38, textures: 5 };
+    advance(500);
+    expect(cell('geometries')).toBe('38');
+    expect(cell('textures')).toBe('5');
+
+    canvas.gl.info.memory = { geometries: 31, textures: 4 };
+    advance(500);
+
+    expect(cell('geometries')).toBe('31');
+    expect(cell('textures')).toBe('4');
   });
 
   it('does not let the first frame after an idle spell own the p95', () => {
