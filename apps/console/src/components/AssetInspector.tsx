@@ -39,11 +39,22 @@ import { LoadFailed, RateLimited } from './LoadStates';
  * read per asset from the telemetry store, so this re-renders with the server clock and with this
  * asset's own readings, and not for another asset's. Closing clears only the asset selection: the
  * watch set follows it (`App`).
+ *
+ * **Escape is a step of the scene's ladder, the Close button is not (V2-15.11, ADR-0020 "Settled in V2-15.1").**
+ * With focus in the sheet Escape first closes the part's callout (`selectPart(null)`: the asset and this sheet stay)
+ * and only then the asset. Close ends the inspector in one press, the part with it. `Sheet` calls its `onClose` for
+ * Escape alone, which is why the two can differ without a change to the shared primitive.
  */
 export function AssetInspector({ code }: { code: string }) {
   const { data: detail, error, failureReason, isPending, isFetching, refetch } = useAsset(code);
   const selectAsset = useConsole((s) => s.selectAsset);
   const close = useCallback(() => selectAsset(null), [selectAsset]);
+  // Read at the press, not at render: the part may have been selected in the scene since this rendered.
+  const escape = useCallback(() => {
+    const { selectedPart, selectPart } = useConsole.getState();
+    if (selectedPart !== null) selectPart(null);
+    else selectAsset(null);
+  }, [selectAsset]);
 
   const closeButton = (
     <Button variant="ghost" size="sm" shortcut="Esc" onClick={close} aria-label="Close asset">
@@ -52,7 +63,7 @@ export function AssetInspector({ code }: { code: string }) {
   );
 
   return (
-    <Sheet label={`Asset ${code}`} onClose={close}>
+    <Sheet label={`Asset ${code}`} onClose={escape}>
       {/* Data first: a failed background refetch keeps the asset on screen. */}
       {detail ? (
         <InspectorBody detail={detail} closeButton={closeButton} />

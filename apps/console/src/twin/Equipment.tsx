@@ -15,6 +15,7 @@ import { type BoundInstance, useBoundParts } from './useBoundParts';
 import { LeaderProjector } from './LeaderProjector';
 import { type ModelLookTarget, useModelLooks } from './useAssetLooks';
 import { useClassModels } from './useClassModels';
+import { useFocusTargets } from './useFocusTargets';
 import { useHoverRef } from './useHoverRef';
 import { useSceneFocus } from './useSceneFocus';
 import { useSelectedPartRef } from './useSelectedPartRef';
@@ -136,6 +137,9 @@ export function Equipment({
   }, [presences, invalidate]);
 
   useBoundParts(feed, bound);
+  // Where "Focus" flies (V2-15.11): the inspector's controls are outside the canvas and ask this one place for a
+  // part's or an asset's box.
+  useFocusTargets(assets, shown);
   // Every model instance, bound or not, takes the look of its asset's flags, hover and fade (V2-14.9, V2-15.5, V2-15.7),
   // and its selected part the selected look (V2-15.10).
   useModelLooks(feed, looks, hover, presences, selection);
