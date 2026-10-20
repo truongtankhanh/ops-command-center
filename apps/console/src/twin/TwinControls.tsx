@@ -1,28 +1,17 @@
 import type { RefObject } from 'react';
+import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from '../lib/twinCamera';
 import { twinCommands } from '../lib/twinCommands';
-import { useConsole } from '../store';
+import { resetView } from '../lib/twinFlight';
 import { Button } from '../ui/Button';
 import { House, Minus, Plus, RotateCcw, RotateCw } from '../ui/icons';
 import styles from './TwinControls.module.css';
 
 /**
- * Frame 01's steps (TwinScene): zooming in comes to 0.8 of the distance, out goes to 1.25 of it, and a turn
- * is 30°. A positive turn takes the camera towards the east, which turns the scene the other way, so the
- * left button (counter-clockwise glyph) is the positive one.
+ * Frame 01's turn (TwinScene) is 30°. A positive turn takes the camera towards the east, which turns the scene the
+ * other way, so the left button (counter-clockwise glyph) is the positive one. The zoom steps are shared with the
+ * keys (`ZOOM_IN_FACTOR`, `ZOOM_OUT_FACTOR`), and so is the reset (`resetView`, which the `Home` key calls too: V2-18.3).
  */
-const ZOOM_IN = 0.8;
-const ZOOM_OUT = 1.25;
 const TURN_DEGREES = 30;
-
-/**
- * Reset (Home, V2-15.1): back to the campus level and the home view. The level goes first, so an asset is
- * deselected and a building left (an open incident and a report form stay), and the camera flies home even
- * when the level was campus already, because the operator may have orbited away.
- */
-function resetView(): void {
-  useConsole.getState().goCampus();
-  twinCommands.home();
-}
 
 interface TwinControlsProps {
   /**
@@ -69,14 +58,14 @@ export function TwinControls({ compassRef }: TwinControlsProps) {
           icon={Plus}
           aria-label="Zoom in"
           className={styles.button}
-          onClick={() => twinCommands.zoomBy(ZOOM_IN)}
+          onClick={() => twinCommands.zoomBy(ZOOM_IN_FACTOR)}
         />
         <Button
           variant="ghost"
           icon={Minus}
           aria-label="Zoom out"
           className={styles.button}
-          onClick={() => twinCommands.zoomBy(ZOOM_OUT)}
+          onClick={() => twinCommands.zoomBy(ZOOM_OUT_FACTOR)}
         />
         <Button
           variant="ghost"

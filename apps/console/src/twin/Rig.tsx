@@ -130,6 +130,8 @@ interface RigProps {
  *   camera's own yaw and tilt) flown through the level's limits, so from at least 60 m. A request made before this rig
  *   existed (the switch from 2D) runs when it registers (`lib/twinCommands.ts`). It selects nothing and moves nothing
  *   by itself.
+ * - **The keys** (V2-18.3) reach the camera through `rotateBy`, `tiltBy`, `panBy` and `zoomBy`: relative, smoothed moves that
+ *   take the camera back from a fly-to and inherit the limits above (`unverified`: the feel of the steps, by eye).
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing.
  */
@@ -311,6 +313,19 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
       rotateBy: (degrees) => {
         flight.current = null;
         void rig.rotate(MathUtils.degToRad(degrees), 0, true);
+      },
+      // The keys' tilt and pan (V2-18.3). Like `rotateBy` they are relative to where the camera is going and smoothed, so a
+      // held key is a run of small moves; the controls' polar limits and the pan box clamp them.
+      tiltBy: (degrees) => {
+        flight.current = null;
+        void rig.rotate(0, MathUtils.degToRad(degrees), true);
+      },
+      panBy: (dx, dy) => {
+        flight.current = null;
+        // `truck` moves the target along the camera's right and `forward` along the ground, not along the view ray.
+        const { distance } = currentPose(rig);
+        void rig.truck(dx * distance, 0, true);
+        void rig.forward(dy * distance, true);
       },
       faceNorth: () => flyTo({ ...currentPose(rig), yaw: 0 }),
       current: () => currentPose(rig),

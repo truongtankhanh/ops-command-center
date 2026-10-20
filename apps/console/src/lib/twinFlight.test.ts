@@ -4,7 +4,7 @@ import { resetStore, stubTwinAvailable, unstubTwin } from '../test-utils';
 import type { FitBox } from './twinCamera';
 import { registerTwinCommands, type TwinCommands } from './twinCommands';
 import { type FocusResolver, registerFocusResolver } from './twinFocus';
-import { flyToSelection, showAssetIn3d } from './twinFlight';
+import { flyToSelection, resetView, showAssetIn3d } from './twinFlight';
 import type { SelectionTarget } from './twinSelection';
 
 const BOX: FitBox = { bounds: { minX: 0, maxX: 10, minZ: 0, maxZ: 10 }, heightM: 5 };
@@ -21,6 +21,8 @@ function fakeCommands(): FakeCommands {
     showAsset: vi.fn<TwinCommands['showAsset']>(),
     zoomBy: vi.fn<TwinCommands['zoomBy']>(),
     rotateBy: vi.fn<TwinCommands['rotateBy']>(),
+    tiltBy: vi.fn<TwinCommands['tiltBy']>(),
+    panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
     current: vi.fn<TwinCommands['current']>(() => null),
   };
@@ -194,5 +196,48 @@ describe('showAssetIn3d', () => {
 
     expect(view()).toBe('2d');
     expect(rig.showAsset).not.toHaveBeenCalled();
+  });
+});
+
+// V2-18.3: the Reset button's and the `Home` key's one function.
+describe('resetView', () => {
+  it('leaves the part, the asset and the building, then flies home', () => {
+    const { rig } = mountStage();
+    useConsole.getState().selectAsset('CT-01', 'BLD-DC');
+    useConsole.getState().selectPart('Fan');
+
+    resetView();
+
+    const state = useConsole.getState();
+    expect(state.selectedPart).toBeNull();
+    expect(state.selectedAssetCode).toBeNull();
+    expect(state.focusZoneId).toBeNull();
+    expect(rig.home).toHaveBeenCalledOnce();
+  });
+
+  it('flies home even when the level was the campus already', () => {
+    const { rig } = mountStage();
+
+    resetView();
+
+    expect(rig.home).toHaveBeenCalledOnce();
+  });
+
+  it('keeps an open incident and an open report form', () => {
+    mountStage();
+    useConsole.getState().focusBuilding('BLD-DC');
+    useConsole.getState().select('incident-1');
+
+    resetView();
+    expect(useConsole.getState().selectedIncidentId).toBe('incident-1');
+
+    useConsole.getState().startReport();
+    useConsole.getState().focusBuilding('BLD-DC');
+    resetView();
+    expect(useConsole.getState().reporting).toBe(true);
+  });
+
+  it('does nothing to the camera when no stage is mounted', () => {
+    expect(() => resetView()).not.toThrow();
   });
 });

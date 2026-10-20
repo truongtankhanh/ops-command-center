@@ -32,8 +32,8 @@ const NO_ASSETS: Asset[] = [];
  * While an asset is isolated (V2-15.7) the legend is one line instead, as frames 03 and 17 draw it: the rest of
  * the campus is faded, and `Esc` returns to the building (or the campus, for an asset in none). The entries are
  * about a campus that is not on screen then, so they and their toggle go; the open or closed preference is kept.
- * The words are ADR-0020's ("Settled in V2-15.1"). `Esc` closes the inspector from the sheet today; in the scene
- * it is bound by V2-18.3, and the breadcrumb's back button does the same step meanwhile.
+ * The words are ADR-0020's ("Settled in V2-15.1"). `Esc` closes the inspector from the sheet, and in the scene
+ * while the 3D view has focus (V2-18.3, `twin/TwinView.tsx`); the breadcrumb's back button does the same step.
  *
  * At building level, a building in focus and no asset isolated (V2-15.8), it is one line too, frame 12's: the walls
  * are see-through, the other buildings are faded, and `Esc` returns to the campus. At asset level inside a building

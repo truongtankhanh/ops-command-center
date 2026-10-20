@@ -311,8 +311,8 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Home is campus level plus the home view.** The cluster's Reset button calls `goCampus()` and then `home()`,
       as ADR-0020 "Settled in V2-15.1" says (it deselects the asset, leaves the building, keeps an open incident and
       the report form) and flies home even from the campus level. Its name stays "Reset view"; "Reset to the campus
-      view" is the keyboard help's word. No key is bound here: V2-18.3 calls `goUp()` and `goCampus()`, and the camera
-      already follows them.
+      view" is the keyboard help's word. No key is bound here: V2-18.3 calls `goUp()` and `resetView()`
+      (`goCampus()` and `home()`), and the camera already follows the level ("Settled in V2-18.3").
     - **The breadcrumb is main-chunk code, in the switch's place.** `components/TwinBreadcrumb.tsx`, not
       `src/twin/` as the task wrote: it sits in `StageView`'s tools and `src/twin/` can only be crossed by the dynamic
       import (as the loading card, V2-12.11). The frames (03, 12, 15) put it where the 3D / 2D switch is, with the
@@ -369,8 +369,8 @@ their author, checked in CI, and served by nginx as immutable files.
       the severity edge return with the level. V2-15.8 puts the focused building's see-through look in the same groups.
     - **The legend is one line.** While an asset is isolated the legend is the line of frames 03 and 17, in place of its
       toggle and entries: "Isolated — the rest of the campus is faded. `Esc` returns to Data Center" (Campus for an asset
-      in none; nothing after the first sentence while the building is not known yet). `Esc` works from the sheet today;
-      in the scene it is bound by V2-18.3, and the breadcrumb's back button is the same step meanwhile. At part level the
+      in none; nothing after the first sentence while the building is not known yet). `Esc` works from the sheet, and
+      in the scene while the 3D view has focus (V2-18.3, "Settled in V2-18.3"); the breadcrumb's back button is the same step. At part level the
       line is the asset's; V2-15.10 may want to say that the first Escape closes the callout.
     - **Not drawn yet.** `inside` assets (`LKS-B3`) are drawn with their building in focus by V2-15.8, so the camera
       flies to one, behind opaque walls, and nothing of it is on screen until then.
@@ -420,7 +420,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **The legend at building level** is frame 12's line, "Walls see-through, other buildings faded. `Esc` returns to
       Campus" (`buildingLine`), in place of its toggle and entries, as V2-15.7 did for the asset. At asset and part level
       the isolation line of V2-15.7 stays (frames 03 and 17); frame 15 draws the see-through line there, which is a
-      "Frames to revise" row of the brief. `Esc` is still bound by V2-18.3; the breadcrumb's back button is the step.
+      "Frames to revise" row of the brief. `Esc` was bound later, by V2-18.3 ("Settled in V2-18.3"); the breadcrumb's back button is the same step.
     - **Tests.** No DOM test of `Buildings`: it renders three objects inside `<Canvas>` and jsdom has no WebGL, as for
       its siblings. The guarantees are in the pure rule and groups (`twinLevel`, `twinGroups`, `twinBoxes`,
       `twinPicking`), in `picker.test.ts` with real `three` (a hidden span is not hit, the focused shell is skipped, no
@@ -1008,6 +1008,42 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's strip, the two
       legends stacked at 1072 × 671 and narrower and with the sheet open, the picker beside the layers when the row
       wraps, and the listbox with a screen reader. The cross-cutting accessibility cases with Heat on are V2-17.5's.
+  - Settled in V2-18.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: the 3D view's own keys. Each question of the ticket's analysis was answered with its recommendation.
+    - **The keys are handled on the group, which has focus (Q1).** `TwinView` renders the one focusable element, so the
+      `onKeyDown` is there and not in `TwinStage` as the task wrote. A pure `lib/twinKeys.ts` (`keyCommand`) maps a key
+      press to a command, and `twin/runKeyCommand.ts` runs it and says whether the key was used; `preventDefault()` is
+      called for a used key only, so `Tab`, `V`, `F`, `?`, `/` and `N` reach their own handlers and an `Escape` at the
+      campus (nothing to close) is not taken. The keys work only while the view has focus, so `Home` and the arrows keep
+      V1's meaning in the lists. They are not behind the account menu's single-key switch: they are active only on focus
+      of the component, which WCAG 2.1.4 allows (the help lists them as non-character keys, V2-18.1).
+    - **Tilt and pan are commands of their own (Q2).** `twinCommands` gained `tiltBy(degrees)` and `panBy(dx, dy)`,
+      implemented in `Rig` as `rotateBy` is: relative to where the camera is going, smoothed, taking the camera back from
+      a fly-to, and clamped by the controls (the 20° – 78° polar limits, the pan box). `panBy` takes **fractions of the
+      current distance**, so a step feels the same at 60 m and at 900 m and no caller needs the level's scale. A flight
+      per key press (`flyTo`) was rejected: a held key would restart it on every repeat.
+    - **Signs and steps (Q3).** `←` turns the camera `+15°` (the sense of the "Rotate left" button), `→` `−15°`; `↑` tilts
+      `−5°` (towards overhead), `↓` `+5°`; `Shift` and an arrow pan a tenth of the distance (`←` left, `↑` forward).
+      `+` and `=` zoom in by a factor `0.8` of the distance and `-` and `_` out by `1.25`: the task and the prototype
+      write them as a scale, the other way round, and `zoomBy` takes the distance. The factors are shared with the
+      on-screen buttons (`ZOOM_IN_FACTOR`, `ZOOM_OUT_FACTOR` in `lib/twinCamera.ts`), and `Shift` is ignored for the zoom
+      keys because `+` needs it on most layouts. The steps are the prototype's and `unverified` against the real camera.
+    - **`Home` is the Reset button's function.** `resetView` (campus level, then the home view; an open incident and the
+      report form stay) moved from `TwinControls` to `lib/twinFlight.ts`, and both call it. **`Esc` is `goUp()` only** and
+      asks for no camera: `useLevelCamera` flies with the level, so a second request would fly twice. It leaves a building
+      only here, while the view has focus; the inspector's Escape still stops at the asset (V2-15.11).
+    - **A press on the picture focuses the group (Q4).** `onPointerDownCapture` calls `focus({ preventScroll: true })` and
+      not `preventDefault()`, so a drag is unaffected. Nothing else would give the group focus, and a mouse user who
+      orbited and pressed an arrow would get nothing. `unverified` in a browser.
+    - **Repeat (Q5).** A held arrow, `+` or `-` repeats, since the smoothing and the limits absorb it. `Home` and `Escape`
+      take one step per press, so a held Escape cannot climb the whole ladder in a second; a `Shift`-modified `Home` or
+      `Escape` is not ours.
+    - **The keys are described, not named.** The group's `aria-describedby` points at a `hidden` sentence
+      (`TWIN_VIEW_KEYS`), read once on focus; the name stays the summary of the site. A test keeps the sentence in step
+      with the help's group "3D view, while it has focus".
+    - **Left for the tickets, `unverified` until looked at:** the feel of 15° / 5° / a tenth of the distance with a held key,
+      the clamps and the pan box under a held key, that a press on the canvas focuses the group, the ring over the canvas,
+      and the description read once by a screen reader. The app-level axe, role and keyboard-only cases are V2-18.4's.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

@@ -15,6 +15,17 @@ export const activeIncidentCount = (incidents: readonly Incident[]): number =>
  */
 export const TWIN_VIEW_ID = 'twin-view';
 
+/** The element id of the hidden sentence that names the view's keys: the group's `aria-describedby` (V2-18.3). */
+export const TWIN_VIEW_KEYS_ID = 'twin-view-keys';
+
+/**
+ * The 3D view's keys, said once as the group's description, so a screen-reader user who lands on the stage hears them
+ * after its name. The same keys as the help's group "3D view, while it has focus" (`lib/shortcuts.ts`); a test keeps
+ * the two from drifting. It is a description, not part of the name: the name stays the summary of the site.
+ */
+export const TWIN_VIEW_KEYS =
+  'Arrow keys turn and tilt the view. Shift with an arrow pans. Plus and minus zoom. Home resets to the campus view. Escape goes up one level.';
+
 interface TwinSummaryInput {
   /** The site plan's name; `undefined` while the plan is on its way or when none is served. */
   siteName: string | undefined;

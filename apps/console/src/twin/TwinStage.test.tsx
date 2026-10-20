@@ -8,12 +8,13 @@ import type {
   TelemetryPoint,
   Zone,
 } from '@occ/contracts';
-import { act, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
 import { initialTelemetryState } from '../lib/telemetryState';
 import type { Binding } from '../lib/twinBindings';
+import { twinCommands } from '../lib/twinCommands';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
 import type { TelemetryClient } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
@@ -767,5 +768,22 @@ describe('TwinStage', () => {
 
       expect(heat()).toBeNull();
     });
+  });
+});
+
+// V2-18.3: the keys are the 3D view's own; the controls and the legend beside it do not hear them.
+describe('TwinStage keys', () => {
+  it('turns the camera on an arrow while the view has focus, and not for a key on the controls', () => {
+    const rotate = vi.spyOn(twinCommands, 'rotateBy').mockImplementation(() => undefined);
+    renderStage([zone(0, 'building', 'Library')]);
+
+    act(() => view().focus());
+    fireEvent.keyDown(view(), { key: 'ArrowLeft' });
+    expect(rotate).toHaveBeenCalledExactlyOnceWith(15);
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Zoom in' }), { key: 'ArrowLeft' });
+    expect(rotate).toHaveBeenCalledOnce();
+
+    rotate.mockRestore();
   });
 });
