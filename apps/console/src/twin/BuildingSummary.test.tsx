@@ -269,6 +269,40 @@ describe('BuildingSummary', () => {
       expect(row('Assets')).toHaveTextContent('8 · 1 without data');
     });
 
+    // The card shows the heat overlay's number (V2-17.2): the mean of the fresh sources, not the first.
+    it('shows the mean of two fresh sources', () => {
+      focusDataCenter();
+      const handler = asset('AHU-DC', { headline: [point('indoorTempC')] });
+
+      renderCard({
+        assets: [...ASSETS, handler],
+        overview: {
+          ...reporting(),
+          'ICS-DC': entry(1_000, { indoorTempC: 22 }),
+          'AHU-DC': entry(1_000, { indoorTempC: 24 }),
+        },
+      });
+
+      expect(row('Indoor')).toHaveTextContent('23.0 °C');
+    });
+
+    it('leaves a stale source out of the mean', () => {
+      focusDataCenter();
+      const handler = asset('AHU-DC', { headline: [point('indoorTempC')] });
+
+      renderCard({
+        assets: [...ASSETS, handler],
+        overview: {
+          ...reporting(),
+          'ICS-DC': entry(1_000, { indoorTempC: 22 }),
+          'AHU-DC': entry(60_000, { indoorTempC: 30 }),
+        },
+      });
+
+      expect(row('Indoor')).toHaveTextContent('22.0 °C');
+      expect(row('Assets')).toHaveTextContent('9 · 1 without data');
+    });
+
     it('has no IT load and no power row: no point is a building`s load', () => {
       focusDataCenter();
       renderCard({ incidents: [incident()] });

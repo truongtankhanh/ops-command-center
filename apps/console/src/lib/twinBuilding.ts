@@ -1,19 +1,15 @@
 import type { Asset, Incident, Zone } from '@occ/contracts';
 import { type AssetState, matchesAssetFilter } from './assets';
 import { compareIncidents, isActive } from './incidents';
-import { isStale, staleAfterMs } from './telemetryFreshness';
-import type { TelemetryState } from './telemetryState';
+import type { HeatReading } from './twinHeat';
 
 /*
  * What the 3D view's building summary says (V2-15.9, frame 12, ADR-0020 "Settled in V2-15.1" and "V2-15.9"), as
  * plain data: no `three`, no store and no clock, so it tests without WebGL. The card (`twin/BuildingSummary.tsx`)
- * only reads this and lays it out. Every number is one the Assets tab or the incident feed already shows, built
- * from their own rules (`assetStates`, `isActive`, `compareIncidents`) so the card and the lists cannot disagree
- * (brief § Principle 1).
+ * only reads this and lays it out. Every number is one the Assets tab, the incident feed or the heat overlay
+ * already shows, built from their own rules (`assetStates`, `isActive`, `compareIncidents`, `buildingReadings`) so
+ * the card and the lists cannot disagree (brief § Principle 1).
  */
-
-/** The point the indoor temperature is read from: the shared key of the air handler and the climate sensor. */
-const INDOOR_TEMP_KEY = 'indoorTempC';
 
 /** The figures of one building. */
 export interface BuildingFigures {
@@ -34,25 +30,23 @@ export interface BuildingFigures {
 }
 
 /**
- * The summary of `zone`. `states` is `assetStates`' answer for `assets`; `overview` and `serverNow` are only needed
- * again for the indoor reading's freshness, which `states` does not carry (a fault hides staleness there).
+ * The summary of `zone`. `states` is `assetStates`' answer for `assets`, and `reading` is the zone's entry in
+ * `buildingReadings` (`undefined` while nothing can be said, as for a zone that is not a building).
  *
  * - **Assets without data** are the states the Assets tab's "No data" filter lists (`nodata` and `offline`). A stale
  *   fault reads "fault" in the list, so it counts as reporting here too, although the scene draws it grey: the card
  *   follows the tab, not the scene.
  * - **Incidents** are counted once each, whether they name the zone, an asset of it or both.
- * - **Indoor** is the interim rule until V2-17.2 (`buildingReadings`, which replaces it): every asset of the zone with
- *   an `indoorTempC` point, in code order, the first whose reading is online and not stale on the server clock. A
- *   stale or offline source is skipped, never shown as if it were live; no clock yet cannot judge, and "cannot judge"
- *   is not stale (as `hasDimmedAsset`). The mean of the fresh ones is V2-17.1's proposal, not this rule.
+ * - **Indoor** is the heat overlay's number, not a rule of its own (V2-17.2, ADR-0020 "Settled in V2-17.1"): the mean
+ *   of the zone's fresh sources, so the card and the overlay show the same figure. A silent building, or no reading
+ *   at all, gives `null` and the row is left out; the overlay's "No data" is its own label.
  */
 export function buildingSummary(
   zone: Pick<Zone, 'id'>,
   assets: readonly Asset[],
   states: ReadonlyMap<string, AssetState>,
   incidents: readonly Incident[],
-  overview: TelemetryState['assets'],
-  serverNow: number | null,
+  reading: HeatReading | undefined,
 ): BuildingFigures {
   const inZone = assets.filter((asset) => asset.zoneId === zone.id);
   const noData = inZone.filter((asset) =>
@@ -71,28 +65,8 @@ export function buildingSummary(
   return {
     assets: { total: inZone.length, noData },
     incidents: { count: raised.length, firstCode: raised[0]?.code ?? null },
-    indoorC: indoorOf(inZone, overview, serverNow),
+    indoorC: typeof reading === 'object' ? reading.tempC : null,
   };
-}
-
-function indoorOf(
-  inZone: readonly Asset[],
-  overview: TelemetryState['assets'],
-  serverNow: number | null,
-): number | null {
-  const sources = inZone
-    .filter((asset) => asset.headline.some((point) => point.key === INDOOR_TEMP_KEY))
-    .sort((a, b) => a.code.localeCompare(b.code));
-  for (const asset of sources) {
-    const entry = overview[asset.code];
-    if (entry === undefined || !entry.online) continue;
-    if (serverNow !== null && isStale(entry.receivedAt, staleAfterMs(asset.headline), serverNow)) {
-      continue;
-    }
-    const value = entry.values[INDOOR_TEMP_KEY];
-    if (typeof value === 'number') return value;
-  }
-  return null;
 }
 
 /**
@@ -114,9 +88,4 @@ export function assetsText({ total, noData }: BuildingFigures['assets']): string
 /** "1 · INC-000105" (the first in the feed's order), or "None": the row's label already says "Open incidents". */
 export function incidentsText({ count, firstCode }: BuildingFigures['incidents']): string {
   return count === 0 || firstCode === null ? 'None' : `${count} · ${firstCode}`;
-}
-
-/** "22.1 °C": one decimal, as the heat overlay's labels will (V2-17.1). */
-export function indoorText(celsius: number): string {
-  return `${celsius.toFixed(1)} °C`;
 }
