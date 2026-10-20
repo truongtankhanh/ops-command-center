@@ -227,6 +227,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--text-primary`    | `--camera-ground`                         | 16.27 | 4.5     | pass                                                                                       |
 | `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                                                                       |
 | `--success`         | `--camera-ground`                         | 9.96  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--camera-ground`                         | 6.27  | 3       | pass                                                                                       |
 | `--text-primary`    | `--camera-off-a`                          | 15.69 | 4.5     | pass                                                                                       |
 | `--text-primary`    | `--camera-off-b`                          | 15.17 | 4.5     | pass                                                                                       |
 | `--text-secondary`  | `--camera-off-a`                          | 9.11  | 4.5     | pass                                                                                       |

@@ -1,5 +1,6 @@
 import { act, render, screen, within } from '@testing-library/react';
 import { StrictMode, useRef } from 'react';
+import type { MockInstance } from 'vitest';
 import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twinHud';
 import type { TelemetryClient, TelemetryStats } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
@@ -249,5 +250,141 @@ describe('HudProbe (the measuring)', () => {
     unmount();
 
     expect(vi.getTimerCount()).toBe(before);
+  });
+
+  describe('the budget guard (V2-19.4)', () => {
+    let warn: MockInstance<typeof console.warn>;
+    beforeEach(() => {
+      warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => warn.mockRestore());
+
+    const over = (id: string) =>
+      document.querySelector(`[data-hud="${id}"]`)?.getAttribute('data-over');
+
+    it('stays quiet and marks nothing while the frame is within both budgets', () => {
+      render(<Harness />);
+      draw(10);
+
+      advance(2000);
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(over('calls')).toBeNull();
+      expect(over('triangles')).toBeNull();
+    });
+
+    it('counts exactly the limits as within budget', () => {
+      canvas.gl.info.render = { calls: 150, triangles: 250_000 };
+      render(<Harness />);
+
+      advance(1000);
+
+      expect(warn).not.toHaveBeenCalled();
+      expect(over('calls')).toBeNull();
+      expect(over('triangles')).toBeNull();
+    });
+
+    it('warns on a scene over the draw-call budget, and marks that value only', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      render(<Harness />);
+
+      advance(500);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain('151 draw calls (limit 150)');
+      expect(over('calls')).toBe('true');
+      expect(over('triangles')).toBeNull();
+    });
+
+    it('warns on a scene over the triangle budget, and marks that value only', () => {
+      canvas.gl.info.render = { calls: 10, triangles: 250_001 };
+      render(<Harness />);
+
+      advance(500);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toContain('250,001 triangles (limit 250,000)');
+      expect(over('triangles')).toBe('true');
+      expect(over('calls')).toBeNull();
+    });
+
+    it('warns once while the scene stays over, not at every tick', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      render(<Harness />);
+
+      advance(500);
+      canvas.gl.info.render = { calls: 170, triangles: 10 };
+      advance(1500);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(over('calls')).toBe('true');
+    });
+
+    it('clears the mark when the scene is back within budget, and warns again at the next breach', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      render(<Harness />);
+      advance(500);
+
+      canvas.gl.info.render = { calls: 96, triangles: 10 };
+      advance(500);
+      expect(over('calls')).toBeNull();
+
+      canvas.gl.info.render = { calls: 160, triangles: 10 };
+      advance(500);
+
+      expect(warn).toHaveBeenCalledTimes(2);
+      expect(over('calls')).toBe('true');
+    });
+
+    it('names only the figure that has just gone over, and both when both do at once', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      render(<Harness />);
+      advance(500);
+
+      canvas.gl.info.render = { calls: 151, triangles: 250_001 };
+      advance(500);
+
+      const second = String(warn.mock.calls[1]?.[0]);
+      expect(second).toContain('triangles');
+      expect(second).not.toContain('draw calls');
+
+      canvas.gl.info.render = { calls: 10, triangles: 10 };
+      advance(500);
+      canvas.gl.info.render = { calls: 400, triangles: 900_000 };
+      advance(500);
+
+      const third = String(warn.mock.calls[2]?.[0]);
+      expect(warn).toHaveBeenCalledTimes(3);
+      expect(third).toContain('draw calls');
+      expect(third).toContain('triangles');
+    });
+
+    it('says nothing and marks nothing while the tab is hidden, and judges again when it is back', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      setHidden(true);
+      render(<Harness />);
+
+      advance(1500);
+      expect(warn).not.toHaveBeenCalled();
+      expect(over('calls')).toBeNull();
+
+      setHidden(false);
+      advance(500);
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(over('calls')).toBe('true');
+    });
+
+    it('warns again for a scene that is still over when the probe is mounted again', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      const first = render(<Harness />);
+      advance(500);
+      first.unmount();
+
+      render(<Harness />);
+      advance(500);
+
+      expect(warn).toHaveBeenCalledTimes(2);
+    });
   });
 });

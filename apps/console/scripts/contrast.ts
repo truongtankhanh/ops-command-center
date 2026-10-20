@@ -89,6 +89,8 @@ const PAIRS: Pair[] = [
   // label. A frame with no picture is striped `--camera-off-a` / `-b`.
   ...cross(['--text-primary', '--text-secondary'], ['--camera-ground'], TEXT),
   { fg: '--success', bg: '--camera-ground', min: UI },
+  // The over-budget bar under a developer HUD value (V2-19.4): a graphic on the panel, `--text-primary` keeps the text.
+  { fg: '--sev-critical', bg: '--camera-ground', min: UI },
   ...cross(['--text-primary', '--text-secondary'], ['--camera-off-a', '--camera-off-b'], TEXT),
   { fg: 'map zone outline', bg: 'map ground', min: UI },
   { fg: '--text-secondary', bg: 'map ground', min: TEXT },

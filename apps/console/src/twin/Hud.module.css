@@ -37,3 +37,13 @@
   color: var(--text-primary);
   text-align: right;
 }
+
+/*
+ * A figure over its budget (V2-19.4, set by `HudProbe`). The text keeps `--text-primary`: the hue is a bar under the
+ * value, a graphic beside the figure and not a colour for it, so the panel's text contrast is unchanged and the cue
+ * does not rest on colour alone (the figure is also named in the console warning). `scripts/contrast.ts` checks the
+ * bar's colour against the panel.
+ */
+.list dd[data-over='true'] {
+  box-shadow: inset 0 calc(-2px * var(--ui-scale)) 0 var(--sev-critical);
+}

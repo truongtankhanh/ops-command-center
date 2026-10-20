@@ -1,4 +1,4 @@
-import { formatHud, HUD_LABEL, HUD_ROWS, NO_VALUE } from './twinHud';
+import { formatBudgetWarning, formatHud, HUD_LABEL, HUD_ROWS, NO_VALUE } from './twinHud';
 import type { HudReading } from './twinPerf';
 
 const reading = (overrides: Partial<HudReading> = {}): HudReading => ({
@@ -126,5 +126,39 @@ describe('formatHud', () => {
     );
 
     expect(Object.values(shown)).toEqual(HUD_ROWS.map(() => NO_VALUE));
+  });
+});
+
+describe('formatBudgetWarning', () => {
+  it('names a figure with its value and its limit', () => {
+    expect(formatBudgetWarning([{ figure: 'calls', value: 151, limit: 150 }])).toContain(
+      '151 draw calls (limit 150)',
+    );
+  });
+
+  it('names both figures, calls first, with thousands separators', () => {
+    const text = formatBudgetWarning([
+      { figure: 'calls', value: 400, limit: 150 },
+      { figure: 'triangles', value: 1_250_001, limit: 250_000 },
+    ]);
+
+    expect(text).toContain('400 draw calls (limit 150), 1,250,001 triangles (limit 250,000)');
+  });
+
+  it('says it is the last frame and where the budget is written', () => {
+    const text = formatBudgetWarning([{ figure: 'triangles', value: 250_001, limit: 250_000 }]);
+
+    expect(text).toContain('last frame');
+    expect(text).toContain('ADR-0020');
+  });
+
+  it('never carries the address that switches the HUD on, which the build scan looks for', () => {
+    const text = formatBudgetWarning([
+      { figure: 'calls', value: 151, limit: 150 },
+      { figure: 'triangles', value: 250_001, limit: 250_000 },
+    ]);
+
+    expect(text).not.toContain('debug=twin');
+    for (const { label } of HUD_ROWS) expect(text).not.toContain(label);
   });
 });
