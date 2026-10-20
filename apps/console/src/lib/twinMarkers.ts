@@ -29,6 +29,17 @@ export interface MarkerPlacement {
   position: [x: number, y: number, z: number];
   /** The id of a bitmap in the atlas (`imageIdOf`). */
   image: string;
+  /**
+   * Where the sprite's own anchor (its bottom-centre) stands relative to `position`, in CSS pixels, `+x` right and
+   * `+y` up on the screen (V2-16.3): a beacon's rings and tag are sprites of their own placed around its disc.
+   * Absent is `[0, 0]`, which is how a camera marker stands.
+   */
+  offset?: [x: number, y: number];
+  /**
+   * Makes the sprite a repeating pulse (V2-16.3): its cycle position at time 0, as a fraction of the period. The
+   * sprite grows and fades about its centre along the map's wave (`lib/mapPulse.ts`). Absent is a still sprite.
+   */
+  phase?: number;
 }
 
 /** A marker for each camera, at the camera's ground point, online or offline as the 2D map draws it. */
@@ -85,7 +96,14 @@ export interface SpriteInstances {
   rects: number[];
   /** `width, height` of each sprite in CSS pixels: its cell divided by the bitmap ratio. */
   sizes: number[];
+  /** `x, y` of each sprite's offset from its anchor in CSS pixels; `0, 0` for a sprite with none. */
+  offsets: number[];
+  /** The pulse phase of each sprite; `STILL` (−1) for one that does not pulse. */
+  phases: number[];
 }
+
+/** The phase attribute's value for a sprite that does not pulse. */
+export const STILL = -1;
 
 /**
  * The instance data of `placements`, in order. The atlas is drawn top-down and uploaded as a texture whose
@@ -98,8 +116,15 @@ export function spriteInstances(
   ratio: number,
 ): SpriteInstances {
   const cells = new Map(atlas.cells.map((cell) => [cell.id, cell]));
-  const instances: SpriteInstances = { count: 0, anchors: [], rects: [], sizes: [] };
-  for (const { position, image } of placements) {
+  const instances: SpriteInstances = {
+    count: 0,
+    anchors: [],
+    rects: [],
+    sizes: [],
+    offsets: [],
+    phases: [],
+  };
+  for (const { position, image, offset, phase } of placements) {
     const cell = cells.get(image);
     if (cell === undefined) continue;
     instances.count += 1;
@@ -111,6 +136,8 @@ export function spriteInstances(
       1 - cell.y / atlas.height,
     );
     instances.sizes.push(cell.width / ratio, cell.height / ratio);
+    instances.offsets.push(offset?.[0] ?? 0, offset?.[1] ?? 0);
+    instances.phases.push(phase ?? STILL);
   }
   return instances;
 }

@@ -3,10 +3,13 @@ import { PULSE_WAVE, PULSE_WAVE_LAYERS } from './mapLayers';
 
 /** Every frame repaints the whole map, so the wave is capped well below the display rate. */
 const FRAME_MS = 1000 / 30;
-/** Frame 04's `pulse` keyframes: the ring grows from 0.7× to 1.8× while fading from 0.9 to 0. */
-const SCALE_FROM = 0.7;
-const SCALE_TO = 1.8;
-const OPACITY_FROM = 0.9;
+/**
+ * Frame 04's `pulse` keyframes: the ring grows from 0.7× to 1.8× while fading from 0.9 to 0. Exported so the 3D
+ * beacons' pulse (V2-16.3, in the shader) is this same wave and not a copy of its numbers.
+ */
+export const PULSE_SCALE_FROM = 0.7;
+export const PULSE_SCALE_TO = 1.8;
+export const PULSE_OPACITY_FROM = 0.9;
 
 /**
  * The wave at `elapsedMs` into a repeating cycle of `periodMs`. The easing approximates
@@ -19,8 +22,8 @@ export function pulseFrame(
   const t = (elapsedMs % periodMs) / periodMs;
   const eased = 1 - (1 - t) ** 2;
   return {
-    radius: PULSE_WAVE.radius * (SCALE_FROM + (SCALE_TO - SCALE_FROM) * eased),
-    opacity: OPACITY_FROM * (1 - eased),
+    radius: PULSE_WAVE.radius * (PULSE_SCALE_FROM + (PULSE_SCALE_TO - PULSE_SCALE_FROM) * eased),
+    opacity: PULSE_OPACITY_FROM * (1 - eased),
   };
 }
 

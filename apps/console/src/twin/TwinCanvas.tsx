@@ -1,9 +1,11 @@
 import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
+import type { Beacon } from '../lib/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
 import type { LeaderStart } from '../lib/twinLeader';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
+import { Beacons } from './Beacons';
 import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
@@ -31,6 +33,8 @@ interface TwinCanvasProps {
   scene: TwinScene | null;
   /** Every point of each class that has a model (`useClassPoints`), for the models' bindings. */
   classPoints: ClassPoints;
+  /** The incident beacons in scene metres (`useTwinBeacons`, the stage's: V2-16.3), drawn once the zones are there. */
+  beacons: readonly Beacon[];
   /** The telemetry feed the models' bound parts follow (`useTwinFeed`, the stage's); `null` without a telemetry client. */
   feed: TwinFeed | null;
   /** The box of every building (`buildingBoxes`), for the rig's first view when the stage starts at building level (V2-15.6). */
@@ -66,6 +70,8 @@ interface TwinCanvasProps {
  *   for a query hook, and the DOM labels beside the canvas need the same frame. The telemetry feed is the
  *   stage's too, for the same reason (`useTwinFeed` reads the query cache); the canvas hands its `invalidate`
  *   back through `onInvalidate`, so a reading that arrives wakes the sleeping canvas (V2-14.8).
+ * - The incident beacons (V2-16.3) are the stage's too (`useTwinBeacons`): `Beacons` draws them over everything, after the
+ *   camera markers, independent of the models, as one draw call, and asks for frames only while one pulses.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
  *   resting stage draws nothing.
  * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5). With a building
@@ -94,6 +100,7 @@ interface TwinCanvasProps {
 export function TwinCanvas({
   scene,
   classPoints,
+  beacons,
   feed,
   boxes,
   assetBoxes,
@@ -136,6 +143,7 @@ export function TwinCanvas({
           </PickLayer>
           <Pointer assets={scene.assets} zones={scene.zones} />
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
+          <Beacons beacons={beacons} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />
         </>

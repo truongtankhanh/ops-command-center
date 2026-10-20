@@ -8,6 +8,7 @@ import {
   type SpriteSize,
   spriteInstances,
   STEM_PX,
+  STILL,
 } from './twinMarkers';
 import { makeFrame } from './twinScene';
 
@@ -175,6 +176,66 @@ describe('spriteInstances', () => {
   });
 
   it('has no instances for no markers', () => {
-    expect(spriteInstances([], atlas, 1)).toEqual({ count: 0, anchors: [], rects: [], sizes: [] });
+    expect(spriteInstances([], atlas, 1)).toEqual({
+      count: 0,
+      anchors: [],
+      rects: [],
+      sizes: [],
+      offsets: [],
+      phases: [],
+    });
+  });
+
+  it('gives a marker with no offset and no phase a zero offset and a still phase, as a camera has', () => {
+    const { offsets, phases } = spriteInstances(
+      [placement('a', 'camera-online', 1), placement('b', 'camera-offline', 2)],
+      atlas,
+      1,
+    );
+
+    expect(offsets).toEqual([0, 0, 0, 0]);
+    expect(phases).toEqual([STILL, STILL]);
+  });
+
+  it('flattens a sprite’s offset and pulse phase beside its anchor, in the placements order', () => {
+    const { anchors, offsets, phases } = spriteInstances(
+      [
+        { ...placement('a', 'camera-online', 1), offset: [12, 8], phase: 0 },
+        placement('b', 'camera-offline', 2),
+        { ...placement('c', 'camera-online', 3), offset: [-3.5, 20], phase: 0.25 },
+      ],
+      atlas,
+      1,
+    );
+
+    expect(anchors).toEqual([1, 0, -1, 2, 0, -2, 3, 0, -3]);
+    expect(offsets).toEqual([12, 8, 0, 0, -3.5, 20]);
+    expect(phases).toEqual([0, STILL, 0.25]);
+  });
+
+  it('keeps a still sprite apart from a pulse that starts at phase zero', () => {
+    const { phases } = spriteInstances(
+      [{ ...placement('a', 'camera-online', 1), phase: 0 }, placement('b', 'camera-online', 2)],
+      atlas,
+      1,
+    );
+
+    // 0 is a valid cycle position; only a missing phase is still.
+    expect(phases).toEqual([0, STILL]);
+  });
+
+  it('skips the offset and the phase of a marker it skips', () => {
+    const { count, offsets, phases } = spriteInstances(
+      [
+        { ...placement('a', 'mystery', 1), offset: [1, 2], phase: 0.5 },
+        { ...placement('b', 'camera-online', 2), offset: [3, 4], phase: 0.75 },
+      ],
+      atlas,
+      1,
+    );
+
+    expect(count).toBe(1);
+    expect(offsets).toEqual([3, 4]);
+    expect(phases).toEqual([0.75]);
   });
 });

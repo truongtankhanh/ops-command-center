@@ -17,6 +17,7 @@ import type { Binding } from '../lib/twinBindings';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
 import type { TelemetryClient } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
 import { TwinCanvas } from './TwinCanvas';
 import TwinStage from './TwinStage';
@@ -368,6 +369,128 @@ describe('TwinStage', () => {
       feed.setBindings('cooling_tower', [{ ...binding, key: 'motorTempC' }]);
 
       expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('the incident beacons (V2-16.3)', () => {
+    const beacons = () => vi.mocked(TwinCanvas).mock.lastCall?.[0].beacons;
+
+    beforeEach(() => {
+      vi.mocked(TwinCanvas).mockClear();
+      resetStore(useConsole);
+    });
+    afterEach(() => resetStore(useConsole));
+
+    /** The Library: a building 18 m tall around the campus's centre. */
+    const library = () => zone(0, 'building', 'Library');
+    const outside = () => zone(1, 'outdoor', 'Central Lawn');
+
+    it('hands the canvas a beacon for each active incident, in the order of their codes', () => {
+      renderStage(
+        [library(), outside()],
+        [
+          incident({
+            id: 'b',
+            code: 'INC-000002',
+            status: 'acknowledged',
+            zoneId: 'zone-1',
+            position: outside().center,
+          }),
+          incident({ id: 'a', code: 'INC-000001', zoneId: 'zone-0', position: library().center }),
+          incident({
+            id: 'r',
+            code: 'INC-000003',
+            status: 'resolved',
+            zoneId: 'zone-1',
+            position: outside().center,
+          }),
+        ],
+      );
+
+      expect(beacons()?.map(({ code, form }) => [code, form])).toEqual([
+        ['INC-000001', 'filled'],
+        ['INC-000002', 'hollow'],
+      ]);
+    });
+
+    it('stands an incident inside a building on its roof and one outside at the ground', () => {
+      renderStage(
+        [library(), outside()],
+        [
+          incident({ id: 'a', code: 'INC-000001', zoneId: 'zone-0', position: library().center }),
+          incident({ id: 'b', code: 'INC-000002', zoneId: 'zone-1', position: outside().center }),
+        ],
+      );
+
+      expect(beacons()?.map(({ position }) => position[1])).toEqual([18, 0]);
+    });
+
+    it('hands the canvas a resolved incident only while it is selected', () => {
+      const resolved = incident({
+        id: 'r',
+        code: 'INC-000003',
+        status: 'resolved',
+        zoneId: 'zone-1',
+        position: outside().center,
+      });
+      const zones = [library(), outside()];
+
+      const { unmount } = renderStage(zones, [resolved]);
+      expect(beacons()).toEqual([]);
+      unmount();
+
+      useConsole.setState({ selectedIncidentId: 'r' });
+      renderStage(zones, [resolved]);
+      expect(beacons()?.map(({ code, form, selected }) => [code, form, selected])).toEqual([
+        ['INC-000003', 'resolved', true],
+      ]);
+    });
+
+    it('follows the selection when it changes', () => {
+      renderStage(
+        [library()],
+        [incident({ id: 'a', code: 'INC-000001', zoneId: 'zone-0', position: library().center })],
+      );
+      expect(beacons()?.[0]?.selected).toBe(false);
+
+      act(() => useConsole.setState({ selectedIncidentId: 'a' }));
+
+      expect(beacons()?.[0]?.selected).toBe(true);
+    });
+
+    it('tags the incident of an asset with its code and stands it on the asset’s top', () => {
+      const zones = [library()];
+      renderStage(
+        zones,
+        [
+          incident({
+            id: 'tel',
+            code: 'INC-000107',
+            severity: 'critical',
+            zoneId: 'zone-0',
+            position: zones[0]!.center,
+            assetId: 'CT-01',
+            source: 'telemetry',
+          }),
+        ],
+        // On the roof (18 m) of a 3 m class: the top is 21 m.
+        [asset('CT-01', 'zone-0', zones[0]!.center, 18)],
+      );
+
+      expect(beacons()?.[0]).toMatchObject({
+        code: 'INC-000107',
+        tag: 'CT-01',
+        big: true,
+        pulse: true,
+        form: 'filled',
+        position: [expect.any(Number), 21, expect.any(Number)],
+      });
+    });
+
+    it('hands the canvas none while there are no incidents', () => {
+      renderStage([library()]);
+
+      expect(beacons()).toEqual([]);
     });
   });
 

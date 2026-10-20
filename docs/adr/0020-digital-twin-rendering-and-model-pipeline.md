@@ -627,6 +627,45 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Tests.** `lib/twinBeacons.test.ts`: frame 01's eight and frame 04's telemetry ninth, the roof and its edge
       cases, the resolved form, selection, the fan-out, an unknown type, an unresolved `assetId`, the order and
       purity.
+  - Settled in V2-16.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the incident beacons are drawn (`twin/Beacons.tsx`, one draw call).
+    - **Never faded, over all geometry.** Unlike the camera markers, a beacon is drawn at full strength at every level
+      (the frames that isolate an asset or focus a building still draw them) and has no depth test, so an incident
+      behind a wall is still seen. It does not wait for a model: it needs the zones the stage already has. It is hidden
+      when the Incidents layer is off (the mesh stays, it is not drawn); selecting an incident turns the layer on.
+    - **The cues are the 2D marker's, nothing new.** Severity is the hue and the disc's size step (10, 10, 11, 12 px),
+      status is filled versus a ring, the type is the glyph, a telemetry incident carries its asset's code on a pill,
+      and the selected one an accent ring. The canvas is `aria-hidden`; the accessible twin of a beacon is the incident
+      feed and the Assets tab (principle 1). The bitmaps are the map's (`markerSvg`, `renderMarkerImages`).
+    - **One mesh, a few cells.** A beacon is up to four sprites of the camera markers' layer (`Markers`): the pulse
+      ring, the selection ring, the base (a ground ellipse at 35 % severity, a 2 px stem in the severity hue and the
+      bitmap, 28 × 42 px, standing on the ground point) and the tag pill. The rings and the pill are sprites of their own
+      with a pixel offset from the base's anchor, so the atlas holds a base per form, a ring per disc radius, one pulse
+      ring and a pill per tag, not a cell for every combination. `Markers` gained optional per-sprite offset and
+      phase and a clock; a camera has none and renders as before.
+    - **A growing atlas.** The set of forms is data, so the atlas appends cells without moving the old ones
+      (`lib/twinAtlas.ts`, shelf rows up to 2048 px wide) and only the forms that are new are rasterised. The pill's
+      font is awaited before it is measured and drawn; its width is the drawn cell's, and a pill whose cell is not in
+      the atlas yet is skipped until it is. The texture is rebuilt larger when a cell is added and the old one disposed.
+    - **The pulse is the map's wave.** The ring grows 0.7× to 1.8× about its centre while it fades 0.9 to 0 with a
+      quadratic ease-out over `mapMotion.pulseMs` (1800 ms), from the constants `lib/mapPulse.ts` now exports, in the
+      shader; every pulse has phase 0 (the beacons pulse together, like the map's one wave). The on-demand canvas is
+      asked for the next frame only while the layer is shown, motion is allowed, the tab is visible and a beacon
+      pulses (`pulseRunning`); under reduced motion the pulse ring is not placed at all and the critical beacon keeps
+      its size and ring. The clock is an object the layer writes from its frame loop: no React render per frame.
+    - **Paint order** is by priority, independent of the data's order (by code): resolved, then low to critical, open
+      above acknowledged, the selected beacon last; a beacon's ring is under its disc and its pill over it.
+    - **Where the data is read.** The incidents and the catalogue are queries, which a canvas child cannot read, so the
+      stage derives the beacons (`useTwinBeacons`: `beaconsOf` over the cached incidents, catalogue, zones, frame and
+      `selectedIncidentId`) and hands the canvas the list, like the scene and the feed.
+    - **Tests.** The packer and the sprite builder (cells, offsets, paint order, the pulse decision) are pure and
+      tested without WebGL; the sprite arrays in `twinMarkers.test.ts`; the stage test reads the `beacons` it hands the
+      mocked canvas. `Beacons`, the atlas hook and the shader are R3F glue and untested, as `Markers` is.
+    - **By eye, still to do in a browser, and the chunk to measure:** the demo's incidents at campus level before any
+      model appears; open filled and acknowledged hollow; the critical beacon larger, pulsing and tagged; the ring on
+      the selected one; a beacon behind a wall; nothing with the Incidents layer off; no pulse under reduced motion and no
+      frame drawn at rest with no critical incident; a new type adding one form without a flicker; an `inside` incident on
+      its roof; the twin chunk's gzip size after `pnpm build` (10,403 B were left).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

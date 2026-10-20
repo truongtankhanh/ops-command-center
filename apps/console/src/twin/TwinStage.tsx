@@ -16,6 +16,7 @@ import { TwinView } from './TwinView';
 import { useClassPoints } from './useClassPoints';
 import { useLevelCamera } from './useLevelCamera';
 import { useTwinFeed } from './useTwinFeed';
+import { useTwinBeacons } from './useTwinBeacons';
 import { useTwinScene } from './useTwinScene';
 import { ZoneLabels } from './ZoneLabels';
 
@@ -31,7 +32,7 @@ const NO_INVALIDATE = (): void => undefined;
  * `StageView` (main chunk): this chunk's CSS is not loaded yet while they show.
  *
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
- * bindings of V2-14.7) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
+ * bindings of V2-14.7), the incident beacons (`useTwinBeacons`, V2-16.3) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
  * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
  * building summary (V2-15.9, at building level only), the part callout (V2-15.10, at part level only), the camera
  * controls and the hover tooltip (V2-15.5). The canvas gets the same scene and the refs for what it keeps in step
@@ -57,6 +58,8 @@ export default function TwinStage() {
   useLevelCamera(boxes, assetFits);
   // Read here, not in the canvas: a query hook has no client inside `<Canvas>` (V2-14.7).
   const classPoints = useClassPoints(scene?.classes ?? NO_CLASSES);
+  // The incident beacons (V2-16.3): derived here, from the incidents and the catalogue, for the same reason.
+  const beacons = useTwinBeacons(scene);
   // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
   // only exists once the canvas does, so the feed calls it through a ref the canvas fills (V2-14.8).
   const invalidateRef = useRef<() => void>(NO_INVALIDATE);
@@ -81,6 +84,7 @@ export default function TwinStage() {
           <TwinCanvas
             scene={scene}
             classPoints={classPoints}
+            beacons={beacons}
             feed={feed}
             boxes={boxes}
             assetBoxes={assetFits}
