@@ -1,9 +1,10 @@
-import { Canvas } from '@react-three/fiber';
-import type { RefObject } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { lazy, type RefObject, Suspense, useRef, useState } from 'react';
 import type { Beacon } from '../lib/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
 import type { HeatScene } from '../lib/twinHeat';
 import type { LeaderStart } from '../lib/twinLeader';
+import { debugTwinRequested, markTwin } from '../lib/twinPerf';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Beacons } from './Beacons';
@@ -11,7 +12,6 @@ import { Buildings } from './Buildings';
 import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
 import { ContextGuard } from './ContextGuard';
-import { DrawCallLog } from './DrawCallLog';
 import { Equipment } from './Equipment';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
@@ -30,6 +30,29 @@ import { ZoneHighlight } from './ZoneHighlight';
  * Position and target are the rig's.
  */
 const LENS = { fov: HOME_FOV_DEG, near: 1, far: 2500 };
+
+/**
+ * The developer HUD's probe (V2-19.1): development builds only, so the production build holds neither this `import()`
+ * nor the module. The check is a literal `import.meta.env.MODE` here, at the import, on purpose: a helper or a constant
+ * imported from another module would not be folded away, and the HUD chunk would ship. `scripts/chunk-budget.ts`
+ * fails the build if it did. `?debug=twin` (`debugTwinRequested`) is the other half of the gate.
+ */
+const HudProbe = import.meta.env.MODE === 'development' ? lazy(() => import('./HudProbe')) : null;
+
+/**
+ * Marks the first frame drawn with a scene (`twin:first-frame`, V2-19.7). Mounted with the scene, so the empty canvas's
+ * first frame does not count. A `useFrame` subscriber runs just before the frame is rendered: the mark is the frame's
+ * start, a few milliseconds before it is on screen.
+ */
+function FirstFrameMark() {
+  const marked = useRef(false);
+  useFrame(() => {
+    if (marked.current) return;
+    marked.current = true;
+    markTwin('twin:first-frame');
+  });
+  return null;
+}
 
 interface TwinCanvasProps {
   /** What to draw, from `useTwinScene`; `null` while there is nothing (the canvas stays empty). */
@@ -64,6 +87,8 @@ interface TwinCanvasProps {
   leaderLineRef: RefObject<SVGLineElement | null>;
   leaderDotRef: RefObject<SVGCircleElement | null>;
   leaderStartRef: RefObject<LeaderStart | null>;
+  /** The developer HUD's description list (`Hud`, V2-19.1), which the probe writes into; unused unless the HUD is on. */
+  hudRef: RefObject<HTMLDListElement | null>;
 }
 
 /**
@@ -93,7 +118,8 @@ interface TwinCanvasProps {
  * - The heat overlay (V2-17.3) is the stage's too (`useHeatScene`, which reads the queries and the telemetry): `Buildings`
  *   colours the shells and fades the ones with no reading, `Equipment` ghosts the equipment that is not in alarm or
  *   hovered. With `null` neither does anything, and in neither case is geometry rebuilt or a mesh added.
- * - `DrawCallLog` logs the draw calls of a frame in development builds only (V2-15.8, until the HUD of V2-19.1).
+ * - `HudProbe` (V2-19.1) measures the frame loop for the developer HUD; it exists in development builds with `?debug=twin`
+ *   only, and replaces the draw-call log of V2-15.8. `FirstFrameMark` marks the first frame drawn with a scene (V2-19.7).
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
  * - `Pointer` listens to the canvas element for hover, click and drag, and asks `PickLayer` what is under it
@@ -129,7 +155,9 @@ export function TwinCanvas({
   leaderLineRef,
   leaderDotRef,
   leaderStartRef,
+  hudRef,
 }: TwinCanvasProps) {
+  const [hudRequested] = useState(() => HudProbe !== null && debugTwinRequested(location.search));
   return (
     <Canvas
       camera={LENS}
@@ -142,9 +170,14 @@ export function TwinCanvas({
       <color attach="background" args={[mapColors.ground]} />
       {/* Outside the scene: an empty stage has a context to lose too. */}
       <ContextGuard />
-      <DrawCallLog />
+      {hudRequested && HudProbe && (
+        <Suspense fallback={null}>
+          <HudProbe listRef={hudRef} />
+        </Suspense>
+      )}
       {scene && (
         <>
+          <FirstFrameMark />
           <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} beacons={beacons} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />

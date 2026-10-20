@@ -1,5 +1,8 @@
+import { HUD_LABEL, HUD_ROWS } from '../src/lib/twinHud.ts';
 import {
   BUDGET_BYTES,
+  DEBUG_MARKERS,
+  debugMarkerProblems,
   entryKeyOf,
   evaluate,
   graphProblems,
@@ -221,5 +224,47 @@ describe('gzipBytes', () => {
 
     expect(gzipBytes(text)).toBeLessThan(text.length / 10);
     expect(gzipBytes(new TextEncoder().encode(text))).toBe(gzipBytes(text));
+  });
+});
+
+describe('debugMarkerProblems', () => {
+  it('is empty when the HUD is nowhere in the emitted files', () => {
+    expect(
+      debugMarkerProblems([
+        { file: 'assets/index-a.js', code: 'const frame = "Frame"; const debug = 1;' },
+        { file: 'assets/index-a.css', code: '.hud{display:grid}' },
+      ]),
+    ).toEqual([]);
+  });
+
+  it('names the file of a chunk that holds the address that switches the HUD on', () => {
+    const problems = debugMarkerProblems([
+      { file: 'assets/index-a.js', code: 'ok' },
+      { file: 'assets/Hud-b.js', code: 'aria-label="Twin performance (debug=twin)"' },
+    ]);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('assets/Hud-b.js');
+    expect(problems[0]).toContain('debug=twin');
+  });
+
+  it('finds a marker in a stylesheet too', () => {
+    const problems = debugMarkerProblems([
+      { file: 'assets/TwinStage-c.css', code: '/* Frame (p95) */' },
+    ]);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('assets/TwinStage-c.css');
+  });
+
+  it('gives one line for each marker found in a file', () => {
+    expect(
+      debugMarkerProblems([{ file: 'assets/x.js', code: 'debug=twin ... Frame (p95)' }]),
+    ).toHaveLength(2);
+  });
+
+  it('looks for words the HUD really has, so renaming one fails here and not in a build', () => {
+    expect(HUD_LABEL).toContain(DEBUG_MARKERS[0]);
+    expect(HUD_ROWS.map(({ label }) => label)).toContain(DEBUG_MARKERS[1]);
   });
 });
