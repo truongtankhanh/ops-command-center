@@ -152,6 +152,129 @@ describe('ToastRegion', () => {
       expect(screen.queryByText('Fire alarm')).toBeNull();
     });
 
+    describe('with a secondary action (V2-16.5)', () => {
+      const withBoth = (
+        title: string,
+        onAction: () => void = vi.fn(),
+        onSecondary: () => void = vi.fn(),
+      ): NewToast => ({
+        title,
+        action: { label: 'Fly to', onAction },
+        secondaryAction: { label: 'Open incident', onAction: onSecondary },
+      });
+
+      it('offers the action, the secondary action and Dismiss, in that order', () => {
+        show(withBoth('Motor over-temperature'));
+
+        const names = within(toastOf('Motor over-temperature'))
+          .getAllByRole('button')
+          .map((control) => control.textContent);
+
+        expect(names).toEqual(['Fly to', 'Open incident', 'Dismiss']);
+      });
+
+      it('runs the secondary action once, not the action, and then goes', async () => {
+        const onAction = vi.fn();
+        const onSecondary = vi.fn();
+        show(withBoth('Motor over-temperature', onAction, onSecondary));
+
+        await user.click(buttonIn('Motor over-temperature', 'Open incident'));
+
+        expect(onSecondary).toHaveBeenCalledTimes(1);
+        expect(onAction).not.toHaveBeenCalled();
+        expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      });
+
+      it('runs the action once, not the secondary action, and then goes', async () => {
+        const onAction = vi.fn();
+        const onSecondary = vi.fn();
+        show(withBoth('Motor over-temperature', onAction, onSecondary));
+
+        await user.click(buttonIn('Motor over-temperature', 'Fly to'));
+
+        expect(onAction).toHaveBeenCalledTimes(1);
+        expect(onSecondary).not.toHaveBeenCalled();
+        expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      });
+
+      it('goes on Dismiss without running either', async () => {
+        const onAction = vi.fn();
+        const onSecondary = vi.fn();
+        show(withBoth('Motor over-temperature', onAction, onSecondary));
+
+        await user.click(buttonIn('Motor over-temperature', 'Dismiss'));
+
+        expect(onAction).not.toHaveBeenCalled();
+        expect(onSecondary).not.toHaveBeenCalled();
+        expect(screen.queryByText('Motor over-temperature')).toBeNull();
+      });
+
+      it('can be used from the keyboard: Tab reaches each button and Enter runs it', async () => {
+        const onSecondary = vi.fn();
+        show(withBoth('Motor over-temperature', vi.fn(), onSecondary));
+        act(() => buttonIn('Motor over-temperature', 'Fly to').focus());
+
+        await user.tab();
+        expect(buttonIn('Motor over-temperature', 'Open incident')).toHaveFocus();
+        await user.keyboard('{Enter}');
+
+        expect(onSecondary).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves the toast before the secondary action runs', async () => {
+        let focusedDuringAction: Element | null = null;
+        show(
+          withBoth('A', vi.fn(), () => {
+            focusedDuringAction = document.activeElement;
+          }),
+        );
+        act(() => button('Outside').focus());
+        await user.tab();
+        await user.tab();
+        expect(buttonIn('A', 'Open incident')).toHaveFocus();
+
+        await user.keyboard('{Enter}');
+
+        expect(focusedDuringAction).toBe(button('Outside'));
+      });
+
+      it('hands focus to the secondary action of the next toast, else to its first button', async () => {
+        show(withBoth('A'));
+        show(withBoth('B'));
+        show({ title: 'C' });
+        act(() => buttonIn('A', 'Dismiss').focus());
+        await user.keyboard('{Enter}');
+        expect(buttonIn('B', 'Dismiss')).toHaveFocus();
+
+        // B holds the secondary action's focus; the next toast, C, has no such control.
+        act(() => buttonIn('B', 'Open incident').focus());
+        await user.keyboard('{Enter}');
+
+        expect(buttonIn('C', 'Dismiss notification')).toHaveFocus();
+      });
+
+      it('shows no secondary button without one, and none without an action', () => {
+        show(withAction('Fire alarm'));
+        show({ title: 'Saved', secondaryAction: { label: 'Open incident', onAction: vi.fn() } });
+
+        expect(
+          within(toastOf('Fire alarm'))
+            .getAllByRole('button')
+            .map((control) => control.textContent),
+        ).toEqual(['View incident', 'Dismiss']);
+        expect(
+          within(toastOf('Saved')).queryByRole('button', { name: 'Open incident' }),
+        ).toBeNull();
+        expect(buttonIn('Saved', 'Dismiss notification')).toBeInTheDocument();
+      });
+
+      it('has no axe violations', async () => {
+        show({ ...withBoth('Motor over-temperature'), urgent: true, severity: 'critical' });
+
+        await expectNoAxeViolations();
+      });
+    });
+
     it('goes on Dismiss without running the action', async () => {
       const onAction = vi.fn();
       show(withAction('Fire alarm', onAction));

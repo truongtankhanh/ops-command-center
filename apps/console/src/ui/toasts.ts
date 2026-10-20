@@ -8,7 +8,8 @@ import type { Glyph } from './icons';
  *
  * UI-12 added the success toast ("Reported INC-…"); UI-14 the severity tint, urgent toasts that
  * stay until dismissed (critical incidents), an action ("View incident") and toasts keyed to a
- * subject. V2-11.4 added `updateToast`: new words for a toast that is already shown.
+ * subject. V2-11.4 added `updateToast`: new words for a toast that is already shown. V2-16.5 added a second action
+ * ("Fly to" beside "Open incident" in the 3D view).
  */
 
 /** How long a toast stays when nobody is pointing at it or focused inside it. */
@@ -19,6 +20,12 @@ export const TOAST_MS = 6000;
  * first; an urgent one goes only when every toast is urgent.
  */
 const MAX_TOASTS = 3;
+
+/** A button of a toast: what it says and what it does. */
+export interface ToastAction {
+  label: string;
+  onAction(): void;
+}
 
 export interface Toast {
   id: number;
@@ -41,7 +48,12 @@ export interface Toast {
    */
   urgent?: boolean;
   /** One action button beside Dismiss; the toast is dismissed after it runs. */
-  action?: { label: string; onAction(): void };
+  action?: ToastAction;
+  /**
+   * A second action between `action` and Dismiss, same rules: the toast is dismissed after it runs. Shown only with
+   * an `action` (it is the quieter of two choices, not a toast's only one), so a toast without one is as it was.
+   */
+  secondaryAction?: ToastAction;
 }
 
 /** The words of a toast that can change after it is shown. */

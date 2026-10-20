@@ -717,6 +717,49 @@ their author, checked in CI, and served by nginx as immutable files.
       a beacon in front of a building or an asset wins; the outline of the selected incident's zone and of the report's,
       its width at campus and at building distance, and against a building's walls; a technician on an out-of-scope
       incident sees the view-only footer; the twin chunk's gzip size after `pnpm build` (7,417 B were left).
+  - Settled in V2-16.5 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the toast of a new incident offers "Fly to" in the 3D view.
+    - **The toast has two actions in 3D, one in 2D, chosen when it is made.** With the 3D view in effect at the moment
+      the toast is built (`useConsole.view`), a new critical or high incident toasts with "Fly to" as its action and "Open
+      incident" as its secondary one, for every role, because both only read; the same pair for either severity and either
+      source. In 2D it is the single "View incident", exactly as before. A toast already shown is not rebuilt if the view
+      changes (V2-16.1 says so); the telemetry reading that arrives later changes only its words (`updateToast`), so the
+      pair on screen stays.
+    - **"Fly to" selects, then flies; "Open incident" only selects.** `select(id)` and then `flyToIncident(id)`, in that
+      order, so the flight replaces any flight the selection starts (an asset isolated: the camera leaves it with the
+      level, "Settled in V2-15.7", and the beacon's flight takes over). **The handler checks no view**: in 2D the stage and
+      the rig are unmounted, no commands are registered and the flight does nothing, which is "Fly to still selects and the
+      flight is a no-op" ("Settled in V2-16.1") without a second rule. Nothing moves the camera when an incident arrives, nor
+      when its reading is added (a test says so), nor on "Open incident".
+    - **A narrow command, not a widened `flyTo`.** `TwinCommands` gained `flyToIncident(id)`; `flyTo(FlyTarget)` is
+      unchanged and `home` and `fit*` stay their own commands. The task proposed `flyTo({ kind, id })` for incident, asset,
+      part and home; only one kind is needed here, and "Show in 3D" (V2-16.6, a different rule: no selection, the level's
+      60 m floor) and `F` (V2-18.2) have not shown yet what a general subject-flight looks like (Rule of Three). It
+      costs one key in the commands' test fakes.
+    - **The rig resolves the position from the beacons the stage draws.** The caller of the toast (`useLiveIncidents`, in the
+      main chunk) has the incident and not the scene's frame, so `Rig` takes the stage's `beacons` as a prop, keeps the
+      latest in a ref, and finds the one with the id when it is asked; an incident with no beacon (not drawn, or unknown) is
+      a no-op after the selection. The pose is a pure function, `incidentView(position, now)` in `lib/twinCamera.ts`: the
+      target is the beacon's **ground point** (the foot of its stem, so the disc stands above the middle of the view), the
+      camera's yaw and tilt are kept, and the distance is the current one but at most `INCIDENT_FLY_DISTANCE_M` = 120 m
+      (`unverified`, judged by eye); the rig then flies it through its usual limits (60 m floor at campus and building
+      level, the pan box, the tilt limits) and the 600 ms tween (one frame under reduced motion).
+    - **`Toast` has a second action.** `ToastAction` names the shape once; `Toast.secondaryAction` is optional and shown
+      only with an `action`, between it and Dismiss (frame 04's order), as a default-variant `Button` with its own
+      `data-toast-control`. One `run(action)` hands focus off, runs, and dismisses for both, so the existing rule holds
+      (the same control of the neighbouring toast, else its first button, else where focus came from) and an urgent toast
+      still stays until dismissed. A toast without a secondary action renders as before. The labels are plain, without
+      frame 04's asset code and `F` hint (the key is V2-18.2's) and Dismiss stays a text button.
+    - **Tests.** The pose and the camera limits, the command forwarding, the store and the component (order, each handler
+      alone, focus, keyboard, absence, axe), `incidentToast` with and without the way to fly, and the live-incidents role
+      table in both views (the V2-11.5 table, changed on purpose) are tested without WebGL; `Rig` and `TwinCanvas` are R3F
+      glue and are not, as before.
+    - **By eye, still to do in a browser, and the chunk to measure:** a critical and a high arrival in 3D show the pair
+      and the camera does not move; "Fly to" opens the sheet and flies in about 600 ms, keeping yaw and tilt, at most 120 m
+      away, and ends with the beacon in view (its disc above the middle); from an isolated asset it leaves the asset and
+      still ends at the beacon; "Open incident" selects without moving; the toast goes after either; Tab, Enter and Space on
+      each button and where focus lands; the three buttons fit at the wall scale (a `flex-wrap` on `.actions` is the fix if
+      not); reduced motion; the 2D toast is unchanged; the twin chunk's gzip size after `pnpm build` (6,729 B were left).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

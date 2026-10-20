@@ -20,12 +20,19 @@ import { incidentToast, type IncidentToastContext } from '../lib/attention';
 import { playCriticalCue } from '../lib/criticalCue';
 import { upsertIncident } from '../lib/incidents';
 import { evidenceOfTimeline, summariseEvidence } from '../lib/telemetryEvidence';
+import { twinCommands } from '../lib/twinCommands';
 import { useConsole } from '../store';
 import { hasToast, showToast, updateToast } from '../ui/toasts';
 
 /** Retries after a refused handshake: from 1 s, doubling up to 30 s, with Socket.IO's ±50 % jitter. */
 const RETRY_FIRST_MS = 1000;
 const RETRY_MAX_MS = 30_000;
+
+/** "Fly to" on an incident's toast: select it, then ask for the flight (a no-op without a 3D stage). */
+const flyTo = (incident: Incident, select: () => void) => () => {
+  select();
+  twinCommands.flyToIncident(incident.id);
+};
 
 /**
  * Subscribes to live incident events and patches the query cache in place (ADR-0003).
@@ -42,6 +49,11 @@ const RETRY_MAX_MS = 30_000;
  * The event carries an `Incident`, not its timeline, so the toast of an incident a telemetry rule
  * raised is shown at once with what is cached and gets the reading afterwards, from one fetch of
  * the incident's detail (V2-11.4): the same toast, with new words.
+ *
+ * In the 3D view, which is read once when the toast is made, the toast offers "Fly to" and "Open incident" instead of
+ * "View incident" (V2-16.5). "Fly to" selects the incident and **then** asks the camera to fly to its beacon, so the
+ * flight replaces any a change of level starts; it checks no view of its own: in 2D there is no rig, the command does
+ * nothing and the selection is all that happens. Nothing here moves the camera when an incident arrives.
  */
 export function useLiveIncidents(): void {
   const queryClient = useQueryClient();
@@ -88,19 +100,20 @@ export function useLiveIncidents(): void {
     const announce = (incident: Incident) => {
       if (hasToast(incident.id)) return;
       const onView = () => useConsole.getState().select(incident.id);
-      const toast = incidentToast(incident, contextOf(incident), onView);
+      const onFly = useConsole.getState().view === '3d' ? flyTo(incident, onView) : undefined;
+      const toast = incidentToast(incident, contextOf(incident), onView, onFly);
       if (!toast) return;
       showToast(toast);
       if (incident.severity === 'critical' && useConsole.getState().criticalSound) {
         playCriticalCue();
       }
-      if (incident.source === 'telemetry') void addReading(incident, onView);
+      if (incident.source === 'telemetry') void addReading(incident, onView, onFly);
     };
 
     // The reading is the rule's own note on the incident's first timeline entry. It changes words of
     // the toast already shown and nothing else: no second toast, no second sound, and the view does
     // not move (brief § Principle 4). Whatever goes wrong, the first toast stays as it is.
-    const addReading = async (incident: Incident, onView: () => void) => {
+    const addReading = async (incident: Incident, onView: () => void, onFly?: () => void) => {
       let detail: IncidentDetail;
       try {
         detail = await queryClient.fetchQuery(incidentQuery(incident.id));
@@ -124,6 +137,7 @@ export function useLiveIncidents(): void {
         incident,
         { ...context, evidence: summariseEvidence(evidence, point) },
         onView,
+        onFly,
       );
       if (next) updateToast(incident.id, { detail: next.detail });
     };

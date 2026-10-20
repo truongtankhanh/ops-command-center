@@ -28,6 +28,70 @@ const READING = '92 °C for 60 s, limit 85 °C';
 const noop = () => {};
 
 describe('incidentToast', () => {
+  // V2-16.5: the 3D view's toast has two actions, chosen by whether the caller has a way to fly.
+  describe('in the 3D view, with a way to fly (V2-16.5)', () => {
+    it.each(['critical', 'high'] as const)(
+      'offers "Fly to" and "Open incident" for a %s incident',
+      (severity) => {
+        const onView = vi.fn();
+        const onFly = vi.fn();
+
+        const toast = incidentToast(incident({ severity }), {}, onView, onFly);
+
+        expect(toast?.action).toEqual({ label: 'Fly to', onAction: onFly });
+        expect(toast?.secondaryAction).toEqual({ label: 'Open incident', onAction: onView });
+      },
+    );
+
+    it('runs only the handler of the button that is pressed', () => {
+      const onView = vi.fn();
+      const onFly = vi.fn();
+      const toast = incidentToast(incident(), {}, onView, onFly);
+
+      toast?.secondaryAction?.onAction();
+      expect(onView).toHaveBeenCalledTimes(1);
+      expect(onFly).not.toHaveBeenCalled();
+
+      toast?.action?.onAction();
+      expect(onFly).toHaveBeenCalledTimes(1);
+      expect(onView).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers the same pair for an incident a telemetry rule raised', () => {
+      const toast = incidentToast(telemetry(), { zone, asset: tower }, noop, noop);
+
+      expect(toast?.action?.label).toBe('Fly to');
+      expect(toast?.secondaryAction?.label).toBe('Open incident');
+    });
+
+    it('changes nothing else about the toast', () => {
+      const context = { zone, asset: tower, evidence: READING };
+
+      const { action, secondaryAction, ...fly } = incidentToast(telemetry(), context, noop, noop)!;
+      const { action: single, ...view } = incidentToast(telemetry(), context, noop)!;
+
+      expect(action).toBeDefined();
+      expect(secondaryAction).toBeDefined();
+      expect(single).toBeDefined();
+      expect(fly).toEqual(view);
+    });
+
+    it('still gives no toast for a severity that gets none', () => {
+      expect(incidentToast(incident({ severity: 'medium' }), {}, noop, noop)).toBeNull();
+    });
+  });
+
+  describe('in the 2D view, with no way to fly', () => {
+    it('keeps the single "View incident" action and no secondary action', () => {
+      const onView = vi.fn();
+
+      const toast = incidentToast(incident(), {}, onView);
+
+      expect(toast?.action).toEqual({ label: 'View incident', onAction: onView });
+      expect(toast).not.toHaveProperty('secondaryAction');
+    });
+  });
+
   describe('an incident a person or the simulator reported', () => {
     it('is the toast it has always been', () => {
       expect(incidentToast(incident(), { zone }, noop)).toEqual({

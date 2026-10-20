@@ -80,7 +80,7 @@ interface TwinCanvasProps {
  * - `ZoneHighlight` outlines the zone of the selected incident, or the report's, on the ground (V2-16.4): a ribbon
  *   after the building faces, with no regard for the Incidents layer.
  * - The camera is the rig's: it sets the first view, moves only on a user action or a command, and a
- *   resting stage draws nothing.
+ *   resting stage draws nothing. It gets the beacons too, so that "Fly to" on a toast can fly to one (V2-16.5).
  * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5). With a building
  *   in focus (V2-15.8) it is see-through and the others are faded, and `Equipment` draws its `inside` equipment;
  *   all of it by the focus the store holds (`useSceneFocus`), with no prop and no rebuild of geometry.
@@ -134,7 +134,7 @@ export function TwinCanvas({
       <DrawCallLog />
       {scene && (
         <>
-          <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} />
+          <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} beacons={beacons} />
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <PickLayer cameras={scene.cameras} frame={scene.frame}>
