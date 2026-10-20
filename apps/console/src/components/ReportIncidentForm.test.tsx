@@ -934,6 +934,107 @@ describe('ReportIncidentForm', () => {
     });
   });
 
+  // V2-16.7: the same toggle picks the location in the 3D scene, and Escape ends it there.
+  describe('picking the location in the 3D view', () => {
+    it('reads "Pick on map" in 2D and "Pick in 3D" in 3D, and is the same toggle', async () => {
+      useConsole.setState({ view: '3d' });
+      const { form } = renderForm();
+
+      const pick = form.getByRole('button', { name: 'Pick in 3D' });
+      expect(form.queryByRole('button', { name: 'Pick on map' })).toBeNull();
+      expect(pick).toHaveAttribute('aria-pressed', 'false');
+
+      await userEvent.click(pick);
+      expect(pick).toHaveAttribute('aria-pressed', 'true');
+      expect(useConsole.getState().picking).toBe(true);
+    });
+
+    it('follows the view while the form is open', () => {
+      const { form } = renderForm();
+      expect(form.getByRole('button', { name: 'Pick on map' })).toBeInTheDocument();
+
+      act(() => useConsole.setState({ view: '3d' }));
+
+      expect(form.getByRole('button', { name: 'Pick in 3D' })).toBeInTheDocument();
+    });
+
+    it('stops picking on Escape, and the form and its draft stay', async () => {
+      useConsole.setState({ view: '3d' });
+      const { form } = renderForm();
+      act(() => {
+        useConsole.getState().placePin(PIN, zone.id);
+        useConsole.getState().setPicking(true);
+      });
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().picking).toBe(false);
+      expect(useConsole.getState().reporting).toBe(true);
+      expect(useConsole.getState().reportPosition).toEqual(PIN);
+      expect(form.getByRole('button', { name: 'Pick in 3D' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      // The sheet did not hear the key: it announced nothing about a kept draft. (The same words are also a standing
+      // hint under the actions while a draft exists, so the live region is what to look at.)
+      expect(form.queryByRole('status')?.textContent ?? '').not.toContain(DRAFT_KEPT);
+    });
+
+    it('stops picking on Escape even when focus is on the page and not in the sheet', async () => {
+      useConsole.setState({ view: '3d' });
+      renderForm();
+      act(() => {
+        useConsole.getState().setPicking(true);
+        (document.activeElement as HTMLElement | null)?.blur();
+      });
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().picking).toBe(false);
+      expect(useConsole.getState().reporting).toBe(true);
+    });
+
+    it('lets the next Escape reach the sheet, which keeps a draft and says why', async () => {
+      useConsole.setState({ view: '3d' });
+      const { form } = renderForm();
+      act(() => {
+        useConsole.getState().placePin(PIN, zone.id);
+        useConsole.getState().setPicking(true);
+      });
+
+      await userEvent.keyboard('{Escape}');
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().reporting).toBe(true);
+      expect(form.getByRole('status')).toHaveTextContent(DRAFT_KEPT);
+    });
+
+    it('leaves Escape alone in 2D: picking stays on and the sheet answers, as before', async () => {
+      useConsole.setState({ view: '2d' });
+      const { form } = renderForm();
+      act(() => {
+        useConsole.getState().placePin(PIN, zone.id);
+        useConsole.getState().setPicking(true);
+      });
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(useConsole.getState().picking).toBe(true);
+      expect(useConsole.getState().reporting).toBe(true);
+      expect(form.getByRole('status')).toHaveTextContent(DRAFT_KEPT);
+    });
+
+    it('does not touch Escape in 3D when no location is being picked', async () => {
+      useConsole.setState({ view: '3d' });
+      const { form } = renderForm();
+      act(() => useConsole.getState().placePin(PIN, zone.id));
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(form.getByRole('status')).toHaveTextContent(DRAFT_KEPT);
+    });
+  });
+
   describe('header and success', () => {
     it('confirms the report with a toast', async () => {
       fetchMock.mockResolvedValue(new Response(JSON.stringify(created), { status: 201 }));

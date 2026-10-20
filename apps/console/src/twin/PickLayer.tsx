@@ -40,6 +40,7 @@ export function PickLayer({ cameras, frame, children }: PickLayerProps) {
   const picker = useMemo(() => createPicker(), []);
   const pending = useMemo(() => createPendingPick(), []);
   const invalidate = useThree((state) => state.invalidate);
+  const get = useThree((state) => state.get);
 
   const markers = useMemo(() => cameraMarkers(cameras, frame), [cameras, frame]);
   useEffect(() => picker.setCameras(markers), [picker, markers]);
@@ -51,8 +52,13 @@ export function PickLayer({ cameras, frame, children }: PickLayerProps) {
           pending.request(point, done);
           invalidate();
         },
+        // Answered at once with the camera as it is now: a press on the pin decides before the controls hear it.
+        pinAt(point) {
+          const { camera, size } = get();
+          return picker.pinAt(point, { camera, width: size.width, height: size.height });
+        },
       }),
-    [invalidate, pending],
+    [get, invalidate, pending, picker],
   );
 
   useEffect(() => () => picker.clear(), [picker]);

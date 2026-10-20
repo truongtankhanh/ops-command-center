@@ -21,6 +21,11 @@ export type PickDone = (ref: PickRef | null) => void;
 /** What the canvas implements: it records `point` and asks for a frame in which to cast the ray. */
 export interface PickRequester {
   request(point: ScreenPoint, done?: PickDone): void;
+  /**
+   * Whether the report's pin is under `point` on the screen **right now** (V2-16.7). Answered at once, not in the next
+   * frame: a press on the pin must decide, before the camera's controls hear it, whether it starts a drag.
+   */
+  pinAt(point: ScreenPoint): boolean;
 }
 
 /** What is waiting for the next frame: the latest point and the completions of every request since the last. */
@@ -81,13 +86,22 @@ export function requestPick(point: ScreenPoint, done?: PickDone): void {
   registered?.request(point, done);
 }
 
-const same = (a: PickRef | null, b: PickRef | null): boolean =>
-  a === b ||
-  (a !== null &&
-    b !== null &&
-    a.kind === b.kind &&
-    a.id === b.id &&
-    (a.kind !== 'part' || (b.kind === 'part' && a.assetCode === b.assetCode)));
+const same = (a: PickRef | null, b: PickRef | null): boolean => {
+  if (a === b) return true;
+  if (a === null || b === null || a.kind !== b.kind) return false;
+  // A ground ref is a place: the same only at the same point (V2-16.7).
+  if (a.kind === 'ground' && b.kind === 'ground') return a.x === b.x && a.y === b.y && a.z === b.z;
+  if (a.kind === 'ground' || b.kind === 'ground') return false;
+  return a.id === b.id && (a.kind !== 'part' || (b.kind === 'part' && a.assetCode === b.assetCode));
+};
+
+/**
+ * Whether the report's pin is under `point`, from the canvas's last frame. `false` without a canvas, as a request
+ * does nothing without one.
+ */
+export function pinUnderPoint(point: ScreenPoint): boolean {
+  return registered?.pinAt(point) ?? false;
+}
 
 /** Records the winner of a ray and tells the listeners, but only when it is not what they last heard. */
 export function publishPick(ref: PickRef | null): void {

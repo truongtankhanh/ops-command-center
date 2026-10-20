@@ -1,0 +1,40 @@
+/*
+ * Frame 09's `.map-hint` while the report's location is picked in 3D: a pill at the top of the part of the stage the
+ * sheet leaves visible (`--sheet-inset`, set on the stage), as the 2D map's `.pickHint`. Clicks go through it to the
+ * canvas.
+ */
+.hint {
+  position: absolute;
+  top: var(--space-3);
+  left: calc((100% - var(--sheet-inset, 0px)) / 2);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
+  height: calc(36px * var(--ui-scale));
+  margin: 0;
+  padding: 0 var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: 999px;
+  background: var(--surface-3);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.hint > svg {
+  flex: none;
+  color: var(--accent);
+}
+
+.hint > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

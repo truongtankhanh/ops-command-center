@@ -12,6 +12,7 @@ const part = (id: string, assetCode: string): PickRef => ({ kind: 'part', id, as
 const building = (id: string): PickRef => ({ kind: 'building', id });
 const camera = (id: string): PickRef => ({ kind: 'camera', id });
 const beacon = (id: string): PickRef => ({ kind: 'beacon', id });
+const place = (x: number, y: number, z: number): PickRef => ({ kind: 'ground', x, y, z });
 
 interface Request {
   point: ScreenPoint;
@@ -43,6 +44,9 @@ function setup(
 
   const state = {
     picking: initial.picking ?? false,
+    /** Whether the report's pin is under the pointer, and where it was asked. */
+    pin: false,
+    pinChecks: [] as ScreenPoint[],
     selection: {
       assetCode: initial.assetCode ?? null,
       part: initial.part ?? null,
@@ -60,6 +64,9 @@ function setup(
     focusBuilding: vi.fn(),
     openViewer: vi.fn(),
     selectIncident: vi.fn(),
+    placePin: vi.fn(),
+    previewPin: vi.fn(),
+    dropPin: vi.fn(),
   };
   const deps = {
     requestPick: (point: ScreenPoint, done?: PickDone) => {
@@ -73,6 +80,10 @@ function setup(
       };
     },
     lastPick: (): PickRef | null => null,
+    pinAt: (point: ScreenPoint) => {
+      state.pinChecks.push(point);
+      return state.pin;
+    },
     isPicking: () => state.picking,
     selection: () => state.selection,
     focusZoneOf: (code: string) => (code === 'CT-01' ? 'BLD-DC' : null),
@@ -238,26 +249,111 @@ describe('a click', () => {
     for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
   });
 
-  it('does nothing while a report location is picked', () => {
-    const { requests, actions, state, down, up } = setup();
-    state.picking = true;
+  // V2-16.7: a click while a report location is picked asks for the place under it and places the pin there.
+  describe('while a report location is picked', () => {
+    it('asks for the pick at the release point, as a click does', () => {
+      const { requests, state, down, up } = setup();
+      state.picking = true;
 
-    down(100, 100);
-    up(100, 100);
+      down(100, 100);
+      up(100, 100);
 
-    expect(requests).toEqual([]);
-    for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
-  });
+      expect(requests).toHaveLength(1);
+      expect(requests[0]!.point).toEqual({ x: 100, y: 100 });
+      expect(requests[0]!.done).toBeTypeOf('function');
+    });
 
-  it('does nothing if the answer arrives when a report location is being picked', () => {
-    const { actions, state, down, up, answer } = setup();
-    down(100, 100);
-    up(100, 100);
-    state.picking = true;
+    it('places the pin at the place the answer names, and does nothing else', () => {
+      const { actions, state, click } = setup();
+      state.picking = true;
 
-    answer(asset('CT-01'));
+      click(100, 100, place(12, 18, -30));
 
-    expect(actions.toggleAsset).not.toHaveBeenCalled();
+      expect(actions.placePin).toHaveBeenCalledExactlyOnceWith([12, 18, -30]);
+      for (const [name, action] of Object.entries(actions)) {
+        if (name !== 'placePin') expect(action).not.toHaveBeenCalled();
+      }
+    });
+
+    it('does nothing with an answer that is a thing or nothing', () => {
+      const { actions, requests, state, down, up } = setup();
+      state.picking = true;
+      // The click's own completion only: what a stream of published picks does to the hover is another case.
+      const answerClick = (ref: PickRef | null) => {
+        down(100, 100);
+        up(100, 100);
+        requests.at(-1)!.done!(ref);
+      };
+
+      answerClick(asset('CT-01'));
+      answerClick(building('BLD-DC'));
+      answerClick(camera('cam-1'));
+      answerClick(beacon('inc-1'));
+      answerClick(null);
+
+      for (const action of Object.values(actions)) expect(action).not.toHaveBeenCalled();
+    });
+
+    it('does nothing with a place when picking ended before the answer arrived', () => {
+      const { actions, state, down, up, answer } = setup();
+      state.picking = true;
+      down(100, 100);
+      up(100, 100);
+      state.picking = false;
+
+      answer(place(1, 2, 3));
+
+      expect(actions.placePin).not.toHaveBeenCalled();
+    });
+
+    it('does nothing with a thing when picking began after the click was asked for', () => {
+      const { actions, state, down, up, answer } = setup();
+      down(100, 100);
+      up(100, 100);
+      state.picking = true;
+
+      answer(asset('CT-01'));
+
+      expect(actions.toggleAsset).not.toHaveBeenCalled();
+    });
+
+    it('does not place a pin for a drag, a pinch or another button: those are the camera’s', () => {
+      const { requests, state, down, up } = setup();
+      state.picking = true;
+
+      down(100, 100);
+      up(140, 100);
+      down(100, 100, { button: 2 });
+      up(100, 100, { button: 2 });
+      down(100, 100, { pointerId: 1, pointerType: 'touch' });
+      down(150, 100, { pointerId: 2, pointerType: 'touch' });
+      up(150, 100, { pointerId: 2, pointerType: 'touch' });
+      up(100, 100, { pointerId: 1, pointerType: 'touch' });
+
+      expect(requests).toEqual([]);
+    });
+
+    it('is a tap on a touch screen: the pin is placed, and no hover is written', () => {
+      const { actions, state, down, up, answer } = setup();
+      state.picking = true;
+
+      down(100, 100, { pointerType: 'touch' });
+      up(100, 100, { pointerType: 'touch' });
+      answer(place(4, 0, 9));
+
+      expect(actions.placePin).toHaveBeenCalledWith([4, 0, 9]);
+      expect(actions.hoverAsset).not.toHaveBeenCalled();
+    });
+
+    it('selects or toggles nothing in the console while it places a pin', () => {
+      const { actions, state, click } = setup({ assetCode: 'CT-01', incidentId: 'inc-1' });
+      state.picking = true;
+
+      click(100, 100, place(0, 0, 0));
+
+      expect(actions.toggleAsset).not.toHaveBeenCalled();
+      expect(actions.selectIncident).not.toHaveBeenCalled();
+    });
   });
 
   it.each([1, 2])('is never made by button %i, which is the camera’s', (button) => {
@@ -290,6 +386,209 @@ describe('a click', () => {
     expect(requests).toHaveLength(1);
     expect(actions.toggleAsset).toHaveBeenCalledWith('CT-01', 'BLD-DC');
     expect(actions.hoverAsset).not.toHaveBeenCalled();
+  });
+});
+
+// V2-16.7: while a location is picked, the report's pin can be grabbed and dragged to another place.
+describe('dragging the report’s pin', () => {
+  /** A setup with a location being picked and the pin under the pointer. */
+  function grabbed() {
+    const view = setup();
+    view.state.picking = true;
+    view.state.pin = true;
+    return view;
+  }
+  /** The canvas answers the latest request: a place, a thing or nothing. */
+  const reply = (requests: Request[], ref: PickRef | null) => requests.at(-1)!.done!(ref);
+  const held = { buttons: 1 };
+
+  it('starts at once on a press on the pin, and the camera never hears that press', () => {
+    const { element, state, requests, down } = grabbed();
+    const heardByTheCamera = vi.fn();
+    element.addEventListener('pointerdown', heardByTheCamera);
+
+    down(100, 100);
+
+    expect(state.pinChecks).toEqual([{ x: 100, y: 100 }]);
+    expect(heardByTheCamera).not.toHaveBeenCalled();
+    expect(requests).toEqual([]);
+  });
+
+  it('holds the pointer, and gives it back at the end', () => {
+    const { element, requests, down, up } = grabbed();
+    element.setPointerCapture = vi.fn();
+    element.releasePointerCapture = vi.fn();
+
+    down(100, 100);
+    expect(element.setPointerCapture).toHaveBeenCalledWith(1);
+    up(100, 100);
+    reply(requests, place(1, 0, 2));
+
+    expect(element.releasePointerCapture).toHaveBeenCalledWith(1);
+  });
+
+  it('shows the pin at the place under each move, and only at a place', () => {
+    const { actions, requests, down, move } = grabbed();
+    down(100, 100);
+
+    move(110, 100, held);
+    expect(requests.at(-1)!.point).toEqual({ x: 110, y: 100 });
+    reply(requests, place(4, 0, 5));
+    move(120, 100, held);
+    reply(requests, asset('CT-01'));
+    move(130, 100, held);
+    reply(requests, null);
+
+    expect(actions.previewPin).toHaveBeenCalledExactlyOnceWith([4, 0, 5]);
+  });
+
+  it('drops the pin at the place under the release, asking once more', () => {
+    const { actions, requests, down, move, up } = grabbed();
+    down(100, 100);
+    move(110, 100, held);
+    reply(requests, place(4, 0, 5));
+
+    up(140, 100);
+    expect(requests.at(-1)!.point).toEqual({ x: 140, y: 100 });
+    reply(requests, place(8, 12, 9));
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith([8, 12, 9]);
+    // A drag of the pin is not a click: nothing is placed or selected by it.
+    expect(actions.placePin).not.toHaveBeenCalled();
+    expect(actions.toggleAsset).not.toHaveBeenCalled();
+  });
+
+  it('drops it at the last place shown when the ray at the release finds nothing', () => {
+    const { actions, requests, down, move, up } = grabbed();
+    down(100, 100);
+    move(110, 100, held);
+    reply(requests, place(4, 0, 5));
+
+    up(140, 100);
+    reply(requests, null);
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith([4, 0, 5]);
+  });
+
+  it('drops it nowhere when nothing was ever shown and the ray finds nothing', () => {
+    const { actions, requests, down, up } = grabbed();
+    down(100, 100);
+
+    up(100, 100);
+    reply(requests, null);
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('is not cancelled by a move that comes after the release and before its answer', () => {
+    const { actions, requests, down, up, move } = grabbed();
+    down(100, 100);
+    up(140, 100);
+
+    move(141, 100, { buttons: 0 });
+    reply(requests, place(8, 12, 9));
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith([8, 12, 9]);
+  });
+
+  it('asks for no hover while it is held, and none after', () => {
+    const { requests, down, move, up } = grabbed();
+    down(100, 100);
+    move(110, 100, held);
+    const asked = requests.length;
+    up(110, 100);
+    reply(requests, place(1, 0, 1));
+
+    move(200, 200);
+
+    expect(requests.length).toBe(asked + 1);
+  });
+
+  it('lets the pin go where it started when a second pointer goes down (a pinch)', () => {
+    const { actions, down } = grabbed();
+    down(100, 100);
+
+    down(150, 100, { pointerId: 2, pointerType: 'touch' });
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('lets it go where it started when the browser cancels the pointer', () => {
+    const { actions, down } = grabbed();
+    down(100, 100);
+
+    fireEvent.pointerCancel(document.body, { pointerId: 1 });
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('lets it go where it started when a release was missed: a move with no button down', () => {
+    const { actions, down, move } = grabbed();
+    down(100, 100);
+
+    move(120, 100, { buttons: 0 });
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('lets it go when the pointer controller is taken away mid-drag', () => {
+    const { actions, handle, down } = grabbed();
+    down(100, 100);
+
+    handle.detach();
+
+    expect(actions.dropPin).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it('is only for the primary button', () => {
+    const { actions, element, state, down } = grabbed();
+    const heardByTheCamera = vi.fn();
+    element.addEventListener('pointerdown', heardByTheCamera);
+
+    down(100, 100, { button: 2 });
+
+    expect(state.pinChecks).toEqual([]);
+    expect(heardByTheCamera).toHaveBeenCalledTimes(1);
+    expect(actions.dropPin).not.toHaveBeenCalled();
+  });
+
+  it('is a plain press when the pin is not under the pointer: the camera hears it and a click places the pin', () => {
+    const { actions, element, state, down, up, answer } = grabbed();
+    state.pin = false;
+    const heardByTheCamera = vi.fn();
+    element.addEventListener('pointerdown', heardByTheCamera);
+
+    down(100, 100);
+    up(100, 100);
+    answer(place(3, 0, 3));
+
+    expect(heardByTheCamera).toHaveBeenCalledTimes(1);
+    expect(actions.placePin).toHaveBeenCalledWith([3, 0, 3]);
+    expect(actions.dropPin).not.toHaveBeenCalled();
+  });
+
+  it('is not looked for when no location is picked: the press is the camera’s or a click', () => {
+    const { actions, element, state, down, up, answer } = setup();
+    state.pin = true;
+    const heardByTheCamera = vi.fn();
+    element.addEventListener('pointerdown', heardByTheCamera);
+
+    down(100, 100);
+    up(100, 100);
+    answer(asset('CT-01'));
+
+    expect(state.pinChecks).toEqual([]);
+    expect(heardByTheCamera).toHaveBeenCalledTimes(1);
+    expect(actions.toggleAsset).toHaveBeenCalled();
+    expect(actions.dropPin).not.toHaveBeenCalled();
+  });
+
+  it('keeps the crosshair while it is held', () => {
+    const { element, handle, down } = grabbed();
+    handle.refresh();
+    down(100, 100);
+
+    expect(element.style.cursor).toBe('crosshair');
   });
 });
 

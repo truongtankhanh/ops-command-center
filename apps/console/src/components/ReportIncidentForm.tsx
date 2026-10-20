@@ -25,6 +25,7 @@ import {
   typesInCategory,
   typesLikelyIn,
 } from '../lib/incidents';
+import { useStopPickingOnEscape } from '../lib/useStopPickingOnEscape';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Field, Select, Textarea, TextInput } from '../ui/Field';
@@ -130,8 +131,9 @@ function locationHintOf(
  * the type suggests. Limits mirror the API's validation rules; the category is never sent, the API
  * derives it from the type (ADR-0021).
  *
- * The location (zone, pin, "Pick on map") lives in `useConsole`, because the map places the pin and
- * outlines the zone; everything else is this form's own state.
+ * The location (zone, pin, "Pick on map", which reads "Pick in 3D" while the 3D view is in effect, V2-16.7) lives in
+ * `useConsole`, because the map and the 3D stage place and draw the pin and outline the zone; everything else is
+ * this form's own state.
  */
 export function ReportIncidentForm() {
   const { data: zones = [] } = useZones();
@@ -145,6 +147,10 @@ export function ReportIncidentForm() {
   const setReportZone = useConsole((s) => s.setReportZone);
   const setPicking = useConsole((s) => s.setPicking);
   const clearPin = useConsole((s) => s.clearPin);
+  const view = useConsole((s) => s.view);
+
+  // In the 3D view Escape ends the picking before it does anything else (frame 09); in 2D it is the sheet's, as ever.
+  useStopPickingOnEscape(view === '3d' && picking, () => setPicking(false));
 
   // What the form opened with (V2-09.10): a fault reported from an asset. Read once, and the
   // baseline the draft below is measured from, so an untouched preset is not something to keep.
@@ -369,7 +375,7 @@ export function ReportIncidentForm() {
                 className={styles.pick}
                 onClick={() => setPicking(!picking)}
               >
-                Pick on map
+                {view === '3d' ? 'Pick in 3D' : 'Pick on map'}
               </Button>
             </div>
             {locationHint && (
