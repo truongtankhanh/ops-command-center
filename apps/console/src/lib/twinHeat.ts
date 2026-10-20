@@ -1,6 +1,7 @@
-import type { Asset, Zone } from '@occ/contracts';
-import { hasFreshReading } from './assets';
+import type { Asset, Incident, Zone } from '@occ/contracts';
+import { hasFreshReading, openIncidentOf } from './assets';
 import type { TelemetryState } from './telemetryState';
+import type { SceneLevel } from './twinLevel';
 import { mixInto } from './twinMaterials';
 
 /*
@@ -123,4 +124,83 @@ export function tempText(tempC: number): string {
 /** What the overlay writes beside a building: its temperature, or "No data" for a silent one. */
 export function heatLabel(reading: HeatReading): string {
   return reading === 'silent' ? 'No data' : tempText(reading.tempC);
+}
+
+/**
+ * The levels at which the overlay is drawn (ADR-0020 "Settled in V2-17.1" and "V2-17.3"): the campus and a building in
+ * focus. With an asset isolated, or one of its parts, the layer stays on but draws nothing different, so a caller
+ * that asks "is Heat shown?" asks this with the layer.
+ */
+export function showsHeat(level: SceneLevel): boolean {
+  return level === 'campus' || level === 'building';
+}
+
+/**
+ * The whole overlay as data (V2-17.3), built once per change of reading and read by everything that draws a part of
+ * it: the shells and the equipment in the canvas, the labels and the 3D view's name. `null` stands for "not shown"
+ * wherever it is passed, so each reader does nothing without it.
+ */
+export interface HeatScene {
+  /** `#rrggbb` per building with a reading, by zone id: the ramp at its temperature. A silent building has none. */
+  colours: ReadonlyMap<string, string>;
+  /** The zones of the buildings with no fresh source: faded at campus level. */
+  silent: ReadonlySet<string>;
+  /** The line under each building's name, by zone id: "22.0 °C", or "No data". */
+  labels: ReadonlyMap<string, string>;
+  /** The names of the silent buildings, in the zones' order, for the 3D view's name. */
+  silentNames: readonly string[];
+  /** The codes of the assets with an open incident of their own: they are not ghosted, whatever else is. */
+  alarmed: ReadonlySet<string>;
+  /**
+   * Changes when, and only when, something above does. The readings are recomputed every second (the clock ticks), so
+   * an identity of their own would repaint a quiet scene and wake the on-demand canvas for nothing; a caller keeps the
+   * previous scene while the key is equal.
+   */
+  key: string;
+}
+
+interface HeatSceneInput {
+  zones: readonly Pick<Zone, 'id' | 'name'>[];
+  readings: ReadonlyMap<string, HeatReading>;
+  assets: readonly Pick<Asset, 'id' | 'code'>[];
+  incidents: readonly Incident[];
+  /** The ramp, `twinColors.heat`: a parameter, so this module imports no token file. */
+  stops: readonly string[];
+}
+
+/**
+ * The overlay for `readings` (`buildingReadings`): the colour and the label of every building, which are silent, and
+ * which assets are in alarm. The alarm is the feed's own rule (`openIncidentOf`: an unresolved incident whose
+ * `assetId` is the asset), so the ghost lifts exactly where the severity tint shows.
+ */
+export function heatSceneOf({
+  zones,
+  readings,
+  assets,
+  incidents,
+  stops,
+}: HeatSceneInput): HeatScene {
+  const colours = new Map<string, string>();
+  const labels = new Map<string, string>();
+  const silent = new Set<string>();
+  for (const [zoneId, reading] of readings) {
+    labels.set(zoneId, heatLabel(reading));
+    if (reading === 'silent') silent.add(zoneId);
+    else colours.set(zoneId, heatColor(heatT(reading.tempC), stops));
+  }
+  const silentNames = zones.filter(({ id }) => silent.has(id)).map(({ name }) => name);
+  const alarmed = new Set(
+    assets
+      .filter((asset) => openIncidentOf(asset, incidents) !== undefined)
+      .map(({ code }) => code),
+  );
+
+  const key = [
+    [...colours].map(([zoneId, colour]) => `${zoneId}=${colour}`).join(','),
+    [...labels].map(([zoneId, label]) => `${zoneId}=${label}`).join(','),
+    [...silent].join(','),
+    silentNames.join(','),
+    [...alarmed].sort().join(','),
+  ].join('|');
+  return { colours, silent, labels, silentNames, alarmed, key };
 }

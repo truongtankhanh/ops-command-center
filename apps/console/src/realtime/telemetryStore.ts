@@ -67,14 +67,20 @@ export const useAssetSeries = (assetCode: string, key: string): SeriesView | und
  * second. `null` until the first overview. It re-renders its caller every second, so a list should
  * call it once and pass the number down. Right after a re-anchor it can lag by up to a second, which
  * is the clock's own resolution; the monotonic reading is taken in the timer, never in render.
+ *
+ * `active` (default `true`) is for a caller that needs the clock only some of the time: with `false` no timer runs
+ * and the clock is not followed (each overview re-anchors it, so following it is a render a second too), and the
+ * answer is `null`; the caller is not re-rendered every second for nothing (the 3D stage while Heat is off, V2-17.3).
+ * After `active` turns `true` the value is right from the first tick, up to a second later, as after a re-anchor.
  */
-export function useServerNow(): number | null {
-  const clock = useTelemetryStore((s) => s.view.state.serverClock);
+export function useServerNow(active = true): number | null {
+  const clock = useTelemetryStore((s) => (active ? s.view.state.serverClock : null));
   const [mono, setMono] = useState(() => performance.now());
   useEffect(() => {
+    if (!active) return;
     const timer = setInterval(() => setMono(performance.now()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [active]);
   return serverNow(clock, mono);
 }
 

@@ -156,8 +156,10 @@ interface ConsoleState extends ReportLocation {
    * Selecting an incident, and a new critical one arriving, turn Incidents back on. `inside` is the 3D
    * view's (V2-15.9): off draws the building in focus opaque with its equipment hidden. It governs the
    * building level only; at asset and part level the isolated asset is drawn whatever it says (`focusOf`), so
-   * selecting an asset does not turn it on and `Esc` back to the building finds it as it was left. The 2D map
-   * reads this as a `LayerVisibility` and ignores it.
+   * selecting an asset does not turn it on and `Esc` back to the building finds it as it was left. `heat` is the
+   * 3D view's heat overlay (V2-17.3): the one layer that starts **off**, because it recolours the whole campus; it
+   * governs campus and building level only (the overlay is not drawn with an asset isolated), and nothing offers
+   * the toggle until V2-17.4. The 2D map reads this as a `LayerVisibility` and ignores both.
    */
   layers: SceneLayers;
 
@@ -297,7 +299,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
   twinFault: null,
-  layers: { incidents: true, cameras: true, assets: true, inside: true },
+  layers: { incidents: true, cameras: true, assets: true, inside: true, heat: false },
   ...NO_REPORT_LOCATION,
 
   select: (id) =>

@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
 import { useIncidents, useSitePlan } from '../api/queries';
+import { HEAT_DOMAIN, type HeatScene } from '../lib/twinHeat';
 import { activeIncidentCount, TWIN_VIEW_ID, twinSummary } from '../lib/twinSummary';
 import styles from './TwinView.module.css';
 
 interface TwinViewProps {
   /** What the group stands for: the canvas and the zone labels, which assistive technology cannot read. */
   children: ReactNode;
+  /** The heat overlay (V2-17.3), or `null` while it is not shown: the name then also says what the colours mean. */
+  heat: HeatScene | null;
 }
 
 /**
@@ -22,6 +25,10 @@ interface TwinViewProps {
  * - It wraps only the picture. The camera controls, the legend and the hint are siblings in the stage
  *   (`TwinStage`): they are real buttons with their own tab stops (V2-12.10), and inside a labelled
  *   group a screen reader would announce the group again as it enters.
+ * - With the heat overlay shown the name also says what the colours mean and which buildings are faded because their
+ *   sensor is silent (V2-17.3, `twinSummary`): the canvas is hidden, and the lists, the building card and the legend
+ *   carry the numbers. The overlay is one object while nothing in it changes, so this wrapper does not render for a
+ *   second that changed nothing.
  * - The keys that will operate the camera and a line that names them (`aria-describedby`) arrive with
  *   V2-18; there is nothing to describe yet.
  *
@@ -29,12 +36,13 @@ interface TwinViewProps {
  * elements made by `TwinStage`, which keep their identity, so the canvas tree is not rendered again
  * at every incident event.
  */
-export function TwinView({ children }: TwinViewProps) {
+export function TwinView({ children, heat }: TwinViewProps) {
   const { data: plan } = useSitePlan();
   const { data: incidents } = useIncidents();
   const summary = twinSummary({
     siteName: plan?.name,
     activeIncidents: incidents ? activeIncidentCount(incidents) : null,
+    heat: heat === null ? null : { silentNames: heat.silentNames, domain: HEAT_DOMAIN },
   });
 
   return (

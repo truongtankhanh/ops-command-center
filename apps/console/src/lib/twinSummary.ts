@@ -20,6 +20,12 @@ interface TwinSummaryInput {
   siteName: string | undefined;
   /** `null` while the incident list has not loaded: the summary then says nothing about a count. */
   activeIncidents: number | null;
+  /**
+   * The heat overlay while it is shown (V2-17.3), `null` or absent otherwise: the names of the buildings with no
+   * reading and the scale's ends. The domain is handed in, not imported, because this module is main-chunk code (the
+   * breadcrumb reads `TWIN_VIEW_ID`) and `lib/twinHeat.ts` is not.
+   */
+  heat?: { silentNames: readonly string[]; domain: readonly [number, number] } | null;
 }
 
 /** Where the picture's content is as text, said once: the lists are the accessible twin (ADR-0020). */
@@ -31,15 +37,35 @@ function incidentsClause(count: number | null): string {
   return ` with ${count} active incident${count === 1 ? '' : 's'}`;
 }
 
+/** "A", "A and B", "A, B and C". */
+function listOf(names: readonly string[]): string {
+  if (names.length < 2) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+/**
+ * What the colours mean, said once (ADR-0020 "Settled in V2-17.3"): the ramp and its scale, and which buildings are
+ * faded because their sensor is silent. The number agrees with the count ("its" for one, "their" for several); the
+ * sentence about the faded ones is left out when every building reports.
+ */
+function heatSentence({ silentNames, domain }: NonNullable<TwinSummaryInput['heat']>): string {
+  const scale = `Campus coloured by indoor temperature per building, ${domain[0]} to ${domain[1]} °C; lighter is warmer.`;
+  if (silentNames.length === 0) return scale;
+  const possessive = silentNames.length === 1 ? 'its' : 'their';
+  return `${scale} ${listOf(silentNames)} faded: ${possessive} sensor is silent.`;
+}
+
 /**
  * The text a screen reader gets for the 3D view (the label of its focusable group): a WebGL canvas is
  * opaque to assistive technology, so the summary names the site and the active incidents and points to the
- * lists that hold everything the picture shows (brief § Accessibility).
+ * lists that hold everything the picture shows (brief § Accessibility). With the heat overlay shown it also says
+ * what the colours mean, between the incidents and the pointer (V2-17.3).
  *
  * An unknown count is left out and never read as 0, which would tell an operator the campus is quiet.
  * A site without a name reads as "the campus".
  */
-export function twinSummary({ siteName, activeIncidents }: TwinSummaryInput): string {
+export function twinSummary({ siteName, activeIncidents, heat = null }: TwinSummaryInput): string {
   const site = siteName?.trim() || 'the campus';
-  return `3D view of ${site}${incidentsClause(activeIncidents)}. ${POINTER}`;
+  const colours = heat === null ? '' : `${heatSentence(heat)} `;
+  return `3D view of ${site}${incidentsClause(activeIncidents)}. ${colours}${POINTER}`;
 }

@@ -3,6 +3,7 @@ import {
   buildingLine,
   crumbsOf,
   focusOf,
+  type HeatFade,
   isolationLine,
   isolationOf,
   levelOf,
@@ -375,6 +376,99 @@ describe('presenceMap (V2-15.8)', () => {
 
   it('is an empty map for no assets', () => {
     expect(presenceMap([], null).size).toBe(0);
+  });
+});
+
+describe('presenceOf with the heat overlay (V2-17.3)', () => {
+  const building = (zoneId: string) => ({ kind: 'building' as const, zoneId });
+  const asset = (
+    code: string,
+    zoneId: string,
+    placement: 'outdoor' | 'roof' | 'inside' = 'outdoor',
+  ) => ({ kind: 'asset' as const, code, zoneId, placement });
+  const heat: HeatFade = {
+    silent: new Set(['BLD-SEC']),
+    lifted: new Set(['GEN-01']),
+  };
+  const dataCenter: SceneFocus = { zoneId: 'BLD-DC', assetCode: null, inside: true };
+  const isolated: SceneFocus = { zoneId: 'BLD-DC', assetCode: 'CT-01', inside: true };
+
+  describe('at campus level', () => {
+    it('fades a building with no reading and draws the others as they are', () => {
+      expect(presenceOf(building('BLD-SEC'), null, heat)).toBe('faded');
+      expect(presenceOf(building('BLD-DC'), null, heat)).toBe('drawn');
+    });
+
+    it('fades the equipment that is not lifted', () => {
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), null, heat)).toBe('faded');
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), null, heat)).toBe('faded');
+    });
+
+    it('keeps the lifted equipment as it is: in alarm, or under the pointer', () => {
+      expect(presenceOf(asset('GEN-01', 'BLD-DC'), null, heat)).toBe('drawn');
+    });
+
+    it('still hides an inside asset, lifted or not: nothing of it is drawn at this level', () => {
+      const lifted: HeatFade = { silent: new Set(), lifted: new Set(['UPS-01']) };
+
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), null, heat)).toBe('hidden');
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), null, lifted)).toBe('hidden');
+    });
+
+    it('draws the camera markers as they are: they follow their own layer, not Heat', () => {
+      expect(presenceOf({ kind: 'marker' }, null, heat)).toBe('drawn');
+    });
+
+    it('lifts everything that has an open incident or is hovered, however many', () => {
+      const all: HeatFade = { silent: new Set(), lifted: new Set(['TR-01', 'CT-01']) };
+
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), null, all)).toBe('drawn');
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), null, all)).toBe('drawn');
+    });
+  });
+
+  describe('with a focus: the overlay changes nothing', () => {
+    it('keeps the building level as it was', () => {
+      expect(presenceOf(building('BLD-DC'), dataCenter, heat)).toBe('xray');
+      expect(presenceOf(building('BLD-SEC'), dataCenter, heat)).toBe('faded');
+      expect(presenceOf(building('BLD-LAB'), dataCenter, heat)).toBe('faded');
+      expect(presenceOf(asset('UPS-01', 'BLD-DC', 'inside'), dataCenter, heat)).toBe('drawn');
+      expect(presenceOf(asset('TR-01', 'UTL-PLANT'), dataCenter, heat)).toBe('faded');
+    });
+
+    it('keeps the asset level as it was', () => {
+      expect(presenceOf(asset('CT-01', 'BLD-DC', 'roof'), isolated, heat)).toBe('drawn');
+      expect(presenceOf(asset('GEN-01', 'BLD-DC'), isolated, heat)).toBe('faded');
+      expect(presenceOf(building('BLD-DC'), isolated, heat)).toBe('xray');
+    });
+  });
+
+  it('is the same as no overlay when there is none', () => {
+    expect(presenceOf(building('BLD-SEC'), null)).toBe('drawn');
+    expect(presenceOf(building('BLD-SEC'), null, null)).toBe('drawn');
+    expect(presenceOf(asset('TR-01', 'UTL-PLANT'), null, null)).toBe('drawn');
+  });
+
+  describe('presenceMap', () => {
+    const placed = [
+      { code: 'CT-01', zoneId: 'BLD-DC', placement: 'roof' as const },
+      { code: 'GEN-01', zoneId: 'BLD-DC', placement: 'outdoor' as const },
+      { code: 'UPS-01', zoneId: 'BLD-DC', placement: 'inside' as const },
+    ];
+
+    it('ghosts the equipment of the campus except what is lifted', () => {
+      expect(presenceMap(placed, null, heat)).toEqual(
+        new Map([
+          ['CT-01', 'faded'],
+          ['GEN-01', 'drawn'],
+          ['UPS-01', 'hidden'],
+        ]),
+      );
+    });
+
+    it('is the map it was without the overlay', () => {
+      expect(presenceMap(placed, null, null)).toEqual(presenceMap(placed, null));
+    });
   });
 });
 

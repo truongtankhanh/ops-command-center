@@ -1113,13 +1113,26 @@ describe('useConsole', () => {
   });
 
   describe('layers', () => {
-    it('opens with incidents, cameras, assets and inside all shown', () => {
+    it('opens with incidents, cameras, assets and inside shown, and heat off', () => {
       expect(useConsole.getInitialState().layers).toEqual({
         incidents: true,
         cameras: true,
         assets: true,
         inside: true,
+        heat: false,
       });
+    });
+
+    it('turns heat on and off like any other layer, and leaves the others as they were', () => {
+      state().toggleLayer('heat');
+      expect(state().layers.heat).toBe(true);
+      expect(state().layers.incidents).toBe(true);
+
+      state().toggleLayer('heat');
+      expect(state().layers.heat).toBe(false);
+
+      state().showLayer('heat');
+      expect(state().layers.heat).toBe(true);
     });
 
     it('hides and shows one layer and leaves the others', () => {
@@ -1129,6 +1142,7 @@ describe('useConsole', () => {
         cameras: false,
         assets: true,
         inside: true,
+        heat: false,
       });
 
       state().toggleLayer('cameras');
@@ -1137,6 +1151,7 @@ describe('useConsole', () => {
         cameras: true,
         assets: true,
         inside: true,
+        heat: false,
       });
     });
 
@@ -1178,6 +1193,7 @@ describe('useConsole', () => {
         cameras: false,
         assets: true,
         inside: true,
+        heat: false,
       });
     });
 
@@ -1200,6 +1216,7 @@ describe('useConsole', () => {
         cameras: true,
         assets: true,
         inside: true,
+        heat: false,
       });
     });
 
@@ -1227,6 +1244,7 @@ describe('useConsole', () => {
           cameras: true,
           assets: true,
           inside: false,
+          heat: false,
         });
 
         state().toggleLayer('inside');

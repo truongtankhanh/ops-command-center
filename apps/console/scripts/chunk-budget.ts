@@ -18,8 +18,11 @@
 import { readFileSync, rmSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
-/** ADR-0020: 350 KB gzipped, three.js included. Change it there first. */
-export const BUDGET_BYTES = 350_000;
+/**
+ * ADR-0020: 375 KB gzipped, three.js included (350 KB until V2-17.3, which raised it: "Amended in V2-17.3"). Change it
+ * there first.
+ */
+export const BUDGET_BYTES = 375_000;
 
 /** The manifest key of the twin's dynamic entry: the source path, relative to the console's root. */
 export const TWIN_SRC = 'src/twin/TwinStage.tsx';

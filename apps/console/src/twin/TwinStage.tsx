@@ -15,6 +15,7 @@ import { TwinTooltip } from './TwinTooltip';
 import styles from './TwinStage.module.css';
 import { TwinView } from './TwinView';
 import { useClassPoints } from './useClassPoints';
+import { useHeatScene } from './useHeatScene';
 import { useLevelCamera } from './useLevelCamera';
 import { useTwinFeed } from './useTwinFeed';
 import { useTwinBeacons } from './useTwinBeacons';
@@ -37,7 +38,8 @@ const NO_INVALIDATE = (): void => undefined;
  * bindings of V2-14.7), the incident beacons (`useTwinBeacons`, V2-16.3), the zone outlined on the ground (`useTwinHighlightZone`, V2-16.4) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
  * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
  * building summary (V2-15.9, at building level only), the hint while the report's location is picked (V2-16.7), the part callout (V2-15.10, at part level only), the camera
- * controls and the hover tooltip (V2-15.5). The canvas gets the same scene and the refs for what it keeps in step
+ * controls and the hover tooltip (V2-15.5). The heat overlay (`useHeatScene`, V2-17.3) is derived here too and handed to the canvas, the
+ * labels and the view's name; it is `null` until the layer is on at campus or building level. The canvas gets the same scene and the refs for what it keeps in step
  * from its frame loop without a React render: the labels' layer (`LabelProjector`, V2-12.7), the compass
  * (`CompassSync`, V2-12.10) and the part callout's leader (`LeaderProjector`, V2-15.10).
  *
@@ -64,6 +66,9 @@ export default function TwinStage() {
   const beacons = useTwinBeacons(scene);
   // The zone outlined on the ground (V2-16.4): the selected incident's, or the report's while the form is open.
   const highlightZoneId = useTwinHighlightZone(scene);
+  // The heat overlay (V2-17.3): `null` unless the layer is on at campus or building level; one object while nothing in it
+  // changes, so the canvas, the labels and the view's name do not render for a second that changed nothing.
+  const heat = useHeatScene(scene);
   // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
   // only exists once the canvas does, so the feed calls it through a ref the canvas fills (V2-14.8).
   const invalidateRef = useRef<() => void>(NO_INVALIDATE);
@@ -82,7 +87,7 @@ export default function TwinStage() {
   const compass = useRef<HTMLButtonElement>(null);
   return (
     <div className={styles.fill}>
-      <TwinView>
+      <TwinView heat={heat}>
         {/* The canvas is a picture of what the lists hold; `TwinView` names the group for it. */}
         <div className={styles.fill} aria-hidden="true">
           <TwinCanvas
@@ -91,6 +96,7 @@ export default function TwinStage() {
             beacons={beacons}
             highlightZoneId={highlightZoneId}
             feed={feed}
+            heat={heat}
             boxes={boxes}
             assetBoxes={assetFits}
             onInvalidate={(invalidate) => {
@@ -103,7 +109,7 @@ export default function TwinStage() {
             leaderStartRef={leaderStartRef}
           />
         </div>
-        <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} />
+        <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} heat={heat} />
       </TwinView>
       <DragHint />
       {/* While the report's location is picked (V2-16.7): where to click and how to stop. */}

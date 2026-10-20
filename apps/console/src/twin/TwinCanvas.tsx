@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import type { RefObject } from 'react';
 import type { Beacon } from '../lib/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
+import type { HeatScene } from '../lib/twinHeat';
 import type { LeaderStart } from '../lib/twinLeader';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
@@ -41,6 +42,8 @@ interface TwinCanvasProps {
   highlightZoneId: string | null;
   /** The telemetry feed the models' bound parts follow (`useTwinFeed`, the stage's); `null` without a telemetry client. */
   feed: TwinFeed | null;
+  /** The heat overlay (`useHeatScene`, the stage's: V2-17.3), or `null` while it is not shown. */
+  heat: HeatScene | null;
   /** The box of every building (`buildingBoxes`), for the rig's first view when the stage starts at building level (V2-15.6). */
   boxes: ReadonlyMap<string, FitBox>;
   /** The box of every asset (`assetBoxes`), for the rig's first view when the stage starts with an asset isolated (V2-15.7). */
@@ -87,6 +90,9 @@ interface TwinCanvasProps {
  * - `Buildings` takes the assets too: the building of a hovered `inside` asset is tinted (V2-15.5). With a building
  *   in focus (V2-15.8) it is see-through and the others are faded, and `Equipment` draws its `inside` equipment;
  *   all of it by the focus the store holds (`useSceneFocus`), with no prop and no rebuild of geometry.
+ * - The heat overlay (V2-17.3) is the stage's too (`useHeatScene`, which reads the queries and the telemetry): `Buildings`
+ *   colours the shells and fades the ones with no reading, `Equipment` ghosts the equipment that is not in alarm or
+ *   hovered. With `null` neither does anything, and in neither case is geometry rebuilt or a mesh added.
  * - `DrawCallLog` logs the draw calls of a frame in development builds only (V2-15.8, until the HUD of V2-19.1).
  * - `PickLayer` wraps what can be hit (the buildings and the equipment) and casts the pointer's ray, at most one
  *   a frame, against BVH-accelerated meshes (V2-15.3); it draws nothing.
@@ -114,6 +120,7 @@ export function TwinCanvas({
   beacons,
   highlightZoneId,
   feed,
+  heat,
   boxes,
   assetBoxes,
   onInvalidate,
@@ -142,12 +149,13 @@ export function TwinCanvas({
           <Lights />
           <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
           <PickLayer cameras={scene.cameras} frame={scene.frame}>
-            <Buildings zones={scene.zones} frame={scene.frame} assets={scene.assets} />
+            <Buildings zones={scene.zones} frame={scene.frame} assets={scene.assets} heat={heat} />
             <Equipment
               assets={scene.assets}
               classes={scene.classes}
               classPoints={classPoints}
               feed={feed}
+              heat={heat}
               leaderLineRef={leaderLineRef}
               leaderDotRef={leaderDotRef}
               leaderStartRef={leaderStartRef}

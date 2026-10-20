@@ -7,16 +7,21 @@ import type { ViewChoice } from './viewChoice';
  * in the 3D view, `Inside`. It sits beside the map's module and does not extend it: `MapLayerKey`,
  * `LayerVisibility` and `LAYER_GROUPS` are the 2D map's, which has no `Inside` to draw or hide, and widening them
  * would put a 3D layer in its toggle list and its layer groups. The store holds `SceneLayers`, a `LayerVisibility`
- * with the extra key, so the map keeps reading it as it was. V2-17.4 adds `heat` here the same way.
+ * with the extra keys, so the map keeps reading it as it was. `heat` (V2-17.3) is the same kind of key: the state
+ * is here and the overlay reads it, while the control for it joins `layersOf` with V2-17.4, so until then nothing
+ * offers it.
  *
  * Main-chunk code (`LayersControl` reads it): imports types and the map's key list only, never `src/twin/`.
  */
 
-/** What can be shown or hidden as one: the map's layers and the 3D view's `Inside`. */
-export type SceneLayerKey = MapLayerKey | 'inside';
+/** What can be shown or hidden as one: the map's layers and the 3D view's `Inside` and `Heat`. */
+export type SceneLayerKey = MapLayerKey | 'inside' | 'heat';
 
-/** Which layers are shown. A `LayerVisibility` plus `Inside`, so the 2D map can read it as it is. */
-export type SceneLayers = LayerVisibility & { inside: boolean };
+/**
+ * Which layers are shown. A `LayerVisibility` plus `Inside` and `Heat`, so the 2D map can read it as it is. `heat`
+ * is off by default (the overlay recolours the whole campus, so it is something an operator asks for).
+ */
+export type SceneLayers = LayerVisibility & { inside: boolean; heat: boolean };
 
 /**
  * The toggles the control offers in `view` at `level`, in order. The 2D map offers its three. The 3D stage has no
