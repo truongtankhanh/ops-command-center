@@ -133,7 +133,8 @@ export const clusterCountImageId = (count: number): string =>
 export const clusterSeverityImageId = (severity: IncidentSeverity): string =>
   `cluster-severity-${severity}`;
 
-const isPulsing = (incident: Incident) =>
+/** The one rule for which incident pulses: critical and still open. The 3D beacons read it too (V2-16.2). */
+export const isPulsing = (incident: Incident) =>
   incident.severity === 'critical' && incident.status === 'open';
 
 /**
