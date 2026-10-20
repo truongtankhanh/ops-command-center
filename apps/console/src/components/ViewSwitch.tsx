@@ -21,11 +21,16 @@ export const VIEW_SWITCH_3D_ID = 'view-switch-3d';
  * always rendered, so it is still read after the banner that says the same is dismissed. A press on
  * 3D does nothing then (the store refuses it as well).
  *
+ * The pressed-off option carries `V`'s hint while single-key shortcuts are on (V2-18.2): `V` flips the view, so it
+ * activates that one. The 3D option has none where 3D is unavailable (the key does nothing there). The key itself is
+ * `TwinShortcuts`'; this component only states it.
+ *
  * The same for every role: choosing a view is not an action on the site.
  */
 export function ViewSwitch() {
   const view = useConsole((s) => s.view);
   const setView = useConsole((s) => s.setView);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   const capability = useTwinCapability();
   const reasonId = useId();
 
@@ -35,6 +40,7 @@ export function ViewSwitch() {
         id={VIEW_SWITCH_3D_ID}
         variant="ghost"
         icon={Box}
+        shortcut={keysOn && capability.available && view === '2d' ? 'V' : undefined}
         className={styles.option}
         aria-pressed={view === '3d'}
         aria-disabled={capability.available ? undefined : true}
@@ -48,6 +54,7 @@ export function ViewSwitch() {
       <Button
         variant="ghost"
         icon={MapIcon}
+        shortcut={keysOn && view === '3d' ? 'V' : undefined}
         className={styles.option}
         aria-pressed={view === '2d'}
         onClick={() => setView('2d')}

@@ -38,7 +38,7 @@ const register = (commands: TwinCommands) => {
 
 afterEach(() => {
   cleanups.splice(0).forEach((unregister) => unregister());
-  // A `showAsset` request that no rig took is module state: a throwaway rig takes it, so no case sees the last one's.
+  // A `showAsset` or `flyToIncident` request that no rig took is module state: a throwaway rig takes it, so no case sees the last one's.
   registerTwinCommands(fakeCommands())();
   vi.useRealTimers();
 });
@@ -240,13 +240,108 @@ describe('a showAsset request with no rig', () => {
   it('is kept while a rig comes and goes, and not by the other commands', () => {
     twinCommands.showAsset('CT-01');
     twinCommands.home();
-    twinCommands.flyToIncident('incident-1');
+    twinCommands.zoomBy(2);
+    twinCommands.fit(BOX);
     const rig = fakeCommands();
 
     register(rig);
 
     expect(rig.home).not.toHaveBeenCalled();
-    expect(rig.flyToIncident).not.toHaveBeenCalled();
+    expect(rig.zoomBy).not.toHaveBeenCalled();
+    expect(rig.fit).not.toHaveBeenCalled();
     expect(rig.showAsset).toHaveBeenCalledWith('CT-01');
+  });
+});
+
+// V2-18.2: `F` from the 2D view switches the view and asks to fly to an incident's beacon in the same tick.
+describe('a flyToIncident request with no rig', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+
+  it('waits for a rig, and runs once when one registers', () => {
+    twinCommands.flyToIncident('incident-1');
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.flyToIncident).toHaveBeenCalledExactlyOnceWith('incident-1');
+    expect(rig.showAsset).not.toHaveBeenCalled();
+  });
+
+  it('is run once only: a rig registered again does not run it again', () => {
+    twinCommands.flyToIncident('incident-1');
+    const first = fakeCommands();
+    const unregister = register(first);
+    unregister();
+    const second = fakeCommands();
+
+    register(second);
+
+    expect(first.flyToIncident).toHaveBeenCalledTimes(1);
+    expect(second.flyToIncident).not.toHaveBeenCalled();
+  });
+
+  it('keeps only the latest request, whichever kind it is', () => {
+    twinCommands.showAsset('CT-01');
+    twinCommands.flyToIncident('incident-1');
+    const flyLast = fakeCommands();
+    register(flyLast)();
+
+    twinCommands.flyToIncident('incident-1');
+    twinCommands.showAsset('CT-01');
+    const showLast = fakeCommands();
+    register(showLast);
+
+    expect(flyLast.flyToIncident).toHaveBeenCalledExactlyOnceWith('incident-1');
+    expect(flyLast.showAsset).not.toHaveBeenCalled();
+    expect(showLast.showAsset).toHaveBeenCalledExactlyOnceWith('CT-01');
+    expect(showLast.flyToIncident).not.toHaveBeenCalled();
+  });
+
+  it('keeps only the latest incident', () => {
+    twinCommands.flyToIncident('incident-1');
+    twinCommands.flyToIncident('incident-2');
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.flyToIncident).toHaveBeenCalledExactlyOnceWith('incident-2');
+  });
+
+  it('is still run just inside the window, and dropped after it', () => {
+    twinCommands.flyToIncident('incident-1');
+    vi.advanceTimersByTime(PENDING_SHOW_MS);
+    const inside = fakeCommands();
+    register(inside)();
+
+    twinCommands.flyToIncident('incident-2');
+    vi.advanceTimersByTime(PENDING_SHOW_MS + 1);
+    const late = fakeCommands();
+    register(late);
+
+    expect(inside.flyToIncident).toHaveBeenCalledWith('incident-1');
+    expect(late.flyToIncident).not.toHaveBeenCalled();
+  });
+
+  it('is not queued when a rig is already registered: it runs at once', () => {
+    const rig = fakeCommands();
+    register(rig);
+
+    twinCommands.flyToIncident('incident-1');
+    const later = fakeCommands();
+    register(later);
+
+    expect(rig.flyToIncident).toHaveBeenCalledExactlyOnceWith('incident-1');
+    expect(later.flyToIncident).not.toHaveBeenCalled();
+  });
+
+  it('is not kept by the other commands, which do nothing without a rig', () => {
+    twinCommands.home();
+    twinCommands.fitAsset(BOX);
+    const rig = fakeCommands();
+
+    register(rig);
+
+    expect(rig.flyToIncident).not.toHaveBeenCalled();
+    expect(rig.home).not.toHaveBeenCalled();
   });
 });

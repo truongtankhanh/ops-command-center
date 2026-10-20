@@ -5,9 +5,9 @@ import type { FitBox, Pose, Vec3 } from './twinCamera';
  * (V2-16.5) and the incident sheet call to move the view, without any of them needing the canvas. The rig
  * (`twin/Rig.tsx`) registers its implementation when it mounts and unregisters it when it goes; with no rig
  * (the 2D view, a stage that has not loaded, one that lost its context) every command does nothing and
- * `current()` is `null`, so a caller never has to know whether a 3D view exists. The one exception is `showAsset`
- * (V2-16.6): its caller switches to the 3D view first, whose stage does not exist yet, so the request waits for the
- * rig (see `PENDING_SHOW_MS`).
+ * `current()` is `null`, so a caller never has to know whether a 3D view exists. The exceptions are `showAsset`
+ * (V2-16.6) and `flyToIncident` (V2-18.2): their callers (`Show in 3D`, the `F` key) switch to the 3D view first,
+ * whose stage does not exist yet, so the request waits for the rig (see `PENDING_SHOW_MS`).
  *
  * Plain module state, like the other `lib/` helpers: nothing renders from it, so it is not in the store.
  */
@@ -49,7 +49,8 @@ export interface TwinCommands {
    * own yaw and tilt, from the current distance but no farther than 120 m (`incidentView`), within the camera's
    * limits. The rig resolves the beacon from the ones the stage draws, because a caller outside the canvas has the
    * incident and not its place in the scene. An incident with no beacon (not drawn, or not known) does nothing;
-   * it is asked for after the selection, so the flight replaces the one a change of level starts.
+   * it is asked for after the selection, so the flight replaces the one a change of level starts. With no rig yet the
+   * request is kept for one (see `PENDING_SHOW_MS`): `F` from the 2D view switches the view and asks in the same tick.
    */
   flyToIncident(id: string): void;
   /**
@@ -66,28 +67,33 @@ export interface TwinCommands {
 let registered: TwinCommands | null = null;
 
 /**
- * How long a `showAsset` request waits for a rig, in ms. "Show in 3D" from the 2D map switches the view and asks for
- * the flight in the same tick, but the 3D stage is a lazy chunk, then a scene, then the rig: the request is kept and
- * run when the rig registers. It expires so that a switch that never finished (the chunk failed, the operator went
- * back to 2D) cannot fly a camera at some later, unrelated mount. `unverified`: long enough for a slow chunk.
+ * How long a request waits for a rig, in ms: a `showAsset` ("Show in 3D", V2-16.6) or a `flyToIncident` (`F` from the
+ * 2D view, V2-18.2). Both switch the view and ask for the flight in the same tick, but the 3D stage is a lazy chunk,
+ * then a scene, then the rig: the request is kept and run when the rig registers. It expires so that a switch that
+ * never finished (the chunk failed, the operator went back to 2D) cannot fly a camera at some later, unrelated
+ * mount. `unverified`: long enough for a slow chunk. The name is the first request's; it covers both.
  */
 export const PENDING_SHOW_MS = 15_000;
 
-/** The one `showAsset` request waiting for a rig: the latest wins. */
-let pendingShow: { code: string; at: number } | null = null;
+/** What a request without a rig asks for: frame an asset, or fly to an incident's beacon. */
+type PendingRequest = { kind: 'show'; code: string } | { kind: 'fly'; id: string };
+
+/** The one request waiting for a rig, of either kind: the latest wins. */
+let pending: (PendingRequest & { at: number }) | null = null;
 
 /**
- * Makes `commands` the implementation, and runs the `showAsset` request that was waiting for a rig if it has not
- * expired (it is dropped either way, so it runs once). Returns what to call to take it away again; that clears the
+ * Makes `commands` the implementation, and runs the request that was waiting for a rig if it has not expired (it is
+ * dropped either way, so it runs once). Returns what to call to take it away again; that clears the
  * registration **only if it is still this one**, so a rig that was replaced (a stage that remounted) does
  * not undo its successor when its own cleanup runs late.
  */
 export function registerTwinCommands(commands: TwinCommands): () => void {
   registered = commands;
-  const waiting = pendingShow;
-  pendingShow = null;
+  const waiting = pending;
+  pending = null;
   if (waiting !== null && Date.now() - waiting.at <= PENDING_SHOW_MS) {
-    commands.showAsset(waiting.code);
+    if (waiting.kind === 'show') commands.showAsset(waiting.code);
+    else commands.flyToIncident(waiting.id);
   }
   return () => {
     if (registered === commands) registered = null;
@@ -100,10 +106,13 @@ export const twinCommands: TwinCommands = {
   home: () => registered?.home(),
   fit: (box) => registered?.fit(box),
   fitAsset: (box) => registered?.fitAsset(box),
-  flyToIncident: (id) => registered?.flyToIncident(id),
+  flyToIncident: (id) => {
+    if (registered) registered.flyToIncident(id);
+    else pending = { kind: 'fly', id, at: Date.now() };
+  },
   showAsset: (code) => {
     if (registered) registered.showAsset(code);
-    else pendingShow = { code, at: Date.now() };
+    else pending = { kind: 'show', code, at: Date.now() };
   },
   zoomBy: (factor) => registered?.zoomBy(factor),
   rotateBy: (degrees) => registered?.rotateBy(degrees),

@@ -16,6 +16,7 @@ import { StageView } from './components/StageView';
 import { TelemetryBanner } from './components/TelemetryBanner';
 import { TelemetryWatchSet } from './components/TelemetryWatchSet';
 import { TwinFallbackBanner } from './components/TwinFallbackBanner';
+import { TwinShortcuts } from './components/TwinShortcuts';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
 import { useAttentionBadge } from './lib/useAttentionBadge';
@@ -84,6 +85,7 @@ export function App() {
       <AttentionSignals />
       <DisplayPreferences />
       <TelemetryWatchSet />
+      <TwinShortcuts />
       <Header />
       {/* One host for both contents: switching between them keeps the sheet's opener (UI-10). */}
       <SheetHost>

@@ -18,8 +18,9 @@ import { ViewOnlyNote } from './ViewOnlyNote';
  * "Focus" (V2-15.11) is the row's second control, for every role: it flies the 3D camera to the selected part, else
  * to the asset (`focusSelection`). It is drawn in the 3D view only and only for an asset the scene draws
  * (`focusAvailable`). It is a `flex: none` button after the report button, which keeps its place and its growth; a
- * viewer's note keeps its text and gains the button at its end (`ViewOnlyNote`'s `action`). It has no `F` hint yet:
- * the key arrives with V2-18.2.
+ * viewer's note keeps its text and gains the button at its end (`ViewOnlyNote`'s `action`). It carries the `F` hint
+ * while single-key shortcuts are on (V2-18.2): `F` with this asset selected flies to the selected part, else to the
+ * asset, which is what the button does (`TwinShortcuts` owns the key).
  *
  * Reporting from here does not link the incident to the asset (the request has no `assetId`), so
  * the form's title carries the asset's tag; the inspector will not list the new incident.
@@ -35,6 +36,7 @@ export function AssetFoot({
   const view = useConsole((s) => s.view);
   const focusZoneId = useConsole((s) => s.focusZoneId);
   const selectedPart = useConsole((s) => s.selectedPart);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
 
   const canFocus = focusAvailable({
     view,
@@ -47,6 +49,7 @@ export function AssetFoot({
     <Button
       variant="ghost"
       icon={Crosshair}
+      shortcut={keysOn ? 'F' : undefined}
       className={styles.focus}
       onClick={() => focusSelection(asset.code, useConsole.getState().selectedPart)}
     >

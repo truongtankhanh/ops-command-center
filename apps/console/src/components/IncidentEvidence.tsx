@@ -28,7 +28,7 @@ import {
   type RuleEvidence,
 } from '../lib/telemetryEvidence';
 import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
-import { twinCommands } from '../lib/twinCommands';
+import { showAssetIn3d } from '../lib/twinFlight';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { useTwinCapability } from '../lib/useTwinCapability';
 import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
@@ -305,8 +305,9 @@ function Card({
  * is the way in): it switches to the 3D view if needed and frames the asset, and **selects nothing**, so this sheet
  * stays open and the incident's beacon stays ringed (frame 10). The flight is asked for only once the view really is
  * 3D (`setView` does nothing where the twin cannot be drawn), and if the stage is still loading it waits for it
- * (`twinCommands.showAsset`). Its name puts the visible words first, like "Open asset", so a voice command matches
- * (WCAG 2.5.3).
+ * (`twinCommands.showAsset`, through `showAssetIn3d`, which `F` shares). It carries the `F` hint while single-key
+ * shortcuts are on: with this incident selected `F` frames the same asset (V2-18.2). Its name puts the visible words
+ * first, like "Open asset", so a voice command matches (WCAG 2.5.3).
  *
  * A `div` with a real button, not frame 10's button around a button, which is invalid markup and
  * two tab stops. The accessible name says which asset; it contains the visible words (WCAG 2.5.3).
@@ -323,6 +324,7 @@ function AssetLink({
 }) {
   const { data: zones } = useZones();
   const selectAsset = useConsole((s) => s.selectAsset);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   const canShow = useTwinCapability().available;
   const zone = zones?.find((candidate) => candidate.id === asset.zoneId);
   const { data: model } = useModelParts(asset.class.modelUrl);
@@ -334,11 +336,7 @@ function AssetLink({
     [points, model, evidenceKey],
   );
   const { heading, detail } = assetLinkLines(asset, zone, partLabel);
-  const showIn3d = () => {
-    const { view, setView } = useConsole.getState();
-    if (view !== '3d') setView('3d');
-    if (useConsole.getState().view === '3d') twinCommands.showAsset(asset.code);
-  };
+  const showIn3d = () => showAssetIn3d(asset.code);
   return (
     <div className={styles.assetLink}>
       <span className={styles.assetGlyph}>
@@ -357,7 +355,13 @@ function AssetLink({
           Open asset
         </Button>
         {canShow && (
-          <Button size="sm" icon={Box} aria-label={`Show in 3D ${asset.code}`} onClick={showIn3d}>
+          <Button
+            size="sm"
+            icon={Box}
+            shortcut={keysOn ? 'F' : undefined}
+            aria-label={`Show in 3D ${asset.code}`}
+            onClick={showIn3d}
+          >
             Show in 3D
           </Button>
         )}
