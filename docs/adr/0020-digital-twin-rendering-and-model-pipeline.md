@@ -666,6 +666,57 @@ their author, checked in CI, and served by nginx as immutable files.
       the selected one; a beacon behind a wall; nothing with the Incidents layer off; no pulse under reduced motion and no
       frame drawn at rest with no critical incident; a new type adding one form without a flicker; an `inside` incident on
       its roof; the twin chunk's gzip size after `pnpm build` (10,403 B were left).
+  - Settled in V2-16.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how a beacon is hovered and selected, and how the incident's zone is outlined on the ground.
+    - **A beacon is hit in screen space, on its disc.** It is a sprite, so it is not in the ray cast: the picker
+      projects its ground point, lifts it by the stem (`DISC_CENTRE_PX`, a fixed number of screen pixels) and tests a
+      circle of the disc's radius plus 4 px (`BEACON_HIT_PAD_PX`, `unverified`), which is 28 px across for the smallest
+      disc, above the 24 px of WCAG 2.5.8. The stem, the ground ellipse and the tag pill are not targets. A beacon
+      wins over everything else under the pixel (a part, an asset, a camera, a building: first in `KIND_ORDER`), as
+      "Settled in V2-15.1" says, and is in the scope only at campus and building level while the Incidents layer is on:
+      never with an asset isolated or a report location being picked.
+    - **Overlapping beacons: what is on top is what is hit.** The nearest disc centre wins, unless another is within 1 px
+      of it (`BEACON_TIE_PX`, `unverified`), and then the one painted later wins: the same number that paints
+      (`paintRank`: resolved, then low to critical, open above acknowledged, the selected one last, exported from
+      `lib/twinBeaconSprites.ts` and not copied). Beacons that share a point overlap exactly (the 3D view has no
+      clusters), so the tie is the common case.
+    - **The hit list is what is drawn.** `Beacons` moved inside `PickLayer` and registers, through the picker, the
+      beacons whose base sprite is placed (`beaconTargets`), as `Buildings` and `Equipment` register their meshes
+      ("Settled in V2-15.3"); one whose bitmap has not decoded is not a target. Where the paint order comes from is
+      `renderOrder`, not the place in the tree.
+    - **Click selects, as the map's.** `select(id)`, and a second click on the selected beacon deselects (the rule is the
+      pointer controller's, `selection().incidentId`, tested with synthetic events). It is not role-gated: a viewer, a
+      technician and an operator all select the same beacons, and the sheet's footer (the designed view-only note of
+      frame 11) and the API decide the rest; nothing in the pick or in `beaconsOf` takes a role. It is not gated by the
+      report form either (only `picking` blocks, as on the map), so a click on a beacon while the form is open closes
+      the form and discards the draft, as the map's click does; V2-16.7 owns the report form in 3D and may revisit it.
+      A beacon writes no hover (the cursor is `pointer`, the tooltip follows the pick).
+    - **The tooltip is the map's incident tooltip.** After 150 ms on one beacon (`TIP_DELAY_MS`) the body is `IncidentTip`
+      (title, severity, status, code, zone, age), shown only for an incident that is active or the selected one, as
+      `MapTooltip`'s rule, so one that has just left the picture says nothing. The existing rules hold: hidden on a
+      press, a wheel turn, leaving, a touch and `picking`; `aria-hidden`, never interactive.
+    - **The camera stays still.** Selecting, switching and closing an incident, from the feed, the search, the toast or a
+      beacon, moves no camera command, at campus or building level (a test now says so); the ring follows
+      `selectedIncidentId` whatever opened it (V2-16.3). "Fly to", `F` and "Show in 3D" are the only ways the camera
+      moves for an incident (V2-16.5, V2-16.6, V2-18).
+    - **The zone outline is a ribbon.** The selected incident's zone, or the report's while the form is open (the 2D
+      rule: the report's wins, and with no zone chosen yet nothing), is outlined on the ground in the accent. A WebGL line
+      is one pixel wide whatever is asked, so the outline is a mesh: the existing road ribbon over the zone's closed
+      ring (`lib/twinHighlight.ts`), `HIGHLIGHT_WIDTH_M` = 2 m (`unverified`, tuned by eye), so it **thins with distance**
+      instead of staying 2 px as the map's. One draw call, depth tested and not written, `renderOrder` between the
+      building faces and their outlines, so the outer half of a building's outline shows and a ring behind a wall is not
+      drawn through it. It does not follow the Incidents layer, as the map's does not (it marks a place, not an
+      incident).
+    - **Tests.** The pick rules (scope, `beaconHits`, `choose`), the pointer's click and hover, the paint rank and the
+      targets, the picker with real `three` objects, the tooltip, the zone rule and the ribbon, the stage's
+      `highlightZoneId` and the camera guard are tested without WebGL. `PickLayer`, `Pointer`, `Beacons` and
+      `ZoneHighlight` are R3F glue and are not, as before. The role-by-role, number-matching and axe cases are V2-16.8's.
+    - **By eye, still to do in a browser, and the chunk to measure:** hover a beacon (the tip after 150 ms, the pointer
+      cursor); click selects, rings it and opens the sheet; a second click deselects; the camera does not move; selecting
+      from the feed rings it; nothing is hit with the Incidents layer off; two beacons on one spot pick the more severe;
+      a beacon in front of a building or an asset wins; the outline of the selected incident's zone and of the report's,
+      its width at campus and at building distance, and against a building's walls; a technician on an out-of-scope
+      incident sees the view-only footer; the twin chunk's gzip size after `pnpm build` (7,417 B were left).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

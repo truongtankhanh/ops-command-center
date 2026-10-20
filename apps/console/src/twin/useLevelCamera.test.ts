@@ -242,6 +242,32 @@ describe('useLevelCamera', () => {
     expect(rig.home).not.toHaveBeenCalled();
   });
 
+  it('does not move the camera when an incident is selected, switched or closed, at any level (V2-16.4)', () => {
+    renderHook(() => useLevelCamera(BOXES, ASSETS));
+    const flights = () => [
+      rig.flyTo,
+      rig.home,
+      rig.fit,
+      rig.fitAsset,
+      rig.zoomBy,
+      rig.rotateBy,
+      rig.faceNorth,
+    ];
+
+    // Campus level: the feed, the search, the toast and a beacon all end in `select`.
+    store().select('a');
+    store().select('b');
+    store().select(null);
+    for (const command of flights()) expect(command).not.toHaveBeenCalled();
+
+    // Building level: the building stays in focus and the camera stays where it is.
+    store().focusBuilding('dc');
+    for (const command of flights()) command.mockClear();
+    store().select('a');
+    store().select(null);
+    for (const command of flights()) expect(command).not.toHaveBeenCalled();
+  });
+
   it('does not fly at mount, even when the stage starts at building level', () => {
     store().focusBuilding('dc');
 

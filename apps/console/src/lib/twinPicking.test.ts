@@ -1,4 +1,7 @@
 import {
+  BEACON_HIT_PAD_PX,
+  BEACON_TIE_PX,
+  beaconHits,
   boxTable,
   buildingTable,
   CAMERA_HIT_SIZE_PX,
@@ -11,6 +14,7 @@ import {
   type PickHit,
   type PickRef,
   type PickScope,
+  type ProjectedBeacon,
   scopeOf,
   type ScopeState,
   TIE_EPSILON_M,
@@ -19,8 +23,14 @@ import {
 const building = (id: string): PickRef => ({ kind: 'building', id });
 const asset = (id: string): PickRef => ({ kind: 'asset', id });
 const camera = (id: string): PickRef => ({ kind: 'camera', id });
+const beacon = (id: string): PickRef => ({ kind: 'beacon', id });
 const part = (id: string, assetCode: string): PickRef => ({ kind: 'part', id, assetCode });
 const hit = (ref: PickRef, distance: number): PickHit => ({ ref, distance });
+const beaconHit = (id: string, distance: number, rank: number): PickHit => ({
+  ref: beacon(id),
+  distance,
+  rank,
+});
 
 describe('entryAt', () => {
   const table = buildingTable([range('A', 0, 12), range('B', 12, 20), range('C', 32, 12)]);
@@ -92,24 +102,46 @@ describe('scopeOf', () => {
     selectedAssetCode: null,
     selectedPart: null,
     picking: false,
-    layers: { cameras: true },
+    layers: { cameras: true, incidents: true },
   };
   const kinds = (scope: PickScope) => [...scope.kinds].sort();
 
-  it('allows buildings, assets and cameras at campus level', () => {
+  it('allows buildings, assets, cameras and beacons at campus level', () => {
     const scope = scopeOf(base);
 
-    expect(kinds(scope)).toEqual(['asset', 'building', 'camera']);
+    expect(kinds(scope)).toEqual(['asset', 'beacon', 'building', 'camera']);
     expect(scope.assetCode).toBeNull();
   });
 
   it('leaves cameras out while the Cameras layer is off', () => {
-    expect(kinds(scopeOf({ ...base, layers: { cameras: false } }))).toEqual(['asset', 'building']);
+    expect(kinds(scopeOf({ ...base, layers: { cameras: false, incidents: true } }))).toEqual([
+      'asset',
+      'beacon',
+      'building',
+    ]);
+  });
+
+  it('leaves beacons out while the Incidents layer is off (V2-16.4)', () => {
+    expect(kinds(scopeOf({ ...base, layers: { cameras: true, incidents: false } }))).toEqual([
+      'asset',
+      'building',
+      'camera',
+    ]);
+    expect(
+      kinds(
+        scopeOf({
+          ...base,
+          focusZoneId: 'BLD-DC',
+          layers: { cameras: true, incidents: false },
+        }),
+      ),
+    ).toEqual(['asset', 'building', 'camera']);
   });
 
   it('keeps every building pickable at building level, so a click moves the focus', () => {
     expect(kinds(scopeOf({ ...base, focusZoneId: 'BLD-DC' }))).toEqual([
       'asset',
+      'beacon',
       'building',
       'camera',
     ]);
@@ -122,6 +154,13 @@ describe('scopeOf', () => {
     expect(scope.assetCode).toBe('CT-01');
   });
 
+  it('has no beacon at asset or part level, whatever the Incidents layer says (V2-16.1)', () => {
+    const isolated = { ...base, selectedAssetCode: 'CT-01' };
+
+    expect(scopeOf(isolated).kinds.has('beacon')).toBe(false);
+    expect(scopeOf({ ...isolated, selectedPart: 'FanBlade' }).kinds.has('beacon')).toBe(false);
+  });
+
   it('is the same at part level', () => {
     const scope = scopeOf({ ...base, selectedAssetCode: 'CT-01', selectedPart: 'FanBlade' });
 
@@ -132,6 +171,7 @@ describe('scopeOf', () => {
   it('allows nothing while the report location is picked', () => {
     expect(kinds(scopeOf({ ...base, picking: true }))).toEqual([]);
     expect(kinds(scopeOf({ ...base, picking: true, selectedAssetCode: 'CT-01' }))).toEqual([]);
+    expect(scopeOf({ ...base, picking: true }).kinds.has('beacon')).toBe(false);
   });
 
   describe('the building in focus (V2-15.8)', () => {
@@ -259,6 +299,63 @@ describe('choose', () => {
     expect(choose([hit(camera('far'), 9), hit(camera('near'), 3)], campus)).toEqual(camera('near'));
   });
 
+  describe('beacons (V2-16.4)', () => {
+    const withBeacons: PickScope = { ...campus, kinds: new Set([...campus.kinds, 'beacon']) };
+
+    it('wins over a part, an asset, a camera and a building under the same pixel', () => {
+      const under = [
+        hit(part('FanBlade', 'CT-01'), 1),
+        hit(asset('CT-01'), 1),
+        hit(camera('cam-1'), 2),
+        hit(building('BLD-DC'), 1),
+      ];
+
+      expect(choose([beaconHit('inc-1', 9, 1), ...under], withBeacons)).toEqual(beacon('inc-1'));
+      expect(choose([...under, beaconHit('inc-1', 900, 1)], withBeacons)).toEqual(beacon('inc-1'));
+    });
+
+    it('takes the beacon nearest the pointer among several', () => {
+      expect(choose([beaconHit('far', 9, 8), beaconHit('near', 3, 1)], withBeacons)).toEqual(
+        beacon('near'),
+      );
+    });
+
+    it('breaks a tie within the tolerance for the beacon painted on top', () => {
+      expect(
+        choose([beaconHit('low', 3, 1), beaconHit('critical', 3 + BEACON_TIE_PX, 7)], withBeacons),
+      ).toEqual(beacon('critical'));
+      expect(choose([beaconHit('critical', 3, 7), beaconHit('low', 3, 1)], withBeacons)).toEqual(
+        beacon('critical'),
+      );
+    });
+
+    it('does not break a tie for the rank beyond the tolerance: the nearer wins', () => {
+      expect(
+        choose(
+          [beaconHit('low', 3, 1), beaconHit('critical', 3 + BEACON_TIE_PX + 0.5, 7)],
+          withBeacons,
+        ),
+      ).toEqual(beacon('low'));
+    });
+
+    it('takes the nearer of two beacons of one rank inside the tolerance', () => {
+      expect(choose([beaconHit('b', 3.5, 4), beaconHit('a', 3, 4)], withBeacons)).toEqual(
+        beacon('a'),
+      );
+    });
+
+    it('is dropped when the scope has no beacon, and when an asset is isolated', () => {
+      expect(choose([beaconHit('inc-1', 2, 1), hit(asset('CT-01'), 1)], campus)).toEqual(
+        asset('CT-01'),
+      );
+      expect(choose([beaconHit('inc-1', 2, 1)], isolated('CT-01'))).toBeNull();
+    });
+
+    it('is the only target when nothing else is under the pointer', () => {
+      expect(choose([beaconHit('inc-1', 2, 1)], withBeacons)).toEqual(beacon('inc-1'));
+    });
+  });
+
   describe('with a building in focus (V2-15.8)', () => {
     it('goes through its see-through wall to the asset behind it', () => {
       expect(
@@ -334,6 +431,76 @@ describe('cameraHits', () => {
 
     expect(hits.map((found) => found.ref)).toEqual([camera('a'), camera('b')]);
     expect(hits[1]!.distance).toBeLessThan(hits[0]!.distance);
+  });
+});
+
+describe('beaconHits', () => {
+  const disc = (id: string, x: number, y: number, radius = 10, rank = 1): ProjectedBeacon => ({
+    id,
+    x,
+    y,
+    radius,
+    rank,
+  });
+
+  it('hits the beacon whose disc, grown by the pad, holds the point', () => {
+    const [found, ...rest] = beaconHits({ x: 100, y: 190 }, [disc('inc-1', 100, 200)]);
+
+    expect(rest).toEqual([]);
+    expect(found?.ref).toEqual(beacon('inc-1'));
+    expect(found?.distance).toBeCloseTo(10);
+  });
+
+  it('reaches radius + the pad from the centre in every direction, and no further', () => {
+    const reach = 10 + BEACON_HIT_PAD_PX;
+    const beacons = [disc('inc-1', 100, 200)];
+
+    expect(beaconHits({ x: 100 + reach, y: 200 }, beacons)).toHaveLength(1);
+    expect(beaconHits({ x: 100 - reach, y: 200 }, beacons)).toHaveLength(1);
+    expect(beaconHits({ x: 100, y: 200 - reach }, beacons)).toHaveLength(1);
+    expect(beaconHits({ x: 100, y: 200 + reach }, beacons)).toHaveLength(1);
+    expect(beaconHits({ x: 100 + reach + 0.5, y: 200 }, beacons)).toEqual([]);
+    // A diagonal point at the same Chebyshev distance is outside the circle.
+    expect(beaconHits({ x: 100 + reach, y: 200 + reach }, beacons)).toEqual([]);
+  });
+
+  it('is a target of at least 24 px across, for the smallest disc', () => {
+    expect(2 * (10 + BEACON_HIT_PAD_PX)).toBeGreaterThanOrEqual(24);
+  });
+
+  it('uses the radius of each disc', () => {
+    const beacons = [disc('small', 100, 200, 10), disc('big', 300, 200, 12)];
+
+    expect(beaconHits({ x: 100 + 14, y: 200 }, beacons).map(({ ref }) => ref)).toEqual([
+      beacon('small'),
+    ]);
+    expect(beaconHits({ x: 300 + 16, y: 200 }, beacons).map(({ ref }) => ref)).toEqual([
+      beacon('big'),
+    ]);
+    expect(beaconHits({ x: 300 + 17, y: 200 }, beacons)).toEqual([]);
+  });
+
+  it('does not hit at the foot of the stem: the target is on the disc, whose centre the caller gives', () => {
+    // The caller passes the disc's centre; a point 28 px below it (the foot) is far outside.
+    expect(beaconHits({ x: 100, y: 228 }, [disc('inc-1', 100, 200)])).toEqual([]);
+  });
+
+  it('carries each hit’s distance and rank, and hits overlapping discs both', () => {
+    const hits = beaconHits({ x: 104, y: 200 }, [
+      disc('a', 100, 200, 10, 3),
+      disc('b', 106, 200, 10, 5),
+    ]);
+
+    expect(hits.map(({ ref, rank }) => [ref, rank])).toEqual([
+      [beacon('a'), 3],
+      [beacon('b'), 5],
+    ]);
+    expect(hits[1]!.distance).toBeLessThan(hits[0]!.distance);
+  });
+
+  it('is empty away from every beacon and for no beacon', () => {
+    expect(beaconHits({ x: 0, y: 0 }, [disc('inc-1', 100, 200)])).toEqual([]);
+    expect(beaconHits({ x: 100, y: 200 }, [])).toEqual([]);
   });
 });
 

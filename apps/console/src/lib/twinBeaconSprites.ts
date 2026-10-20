@@ -81,7 +81,8 @@ export function beaconForm(beacon: Pick<Beacon, 'form' | 'severity' | 'type'>): 
 const hueOf = (beacon: Pick<Beacon, 'form' | 'severity'>): string =>
   beacon.form === 'resolved' ? mapColors.textTertiary : mapColors.severity[beacon.severity];
 
-const radiusOf = (beacon: Pick<Beacon, 'form' | 'severity' | 'type'>): number =>
+/** The radius of a beacon's disc in CSS pixels (the map's step by severity): the hit target is built on it (V2-16.4). */
+export const beaconRadius = (beacon: Pick<Beacon, 'form' | 'severity' | 'type'>): number =>
   discRadiusOf(beaconForm(beacon));
 
 const baseId = (beacon: Pick<Beacon, 'form' | 'severity' | 'type'>): string =>
@@ -107,7 +108,7 @@ export function beaconCells(beacons: readonly Beacon[]): CellSpec[] {
       hue: hueOf(beacon),
     });
     if (beacon.selected) {
-      const radius = radiusOf(beacon);
+      const radius = beaconRadius(beacon);
       const box = Math.ceil(2 * (radius + RING_GAP_PX + RING_STROKE_PX) + 2);
       need({ kind: 'ring', id: ringId(radius), width: box, height: box, radius });
     }
@@ -133,17 +134,19 @@ export function beaconCells(beacons: readonly Beacon[]): CellSpec[] {
   return [...cells.values()];
 }
 
+const SELECTED_LAST = 100;
+
 /**
  * How late a beacon is painted: resolved first (neutral, under everything), then by severity, an open one above an
  * acknowledged one of its severity (the map's `sortKey`); the selected one last of all. The order is only for
- * painting: `beaconsOf` orders its list by code.
+ * painting: `beaconsOf` orders its list by code. Picking uses the same number to settle beacons that overlap
+ * (V2-16.4), so that what is seen on top is what is hit.
  */
-const paintRank = (beacon: Beacon): number =>
-  beacon.form === 'resolved'
+export const paintRank = (beacon: Pick<Beacon, 'form' | 'severity' | 'selected'>): number =>
+  (beacon.selected ? SELECTED_LAST : 0) +
+  (beacon.form === 'resolved'
     ? 0
-    : 1 + severityRank(beacon.severity) * 2 + (beacon.form === 'filled' ? 1 : 0);
-
-const SELECTED_LAST = 100;
+    : 1 + severityRank(beacon.severity) * 2 + (beacon.form === 'filled' ? 1 : 0));
 
 /**
  * The sprites to draw, painted in order: for each beacon the pulse ring, the selection ring, the base and the
@@ -163,19 +166,14 @@ export function beaconPlacements(
   const heightOf = (id: string): number => (cells.get(id)?.height ?? 0) / ratio;
   const widthOf = (id: string): number => (cells.get(id)?.width ?? 0) / ratio;
 
-  const ordered = [...beacons].sort(
-    (a, b) =>
-      (a.selected ? SELECTED_LAST : 0) +
-      paintRank(a) -
-      ((b.selected ? SELECTED_LAST : 0) + paintRank(b)),
-  );
+  const ordered = [...beacons].sort((a, b) => paintRank(a) - paintRank(b));
 
   const placements: MarkerPlacement[] = [];
   for (const beacon of ordered) {
     const base = baseId(beacon);
     if (!cells.has(base)) continue;
     const { position } = beacon;
-    const radius = radiusOf(beacon);
+    const radius = beaconRadius(beacon);
     const around = (id: string, suffix: string, extra: Pick<MarkerPlacement, 'phase'> = {}) => {
       placements.push({
         id: `${beacon.id}:${suffix}`,
@@ -218,4 +216,33 @@ export function pulseRunning({
   beacons: readonly Pick<Beacon, 'pulse'>[];
 }): boolean {
   return shown && animate && !hidden && beacons.some((beacon) => beacon.pulse);
+}
+
+/** A beacon that can be hit (V2-16.4): where it stands, the radius of its disc and where it is painted. */
+export interface BeaconTarget {
+  id: string;
+  /** The ground point, as `Beacon.position`: the picker projects it and lifts the disc by `DISC_CENTRE_PX`. */
+  position: Beacon['position'];
+  radius: number;
+  rank: number;
+}
+
+/**
+ * The beacons that may be hit: the ones whose base sprite is among `placements`, i.e. the ones that are drawn. A
+ * beacon whose bitmap has not decoded yet is left out of the picture (`beaconPlacements`) and so out of the hit list
+ * (V2-15.3: the registry follows what is drawn).
+ */
+export function beaconTargets(
+  beacons: readonly Beacon[],
+  placements: readonly Pick<MarkerPlacement, 'id'>[],
+): BeaconTarget[] {
+  const drawn = new Set(placements.map(({ id }) => id));
+  return beacons
+    .filter((beacon) => drawn.has(`${beacon.id}:base`))
+    .map((beacon) => ({
+      id: beacon.id,
+      position: beacon.position,
+      radius: beaconRadius(beacon),
+      rank: paintRank(beacon),
+    }));
 }

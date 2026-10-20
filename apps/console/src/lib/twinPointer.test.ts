@@ -11,6 +11,7 @@ const asset = (id: string): PickRef => ({ kind: 'asset', id });
 const part = (id: string, assetCode: string): PickRef => ({ kind: 'part', id, assetCode });
 const building = (id: string): PickRef => ({ kind: 'building', id });
 const camera = (id: string): PickRef => ({ kind: 'camera', id });
+const beacon = (id: string): PickRef => ({ kind: 'beacon', id });
 
 interface Request {
   point: ScreenPoint;
@@ -21,7 +22,12 @@ interface Request {
 const attached: PointerHandle[] = [];
 
 function setup(
-  initial: { picking?: boolean; assetCode?: string | null; part?: string | null } = {},
+  initial: {
+    picking?: boolean;
+    assetCode?: string | null;
+    part?: string | null;
+    incidentId?: string | null;
+  } = {},
 ) {
   const element = document.createElement('div');
   element.getBoundingClientRect = () =>
@@ -37,7 +43,11 @@ function setup(
 
   const state = {
     picking: initial.picking ?? false,
-    selection: { assetCode: initial.assetCode ?? null, part: initial.part ?? null },
+    selection: {
+      assetCode: initial.assetCode ?? null,
+      part: initial.part ?? null,
+      incidentId: initial.incidentId ?? null,
+    },
   };
   const requests: Request[] = [];
   let listener: ((ref: PickRef | null) => void) | null = null;
@@ -49,6 +59,7 @@ function setup(
     selectPart: vi.fn(),
     focusBuilding: vi.fn(),
     openViewer: vi.fn(),
+    selectIncident: vi.fn(),
   };
   const deps = {
     requestPick: (point: ScreenPoint, done?: PickDone) => {
@@ -200,6 +211,25 @@ describe('a click', () => {
     expect(actions.openViewer).toHaveBeenCalledWith('cam-1');
   });
 
+  it('selects the incident of a beacon (V2-16.4)', () => {
+    const { actions, click } = setup();
+
+    click(100, 100, beacon('inc-1'));
+
+    expect(actions.selectIncident).toHaveBeenCalledWith('inc-1');
+    expect(actions.toggleAsset).not.toHaveBeenCalled();
+  });
+
+  it('deselects the incident when its beacon is clicked again, and selects another', () => {
+    const { actions, click } = setup({ incidentId: 'inc-1' });
+
+    click(100, 100, beacon('inc-1'));
+    expect(actions.selectIncident).toHaveBeenLastCalledWith(null);
+
+    click(100, 100, beacon('inc-2'));
+    expect(actions.selectIncident).toHaveBeenLastCalledWith('inc-2');
+  });
+
   it('does nothing on nothing', () => {
     const { actions, click } = setup();
 
@@ -303,6 +333,20 @@ describe('hover', () => {
     expect(actions.hoverPart).toHaveBeenLastCalledWith(null);
   });
 
+  it('writes no hover for a beacon, and takes back the asset hover it wrote (V2-16.4)', () => {
+    const { actions, move, answer } = setup();
+    move(100, 100);
+    answer(asset('CT-01'));
+    actions.hoverAsset.mockClear();
+
+    answer(beacon('inc-1'));
+
+    expect(actions.hoverAsset).toHaveBeenCalledTimes(1);
+    expect(actions.hoverAsset).toHaveBeenLastCalledWith(null);
+    expect(actions.hoverPart).not.toHaveBeenCalled();
+    expect(actions.selectIncident).not.toHaveBeenCalled();
+  });
+
   it('clears nothing it did not write', () => {
     const { actions, move, answer } = setup();
     move(100, 100);
@@ -393,6 +437,15 @@ describe('the cursor', () => {
     state.picking = true;
     handle.refresh();
     expect(element.style.cursor).toBe('crosshair');
+  });
+
+  it('is a pointer over a beacon', () => {
+    const { element, move, answer } = setup();
+    move(100, 100);
+
+    answer(beacon('inc-1'));
+
+    expect(element.style.cursor).toBe('pointer');
   });
 
   it('stays a pointer for a press that has not moved past the slop', () => {

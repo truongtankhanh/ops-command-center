@@ -1,8 +1,9 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
-import { AssetTip, CameraTip } from '../components/Tips';
+import { AssetTip, CameraTip, IncidentTip } from '../components/Tips';
 import { tipSurface } from '../components/tipSurface';
 import { placeLabel } from '../lib/assets';
+import { isActive } from '../lib/incidents';
 import { onPick } from '../lib/twinPicker';
 import type { PickRef, ScreenPoint } from '../lib/twinPicking';
 import { placeTip, TIP_DELAY_MS } from '../lib/twinTooltip';
@@ -10,14 +11,16 @@ import { useConsole } from '../store';
 import styles from './TwinTooltip.module.css';
 import { sheetInset } from './useSheetOffset';
 
-/** What a tooltip can be about: the two kinds of hover that have a body (V2-15.5). */
+/** What a tooltip can be about: the kinds of hover that have a body (V2-15.5; an incident's beacon, V2-16.4). */
 interface Target {
-  kind: 'asset' | 'camera';
+  kind: 'asset' | 'camera' | 'incident';
   id: string;
 }
 
-const targetOf = (ref: PickRef | null): Target | null =>
-  ref?.kind === 'asset' || ref?.kind === 'camera' ? { kind: ref.kind, id: ref.id } : null;
+const targetOf = (ref: PickRef | null): Target | null => {
+  if (ref?.kind === 'asset' || ref?.kind === 'camera') return { kind: ref.kind, id: ref.id };
+  return ref?.kind === 'beacon' ? { kind: 'incident', id: ref.id } : null;
+};
 
 const sameTarget = (a: Target | null, b: Target | null): boolean =>
   a === b || (a !== null && b !== null && a.kind === b.kind && a.id === b.id);
@@ -37,7 +40,9 @@ function place(tip: HTMLElement, layer: HTMLElement, pointer: ScreenPoint): void
  * The tooltip of the 3D view (V2-15.5, frame 02): what the pointer rests on, said with the bodies the 2D map's
  * tooltip uses (`components/Tips.tsx`), at the pointer. An asset gets its name, code, state word, two headline
  * readings and where a click leads (the place line, or "No 3D model · drawn as a box"); a camera gets its name
- * and code. A part, a building and nothing get none: the part's words are the callout's (V2-15.10) and the
+ * and code; an incident's beacon (V2-16.4) gets the map's incident tooltip (title, severity, status, code, zone and
+ * age), for an incident that is active or selected, as the map's, so one that has just left the picture says
+ * nothing. A part, a building and nothing get none: the part's words are the callout's (V2-15.10) and the
  * building's the summary's (V2-15.9). It follows the **pick** (`onPick`), not `hoveredAssetCode`: a row hovered
  * in the Assets tab tints the asset but there is no pointer on the canvas to put a tooltip beside.
  *
@@ -63,6 +68,7 @@ export function TwinTooltip() {
   const { data: cameras } = useCameras();
   const { data: incidents } = useIncidents();
   const { data: zones } = useZones();
+  const selectedIncidentId = useConsole((state) => state.selectedIncidentId);
 
   useEffect(() => {
     const element = layer.current;
@@ -150,6 +156,12 @@ export function TwinTooltip() {
   } else if (shown?.kind === 'camera') {
     const camera = cameras?.find((candidate) => candidate.id === shown.id);
     if (camera) body = <CameraTip camera={camera} zone={zoneOf(camera.zoneId)?.name} />;
+  } else if (shown?.kind === 'incident') {
+    const incident = incidents?.find((candidate) => candidate.id === shown.id);
+    // The map draws the active incidents and the selected one: anything else has left the picture.
+    if (incident && (isActive(incident) || incident.id === selectedIncidentId)) {
+      body = <IncidentTip incident={incident} zone={zoneOf(incident.zoneId)?.name} />;
+    }
   }
 
   return (

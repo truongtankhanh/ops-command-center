@@ -9,8 +9,10 @@ import {
   Vector3,
 } from 'three';
 import { acceleratedRaycast, MeshBVH } from 'three-mesh-bvh';
+import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twinBeaconSprites';
 import type { MarkerPlacement } from '../lib/twinMarkers';
 import {
+  beaconHits,
   cameraHits,
   choose,
   entryAt,
@@ -18,6 +20,7 @@ import {
   type PickRef,
   type PickScope,
   type PickTable,
+  type ProjectedBeacon,
   type ProjectedMarker,
   type ScreenPoint,
 } from '../lib/twinPicking';
@@ -29,6 +32,11 @@ import {
  * instances' own merged static meshes and bound parts, so what is hit is exactly what is seen. A geometry gets
  * a `three-mesh-bvh` bounds tree the first time a mesh using it is registered, and only once, because the
  * instances of a class share their geometry.
+ *
+ * The camera markers and the incident beacons (V2-16.4) are sprites, so they are not meshes in the list: each is
+ * projected with the camera of the pick and tested in screen space (`lib/twinPicking.ts`). The beacons it is given
+ * are the ones that are drawn (`Beacons` registers them), a beacon's target is its disc, which stands
+ * `DISC_CENTRE_PX` above its ground point on the screen.
  *
  * No React and no WebGL: `PickLayer` (the canvas) drives it, and it tests with real `three` objects. The
  * rules of which hit wins are `lib/twinPicking.ts`'s.
@@ -51,6 +59,8 @@ export interface Picker {
   addModel(assetCode: string, object: Object3D, partNames: ReadonlySet<string>): () => void;
   /** The camera markers to test in screen space, replacing the previous ones. */
   setCameras(markers: readonly Pick<MarkerPlacement, 'id' | 'position'>[]): void;
+  /** The beacons to test in screen space, replacing the previous ones (V2-16.4). */
+  setBeacons(beacons: readonly BeaconTarget[]): void;
   /** The winner under `point` (CSS pixels from the canvas's top-left corner), or `null`. */
   pick(point: ScreenPoint, view: PickView, scope: PickScope): PickRef | null;
   /** Forgets everything. */
@@ -78,6 +88,7 @@ export function createPicker(): Picker {
   let list: Mesh[] = [];
   let listStale = false;
   let cameras: readonly Pick<MarkerPlacement, 'id' | 'position'>[] = [];
+  let beacons: readonly BeaconTarget[] = [];
 
   // Reused by every pick: a pick allocates only its hit arrays.
   const raycaster = new Raycaster();
@@ -99,23 +110,42 @@ export function createPicker(): Picker {
     };
   };
 
-  /** The camera markers under the pointer, projected with the same camera the ray uses. */
-  const projectCameras = (view: PickView): ProjectedMarker[] => {
+  /**
+   * Where each ground point is on the screen, in CSS pixels from the canvas's top-left corner, projected with the
+   * same camera the ray uses. A point behind the camera is dropped: it would project, mirrored, onto the screen.
+   */
+  const project = <T extends { position: readonly [number, number, number] }>(
+    items: readonly T[],
+    view: PickView,
+  ): { item: T; x: number; y: number }[] => {
     toView.copy(view.camera.matrixWorld).invert();
-    const projected: ProjectedMarker[] = [];
-    for (const { id, position } of cameras) {
-      anchor.set(position[0], position[1], position[2]).applyMatrix4(toView);
-      // In front of the camera only: a point behind it would project, mirrored, onto the screen.
+    const projected: { item: T; x: number; y: number }[] = [];
+    for (const item of items) {
+      const [x, y, z] = item.position;
+      anchor.set(x, y, z).applyMatrix4(toView);
       if (anchor.z >= 0) continue;
       anchor.applyMatrix4(view.camera.projectionMatrix);
       projected.push({
-        id,
+        item,
         x: (anchor.x * 0.5 + 0.5) * view.width,
         y: (-anchor.y * 0.5 + 0.5) * view.height,
       });
     }
     return projected;
   };
+
+  const projectCameras = (view: PickView): ProjectedMarker[] =>
+    project(cameras, view).map(({ item, x, y }) => ({ id: item.id, x, y }));
+
+  /** The disc of each beacon: its ground point lifted by the stem, which is a fixed number of screen pixels. */
+  const projectBeacons = (view: PickView): ProjectedBeacon[] =>
+    project(beacons, view).map(({ item, x, y }) => ({
+      id: item.id,
+      x,
+      y: y - DISC_CENTRE_PX,
+      radius: item.radius,
+      rank: item.rank,
+    }));
 
   return {
     addTable(mesh, table) {
@@ -149,6 +179,10 @@ export function createPicker(): Picker {
       cameras = markers;
     },
 
+    setBeacons(targets) {
+      beacons = targets;
+    },
+
     pick(point, view, scope) {
       if (scope.kinds.size === 0 || view.width <= 0 || view.height <= 0) return null;
       view.camera.updateMatrixWorld();
@@ -174,6 +208,9 @@ export function createPicker(): Picker {
       if (scope.kinds.has('camera') && cameras.length > 0) {
         hits.push(...cameraHits(point, projectCameras(view)));
       }
+      if (scope.kinds.has('beacon') && beacons.length > 0) {
+        hits.push(...beaconHits(point, projectBeacons(view)));
+      }
       return choose(hits, scope);
     },
 
@@ -183,6 +220,7 @@ export function createPicker(): Picker {
       list = [];
       listStale = false;
       cameras = [];
+      beacons = [];
     },
   };
 }

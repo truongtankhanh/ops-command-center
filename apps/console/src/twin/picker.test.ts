@@ -15,6 +15,7 @@ import {
   type PickScope,
   type PickTable,
 } from '../lib/twinPicking';
+import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twinBeaconSprites';
 import { groupsForLooks, type SpanLook } from '../lib/twinGroups';
 import { applyGroups } from './applyGroups';
 import { createPicker, type PickView } from './picker';
@@ -517,5 +518,82 @@ describe('picker with the camera markers', () => {
     picker.setCameras([{ id: 'cam-1', position: [0, 200, 0] }]);
 
     expect(picker.pick(at(50, 40), view, campus)).not.toEqual({ kind: 'camera', id: 'cam-1' });
+  });
+});
+
+describe('picker with the incident beacons (V2-16.4)', () => {
+  const withBeacons: PickScope = { ...campus, kinds: new Set([...campus.kinds, 'beacon']) };
+  // A ground point at (x, 0, z) is about 1.07 px per metre from the centre, +z down; the disc stands
+  // `DISC_CENTRE_PX` above it on the screen, so a beacon at z = 26 m has its disc centre at the screen's centre.
+  const target = (id: string, x: number, z: number, rank = 1, radius = 10): BeaconTarget => ({
+    id,
+    position: [x, 0, z],
+    radius,
+    rank,
+  });
+  const beacon = (id: string): PickRef => ({ kind: 'beacon', id });
+  const discAtCentre = (id: string, rank = 1) => target(id, 0, 26, rank);
+
+  it('names a beacon whose disc is under the pointer, and not one whose foot is', () => {
+    const picker = createPicker();
+    picker.setBeacons([target('inc-1', 0, 0)]);
+
+    // The foot is the screen's centre; the disc is DISC_CENTRE_PX above it.
+    expect(picker.pick(at(50, 50 - DISC_CENTRE_PX), view, withBeacons)).toEqual(beacon('inc-1'));
+    expect(picker.pick(centre, view, withBeacons)).toBeNull();
+  });
+
+  it('reaches the disc’s radius plus the pad', () => {
+    const picker = createPicker();
+    picker.setBeacons([target('inc-1', 0, 0)]);
+    const discY = 50 - DISC_CENTRE_PX;
+
+    expect(picker.pick(at(50 + 13, discY), view, withBeacons)).toEqual(beacon('inc-1'));
+    expect(picker.pick(at(50 + 15, discY), view, withBeacons)).toBeNull();
+  });
+
+  it('puts a beacon before the asset and the building behind its disc', () => {
+    const { picker } = campusScene();
+    picker.setBeacons([discAtCentre('inc-1')]);
+
+    expect(picker.pick(centre, view, withBeacons)).toEqual(beacon('inc-1'));
+    // Without the beacon in scope, the same pixel is the cooling tower on the roof.
+    expect(picker.pick(centre, view, campus)).toEqual({ kind: 'asset', id: 'CT-01' });
+  });
+
+  it('takes the beacon painted on top when two stand on one spot', () => {
+    const picker = createPicker();
+    picker.setBeacons([
+      discAtCentre('low', 1),
+      discAtCentre('critical', 7),
+      discAtCentre('mid', 4),
+    ]);
+
+    expect(picker.pick(centre, view, withBeacons)).toEqual(beacon('critical'));
+  });
+
+  it('ignores the beacons while the scope has none', () => {
+    const picker = createPicker();
+    picker.setBeacons([discAtCentre('inc-1')]);
+
+    expect(picker.pick(centre, view, campus)).toBeNull();
+  });
+
+  it('ignores a beacon behind the camera', () => {
+    const picker = createPicker();
+    picker.setBeacons([{ id: 'inc-1', position: [0, 200, 0], radius: 10, rank: 1 }]);
+
+    expect(picker.pick(at(50, 50 - DISC_CENTRE_PX), view, withBeacons)).toBeNull();
+  });
+
+  it('replaces the previous beacons, and clear forgets them', () => {
+    const picker = createPicker();
+    picker.setBeacons([discAtCentre('old')]);
+    picker.setBeacons([discAtCentre('new')]);
+    expect(picker.pick(centre, view, withBeacons)).toEqual(beacon('new'));
+
+    picker.clear();
+
+    expect(picker.pick(centre, view, withBeacons)).toBeNull();
   });
 });

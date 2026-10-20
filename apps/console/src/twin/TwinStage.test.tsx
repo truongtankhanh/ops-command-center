@@ -494,6 +494,67 @@ describe('TwinStage', () => {
     });
   });
 
+  describe('the zone outline (V2-16.4)', () => {
+    const highlight = () => vi.mocked(TwinCanvas).mock.lastCall?.[0].highlightZoneId;
+    const library = () => zone(0, 'building', 'Library');
+    const outside = () => zone(1, 'outdoor', 'Central Lawn');
+    const incidents = () => [
+      incident({ id: 'a', code: 'INC-000001', zoneId: 'zone-0', position: library().center }),
+      incident({ id: 'b', code: 'INC-000002', zoneId: 'zone-1', position: outside().center }),
+    ];
+
+    beforeEach(() => {
+      vi.mocked(TwinCanvas).mockClear();
+      resetStore(useConsole);
+    });
+    afterEach(() => resetStore(useConsole));
+
+    it('hands the canvas no zone while nothing is selected', () => {
+      renderStage([library(), outside()], incidents());
+
+      expect(highlight()).toBeNull();
+    });
+
+    it('hands the canvas the zone of the selected incident, and follows the selection', () => {
+      useConsole.setState({ selectedIncidentId: 'a' });
+      renderStage([library(), outside()], incidents());
+      expect(highlight()).toBe('zone-0');
+
+      act(() => useConsole.getState().select('b'));
+      expect(highlight()).toBe('zone-1');
+
+      act(() => useConsole.getState().select(null));
+      expect(highlight()).toBeNull();
+    });
+
+    it('hands the canvas the report’s zone while the form is open', () => {
+      renderStage([library(), outside()], incidents());
+
+      act(() => useConsole.getState().startReport());
+      expect(highlight()).toBeNull();
+
+      act(() => useConsole.getState().setReportZone('zone-1'));
+      expect(highlight()).toBe('zone-1');
+
+      act(() => useConsole.getState().closeReport());
+      expect(highlight()).toBeNull();
+    });
+
+    it('prefers the report’s zone to the selected incident’s', () => {
+      useConsole.setState({ selectedIncidentId: 'a', reporting: true, reportZoneId: 'zone-1' });
+      renderStage([library(), outside()], incidents());
+
+      expect(highlight()).toBe('zone-1');
+    });
+
+    it('hands the canvas no zone for an incident the list does not hold', () => {
+      useConsole.setState({ selectedIncidentId: 'gone' });
+      renderStage([library(), outside()], incidents());
+
+      expect(highlight()).toBeNull();
+    });
+  });
+
   describe('for assistive technology', () => {
     afterEach(() => resetStore(useSession));
 

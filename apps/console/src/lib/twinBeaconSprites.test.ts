@@ -4,8 +4,11 @@ import {
   beaconCells,
   beaconForm,
   beaconPlacements,
+  beaconRadius,
+  beaconTargets,
   type CellSpec,
   DISC_CENTRE_PX,
+  paintRank,
   PILL,
   PULSE_RING,
   pulseRunning,
@@ -338,5 +341,100 @@ describe('pulseRunning', () => {
 
   it('runs when only one of several beacons pulses', () => {
     expect(pulseRunning({ ...base, beacons: [{ pulse: false }, { pulse: true }] })).toBe(true);
+  });
+});
+
+describe('paintRank', () => {
+  const rank = (over: Partial<Beacon>) => paintRank(beacon(over));
+
+  it('orders resolved, then low to critical, an open one above an acknowledged one of its severity', () => {
+    const order = [
+      rank({ form: 'resolved' }),
+      rank({ severity: 'low', form: 'hollow' }),
+      rank({ severity: 'low', form: 'filled' }),
+      rank({ severity: 'medium', form: 'hollow' }),
+      rank({ severity: 'medium', form: 'filled' }),
+      rank({ severity: 'high', form: 'hollow' }),
+      rank({ severity: 'high', form: 'filled' }),
+      rank({ severity: 'critical', form: 'hollow' }),
+      rank({ severity: 'critical', form: 'filled' }),
+    ];
+
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(new Set(order).size).toBe(order.length);
+  });
+
+  it('puts the selected beacon above every other, whatever its severity', () => {
+    expect(rank({ severity: 'low', form: 'resolved', selected: true })).toBeGreaterThan(
+      rank({ severity: 'critical', form: 'filled' }),
+    );
+  });
+
+  it('is the order the beacons are painted in', () => {
+    const beacons = [
+      beacon({ id: 'critical', severity: 'critical' }),
+      beacon({ id: 'low', severity: 'low', selected: true }),
+      beacon({ id: 'medium', severity: 'medium' }),
+    ];
+
+    const painted = place(beacons)
+      .filter(({ id }) => id.endsWith(':base'))
+      .map(({ id }) => id.replace(':base', ''));
+
+    expect(painted).toEqual(
+      [...beacons].sort((a, b) => paintRank(a) - paintRank(b)).map(({ id }) => id),
+    );
+  });
+});
+
+describe('beaconRadius', () => {
+  it('is the map’s step by severity, and the neutral 10 for a resolved beacon', () => {
+    expect(beaconRadius(beacon({ severity: 'low' }))).toBe(10);
+    expect(beaconRadius(beacon({ severity: 'medium' }))).toBe(10);
+    expect(beaconRadius(beacon({ severity: 'high' }))).toBe(11);
+    expect(beaconRadius(beacon({ severity: 'critical' }))).toBe(12);
+    expect(beaconRadius(beacon({ severity: 'critical', form: 'resolved' }))).toBe(10);
+  });
+});
+
+describe('beaconTargets', () => {
+  it('is a target for each beacon whose base sprite is drawn, with its radius and rank', () => {
+    const beacons = [TOWER, beacon({ id: 'b', severity: 'low', form: 'hollow' })];
+
+    const targets = beaconTargets(beacons, place(beacons));
+
+    expect(targets).toEqual([
+      { id: 'id-107', position: TOWER.position, radius: 12, rank: paintRank(TOWER) },
+      { id: 'b', position: [10, 0, -20], radius: 10, rank: paintRank(beacons[1]!) },
+    ]);
+  });
+
+  it('leaves out a beacon whose base is not drawn yet', () => {
+    const beacons = [TOWER, beacon()];
+    const placements = place(beacons, { without: ['beacon:incident-high-open-fire_alarm'] });
+
+    expect(beaconTargets(beacons, placements).map(({ id }) => id)).toEqual(['id-107']);
+  });
+
+  it('does not take an overlay for a beacon: a ring or a pill alone is no target', () => {
+    const overlays = place([beacon({ selected: true })]).filter(({ id }) => !id.endsWith(':base'));
+
+    expect(beaconTargets([beacon({ selected: true })], overlays)).toEqual([]);
+  });
+
+  it('ranks the selected beacon above the others', () => {
+    const beacons = [
+      beacon({ id: 'a', severity: 'critical' }),
+      beacon({ id: 'b', selected: true }),
+    ];
+
+    const [a, b] = beaconTargets(beacons, place(beacons));
+
+    expect(b!.rank).toBeGreaterThan(a!.rank);
+  });
+
+  it('is empty for no beacons and for nothing drawn', () => {
+    expect(beaconTargets([], [])).toEqual([]);
+    expect(beaconTargets([TOWER], [])).toEqual([]);
   });
 });

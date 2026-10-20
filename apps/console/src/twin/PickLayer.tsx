@@ -13,7 +13,7 @@ interface PickLayerProps {
   /** The cameras whose markers are hit in screen space; they are sprites, not meshes. */
   cameras: readonly Camera[];
   frame: Frame;
-  /** What registers meshes with the picker: the buildings and the equipment. */
+  /** What registers with the picker: the buildings and the equipment (meshes), and the beacons (V2-16.4, sprites). */
   children: ReactNode;
 }
 
