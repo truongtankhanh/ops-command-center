@@ -26,6 +26,10 @@ interface HudProbeProps {
  *   before. The figures cover the whole scene, ground and markers included.
  * - **Pixel ratio** (V2-19.3) is the renderer's own (`gl.getPixelRatio()`), not the controller's step: it is
  *   `min(device ratio, step)`, which is what the operator actually sees.
+ * - **Memory** (V2-19.6). `gl.info.memory`'s geometries and textures: what the GPU holds right now, read between frames
+ *   like the draw calls. A resource enters the count the first time it is drawn and stays until it is disposed, so
+ *   the evidence that a change of level releases what it made is a count that is **steady** over round trips after a
+ *   first one has uploaded what the views need; one that rises by a fixed amount per trip is a leak.
  * - **Budgets** (V2-19.4). The same two figures are judged against the brief's 150 draw calls and 250,000 triangles
  *   (`createBudgetGuard`): a figure over budget gets `data-over="true"` on its cell, and a figure that **becomes** over
  *   budget is warned about once on the console (`console.warn`), again only after it has been back within budget. It
@@ -56,13 +60,21 @@ export default function HudProbe({ listRef }: HudProbeProps) {
       const list = listRef.current;
       if (document.hidden || list === null) return;
       const { calls, triangles } = gl.info.render;
+      const { geometries, textures } = gl.info.memory;
       const stats = useTelemetryStore.getState().client?.getStats() ?? null;
       const pixelRatio = gl.getPixelRatio();
       const { over, fresh } = guard.check({ calls, triangles });
       if (fresh.length > 0) console.warn(formatBudgetWarning(fresh));
       const overIds = new Set<string>(over.map(({ figure }) => figure));
       const shown = formatHud(
-        sampler.read(performance.now(), { calls, triangles, stats, pixelRatio }),
+        sampler.read(performance.now(), {
+          calls,
+          triangles,
+          stats,
+          pixelRatio,
+          geometries,
+          textures,
+        }),
       );
       for (const { id } of HUD_ROWS) {
         const cell = list.querySelector<HTMLElement>(`[data-hud="${id}"]`);

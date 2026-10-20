@@ -158,6 +158,8 @@ describe('createPerfSampler', () => {
     triangles: 182_000,
     stats: null,
     pixelRatio: 1.25,
+    geometries: 31,
+    textures: 4,
     ...overrides,
   });
   const drawFrames = (sampler: ReturnType<typeof createPerfSampler>, count: number, dt = 16.7) => {
@@ -216,6 +218,16 @@ describe('createPerfSampler', () => {
   it('passes the pixel ratio through, and a missing one as null', () => {
     expect(createPerfSampler().read(0, input()).pixelRatio).toBe(1.25);
     expect(createPerfSampler().read(0, input({ pixelRatio: null })).pixelRatio).toBeNull();
+  });
+
+  it('passes what the GPU holds through, and a missing figure as null (V2-19.6)', () => {
+    const reading = createPerfSampler().read(0, input({ geometries: 12, textures: 0 }));
+
+    expect(reading.geometries).toBe(12);
+    expect(reading.textures).toBe(0);
+    const unknown = createPerfSampler().read(0, input({ geometries: null, textures: null }));
+    expect(unknown.geometries).toBeNull();
+    expect(unknown.textures).toBeNull();
   });
 
   it('passes the draw calls and triangles through', () => {

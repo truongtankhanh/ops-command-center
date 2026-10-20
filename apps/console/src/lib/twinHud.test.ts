@@ -9,11 +9,13 @@ const reading = (overrides: Partial<HudReading> = {}): HudReading => ({
   messagesPerSecond: 84,
   postsPerFrame: 1,
   pixelRatio: 1.25,
+  geometries: 37,
+  textures: 4,
   ...overrides,
 });
 
 describe('HUD_ROWS', () => {
-  it('lists frame 00’s six rows in its order and words, then the pixel ratio of V2-19.3', () => {
+  it('lists frame 00’s six rows in its order and words, then the pixel ratio of V2-19.3 and the memory of V2-19.6', () => {
     expect(HUD_ROWS.map(({ label }) => label)).toEqual([
       'FPS',
       'Frame (p95)',
@@ -22,6 +24,8 @@ describe('HUD_ROWS', () => {
       'Telemetry msgs/s',
       'Worker → main',
       'Pixel ratio',
+      'Geometries',
+      'Textures',
     ]);
   });
 
@@ -49,6 +53,8 @@ describe('formatHud', () => {
       messages: '84',
       posts: '1 / frame',
       ratio: '1.25',
+      geometries: '37',
+      textures: '4',
     });
   });
 
@@ -94,6 +100,18 @@ describe('formatHud', () => {
     expect(formatHud(reading({ pixelRatio })).ratio).toBe(expected);
   });
 
+  it.each([
+    [0, '0'],
+    [37, '37'],
+    [1204, '1204'],
+    [36.6, '37'],
+  ])('shows %d geometries and textures as %s, whole and not abbreviated', (count, expected) => {
+    const shown = formatHud(reading({ geometries: count, textures: count }));
+
+    expect(shown.geometries).toBe(expected);
+    expect(shown.textures).toBe(expected);
+  });
+
   it('shows a dash for what has no value', () => {
     const shown = formatHud(
       reading({
@@ -102,6 +120,8 @@ describe('formatHud', () => {
         messagesPerSecond: null,
         postsPerFrame: null,
         pixelRatio: null,
+        geometries: null,
+        textures: null,
       }),
     );
 
@@ -110,6 +130,8 @@ describe('formatHud', () => {
     expect(shown.messages).toBe(NO_VALUE);
     expect(shown.posts).toBe(NO_VALUE);
     expect(shown.ratio).toBe(NO_VALUE);
+    expect(shown.geometries).toBe(NO_VALUE);
+    expect(shown.textures).toBe(NO_VALUE);
   });
 
   it('shows a dash for NaN and for infinity, never the word', () => {
@@ -122,6 +144,8 @@ describe('formatHud', () => {
         messagesPerSecond: Number.POSITIVE_INFINITY,
         postsPerFrame: Number.NaN,
         pixelRatio: Number.NaN,
+        geometries: Number.NaN,
+        textures: Number.POSITIVE_INFINITY,
       }),
     );
 
