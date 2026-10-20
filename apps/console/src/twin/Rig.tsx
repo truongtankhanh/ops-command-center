@@ -29,6 +29,7 @@ import { levelOf } from '../lib/twinLevel';
 import { startAssetBoxOf, startBoxOf } from '../lib/twinLevelCamera';
 import { type Bounds, panBounds } from '../lib/twinScene';
 import { useConsole } from '../store';
+import { useReportFrameDemand } from './FrameDemandContext';
 import { sheetInset, sheetInsetOpen, useSheetOffset } from './useSheetOffset';
 
 const { ACTION } = CameraControlsImpl;
@@ -133,11 +134,21 @@ interface RigProps {
  * - **The keys** (V2-18.3) reach the camera through `rotateBy`, `tiltBy`, `panBy` and `zoomBy`: relative, smoothed moves that
  *   take the camera back from a fly-to and inherit the limits above (`unverified`: the feel of the steps, by eye).
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
- *   and a resting stage draws nothing.
+ *   and a resting stage draws nothing. Frame demand: the library invalidates on its own `update` event; the tween
+ *   reports `demand.flying` while it runs (`FrameDriver` asks for the frames) and the command API calls `invalidate()`
+ *   once when a flight begins or a reduced-motion jump lands.
  */
 export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   const controls = useRef<CameraControls>(null);
   const flight = useRef<Flight | null>(null);
+  const reportDemand = useReportFrameDemand();
+  // A loop that goes away must not leave its flag up: nothing would ever write it down, and the driver would draw forever.
+  useEffect(
+    () => () => {
+      reportDemand('flying', false);
+    },
+    [reportDemand],
+  );
   const reducedMotion = usePrefersReducedMotion();
   const reduced = useRef(reducedMotion);
   const initialBounds = useRef(bounds);
@@ -333,16 +344,21 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   }, [bounds, pan, get]);
 
   // The fly-to. Priority −2: before the controls' own update (−1), so the pose set here is applied in this frame.
-  useFrame((state) => {
+  useFrame(() => {
     const rig = controls.current;
     const current = flight.current;
-    if (!rig || !current) return;
+    if (!rig || !current) {
+      reportDemand('flying', false);
+      return;
+    }
     const progress = flyProgress(performance.now() - current.startedAt, FLY_MS);
     placeCamera(rig, flyPath(current.from, current.to, progress));
     if (progress >= 1) {
       applyLimits(rig, current.limits);
       flight.current = null;
-    } else state.invalidate();
+    }
+    // `FrameDriver` asks for the next frame while the flight lasts; this runs below its priority (−2 < 0).
+    reportDemand('flying', progress < 1);
   }, -2);
 
   return (

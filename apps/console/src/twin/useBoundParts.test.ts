@@ -1,10 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
+import { createElement, type ReactNode } from 'react';
 import { Group, type Object3D, Quaternion, Vector3 } from 'three';
 import { initialTelemetryState, type SocketState } from '../lib/telemetryState';
 import type { Axis, Binding, BindingPoint, Motion } from '../lib/twinBindings';
 import { integrateAngle, MAX_FRAME_DT_S, spinSpeed } from '../lib/twinMotion';
+import { createFrameDemand, type FrameReport, needsFrame } from '../lib/twinPerf';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import type { AssetFlags, TwinFeed } from '../realtime/twinFeed';
+import { FrameDemandContext } from './FrameDemandContext';
 import { type BoundInstance, useBoundParts } from './useBoundParts';
 
 /*
@@ -13,11 +16,16 @@ import { type BoundInstance, useBoundParts } from './useBoundParts';
  */
 const frame = vi.hoisted(() => ({
   callback: null as null | ((state: { invalidate: () => void }, delta: number) => void),
+  priority: undefined as number | undefined,
 }));
 
 vi.mock('@react-three/fiber', () => ({
-  useFrame: (callback: (state: { invalidate: () => void }, delta: number) => void) => {
+  useFrame: (
+    callback: (state: { invalidate: () => void }, delta: number) => void,
+    priority?: number,
+  ) => {
     frame.callback = callback;
+    frame.priority = priority;
   },
 }));
 
@@ -111,11 +119,23 @@ function createRig(keys: readonly string[]) {
   };
 }
 
+/**
+ * `invalidate` is what `FrameDriver` does at the end of a frame when a loop asked (V2-19.2): the loop under test reports
+ * through the frame demand and never asks R3F itself, so the state it is given has its own `invalidate`, which must stay
+ * unused (`hookInvalidate`).
+ */
 const invalidate = vi.fn();
+const hookInvalidate = vi.fn();
+let demand = createFrameDemand();
+/** What `FrameDriver` provides: it writes the field of the demand the case reads. */
+const report: FrameReport = (field, asking) => {
+  demand[field] = asking;
+};
 
-/** One frame of the loop. */
+/** One frame of the loop, then the driver's decision. */
 function tick(delta = FRAME_S) {
-  frame.callback!({ invalidate }, delta);
+  frame.callback!({ invalidate: hookInvalidate }, delta);
+  if (needsFrame(demand)) invalidate();
 }
 
 function ticks(count: number, delta = FRAME_S) {
@@ -127,6 +147,8 @@ function mount(feed: TwinFeed | null, instances: readonly BoundInstance[]) {
     (props: { instances: readonly BoundInstance[] }) => useBoundParts(feed, props.instances),
     {
       initialProps: { instances },
+      wrapper: ({ children }: { children: ReactNode }) =>
+        createElement(FrameDemandContext.Provider, { value: report }, children),
     },
   );
 }
@@ -141,7 +163,10 @@ const setSocket = (socket: SocketState) =>
 describe('useBoundParts', () => {
   beforeEach(() => {
     frame.callback = null;
+    frame.priority = undefined;
     invalidate.mockClear();
+    hookInvalidate.mockClear();
+    demand = createFrameDemand();
   });
 
   afterEach(() => {
@@ -607,6 +632,70 @@ describe('useBoundParts', () => {
 
       expect(angleAbout(node(one, 'Valve'), 'x')).toBeCloseTo(Math.PI / 2, 9);
       expect(angleAbout(node(two, 'Valve'), 'x')).toBeCloseTo(0, 9);
+    });
+  });
+
+  describe('frame demand (V2-19.2)', () => {
+    it('runs below priority 0, so FrameDriver reads its flag in the same frame', () => {
+      mount(createRig(['CT-01|fanSpeedRpm']).feed, [instanceOf('CT-01', TOWER)]);
+
+      expect(frame.priority).toBeLessThan(0);
+    });
+
+    it('reports bound while a spin lasts, and not once it has stopped', () => {
+      const tower = instanceOf('CT-01', TOWER);
+      const { set, feed } = createRig(['CT-01|fanSpeedRpm']);
+      mount(feed, [tower]);
+      set('CT-01|fanSpeedRpm', 900);
+
+      tick();
+      expect(demand.bound).toBe(true);
+
+      set('CT-01|fanSpeedRpm', 0);
+      ticks(120);
+      expect(demand.bound).toBe(false);
+    });
+
+    it('never asks R3F for a frame itself', () => {
+      const tower = instanceOf('CT-01', TOWER);
+      const { set, feed } = createRig(['CT-01|fanSpeedRpm']);
+      mount(feed, [tower]);
+      set('CT-01|fanSpeedRpm', 900);
+
+      ticks(30);
+
+      expect(hookInvalidate).not.toHaveBeenCalled();
+    });
+
+    it('reports nothing with no feed, and puts a flag that was up back down', () => {
+      mount(null, [instanceOf('CT-01', TOWER)]);
+      demand.bound = true;
+
+      tick();
+
+      expect(demand.bound).toBe(false);
+    });
+
+    it('reports nothing with no parts to move', () => {
+      mount(createRig([]).feed, []);
+      demand.bound = true;
+
+      tick();
+
+      expect(demand.bound).toBe(false);
+    });
+
+    it('puts its flag down when it goes away, so the driver does not draw for a loop that is gone', () => {
+      const tower = instanceOf('CT-01', TOWER);
+      const { set, feed } = createRig(['CT-01|fanSpeedRpm']);
+      const { unmount } = mount(feed, [tower]);
+      set('CT-01|fanSpeedRpm', 900);
+      tick();
+      expect(demand.bound).toBe(true);
+
+      unmount();
+
+      expect(demand.bound).toBe(false);
     });
   });
 });

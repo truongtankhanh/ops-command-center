@@ -67,6 +67,10 @@ const NO_CODES: ReadonlySet<string> = new Set();
  *   of `--tw-hub`. With `null` the shells are as they were.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
+ *
+ * Frame demand: one-shot, twice. A layout effect asks for one frame when the shell, the focus or the fade changes,
+ *   and another when the shell or the heat colours change; the hover tint is painted in a frame that the hover
+ *   (`useHoverRef`) asked for.
  */
 export function Buildings({ zones, frame, assets, heat }: BuildingsProps) {
   const picker = usePicker();

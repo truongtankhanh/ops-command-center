@@ -89,6 +89,8 @@ function readyClasses(
  * It returns the classes that are ready, by class code. A class that is loading, or failed, is absent: its
  * assets keep their boxes (`Equipment`). Nothing here touches the telemetry feed: V2-14.8 mounts it and
  * applies the bindings this returns.
+ *
+ * Frame demand: one-shot. One frame is asked for each time a class becomes ready or fails; nothing keeps it asking.
  */
 export function useClassModels(
   classes: readonly ModelClass[],

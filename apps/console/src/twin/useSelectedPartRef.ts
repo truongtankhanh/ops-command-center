@@ -13,6 +13,9 @@ import { useConsole } from '../store';
  *
  * A hook of its own, and not a second value of `useHoverRef`, so the hover's readers (`Buildings`, `Equipment`) do not
  * depend on the selection and each ref has one reason to change.
+ *
+ * Frame demand: one-shot. One frame per change of the selected asset or part (and one on mount if a selection was
+ *   already there).
  */
 export function useSelectedPartRef(): RefObject<SelectedPart> {
   const invalidate = useThree((state) => state.invalidate);

@@ -71,6 +71,9 @@ interface AssetBoxesProps {
  *   draws no outline (`useBoxLooks`).
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
+ *
+ * Frame demand: one-shot. An effect asks for one frame when the layers or the presences change; nothing keeps it
+ *   asking. Its looks are painted in frames somebody else asked for (`useBoxLooks`, `useAssetLooks.ts`).
  */
 export function AssetBoxes({ assets, feed, hover, presences }: AssetBoxesProps) {
   const picker = usePicker();

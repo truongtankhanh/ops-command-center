@@ -199,9 +199,12 @@ describe('twin feed', () => {
     vi.setSystemTime(new Date(NOW));
     mono = MONO;
     vi.spyOn(performance, 'now').mockImplementation(() => mono);
+    // The feed asks for no frame in a hidden tab (V2-19.2): every case starts in view, whatever jsdom says.
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
   });
 
   afterEach(() => {
+    Reflect.deleteProperty(document, 'hidden');
     for (const feed of feeds.splice(0)) feed.dispose();
     vi.useRealTimers();
     vi.restoreAllMocks();
@@ -534,6 +537,106 @@ describe('twin feed', () => {
       feed.setBindings('air_handler', [binding('supplyAirTempC')]);
 
       expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('hidden tab (V2-19.2)', () => {
+    const setHidden = (hidden: boolean) =>
+      Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    const visibilityChange = () => document.dispatchEvent(new Event('visibilitychange'));
+
+    it('does no work on the one-second tick while hidden: a flag that would turn stale stays as it was', async () => {
+      const { feed, setState, invalidate } = setup();
+      setState(LIVE);
+      const fresh = feed.read().flags('CT-01');
+      invalidate.mockClear();
+
+      setHidden(true);
+      await tick(10_000);
+
+      expect(feed.read().flags('CT-01')).toBe(fresh);
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('catches the flags up when the tab is back, and asks for one frame', async () => {
+      const { feed, setState, invalidate } = setup();
+      setState(LIVE);
+      invalidate.mockClear();
+      setHidden(true);
+      await tick(10_000);
+
+      setHidden(false);
+      visibilityChange();
+
+      expect(feed.read().flags('CT-01').stale).toBe(true);
+      expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('asks for one frame on return even when nothing changed, and keeps the flags it had', () => {
+      const { feed, setState, invalidate } = setup();
+      setState(LIVE);
+      const fresh = feed.read().flags('CT-01');
+      invalidate.mockClear();
+
+      setHidden(true);
+      setHidden(false);
+      visibilityChange();
+
+      expect(feed.read().flags('CT-01')).toBe(fresh);
+      expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps its state current while hidden and asks for no frame: a buffer, then a flag', () => {
+      const { feed, setState, emitTargets, invalidate } = setup();
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm')]);
+      invalidate.mockClear();
+      setHidden(true);
+
+      const sent = emitTargets(1, 1420, 900);
+      setState(LIVE);
+
+      expect(feed.read().targets).toBe(sent.buffer);
+      expect(feed.read().flags('CT-01')).toEqual({
+        stale: false,
+        online: true,
+        alarm: null,
+        ruleKey: null,
+      });
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('does nothing for a visibility event while the tab is still hidden', () => {
+      const { invalidate } = setup();
+      invalidate.mockClear();
+      setHidden(true);
+
+      visibilityChange();
+
+      expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('draws as before while the tab is in view: a buffer asks for one frame', () => {
+      const { feed, emitTargets, invalidate } = setup();
+      feed.setBindings('cooling_tower', [binding('fanSpeedRpm')]);
+      invalidate.mockClear();
+
+      emitTargets(1, 1420, 900);
+
+      expect(invalidate).toHaveBeenCalledTimes(1);
+    });
+
+    it('removes its visibility listener on dispose, once, and a later event asks for nothing', () => {
+      const remove = vi.spyOn(document, 'removeEventListener');
+      const { feed, invalidate } = setup();
+      invalidate.mockClear();
+
+      feed.dispose();
+      feed.dispose();
+      visibilityChange();
+
+      const removed = remove.mock.calls.filter(([type]) => type === 'visibilitychange');
+      expect(removed).toHaveLength(1);
+      expect(invalidate).not.toHaveBeenCalled();
     });
   });
 

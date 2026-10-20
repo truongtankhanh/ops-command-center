@@ -13,6 +13,7 @@ import { CameraMarkers } from './CameraMarkers';
 import { CompassSync } from './CompassSync';
 import { ContextGuard } from './ContextGuard';
 import { Equipment } from './Equipment';
+import { FrameDriver } from './FrameDriver';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
@@ -134,7 +135,10 @@ interface TwinCanvasProps {
  * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
  *   that touches them, placing them from the camera on each drawn frame.
  * - `frameloop="demand"`: a frame is drawn only when something asks for one (a moving part, an
- *   easing value, the camera), so an idle scene costs nothing.
+ *   easing value, the camera), so an idle scene costs nothing. `FrameDriver` (V2-19.2) is the one place that keeps it
+ *   going for the loops that sustain themselves (the bound parts and their spin, the fly-to, the beacon pulse); every
+ *   other `invalidate` here is a one-shot after a change. Frame demand: `onCreated` hands the stage the raw `invalidate`
+ *   (the stage's wrapper is a no-op while the tab is hidden); `FirstFrameMark` and `HudProbe` ask for none.
  * - `dpr={[1, 1.5]}`: the pixel ratio never exceeds 1.5 (brief § Performance); V2-19.3 steps it down.
  * - `flat`: no tone mapping, so the colours on screen are the token colours.
  *
@@ -176,7 +180,7 @@ export function TwinCanvas({
         </Suspense>
       )}
       {scene && (
-        <>
+        <FrameDriver>
           <FirstFrameMark />
           <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} beacons={beacons} />
           <Lights />
@@ -201,7 +205,7 @@ export function TwinCanvas({
           <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
           <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
           <CompassSync compassRef={compassRef} />
-        </>
+        </FrameDriver>
       )}
     </Canvas>
   );

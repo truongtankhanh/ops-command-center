@@ -1,12 +1,15 @@
 import {
   clearTwinMarks,
   createChangeTracker,
+  createFrameDemand,
   createFrameWindow,
   createPerfSampler,
   debugTwinRequested,
+  type FrameDemand,
   type HudInput,
   markTwin,
   MAX_FRAME_GAP_MS,
+  needsFrame,
   percentile,
 } from './twinPerf';
 
@@ -366,5 +369,57 @@ describe('markTwin', () => {
     });
     expect(() => markTwin('twin:first-frame')).not.toThrow();
     expect(() => clearTwinMarks()).not.toThrow();
+  });
+});
+
+describe('needsFrame', () => {
+  const asking = (field: keyof FrameDemand): FrameDemand => ({
+    ...createFrameDemand(),
+    [field]: true,
+  });
+
+  it('asks for nothing when no loop asks', () => {
+    expect(needsFrame(createFrameDemand())).toBe(false);
+  });
+
+  it.each<[string, keyof FrameDemand]>([
+    ['a bound value that has not settled, or a spin', 'bound'],
+    ['a fly-to', 'flying'],
+    ['a pulsing beacon', 'pulsing'],
+  ])('asks for a frame for %s', (_, field) => {
+    expect(needsFrame(asking(field))).toBe(true);
+  });
+
+  it('asks while several loops ask', () => {
+    expect(needsFrame({ bound: true, flying: true, pulsing: true })).toBe(true);
+  });
+
+  it.each<keyof FrameDemand>(['bound', 'flying', 'pulsing'])(
+    'asks for nothing in a hidden tab, even for %s',
+    (field) => {
+      expect(needsFrame(asking(field), { hidden: true })).toBe(false);
+    },
+  );
+
+  it('asks for nothing in a hidden tab when every loop asks', () => {
+    expect(needsFrame({ bound: true, flying: true, pulsing: true }, { hidden: true })).toBe(false);
+  });
+
+  it('is not hidden by default and when told it is in view', () => {
+    expect(needsFrame(asking('bound'), {})).toBe(true);
+    expect(needsFrame(asking('bound'), { hidden: false })).toBe(true);
+  });
+});
+
+describe('createFrameDemand', () => {
+  it('starts with every loop quiet', () => {
+    expect(createFrameDemand()).toEqual({ bound: false, flying: false, pulsing: false });
+  });
+
+  it('gives a fresh object each time, so two canvases do not share a flag', () => {
+    const first = createFrameDemand();
+    first.bound = true;
+
+    expect(createFrameDemand().bound).toBe(false);
   });
 });

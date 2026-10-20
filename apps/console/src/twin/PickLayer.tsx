@@ -35,6 +35,9 @@ const TIMED = import.meta.env.MODE === 'development';
  * their geometry (V2-19.6).
  *
  * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `twin/picker.ts` and `lib/twinPicking.ts`.
+ *
+ * Frame demand: one-shot. A pick request records its point and asks for one frame; the ray is cast in that frame
+ *   and nothing keeps it asking.
  */
 export function PickLayer({ cameras, frame, children }: PickLayerProps) {
   const picker = useMemo(() => createPicker(), []);

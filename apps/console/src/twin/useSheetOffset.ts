@@ -37,6 +37,9 @@ export function sheetInsetOpen(element: Element): number {
  *
  * With an offset in place, a wheel zoom's pivot can be off by up to half the sheet (camera-controls assumes
  * a centred projection): `unverified`, and the cursor-zoom criterion is judged with the sheet closed.
+ *
+ * Frame demand: one-shot. One frame each time the view offset is applied: on mount, when the sheet's `data-sheet`
+ *   attribute changes and when the canvas is resized.
  */
 export function useSheetOffset(): void {
   const get = useThree((state) => state.get);

@@ -31,6 +31,9 @@ interface HudProbeProps {
  *
  * Mounted by `TwinCanvas` behind a literal development check and `?debug=twin`. Not unit-tested against WebGL (jsdom
  * has none); `Hud.test.tsx` drives it with a stubbed `useFrame` and `gl.info`. A default export for `React.lazy`.
+ *
+ * Frame demand: none. It only observes the frames that others asked for; its `useFrame` stays at the default
+ *   priority, which keeps R3F rendering the scene.
  */
 export default function HudProbe({ listRef }: HudProbeProps) {
   const gl = useThree((state) => state.gl);

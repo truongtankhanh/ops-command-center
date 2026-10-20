@@ -2,8 +2,8 @@
  * What the developer HUD of the 3D twin measures and how (V2-19.1, ADR-0020 § Budgets, brief § Performance): a window of
  * frame times, the rate of a cumulative counter, the six values of frame 00, the `?debug=twin` request and the load
  * marks. Pure: no clock (the caller passes `now`, as `createPickStats` does), no React, no three, so it tests without
- * WebGL. V2-19.2 – V2-19.4 add `needsFrame`, the pixel-ratio controller and the budget guard to this file: every export
- * stands alone, so the build keeps only what shipped code imports. The labels and formats of the HUD are in
+ * WebGL. V2-19.2 added `needsFrame`; V2-19.3 and V2-19.4 add the pixel-ratio controller and the budget guard to this
+ * file: every export stands alone, so the build keeps only what shipped code imports. The labels and formats of the HUD are in
  * `twinHud.ts`, on purpose not here (see there).
  */
 
@@ -218,3 +218,49 @@ export function clearTwinMarks(): void {
     // As above.
   }
 }
+
+/**
+ * Why the on-demand canvas draws another frame by itself (V2-19.2, ADR-0020 § Scene, brief § Worker and render loop:
+ * "the loop runs while something moves"). One field for each loop of ours that **keeps itself alive**, written by that
+ * loop in the frame it runs and read by `FrameDriver` at the end of the same frame:
+ *
+ * - `bound`: a bound value has not settled, or a live part spins (`stepBound`, `useBoundParts`). A spin asks for a frame
+ *   every frame while it lasts: it is the one steady load of a quiet scene (V2-19.7 reads what it costs).
+ * - `flying`: the camera's fly-to is under way (`Rig`).
+ * - `pulsing`: a critical open incident pulses on the visible Incidents layer, motion allowed and the tab in view
+ *   (`pulseRunning`, `Beacons`).
+ *
+ * What is **not** a field, on purpose: a camera in motion (drei's `CameraControls` invalidates on its own `update` event
+ * and stops at rest), a pick, a label or leader projection after a camera change, a changed look or layer, a reading
+ * that arrived. Each of those is a one-shot request tied to a change (an effect or an event calls `invalidate()` once)
+ * and nothing keeps it alive, so there is nothing for a loop to report. A reporter must run at a priority below 0
+ * (`FrameDriver`), and must set its field to `false` whenever it has nothing to do, so a flag is never left true.
+ */
+export interface FrameDemand {
+  bound: boolean;
+  flying: boolean;
+  pulsing: boolean;
+}
+
+/**
+ * How a loop writes its field of the demand: the canvas's `FrameDriver` hands one to the loops under it
+ * (`useReportFrameDemand`). A function and not the object itself, because a loop calls it from the frame loop, outside
+ * React's render, and an object handed out by a hook is one React's rules say may not be modified.
+ */
+export type FrameReport = (field: keyof FrameDemand, asking: boolean) => void;
+
+/** A demand with nothing asking, for a canvas that has just been made. */
+export const createFrameDemand = (): FrameDemand => ({
+  bound: false,
+  flying: false,
+  pulsing: false,
+});
+
+/**
+ * Whether the canvas should draw another frame because a loop of ours asked. A hidden tab asks for nothing, whatever
+ * the loops say: the browser draws no frame there anyway, and nothing should be queued for the return.
+ */
+export const needsFrame = (
+  demand: Readonly<FrameDemand>,
+  { hidden = false }: { hidden?: boolean } = {},
+): boolean => !hidden && (demand.bound || demand.flying || demand.pulsing);

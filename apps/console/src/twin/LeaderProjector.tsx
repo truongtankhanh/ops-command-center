@@ -55,6 +55,9 @@ interface LeaderProjectorProps {
  * - The line is hidden when there is no selection, no card measured yet, the selected asset is not shown, the model has
  *   no such node, or the anchor is behind the camera or off the stage.
  * - `camera.updateMatrixWorld()` first, as the labels do: the rig may have moved the camera earlier in this frame.
+ *
+ * Frame demand: one-shot. An effect asks for one frame on mount, for a stage that comes up with a part already
+ *   selected; the leader is drawn in frames somebody else asked for (the card's report, the selection, the camera).
  */
 export function LeaderProjector({
   instances,
