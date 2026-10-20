@@ -1304,11 +1304,27 @@ describe('AssetInspector', () => {
           expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', 'FanBlade');
         });
 
-        it('registers no key for it yet', () => {
+        it.each(roles)(
+          'carries the F hint for a %s, which names the key and not the button',
+          (role) => {
+            signInAs(role);
+            renderInspector({ incidents: [] });
+
+            expect(focusButton()).toHaveAttribute('aria-keyshortcuts', 'F');
+            expect(
+              within(focusButton() as HTMLElement).getByText('F', { selector: 'kbd' }),
+            ).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Focus' })).toBeInTheDocument();
+          },
+        );
+
+        it('has no hint while single-key shortcuts are off', () => {
           signInAs('operator');
+          useConsole.setState({ keyboardShortcuts: false });
           renderInspector({ incidents: [] });
 
           expect(focusButton()).toBeInTheDocument();
+          expect(focusButton()).not.toHaveAttribute('aria-keyshortcuts');
           expect(document.querySelector('[aria-keyshortcuts="F"]')).toBeNull();
         });
 

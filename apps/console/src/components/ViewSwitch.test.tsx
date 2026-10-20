@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useConsole } from '../store';
 import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../test-utils';
@@ -97,6 +97,78 @@ describe('ViewSwitch', () => {
       expect(view3d()).toHaveAccessibleDescription('3D view stopped working');
       expect(view2d()).toHaveAttribute('aria-pressed', 'true');
       expect(localStorage.getItem(KEY)).toBe('3d');
+    });
+  });
+
+  // V2-18.2: `V` flips the view, so the option it activates carries the hint, while the key works.
+  describe('the hint for V', () => {
+    const hint = (option: HTMLElement) => within(option).queryByText('V', { selector: 'kbd' });
+
+    it('is on none of the options where 3D is unavailable, since V does nothing there', () => {
+      render(<ViewSwitch />);
+
+      expect(hint(view3d())).toBeNull();
+      expect(hint(view2d())).toBeNull();
+      expect(document.querySelector('[aria-keyshortcuts]')).toBeNull();
+    });
+
+    describe('where the twin can be drawn', () => {
+      beforeEach(() => {
+        stubTwinAvailable();
+      });
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+        unstubTwin();
+      });
+
+      it('is on 3D while the view is 2D, and only there', () => {
+        act(() => useConsole.setState({ view: '2d' }));
+        render(<ViewSwitch />);
+
+        expect(hint(view3d())).toBeInTheDocument();
+        expect(view3d()).toHaveAttribute('aria-keyshortcuts', 'V');
+        expect(hint(view2d())).toBeNull();
+        expect(view2d()).not.toHaveAttribute('aria-keyshortcuts');
+      });
+
+      it('is on 2D while the view is 3D, and only there', () => {
+        act(() => useConsole.setState({ view: '3d' }));
+        render(<ViewSwitch />);
+
+        expect(hint(view2d())).toBeInTheDocument();
+        expect(view2d()).toHaveAttribute('aria-keyshortcuts', 'V');
+        expect(hint(view3d())).toBeNull();
+        expect(view3d()).not.toHaveAttribute('aria-keyshortcuts');
+      });
+
+      it('moves to the other option when the view changes', async () => {
+        act(() => useConsole.setState({ view: '2d' }));
+        render(<ViewSwitch />);
+
+        await userEvent.click(view3d());
+
+        expect(hint(view2d())).toBeInTheDocument();
+        expect(hint(view3d())).toBeNull();
+      });
+
+      it('is gone while single-key shortcuts are off, whichever view is in effect', () => {
+        act(() => useConsole.setState({ view: '2d', keyboardShortcuts: false }));
+        render(<ViewSwitch />);
+
+        expect(hint(view3d())).toBeNull();
+        act(() => useConsole.setState({ view: '3d' }));
+        expect(hint(view2d())).toBeNull();
+        expect(document.querySelector('[aria-keyshortcuts]')).toBeNull();
+      });
+
+      it('leaves the names of the options as their words', () => {
+        act(() => useConsole.setState({ view: '2d' }));
+        render(<ViewSwitch />);
+
+        expect(view3d()).toHaveAccessibleName('3D');
+        expect(view2d()).toHaveAccessibleName('2D');
+      });
     });
   });
 

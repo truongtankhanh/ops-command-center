@@ -732,12 +732,33 @@ describe('IncidentEvidence', () => {
       },
     );
 
+    it('carries the F hint while single-key shortcuts are on, which names the key and not the button', () => {
+      renderBlock(incident());
+
+      const show = screen.getByRole('button', SHOW_CT);
+      expect(show).toHaveAttribute('aria-keyshortcuts', 'F');
+      expect(within(show).getByText('F', { selector: 'kbd' })).toBeInTheDocument();
+      expect(screen.getByRole('button', OPEN_CT)).not.toHaveAttribute('aria-keyshortcuts');
+    });
+
+    it('has no hint while single-key shortcuts are off', () => {
+      useConsole.setState({ keyboardShortcuts: false });
+
+      renderBlock(incident());
+
+      expect(screen.getByRole('button', SHOW_CT)).not.toHaveAttribute('aria-keyshortcuts');
+    });
+
     it('says which asset in its name, and "Show in 3D" in its words (WCAG 2.5.3)', () => {
       renderBlock(incident());
 
       const show = screen.getByRole('button', SHOW_CT);
       expect(show).toHaveTextContent('Show in 3D');
-      expect(show.getAttribute('aria-label')).toContain(show.textContent!);
+      // The `F` hint is a `Kbd` hidden from assistive technology: the visible label to match is the words before it.
+      const hint = within(show).getByText('F', { selector: 'kbd' }).textContent!;
+      const label = show.textContent!.replace(hint, '');
+      expect(label).toBe('Show in 3D');
+      expect(show.getAttribute('aria-label')).toContain(label);
     });
 
     it('is not drawn on an incident that is not raised by telemetry', () => {
