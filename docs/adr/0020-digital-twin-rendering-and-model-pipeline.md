@@ -600,6 +600,33 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Not settled here:** the beacon's model (a sprite or a mesh, its size on screen) and its place in the pick
       precedence beyond "Beacon (V2-16) > part" are V2-16.3 and V2-16.5; beacons stay out of the pick scope while an
       asset is isolated, as every other target, so a beacon is reached then through the feed, the search or the toast.
+  - Settled in V2-16.2 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how an incident becomes a beacon, as plain data (`lib/twinBeacons.ts`, `beaconsOf`). Drawing is V2-16.3's.
+    - **The set and the positions are the map's.** The drawn set is the map's (active incidents, and the selected one
+      even when resolved), `x` and `z` are `fanOut`'s position over that set through the scene frame, so two incidents
+      at one point are spread the same way in both views. `isPulsing` (critical and open) is exported from
+      `mapFeatures.ts` and is the only pulse rule. The fan-out's distances (3.5 m to group, 4.4 m between neighbours)
+      are the map's, tuned for its pixels; the 3D view has no clusters and draws screen-sized sprites, so beacons that
+      share a point can still overlap at campus distance. That is expected, not a defect of the data.
+    - **A resolved beacon has its own form.** `form` is `filled` (open), `hollow` (acknowledged) or `resolved`: a
+      selected resolved incident is neutral and the same size whatever its severity, as on the map, so it is never
+      `big` or `pulse`. `big` is critical and not resolved (the frames' one larger beacon; the map's 10 / 11 / 12 px
+      discs are the map's), and `type` reads `UNKNOWN_TYPE_IMAGE` for a type this console does not know.
+    - **Height, as V2-16.1 said, with the details fixed.** An incident whose `assetId` the catalogue holds stands at
+      that asset's top: the caller's `assetTopM(asset)` (the model's top once it is loaded) or, with none or an
+      `undefined` answer, `elevationM + class.footprintM.height`, which is the box the camera fits. An `assetId` the
+      console does not hold is "no asset": no tag, and the position rule. Otherwise the roof: the incident's **own
+      zone** must be a `building` with a footprint, and the incident's **own position** (not the fanned-out one, so
+      incidents spread on a ring stay on the roof) must be inside it; the height is the shell's (`heightOf(zone)`,
+      the default 12 m when the zone has none). Any other case, including a position in the footprint's 8 m inset
+      band, a zone that is not a building and a zone the console does not hold, is 0. The tag is the asset's code.
+    - **The list is ordered by incident `code`,** unique and unaffected by an acknowledgement, so a caller can compare
+      two lists. `position[1]` is the marker's ground point (the stem's foot), the `MarkerPlacement` convention.
+    - **Not data, so not here:** reduced motion (the pulse off) and fading by level are the drawing's (V2-16.3), and
+      picking is V2-16.4's. The function reads no store and no preference.
+    - **Tests.** `lib/twinBeacons.test.ts`: frame 01's eight and frame 04's telemetry ninth, the roof and its edge
+      cases, the resolved form, selection, the fan-out, an unknown type, an unresolved `assetId`, the order and
+      purity.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
