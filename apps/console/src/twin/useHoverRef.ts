@@ -13,6 +13,9 @@ import { useConsole } from '../store';
  *
  * Each call subscribes on its own (the equipment and the buildings), which costs one listener and no
  * extra frame: invalidations in the same tick share one.
+ *
+ * Frame demand: one-shot. One frame per change of the hovered asset or part (and one on mount if a hover was
+ *   already there).
  */
 export function useHoverRef(): RefObject<HoverState> {
   const invalidate = useThree((state) => state.invalidate);

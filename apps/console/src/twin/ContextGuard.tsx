@@ -15,6 +15,8 @@ import { useConsole } from '../store';
  *
  * Between the loss and the restore the canvas is blank or frozen on its last frame; the design has no state for
  * those seconds, so nothing is shown. The listeners go with the stage (a switch to 2D, or the fault itself).
+ *
+ * Frame demand: one-shot. A restored WebGL context asks for one frame (`onRestore`); it asks for nothing otherwise.
  */
 export function ContextGuard() {
   const get = useThree((state) => state.get);

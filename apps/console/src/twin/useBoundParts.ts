@@ -12,6 +12,7 @@ import {
 } from '../lib/twinMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import type { TwinFeed } from '../realtime/twinFeed';
+import { useReportFrameDemand } from './FrameDemandContext';
 
 /** A model instance and what its class binds (V2-14.2): the nodes to move, found by name inside `object`. */
 export interface BoundInstance {
@@ -92,8 +93,11 @@ function apply(part: Part): void {
  * - A part whose asset is stale or offline is skipped, so it freezes at its last pose and a spinning one stops
  *   (V2-14.1); a part with no slot, or whose reading is `NaN` (an asset nobody watches has no value for a
  *   non-headline key), stays at the authored pose.
- * - The canvas is on demand: it draws when the feed says something arrived (`invalidate`), and this loop asks
- *   for the next frame only while a value has not settled or a part spins, so an idle scene draws nothing.
+ * - The canvas is on demand: it draws when the feed says something arrived (`invalidate`), and this loop reports
+ *   `demand.bound` while a value has not settled or a part spins (`FrameDriver` then asks for the next frame), so an
+ *   idle scene draws nothing. Frame demand: conditional, the answer of `stepBound` for the parts that are live; a spin
+ *   asks for a frame every frame while it lasts (the one steady load of a quiet scene, V2-19.2). The loop runs at
+ *   priority −1, below `FrameDriver`'s 0, so the driver reads this frame's flag whatever the mount order.
  * - Slots are looked up once per layout (`reader.layout`), because `slotOf` builds a string per call.
  * - The first value of a part, and the first value after the telemetry socket comes back to `live`, snap
  *   instead of easing (brief § Worker and render loop). The reconnect is watched on the store, not read every
@@ -104,6 +108,14 @@ function apply(part: Part): void {
  */
 export function useBoundParts(feed: TwinFeed | null, instances: readonly BoundInstance[]): void {
   const parts = useMemo(() => partsOf(instances), [instances]);
+  const reportDemand = useReportFrameDemand();
+  // A loop that goes away must not leave its flag up: nothing would ever write it down, and the driver would draw forever.
+  useEffect(
+    () => () => {
+      reportDemand('bound', false);
+    },
+    [reportDemand],
+  );
 
   // What the loop remembers between frames: the parts and the layout the slots were looked up for, the slots
   // themselves (one per part, `-1` for none: the part stays at rest) and whether a reconnect asked for the next
@@ -126,8 +138,11 @@ export function useBoundParts(feed: TwinFeed | null, instances: readonly BoundIn
     [],
   );
 
-  useFrame((state, delta) => {
-    if (feed === null || parts.length === 0) return;
+  useFrame((_state, delta) => {
+    if (feed === null || parts.length === 0) {
+      reportDemand('bound', false);
+      return;
+    }
     const reader = feed.read();
     const memory = loop.current;
     if (memory.parts !== parts || memory.layout !== reader.layout) {
@@ -157,6 +172,6 @@ export function useBoundParts(feed: TwinFeed | null, instances: readonly BoundIn
       if (stepBound(part.binding, part.state, reading, dtS)) moving = true;
       apply(part);
     }
-    if (moving) state.invalidate();
-  });
+    reportDemand('bound', moving);
+  }, -1);
 }

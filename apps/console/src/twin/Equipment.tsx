@@ -69,6 +69,10 @@ interface EquipmentProps {
  * **A change of focus rebuilds nothing** (V2-15.8, AC3): the boxes' geometry is built once from every box asset and
  * the `inside` ones are left out of its groups, and an instance is made once for every modelled asset (so a bound part
  * keeps its pose) and only mounted, and registered with the picker, while its presence is not `hidden`.
+ *
+ * Frame demand: one-shot. An effect asks for one frame when the presences change. The moving parts are the loop of
+ *   `useBoundParts`, which reports `demand.bound`; the looks (`useModelLooks`, `useAssetLooks.ts`) are painted in
+ *   frames somebody else asked for.
  */
 export function Equipment({
   assets,

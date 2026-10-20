@@ -20,6 +20,9 @@ interface CompassSyncProps {
  *
  * `frameloop="demand"` draws only when asked, so the first value is requested on mount; after that the camera
  * moving is what asks.
+ *
+ * Frame demand: one-shot. An effect asks for one frame on mount so the needle has a first value; after that the
+ *   needle is written in frames the camera asked for.
  */
 export function CompassSync({ compassRef }: CompassSyncProps) {
   const invalidate = useThree((state) => state.invalidate);

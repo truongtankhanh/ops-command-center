@@ -164,6 +164,10 @@ interface ModelMemory {
  * drew before. An instance is painted when its flags object changed or when the hover or the selected part came to it
  * or left it, and every instance is when the presences changed (V2-15.7, V2-15.8): the faded ones take the ghost look.
  * `selection` is the selected part (V2-15.10); a caller with none (a test, a stage with no inspector) gets "nothing".
+ *
+ * Frame demand: none. The looks of models and of boxes (`useBoxLooks`, below) are painted by `useFrame` callbacks
+ *   in frames that others asked for (a reading, the hover, the selection, the presences); neither hook calls
+ *   `invalidate`.
  */
 export function useModelLooks(
   feed: TwinFeed | null,

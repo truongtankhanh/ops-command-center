@@ -58,6 +58,10 @@ const HudReadout = import.meta.env.MODE === 'development' ? lazy(() => import('.
  * camera controls to the legend and then leaves the stage.
  *
  * A default export, the console's exception to named exports: `React.lazy` needs one.
+ *
+ * Frame demand: none of its own. `invalidateRef` holds the canvas's `invalidate` behind a wrapper that does nothing
+ *   while the tab is hidden (V2-19.2); the feed (`useTwinFeed`) and the callout's leader (`onLeaderStart`) ask
+ *   through it, each only after a change.
  */
 export default function TwinStage() {
   const scene = useTwinScene();
@@ -119,7 +123,10 @@ export default function TwinStage() {
             boxes={boxes}
             assetBoxes={assetFits}
             onInvalidate={(invalidate) => {
-              invalidateRef.current = invalidate;
+              // A hidden tab queues no frame (V2-19.2): the feed and the callout's leader ask through this.
+              invalidateRef.current = () => {
+                if (!document.hidden) invalidate();
+              };
             }}
             labelLayer={labelLayer}
             compassRef={compass}

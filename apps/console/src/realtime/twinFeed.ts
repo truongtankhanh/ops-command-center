@@ -16,6 +16,12 @@ import type { TargetSlot } from './telemetryProtocol';
  *
  * Two clocks must not mix. An age is judged on the server's clock, rebuilt from the client's anchor and
  * `performance.now()` (as `useServerNow` does), never on `Date.now()` or a frame's time.
+ *
+ * Frame demand: conditional. A frame is asked for only when a buffer of the current layout arrived (the engine posts
+ * one only when a slot changed), a flag or the layout changed, or the tab came back into view; a quiet tick asks for
+ * none. While the tab is hidden the feed keeps its state current (buffers, flags, the layout) but asks for nothing and
+ * its one-second tick does no work: on return one pass catches the flags up and one frame is asked for (V2-19.2). The
+ * socket and the worker are not the feed's and keep running.
  */
 
 /** What the scene needs to know of an asset besides its numbers. */
@@ -69,8 +75,9 @@ export interface TwinFeed {
   /** Rebuilds the layout and the flags now, for a caller that knows the assets or the incidents changed. */
   refresh(): void;
   /**
-   * Idempotent. Stops the timer and the listeners and, if a layout was sent, sends an empty one so the worker stops
-   * posting buffers nobody reads. Afterwards `read()` still answers with what it held, and nothing is invalidated.
+   * Idempotent. Stops the timer and the listeners (the visibility one included) and, if a layout was sent, sends an
+   * empty one so the worker stops posting buffers nobody reads. Afterwards `read()` still answers with what it held,
+   * and nothing is invalidated.
    */
   dispose(): void;
 }
@@ -128,6 +135,14 @@ export function createTwinFeed({
   let latest: Float32Array = new Float32Array(0);
   let flags = new Map<string, AssetFlags>();
   let disposed = false;
+
+  /** Whether the tab is out of view. Outside a browser there is no `document`: a feed there is always in view. */
+  const tabHidden = (): boolean => typeof document !== 'undefined' && document.hidden;
+
+  /** Asks the canvas for a frame, unless the tab is hidden: nothing is queued for the return (`onVisible` asks once). */
+  const askForFrame = (): void => {
+    if (!tabHidden()) invalidate();
+  };
 
   const reader: TwinFeedReader = {
     get targets() {
@@ -217,7 +232,7 @@ export function createTwinFeed({
 
   function refresh() {
     if (disposed) return;
-    if (step()) invalidate();
+    if (step()) askForFrame();
   }
 
   // Creating the feed is the first pass; nothing has been drawn that it could invalidate.
@@ -228,9 +243,20 @@ export function createTwinFeed({
     // The client already drops a buffer of an earlier layout; this guards the feed's own id as well.
     if (disposed || layoutId === 0 || targets.layoutId !== layoutId) return;
     latest = targets.buffer;
-    invalidate();
+    askForFrame();
   });
-  const timer = setInterval(refresh, FLAGS_TICK_MS);
+  // Staleness is a function of the clock, but nobody sees it in a hidden tab: the tick waits, and `onVisible` catches up.
+  const timer = setInterval(() => {
+    if (!tabHidden()) refresh();
+  }, FLAGS_TICK_MS);
+  // Back in view: one pass brings the flags up to the clock (the age is judged on `performance.now()`, so the catch-up
+  // is exact), and one frame is asked for whether or not anything changed, so the picture is current at once.
+  const onVisible = (): void => {
+    if (disposed || tabHidden()) return;
+    step();
+    invalidate();
+  };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
 
   return {
     read: () => reader,
@@ -254,6 +280,9 @@ export function createTwinFeed({
       if (disposed) return;
       disposed = true;
       clearInterval(timer);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisible);
+      }
       stopView();
       stopTargets();
       // The worker keeps posting buffers for the last layout it was given; with no reader left, an empty one stops it.

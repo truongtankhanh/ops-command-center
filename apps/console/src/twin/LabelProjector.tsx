@@ -26,6 +26,9 @@ interface LabelProjectorProps {
  * - A label behind the camera or outside the stage (with a margin) is hidden, not removed.
  * - `camera.updateMatrixWorld()` first: another `useFrame` (the rig of V2-12.9) may have moved the
  *   camera earlier in this same frame, before the renderer refreshes its matrices.
+ *
+ * Frame demand: one-shot. An effect asks for one frame when the anchors or the canvas size change; the labels are
+ *   placed in frames the camera (or that request) asked for.
  */
 export function LabelProjector({ anchors, layerRef }: LabelProjectorProps) {
   const invalidate = useThree((state) => state.invalidate);

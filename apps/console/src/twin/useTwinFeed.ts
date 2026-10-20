@@ -41,6 +41,9 @@ function createHolder() {
  *
  * Mounted by `TwinStage`, outside the canvas (it needs the QueryClient); `useBoundParts` (V2-14.8) reads the feed
  * from inside it.
+ *
+ * Frame demand: none of its own. It hands the canvas's `invalidate` to the feed, which asks for a frame only when a
+ * buffer, a flag or the layout changed and not at all while the tab is hidden (`realtime/twinFeed.ts`).
  */
 export function useTwinFeed({ invalidate }: { invalidate: () => void }): TwinFeed | null {
   const client = useTelemetryStore((state) => state.client);

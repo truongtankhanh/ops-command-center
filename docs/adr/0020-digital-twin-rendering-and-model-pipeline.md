@@ -1072,6 +1072,43 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       browser; the HUD exists in `pnpm dev` only (React in development mode), so a figure read there is pessimistic and
       V2-19.7 must say which build it measured; the production build's `dist` has not been scanned until `pnpm build` is run.
       Logging telemetry worker faults once per change (the open item of Phase 3) is **not** part of this ticket and has no owner.
+  - Settled in V2-19.2 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: what asks the on-demand canvas for a frame, and the hidden tab. Each question of the ticket's analysis was
+    answered with its recommendation.
+    - **Three loops keep the canvas drawing; everything else is a one-shot.** The audit of every `useFrame` and `invalidate`
+      found no call that asks without a reason. The loops that sustain themselves are the bound parts and their spin
+      (`stepBound`, `useBoundParts`), the camera's fly-to (`Rig`) and the pulse of a critical beacon (`pulseRunning`,
+      `Beacons`); each writes a field of a `FrameDemand` (`lib/twinPerf.ts`) in the frame it runs, through a reporter function
+      (`useReportFrameDemand`: the console's lint rules for React forbid modifying an object a hook returns, a ref from a
+      custom hook included), and no longer calls `invalidate()`. `needsFrame(demand, { hidden })` is the table. A camera in motion is drei's (`CameraControls`
+      invalidates on its own `update` event), and a pick, a label or leader projection, a changed look or layer and a
+      reading that arrived are one-shots tied to a change; none of them is a field, because nothing keeps them alive.
+    - **`FrameDriver` turns the flags into frames.** One `useFrame` at priority 0, a parent of everything that can report,
+      asks R3F for the next frame when `needsFrame` says so. It has to be a `useFrame`: an `invalidate()` from a global
+      after-effect is lost, the loop having decided to stop. **The reporters run below it** (`Rig` at −2, `useBoundParts`
+      and `Beacons` at −1): R3F orders subscribers by priority and then by when they subscribed, and a model that loads
+      later subscribes after the driver, whose read of its flag would then be a frame late and could stall a part short
+      of its target. No `useFrame` takes a positive priority, which would stop R3F rendering the scene. A loop puts its
+      flag down on unmount, or the driver would draw for ever.
+    - **A hidden tab.** The browser draws no frame in it (no animation frame fires), so what the console owes is not to
+      queue work and to be current on return: the feed's one-second tick does nothing while hidden, the feed and the
+      stage's `invalidate` ask for no frame, the driver asks for none, and on `visibilitychange` the feed catches its
+      flags up (`step()`, exact because ages are judged on `performance.now()`) and asks for one frame whether or not
+      anything changed. The socket, the worker and the client are untouched, so the state stays current. **Not
+      `frameloop="never"`**: R3F's `setFrameloop` stops the clock and resets `elapsedTime` to 0, which moves the pulse's
+      phase and the delta of the next frame, for a saving the browser gives anyway.
+    - **A spin is the one steady load.** A live part that spins asks for a frame every frame while it lasts, at the
+      display's rate, on screen or not. It is the rule as specified; a cap (30 fps while only a spin asks) or a cull
+      (only while the part is in the frustum) is a behaviour change to be judged from the HUD in V2-19.7's scenes.
+    - **The audit is kept by a note and a scan.** Every file that calls `useFrame` or `invalidate` has a `Frame demand:`
+      paragraph in its comments, and `twin/frameDemand.test.ts` fails when one lacks it, when a `useFrame` takes a
+      priority that is not a literal number at or below 0, or when one of the three loops stops running below 0. It does
+      not try to prove that no `invalidate()` is unconditional: a scan of the code cannot tell a guarded call from an
+      unguarded one.
+    - **Not done here and `unverified` until looked at in a browser:** that an idle scene (Incidents layer off, nothing
+      moving) reads 0 frames on the HUD, that a background tab draws none, and that nothing stops short (a fan that spins
+      down, a fly-to, a pulse). The demo is not idle by default: the Incidents layer is on and a critical open incident
+      pulses at the display's rate.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

@@ -13,6 +13,7 @@ import type { MarkerPlacement } from '../lib/twinMarkers';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapMotion } from '../styles/tokens';
+import { useReportFrameDemand } from './FrameDemandContext';
 import { Markers } from './Markers';
 import { usePicker } from './PickContext';
 import { useBeaconAtlas } from './useBeaconAtlas';
@@ -45,9 +46,11 @@ interface BeaconsProps {
  * - **Hidden** when the Incidents layer is off (`layers.incidents`, which selecting an incident turns on); the mesh
  *   stays and is not drawn. Nothing is drawn until the first bitmaps have decoded.
  * - **The pulse** of a critical open incident is the map's wave on a shared clock (`Markers`, `clock`). The canvas
- *   draws on demand, so this asks for the next frame **only while** the layer is shown, motion is allowed, the tab is
- *   in view and a beacon pulses (`pulseRunning`); at rest it draws nothing. Under reduced motion the pulse ring is not
- *   placed at all: the critical beacon keeps its size and its ring.
+ *   draws on demand, so this reports `demand.pulsing` **only while** the layer is shown, motion is allowed, the tab is
+ *   in view and a beacon pulses (`pulseRunning`), and `FrameDriver` asks for the frames; at rest it draws nothing.
+ *   Frame demand: conditional (the pulse), plus one `invalidate()` in an effect when the placements or the layer
+ *   change and one when the tab comes back. The loop runs at priority −1, below the driver's 0 (V2-19.2).
+ *   Under reduced motion the pulse ring is not placed at all: the critical beacon keeps its size and its ring.
  * - No React render per frame: the clock is an object this owns and the frame loop writes.
  * - **Picked in screen space** (V2-16.4). Inside `PickLayer`, this registers with the picker the beacons that are
  *   drawn (`beaconTargets`: a beacon whose bitmap has not decoded yet is not a target) and takes them away when it
@@ -62,6 +65,14 @@ export function Beacons({ beacons }: BeaconsProps) {
   const shown = useConsole((state) => state.layers.incidents);
   const animate = !usePrefersReducedMotion();
   const invalidate = useThree((state) => state.invalidate);
+  const reportDemand = useReportFrameDemand();
+  // A loop that goes away must not leave its flag up: nothing would ever write it down, and the driver would draw forever.
+  useEffect(
+    () => () => {
+      reportDemand('pulsing', false);
+    },
+    [reportDemand],
+  );
   const clock = useMemo(() => ({ value: 0 }), []);
   const picker = usePicker();
 
@@ -95,8 +106,8 @@ export function Beacons({ beacons }: BeaconsProps) {
 
   useFrame((state) => {
     advance(clock, state.clock.getElapsedTime() * 1000);
-    if (pulseRunning({ shown, animate, hidden: document.hidden, beacons })) state.invalidate();
-  });
+    reportDemand('pulsing', pulseRunning({ shown, animate, hidden: document.hidden, beacons }));
+  }, -1);
 
   if (atlas === null || placements.length === 0) return null;
   return (
