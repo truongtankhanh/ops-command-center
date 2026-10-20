@@ -760,6 +760,50 @@ their author, checked in CI, and served by nginx as immutable files.
       still ends at the beacon; "Open incident" selects without moving; the toast goes after either; Tab, Enter and Space on
       each button and where focus lands; the three buttons fit at the wall scale (a `flex-wrap` on `.actions` is the fix if
       not); reduced motion; the 2D toast is unchanged; the twin chunk's gzip size after `pnpm build` (6,729 B were left).
+  - Settled in V2-16.6 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the incident sheet's "Show in 3D" frames the incident's asset.
+    - **A second button beside "Open asset", for every role, wherever the twin is available.** On the sheet of an incident a
+      telemetry rule raised (the only incident with an asset link: "Settled in V2-16.1", frame 10), `AssetLink` has "Show
+      in 3D" next to "Open asset". It is drawn when the twin is available (the preview gate, WebGL 2, no lost context),
+      **whatever the current view**: from the 2D map it is the way in. Where the twin is unavailable it is not drawn
+      (not disabled). Looking is reading, so no role is excluded.
+    - **It selects nothing and changes no level.** It does not call `selectAsset` or `focusBuilding`, so the incident
+      sheet stays open, the beacon stays ringed and no asset is isolated (frame 10). The level is campus or building, so
+      the campus distance limits apply and the asset is shown from at least 60 m: the existing `limitPose`, not a new
+      rule. For an asset the scene does not draw (an `inside` one with its building not in focus) the camera still frames
+      its place and the beacon, which is drawn over everything, shows where; focusing the building on a "Show" press
+      would change the level and the breadcrumb, which nobody asked for. This is a known limit.
+    - **A narrow command, resolved by the rig.** `TwinCommands.showAsset(code)`, not the task's `flyTo({ kind: 'asset',
+isolate: false })`: the second narrow command after `flyToIncident` ("Settled in V2-16.5"), and still not the third
+      subject (`F`, V2-18.2), so a general subject-flight is not built yet. The rig takes the asset's box from the stage's
+      placed asset boxes (`assetBoxes`, the box the isolate fit already uses), read through a ref so the latest is used,
+      and flies the isolated fit's view (the middle of the box, the camera's own yaw and tilt) through its usual limits
+      and the 600 ms tween. It is not the drawn box (`lib/twinFocus.ts`' resolver): the placed box needs no model, and the
+      models are still loading in exactly the 2D case. An unknown asset does nothing.
+    - **From 2D the request waits for the stage.** The button switches the view and asks in the same tick, but the 3D
+      stage is a lazy chunk, then a scene, then the rig. With no rig, `twinCommands.showAsset` keeps **one** pending
+      request (the latest wins), and `registerTwinCommands` runs it when the rig registers and drops it, so it runs once. It
+      expires after `PENDING_SHOW_MS` = 15 s (`unverified`, long enough for a slow chunk) so that a switch that never
+      finished cannot fly a camera at a later, unrelated mount. The camera lands at the home view and flies in: a visible
+      "Show in 3D" working. The flight is asked for only when the view really is `'3d'` after `setView`, which does nothing
+      where the twin cannot be drawn, so a refused switch queues nothing. `flyToIncident` has no queue: a toast is offered
+      once a stage exists.
+    - **The name, the glyph.** The visible text is "Show in 3D" and the accessible name `Show in 3D CT-01` (the visible words
+      first, then the code, as "Open asset CT-01"), which satisfies WCAG 2.5.3. The task's "Show CT-01 in 3D" would not
+      contain the visible words, a voice command "click Show in 3D" would not match it, and the task cites 2.5.3 itself.
+      The glyph is `Box`, the view switch's 3D glyph, already in `ui/icons.ts`; frame 10 draws `focus` (corner brackets)
+      and the inspector's "Focus" uses `Crosshair`, so adding one more export and an icon row for one button was not
+      worth it. Frame 10's `F` hint arrives with V2-18.2.
+    - **Tests.** The pending request (queued, run once, the latest wins, the edge of the window, expired, not run twice,
+      not disturbed by other commands) is tested with a fake clock; the sheet's button has a role matrix (operator,
+      supervisor, technician, viewer), a view matrix (3D only flies; 2D switches and the flight waits; unavailable, not
+      drawn; a refused switch queues nothing), the name, no selection, and axe. `Rig` is R3F glue and is not, as before.
+    - **By eye, still to do in a browser, and the chunk to measure:** from 2D one press switches to 3D and the camera ends
+      framing the asset from about 60 m with the incident sheet still open and the beacon ringed; from 3D it only flies,
+      keeping yaw and tilt; no inspector opens and the asset is not selected; the same for a viewer; the button is gone
+      without WebGL 2 or the preview gate; an `inside` asset (the camera frames the building, the beacon shows where);
+      the two buttons in a narrow sheet and at the wall scale (a wrap on `.assetActions` is the fix if they crowd the
+      heading); reduced motion; the twin chunk's gzip size after `pnpm build` (6,655 B were left).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
