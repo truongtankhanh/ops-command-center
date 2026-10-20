@@ -33,6 +33,17 @@ export function levelOf({ focusZoneId, selectedAssetCode, selectedPart }: LevelS
 }
 
 /**
+ * The levels at which the heat overlay is drawn (ADR-0020 "Settled in V2-17.1" and "V2-17.3"): the campus and a building in
+ * focus. With an asset isolated, or one of its parts, the layer stays on but draws nothing different, so a caller
+ * that asks "is Heat shown?" asks this with the layer. It lives here, with `SceneLevel`, and not beside the overlay's
+ * data in `twinHeat.ts` (which re-exports it): the picker (`components/ColourBy.tsx`) is main-chunk code and asks the
+ * same question, and `twinHeat.ts` belongs to the lazy 3D chunk (V2-17.4).
+ */
+export function showsHeat(level: SceneLevel): boolean {
+  return level === 'campus' || level === 'building';
+}
+
+/**
  * The level one step up, which is the order Escape takes (part → asset → building → campus); `null` at
  * campus, where Escape does nothing.
  */

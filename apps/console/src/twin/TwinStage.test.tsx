@@ -204,6 +204,69 @@ describe('TwinStage', () => {
     expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
   });
 
+  // V2-17.4: the heat legend stands over the marker legend in one column, so the two never overlap.
+  describe('the legends (V2-17.4)', () => {
+    beforeEach(() => resetStore(useConsole));
+    afterEach(() => resetStore(useConsole));
+
+    const heatOn = () => act(() => useConsole.getState().toggleLayer('heat'));
+
+    it('draws only the marker legend while Heat is off', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+
+      expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
+      expect(screen.queryByRole('note')).toBeNull();
+    });
+
+    it('draws the heat legend above the marker legend, in the same column, once Heat is on', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+
+      heatOn();
+
+      const heat = screen.getByRole('note');
+      const markers = screen.getByRole('button', { name: 'Legend' });
+      expect(heat.parentElement).toContainElement(markers);
+      expect(heat.compareDocumentPosition(markers)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(heat).toHaveTextContent('Indoor temperature, by building');
+    });
+
+    it('keeps the building line that says Esc returns, under the heat legend, at building level', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+      heatOn();
+
+      act(() => useConsole.getState().focusBuilding('zone-0'));
+
+      expect(screen.getByRole('note')).toBeInTheDocument();
+      expect(screen.getByText(/Walls see-through/)).toBeInTheDocument();
+    });
+
+    it('takes the heat legend away with an asset isolated, where Heat draws nothing different', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+      heatOn();
+
+      act(() => useConsole.getState().selectAsset('UPS-01', 'zone-0'));
+
+      expect(screen.queryByRole('note')).toBeNull();
+    });
+
+    it('draws neither legend before the scene has anything to show', () => {
+      renderStage([]);
+
+      heatOn();
+
+      expect(screen.queryByRole('note')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Legend' })).toBeNull();
+    });
+
+    it('puts the heat legend outside the view group and takes no tab stop', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+      heatOn();
+
+      expect(view()).not.toContainElement(screen.getByRole('note'));
+      expect(screen.getByRole('note')).not.toHaveAttribute('tabindex');
+    });
+  });
+
   it('has no label without zones', () => {
     renderStage([]);
 

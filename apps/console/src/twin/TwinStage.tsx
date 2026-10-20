@@ -6,6 +6,7 @@ import type { ModelClass } from '../lib/twinLoadQueue';
 import type { LabelAnchor } from '../lib/twinScene';
 import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
+import { HeatLegend } from './HeatLegend';
 import { PickHint } from './PickHint';
 import { LeaderOverlay, TwinCallout } from './TwinCallout';
 import { TwinCanvas } from './TwinCanvas';
@@ -36,7 +37,7 @@ const NO_INVALIDATE = (): void => undefined;
  *
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
  * bindings of V2-14.7), the incident beacons (`useTwinBeacons`, V2-16.3), the zone outlined on the ground (`useTwinHighlightZone`, V2-16.4) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
- * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legend, the
+ * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legends (the heat legend over the marker legend, V2-17.4), the
  * building summary (V2-15.9, at building level only), the hint while the report's location is picked (V2-16.7), the part callout (V2-15.10, at part level only), the camera
  * controls and the hover tooltip (V2-15.5). The heat overlay (`useHeatScene`, V2-17.3) is derived here too and handed to the canvas, the
  * labels and the view's name; it is `null` until the layer is on at campus or building level. The canvas gets the same scene and the refs for what it keeps in step
@@ -114,8 +115,17 @@ export default function TwinStage() {
       <DragHint />
       {/* While the report's location is picked (V2-16.7): where to click and how to stop. */}
       <PickHint />
-      {/* The legend explains what is drawn: with no scene there is nothing to explain (frame 06 has none while loading). */}
-      {scene && <TwinLegend />}
+      {/*
+        The legends explain what is drawn: with no scene there is nothing to explain (frame 06 has none while loading).
+        The heat legend (V2-17.4) is above the marker legend, in one column: the marker legend still explains the
+        beacons and the cameras, and at building level it holds the line that says `Esc` returns to the campus.
+      */}
+      {scene && (
+        <div className={styles.legends}>
+          <HeatLegend />
+          <TwinLegend />
+        </div>
+      )}
       {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
       {scene && <BuildingSummary />}
       {/* The leader of the part callout (V2-15.10) under its card, which shows at part level only. */}

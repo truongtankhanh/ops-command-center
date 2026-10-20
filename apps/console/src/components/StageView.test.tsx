@@ -208,7 +208,7 @@ describe('StageView', () => {
       expect(screen.getByRole('group', { name: 'Layers' })).toBeInTheDocument();
     });
 
-    it('offers Incidents and Cameras only while the 3D stage shows, and Assets again in 2D', async () => {
+    it('offers Incidents, Cameras and Heat only while the 3D stage shows, and Assets again in 2D', async () => {
       renderStage();
 
       show3d();
@@ -218,7 +218,7 @@ describe('StageView', () => {
         within(layers)
           .getAllByRole('button')
           .map((b) => b.textContent),
-      ).toEqual(['Incidents', 'Cameras']);
+      ).toEqual(['Incidents', 'Cameras', 'Heat']);
 
       act(() => useConsole.setState({ view: '2d' }));
 
@@ -227,6 +227,38 @@ describe('StageView', () => {
           name: 'Assets',
         }),
       ).toBeInTheDocument();
+    });
+
+    // V2-17.4 (frame 13): the picker stands in the tools row, after the layers, and only while Heat is drawn.
+    it('draws the "Colour by" picker after the layers while Heat is on, and not before', async () => {
+      renderStage();
+      show3d();
+      await screen.findByText('3D stage');
+      expect(screen.queryByRole('button', { name: /Colour by/ })).toBeNull();
+
+      act(() => useConsole.getState().toggleLayer('heat'));
+
+      const picker = screen.getByRole('button', { name: 'Colour by Indoor temperature' });
+      const layers = screen.getByRole('group', { name: 'Layers' });
+      const follows = layers.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING;
+      expect(follows).toBeTruthy();
+
+      act(() => useConsole.getState().toggleLayer('heat'));
+
+      expect(screen.queryByRole('button', { name: /Colour by/ })).toBeNull();
+    });
+
+    it('does not draw the picker in the 2D view, whatever Heat says', async () => {
+      renderStage();
+      show3d();
+      await screen.findByText('3D stage');
+      act(() => useConsole.getState().toggleLayer('heat'));
+      expect(screen.getByRole('button', { name: /Colour by/ })).toBeInTheDocument();
+
+      act(() => useConsole.setState({ view: '2d' }));
+
+      expect(screen.queryByRole('button', { name: /Colour by/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Heat' })).toBeNull();
     });
 
     it('puts the map back when the context is lost, with the switch still there', async () => {

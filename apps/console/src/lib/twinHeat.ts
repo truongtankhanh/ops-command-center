@@ -1,7 +1,6 @@
 import type { Asset, Incident, Zone } from '@occ/contracts';
 import { hasFreshReading, openIncidentOf } from './assets';
 import type { TelemetryState } from './telemetryState';
-import type { SceneLevel } from './twinLevel';
 import { mixInto } from './twinMaterials';
 
 /*
@@ -127,13 +126,10 @@ export function heatLabel(reading: HeatReading): string {
 }
 
 /**
- * The levels at which the overlay is drawn (ADR-0020 "Settled in V2-17.1" and "V2-17.3"): the campus and a building in
- * focus. With an asset isolated, or one of its parts, the layer stays on but draws nothing different, so a caller
- * that asks "is Heat shown?" asks this with the layer.
+ * The levels at which the overlay is drawn: the campus and a building in focus. It is defined in `twinLevel.ts`
+ * (V2-17.4: the main-chunk picker asks it too) and re-exported here, where the overlay's readers import it.
  */
-export function showsHeat(level: SceneLevel): boolean {
-  return level === 'campus' || level === 'building';
-}
+export { showsHeat } from './twinLevel';
 
 /**
  * The whole overlay as data (V2-17.3), built once per change of reading and read by everything that draws a part of
