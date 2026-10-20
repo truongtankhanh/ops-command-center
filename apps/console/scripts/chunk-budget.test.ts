@@ -170,7 +170,10 @@ describe('evaluate', () => {
     const { ok, lines } = evaluate({ sizes: [size(240_000)], budget: BUDGET_BYTES, problems: [] });
 
     expect(ok).toBe(true);
-    expect(lines.join('\n')).toContain('110.00 kB under the budget');
+    // Relative to the budget, so a change of the figure (ADR-0020) does not make this test say the old one.
+    expect(lines.join('\n')).toContain(
+      `${((BUDGET_BYTES - 240_000) / 1000).toFixed(2)} kB under the budget`,
+    );
   });
 
   it('is ok at the budget exactly and fails one byte over, naming the excess', () => {
@@ -184,14 +187,20 @@ describe('evaluate', () => {
   });
 
   it('adds the chunks of the twin together', () => {
+    // Two chunks that are one byte over the budget together and under it alone, whatever the budget is.
     const { ok, lines } = evaluate({
-      sizes: [size(200_000), { file: 'assets/three-c.js', bytes: 1, gzip: 150_001 }],
+      sizes: [
+        size(200_000),
+        { file: 'assets/three-c.js', bytes: 1, gzip: BUDGET_BYTES - 200_000 + 1 },
+      ],
       budget: BUDGET_BYTES,
       problems: [],
     });
 
     expect(ok).toBe(false);
-    expect(lines.join('\n')).toContain('total 350.00 kB (350001 B)');
+    expect(lines.join('\n')).toContain(
+      `total ${((BUDGET_BYTES + 1) / 1000).toFixed(2)} kB (${BUDGET_BYTES + 1} B)`,
+    );
   });
 
   it('fails on a structural problem even when the size is fine, and prints it', () => {

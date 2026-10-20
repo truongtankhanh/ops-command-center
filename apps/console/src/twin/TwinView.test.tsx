@@ -1,8 +1,10 @@
 import type { Incident, SitePlan } from '@occ/contracts';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { expectNoAxeViolations, renderWithQueryClient, createTestQueryClient } from '../test-utils';
+import type { HeatScene } from '../lib/twinHeat';
 import { TwinView } from './TwinView';
 
 const PLAN: SitePlan = {
@@ -38,12 +40,13 @@ const incident = (overrides: Partial<Incident>): Incident => ({
 function renderView({
   incidents = [],
   plan = PLAN,
-}: { incidents?: Incident[] | null; plan?: SitePlan | null } = {}) {
+  heat = null,
+}: { incidents?: Incident[] | null; plan?: SitePlan | null; heat?: HeatScene | null } = {}) {
   const client = createTestQueryClient();
   if (plan) client.setQueryData(queryKeys.sitePlan, plan);
   if (incidents) client.setQueryData(queryKeys.incidents, incidents);
   return renderWithQueryClient(
-    <TwinView>
+    <TwinView heat={heat}>
       <p>the picture</p>
     </TwinView>,
     client,
@@ -132,5 +135,68 @@ describe('TwinView', () => {
     renderView({ incidents: [incident({})] });
 
     await expectNoAxeViolations();
+  });
+
+  describe('with the heat overlay (V2-17.3)', () => {
+    /** The overlay of a campus whose silent buildings are `silentNames`; only the names are read here. */
+    const overlay = (...silentNames: string[]): HeatScene => ({
+      colours: new Map(),
+      silent: new Set(),
+      labels: new Map(),
+      silentNames,
+      alarmed: new Set(),
+      key: silentNames.join(','),
+    });
+    const SCALE =
+      'Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer.';
+
+    it('says what the colours mean, between the incidents and the pointer', () => {
+      renderView({ incidents: [incident({})], heat: overlay() });
+
+      expect(group()).toHaveAccessibleName(
+        `3D view of Langbiang Tech Campus with 1 active incident. ${SCALE} Drag to rotate. The incident list and the Assets tab list everything shown here.`,
+      );
+    });
+
+    it('names the buildings that are faded because their sensor is silent', () => {
+      renderView({ heat: overlay('Security Office') });
+
+      expect(group()).toHaveAccessibleName(
+        /Security Office faded: its sensor is silent\. Drag to rotate/,
+      );
+    });
+
+    it('is the name it was without the overlay: nothing about colours', () => {
+      renderView({ incidents: [incident({})], heat: null });
+
+      expect(group()).not.toHaveAccessibleName(/coloured/);
+    });
+
+    it('follows the overlay as it comes and goes', () => {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.sitePlan, PLAN);
+      client.setQueryData(queryKeys.incidents, []);
+      const view = (heat: HeatScene | null) => (
+        <TwinView heat={heat}>
+          <p>the picture</p>
+        </TwinView>
+      );
+      const { rerender } = renderWithQueryClient(view(null), client);
+      expect(group()).not.toHaveAccessibleName(/coloured/);
+
+      rerender(
+        <QueryClientProvider client={client}>{view(overlay('Library'))}</QueryClientProvider>,
+      );
+      expect(group()).toHaveAccessibleName(/Library faded: its sensor is silent\./);
+
+      rerender(<QueryClientProvider client={client}>{view(null)}</QueryClientProvider>);
+      expect(group()).not.toHaveAccessibleName(/coloured/);
+    });
+
+    it('has no axe violations', async () => {
+      renderView({ heat: overlay('Library', 'Security Office') });
+
+      await expectNoAxeViolations();
+    });
   });
 });

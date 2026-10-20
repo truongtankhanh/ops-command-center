@@ -84,6 +84,12 @@ their author, checked in CI, and served by nginx as immutable files.
     picking, the labels and the model loading of V2-12.6 – V2-15 have to fit in the remaining ~13 %. A static
     `import * as THREE from 'three'` in the entry shrinks the twin chunk (to 142,859 bytes) and passes the size
     check, which is why the graph check exists: it fails that build.
+  - Amended in V2-17.3 (2026-10-20, the tech lead's decision): the budget is **375,000 bytes** gzipped, 25 kB more. After
+    V2-17.2 the chunk was 345,375 bytes, 4.63 kB under 350,000, with the heat overlay's drawing (V2-17.3), its legend and
+    picker (V2-17.4), the keys (V2-18) and the HUD and budgets (V2-19) still to land; the budget is raised rather than the
+    scene trimmed now. It is a budget and not a measurement, as the first figure was: it is re-measured at V2-19.7 and kept
+    or lowered then. The figures written in this ADR as "of 350,000" are what was measured at the time. The rule is
+    unchanged (the build fails above the number, `scripts/chunk-budget.ts`).
 - **Capability check.** The console renders the twin only if a WebGL 2 context can be created. Otherwise, and after
   a `webglcontextlost` that does not restore within 5 s, it shows the 2D map with the reason (brief, frame 07). The
   viewer's last choice of 2D or 3D is a per-browser convenience in `localStorage`.
@@ -918,6 +924,48 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       every number the colours stand for; the canvas stays `aria-hidden`.
     - **Left for the tickets, `unverified` until looked at:** the continuous colour against the legend's six stops, a
       silent building's look at campus level next to the 0.18 fade of the level, and where the labels stand.
+  - Settled in V2-17.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how the heat overlay is drawn, what it costs and where it is wired. Each question of the ticket's analysis
+    was answered with its recommendation.
+    - **One value, `HeatScene`.** The overlay is data (`lib/twinHeat.ts`): a `#rrggbb` per building with a reading, the
+      silent zones, the line under each building's name, the silent buildings' names, the assets in alarm and a `key`.
+      One stage hook builds it (`useHeatScene`, because `<Canvas>` has no query client) and hands it to the canvas, the
+      labels and the 3D view's name; `null` means "not shown" and every reader then does nothing. It is one object while
+      its `key` is equal: the clock ticks every second and most seconds change nothing a reader draws, and an identity of
+      its own would repaint a quiet scene and wake the on-demand canvas for nothing. While the layer is off the hook follows
+      neither the overview nor the clock (`useServerNow(active)`): each overview re-anchors the clock, so following it
+      costs a render a second. Nothing is said before the catalogue is there (never "every building is silent").
+    - **Campus and building level only (Q5).** With an asset isolated, or one of its parts, the layer stays on and draws
+      nothing different: no colours, no silent fade, no ghost, no temperature lines, no sentence. This is the one place the
+      level is read (`showsHeat`), so the five things cannot disagree.
+    - **The shells.** The colour is the shell's own vertex colour (`paintHeat`), written when the overlay changes, with no
+      geometry touched; a building with no reading keeps the idle top and is faded by its **group**, the same mechanism as
+      V2-15.7/15.8 (`presenceOf` takes a `HeatFade`, at campus level only). The hover tint of a hidden `inside` asset wins
+      over a colour while it is hovered and the building goes back to its ramp colour, not to idle. At building level the
+      see-through building's outline (material 2, `--tw-hub`) takes its ramp colour (Q4); its faces keep the see-through
+      look.
+    - **"No extra draw call" (Q3) means** no new mesh, no material beyond the three of V2-15.8, no geometry rebuild, and the
+      draw calls of a frame within the brief's budget (150). A silent building is a group of the merged mesh, and a mesh
+      costs one call per group, so with silent buildings the faces and the outline can each have up to two calls more
+      than with every building drawn as it is, as they do with a focus; adjacent runs of one material stay merged.
+    - **The equipment (campus level).** Every drawn asset is faded unless it is in alarm (`openIncidentOf`, the feed's own
+      rule, so the ghost lifts exactly where the severity tint shows) or under the pointer. The hovered code is read as
+      React state only while the overlay is shown at campus level; a selection is asset level, where the overlay is not
+      shown. Boxes and models already follow the presence map, so neither painter changed. Beacons and cameras are not
+      part of the rule; a lifted asset in alarm keeps its severity tint, the only warm colour on screen.
+    - **The labels.** A building's label has a second line, its temperature or "No data" (`ZoneLabels`), out of flow under
+      the name so the name stays on its anchor and the projector's by-index contract is untouched. It is in the light text
+      colour (`--text-primary`, 13 px, as frame 13 draws it), not in the ramp: the dark end of the ramp would not read on
+      the ground. A zone that is not a building has none.
+    - **The accessible name (Q6).** The canvas is `aria-hidden`; the sentence is part of the 3D view's name
+      (`twinSummary`), between the incident clause and the pointer: "Campus coloured by indoor temperature per building,
+      19 to 27 °C; lighter is warmer." and, when a building is silent, "{names} faded: its (their) sensor is silent." The
+      scale is passed in as data because `twinSummary.ts` is main-chunk code. The number agrees with the count.
+    - **State.** `heat` is a key of `SceneLayers` (`false` by default, not remembered); nothing offers the toggle until
+      V2-17.4 adds it to `layersOf`.
+    - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's six stops, a
+      silent building beside the 0.18 fade, the temperature line's place and size, and the draw calls with silent
+      buildings (`DrawCallLog`, development build).
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

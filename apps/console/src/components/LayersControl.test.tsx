@@ -29,7 +29,13 @@ describe('LayersControl', () => {
     expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
     expect(toggle('Incidents')).toHaveAttribute('aria-pressed', 'true');
     expect(toggle('Assets')).toHaveAttribute('aria-pressed', 'true');
-    expect(layers()).toEqual({ incidents: true, cameras: false, assets: true, inside: true });
+    expect(layers()).toEqual({
+      incidents: true,
+      cameras: false,
+      assets: true,
+      inside: true,
+      heat: false,
+    });
   });
 
   it('shows the layer again on a second press', async () => {
@@ -136,7 +142,13 @@ describe('LayersControl', () => {
       await user.click(toggle('Cameras'));
 
       expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'false');
-      expect(layers()).toEqual({ incidents: true, cameras: false, assets: true, inside: true });
+      expect(layers()).toEqual({
+        incidents: true,
+        cameras: false,
+        assets: true,
+        inside: true,
+        heat: false,
+      });
     });
 
     it('leaves the Assets layer as it was, and offers it again in 2D', async () => {
@@ -191,7 +203,13 @@ describe('LayersControl', () => {
 
         expect(toggle('Inside')).toHaveAttribute('aria-pressed', 'false');
         expect(toggle('Cameras')).toHaveAttribute('aria-pressed', 'true');
-        expect(layers()).toEqual({ incidents: true, cameras: true, assets: true, inside: false });
+        expect(layers()).toEqual({
+          incidents: true,
+          cameras: true,
+          assets: true,
+          inside: false,
+          heat: false,
+        });
       });
 
       it('is reachable by keyboard and toggles on Space', async () => {

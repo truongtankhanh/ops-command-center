@@ -282,6 +282,49 @@ describe('clock-based selectors', () => {
 
       expect(vi.getTimerCount()).toBe(0);
     });
+
+    it('starts no timer while it is not active (V2-17.3)', () => {
+      renderHook(() => useServerNow(false));
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not re-render an inactive caller every second, nor for each overview that re-anchors', () => {
+      let renders = 0;
+      const { result } = renderHook(() => {
+        renders += 1;
+        return useServerNow(false);
+      });
+      const before = renders;
+
+      tick(5_000);
+      setView(anchored(BASE));
+      setView(anchored(BASE + 1_000));
+
+      expect(renders).toBe(before);
+      expect(result.current).toBeNull();
+    });
+
+    it('ticks once it becomes active and stops again when it is not', () => {
+      const { result, rerender } = renderHook(({ active }) => useServerNow(active), {
+        initialProps: { active: false },
+      });
+      setView(anchored(BASE));
+
+      rerender({ active: true });
+      expect(vi.getTimerCount()).toBe(1);
+      tick(1_000);
+      expect(result.current).toBe(BASE + 1_000);
+
+      rerender({ active: false });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('is active by default, as every other caller expects', () => {
+      renderHook(() => useServerNow());
+
+      expect(vi.getTimerCount()).toBe(1);
+    });
   });
 
   describe('useAssetOverview', () => {

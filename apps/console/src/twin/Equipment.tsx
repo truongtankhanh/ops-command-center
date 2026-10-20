@@ -1,11 +1,13 @@
 import { useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useMemo } from 'react';
 import type { Binding } from '../lib/twinBindings';
+import type { HeatScene } from '../lib/twinHeat';
 import type { LeaderStart } from '../lib/twinLeader';
 import type { ModelClass } from '../lib/twinLoadQueue';
-import { presenceMap } from '../lib/twinLevel';
+import { type HeatFade, presenceMap } from '../lib/twinLevel';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
+import { useConsole } from '../store';
 import { AssetBoxes } from './AssetBoxes';
 import { AssetModel, type ModelInstance } from './AssetModel';
 import { instantiate } from './classModel';
@@ -29,6 +31,8 @@ interface EquipmentProps {
   classPoints: ClassPoints;
   /** The telemetry feed the models' bound parts follow; `null` while there is no telemetry client. */
   feed: TwinFeed | null;
+  /** The heat overlay (V2-17.3), or `null` while it is not shown: at campus level the equipment is ghosted but for what is lifted. */
+  heat: HeatScene | null;
   /** The part callout's leader (V2-15.10): the overlay's line and dot, and where the line starts (the card's edge). */
   leaderLineRef: RefObject<SVGLineElement | null>;
   leaderDotRef: RefObject<SVGCircleElement | null>;
@@ -56,6 +60,12 @@ interface EquipmentProps {
  * (`useModelLooks`) and for which instances are mounted. Boxes and models read the same map, so they cannot
  * disagree; the on-demand canvas is asked for a frame when it changes, because the painters only run inside one.
  *
+ * With the heat overlay shown (V2-17.3, `heat`) the map also holds the ghost of campus level: every drawn asset is `faded`
+ * unless it is in alarm (`heat.alarmed`: the severity tint says why) or under the pointer, which is read from the store
+ * as React state **only then and only at campus level**, so a hover renders nothing here otherwise (`useHoverRef`).
+ * Boxes and models read the same map, so the ghost is theirs already; selecting an asset is asset level, where the
+ * overlay is not shown. At building, asset and part level the rule ignores the overlay.
+ *
  * **A change of focus rebuilds nothing** (V2-15.8, AC3): the boxes' geometry is built once from every box asset and
  * the `inside` ones are left out of its groups, and an instance is made once for every modelled asset (so a bound part
  * keeps its pose) and only mounted, and registered with the picker, while its presence is not `hidden`.
@@ -65,6 +75,7 @@ export function Equipment({
   classes,
   classPoints,
   feed,
+  heat,
   leaderLineRef,
   leaderDotRef,
   leaderStartRef,
@@ -76,7 +87,21 @@ export function Equipment({
   const focus = useSceneFocus();
   const invalidate = useThree((state) => state.invalidate);
   const ready = useClassModels(classes, classPoints);
-  const presences = useMemo(() => presenceMap(assets, focus), [assets, focus]);
+  // The asset under the pointer, lifted out of the ghost while the overlay is shown at campus level (V2-17.3).
+  const hovered = useConsole((state) =>
+    heat === null || focus !== null ? null : state.hoveredAssetCode,
+  );
+  const fade = useMemo<HeatFade | null>(
+    () =>
+      heat === null
+        ? null
+        : {
+            silent: heat.silent,
+            lifted: hovered === null ? heat.alarmed : new Set([...heat.alarmed, hovered]),
+          },
+    [heat, hovered],
+  );
+  const presences = useMemo(() => presenceMap(assets, focus, fade), [assets, focus, fade]);
 
   const { boxes, instances, bound, looks } = useMemo(() => {
     const boxes: PlacedAsset[] = [];

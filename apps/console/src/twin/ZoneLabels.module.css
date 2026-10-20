@@ -38,3 +38,20 @@
 .label[data-faded='true'] {
   opacity: var(--tw-label-faded-opacity);
 }
+
+/*
+ * The second line of a building's label while the heat overlay is shown (V2-17.3, frame 13's `heatLabels`): its
+ * temperature, or "No data". Out of flow, centred under the name, so the name stays on the anchor the projector
+ * centres it on and the label's box is the name's. It inherits the label's halo and fade; the colour is the light text
+ * colour of the frame, not a ramp colour (the ramp's dark end would not read on the ground), and 13 px as drawn there.
+ * Its place under the name and its size are `unverified` until looked at in a browser.
+ */
+.heat {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--type-s);
+  font-weight: 600;
+  color: var(--text-primary);
+}

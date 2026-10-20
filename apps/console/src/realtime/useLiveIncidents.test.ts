@@ -275,6 +275,7 @@ describe('useLiveIncidents', () => {
           cameras: false,
           assets: true,
           inside: true,
+          heat: false,
         });
       });
 

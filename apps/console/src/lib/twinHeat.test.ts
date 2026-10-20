@@ -1,4 +1,4 @@
-import type { Asset, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
+import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
 import { twinColors } from '../styles/tokens';
 import type { AssetTelemetryState } from './telemetryState';
 import {
@@ -7,7 +7,9 @@ import {
   type HeatReading,
   heatColor,
   heatLabel,
+  heatSceneOf,
   heatT,
+  showsHeat,
   tempText,
 } from './twinHeat';
 
@@ -441,5 +443,152 @@ describe('heatLabel', () => {
 
   it('is "No data" for a silent building: the Assets tab`s word', () => {
     expect(heatLabel('silent')).toBe('No data');
+  });
+});
+
+describe('showsHeat', () => {
+  it('shows the overlay at campus and building level', () => {
+    expect(showsHeat('campus')).toBe(true);
+    expect(showsHeat('building')).toBe(true);
+  });
+
+  it('draws nothing different with an asset isolated, or one of its parts', () => {
+    expect(showsHeat('asset')).toBe(false);
+    expect(showsHeat('part')).toBe(false);
+  });
+});
+
+describe('heatSceneOf', () => {
+  const stops = twinColors.heat;
+  const ZONES = [
+    { id: 'zone-b', name: 'Beta Hall' },
+    { id: 'zone-a', name: 'Alpha Hub' },
+    { id: 'zone-c', name: 'Gamma Lab' },
+  ];
+  const ASSETS = [
+    sensor('ICS-A', 'zone-a'),
+    sensor('ICS-B', 'zone-b'),
+    sensor('ICS-C', 'zone-c'),
+    asset('GEN-01', 'zone-a'),
+    asset('UPS-01', 'zone-a'),
+  ];
+
+  const incident = (overrides: Partial<Incident> = {}): Incident => ({
+    id: 'inc-1',
+    code: 'INC-000105',
+    type: 'equipment_fault',
+    severity: 'high',
+    status: 'open',
+    title: 'Fault',
+    description: null,
+    zoneId: 'zone-a',
+    position: [108.44, 11.95],
+    source: 'telemetry',
+    assetId: 'asset-GEN-01',
+    reportedAt: '2026-10-20T07:50:00.000Z',
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    ...overrides,
+  });
+
+  /** The scene of the three buildings, `ICS-C` silent unless the overview says otherwise. */
+  function sceneOf(
+    overrides: Record<string, AssetTelemetryState> = {},
+    incidents: Incident[] = [],
+  ) {
+    const overview = { 'ICS-A': reads(22), 'ICS-B': reads(26.4), ...overrides };
+    const zones = ZONES.map(({ id }) => zone(id));
+    const readings = buildingReadings(zones, ASSETS, overview, NOW);
+    return heatSceneOf({ zones: ZONES, readings, assets: ASSETS, incidents, stops });
+  }
+
+  it('colours a building with a reading by the ramp at its temperature', () => {
+    const scene = sceneOf();
+
+    expect(scene.colours.get('zone-a')).toBe(heatColor(heatT(22), stops));
+    expect(scene.colours.get('zone-b')).toBe(heatColor(heatT(26.4), stops));
+    expect(scene.colours.get('zone-a')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('paints the ends of the scale with the ramp`s own first and last stop', () => {
+    const scene = sceneOf({ 'ICS-A': reads(19), 'ICS-B': reads(31), 'ICS-C': reads(23) });
+
+    expect(scene.colours.get('zone-a')).toBe(stops[0]);
+    expect(scene.colours.get('zone-b')).toBe(stops[stops.length - 1]);
+  });
+
+  it('gives a silent building no colour, a place in the silent set and the label "No data"', () => {
+    const scene = sceneOf();
+
+    expect(scene.colours.has('zone-c')).toBe(false);
+    expect([...scene.silent]).toEqual(['zone-c']);
+    expect(scene.labels.get('zone-c')).toBe('No data');
+  });
+
+  it('labels every building: the real temperature to one decimal, also beyond the scale', () => {
+    const scene = sceneOf({ 'ICS-A': reads(29.34), 'ICS-C': reads(21) });
+
+    expect(scene.labels.get('zone-a')).toBe('29.3 °C');
+    expect(scene.labels.get('zone-b')).toBe('26.4 °C');
+    expect(scene.labels.get('zone-c')).toBe('21.0 °C');
+    expect(scene.silent.size).toBe(0);
+  });
+
+  it('names the silent buildings in the zones` order, not the readings`', () => {
+    const scene = sceneOf({ 'ICS-A': entry(), 'ICS-B': entry(), 'ICS-C': entry() });
+
+    expect(scene.silentNames).toEqual(['Beta Hall', 'Alpha Hub', 'Gamma Lab']);
+  });
+
+  it('has no silent name when every building reports', () => {
+    expect(sceneOf({ 'ICS-C': reads(21) }).silentNames).toEqual([]);
+  });
+
+  it('lists the assets with an open incident of their own as alarmed', () => {
+    const scene = sceneOf({}, [incident()]);
+
+    expect([...scene.alarmed]).toEqual(['GEN-01']);
+  });
+
+  it('counts an acknowledged incident and not a resolved one or one without an asset', () => {
+    const acknowledged = incident({ status: 'acknowledged' });
+    const resolved = incident({ id: 'inc-2', assetId: 'asset-UPS-01', status: 'resolved' });
+    const ofZone = incident({ id: 'inc-3', assetId: null });
+
+    expect([...sceneOf({}, [acknowledged]).alarmed]).toEqual(['GEN-01']);
+    expect(sceneOf({}, [resolved]).alarmed.size).toBe(0);
+    expect(sceneOf({}, [ofZone]).alarmed.size).toBe(0);
+  });
+
+  describe('key', () => {
+    it('is equal for two scenes built from the same readings: a tick that changes nothing', () => {
+      expect(sceneOf().key).toBe(sceneOf().key);
+      expect(sceneOf({}, [incident()]).key).toBe(sceneOf({}, [incident()]).key);
+    });
+
+    it('changes with a reading, even by a change that the label rounds away', () => {
+      expect(sceneOf({ 'ICS-A': reads(22.01) }).key).not.toBe(sceneOf().key);
+    });
+
+    it('changes when a building goes silent or comes back', () => {
+      expect(sceneOf({ 'ICS-B': entry() }).key).not.toBe(sceneOf().key);
+      expect(sceneOf({ 'ICS-C': reads(23) }).key).not.toBe(sceneOf().key);
+    });
+
+    it('changes when an asset goes into alarm or out of it', () => {
+      expect(sceneOf({}, [incident()]).key).not.toBe(sceneOf().key);
+      expect(sceneOf({}, [incident({ status: 'resolved' })]).key).toBe(sceneOf().key);
+    });
+  });
+
+  it('is empty for no building', () => {
+    const scene = heatSceneOf({ zones: [], readings: new Map(), assets: [], incidents: [], stops });
+
+    expect(scene.colours.size).toBe(0);
+    expect(scene.silent.size).toBe(0);
+    expect(scene.labels.size).toBe(0);
+    expect(scene.silentNames).toEqual([]);
+    expect(scene.alarmed.size).toBe(0);
   });
 });

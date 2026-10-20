@@ -87,3 +87,59 @@ describe('twinSummary', () => {
     );
   });
 });
+
+describe('twinSummary with the heat overlay (V2-17.3)', () => {
+  const SCALE =
+    'Campus coloured by indoor temperature per building, 19 to 27 °C; lighter is warmer.';
+  const domain = [19, 27] as const;
+  const base = { siteName: 'Langbiang Tech Campus', activeIncidents: 8 };
+  const heatOf = (...silentNames: string[]) => ({ silentNames, domain });
+
+  it('says what the colours mean between the incidents and the pointer', () => {
+    expect(twinSummary({ ...base, heat: heatOf() })).toBe(
+      `3D view of Langbiang Tech Campus with 8 active incidents. ${SCALE} ${POINTER}`,
+    );
+  });
+
+  it('names a faded building, agreeing the number: "its sensor" for one', () => {
+    expect(twinSummary({ ...base, heat: heatOf('Security Office') })).toBe(
+      `3D view of Langbiang Tech Campus with 8 active incidents. ${SCALE} Security Office faded: its sensor is silent. ${POINTER}`,
+    );
+  });
+
+  it('names several: "A and B", "A, B and C", "their sensor"', () => {
+    expect(twinSummary({ ...base, heat: heatOf('Library', 'Security Office') })).toContain(
+      'Library and Security Office faded: their sensor is silent.',
+    );
+    expect(twinSummary({ ...base, heat: heatOf('Library', 'Gym', 'Security Office') })).toContain(
+      'Library, Gym and Security Office faded: their sensor is silent.',
+    );
+  });
+
+  it('leaves the faded sentence out when every building reports', () => {
+    const summary = twinSummary({ ...base, heat: heatOf() });
+
+    expect(summary).not.toContain('faded');
+    expect(summary).not.toContain('silent');
+  });
+
+  it('writes the scale it is given, so the numbers are never typed twice', () => {
+    expect(twinSummary({ ...base, heat: { silentNames: [], domain: [10, 30] } })).toContain(
+      '10 to 30 °C',
+    );
+  });
+
+  it('is the summary it was without the overlay when there is none', () => {
+    const without = twinSummary(base);
+
+    expect(twinSummary({ ...base, heat: null })).toBe(without);
+    expect(twinSummary({ ...base, heat: undefined })).toBe(without);
+    expect(without).not.toContain('Campus coloured');
+  });
+
+  it('keeps the unknown count out of it, as before', () => {
+    expect(twinSummary({ siteName: undefined, activeIncidents: null, heat: heatOf() })).toBe(
+      `3D view of the campus. ${SCALE} ${POINTER}`,
+    );
+  });
+});

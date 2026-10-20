@@ -11,6 +11,8 @@ const LABELS: Record<SceneLayerKey, string> = {
   cameras: 'Cameras',
   assets: 'Assets',
   inside: 'Inside',
+  // Not offered yet: V2-17.4 adds it to `layersOf`; the label is here because the record covers every key.
+  heat: 'Heat',
 };
 
 /**

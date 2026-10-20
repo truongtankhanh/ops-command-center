@@ -4,9 +4,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { BufferGeometry, Float32BufferAttribute, type Mesh } from 'three';
 import { buildShellGeometry } from '../lib/twinBuildings';
 import { GROUND_LAYERS } from '../lib/twinGround';
+import type { HeatScene } from '../lib/twinHeat';
 import { hoveredShellZone } from '../lib/twinHover';
 import { groupsForLooks, type Span } from '../lib/twinGroups';
-import { presenceOf } from '../lib/twinLevel';
+import { type HeatFade, presenceOf } from '../lib/twinLevel';
 import { GHOST_OPACITY, XRAY_OPACITY } from '../lib/twinMaterials';
 import type { PlacedAsset } from '../lib/twinPlacement';
 import { buildingTable } from '../lib/twinPicking';
@@ -14,7 +15,7 @@ import { buildingShells, type Frame } from '../lib/twinScene';
 import { twinColors } from '../styles/tokens';
 import { usePicker } from './PickContext';
 import { applyGroups } from './applyGroups';
-import { createShellColours, paintShell } from './shellLooks';
+import { createShellColours, paintHeat, paintShell } from './shellLooks';
 import { useHoverRef } from './useHoverRef';
 import { useSceneFocus } from './useSceneFocus';
 
@@ -27,7 +28,12 @@ interface BuildingsProps {
   frame: Frame;
   /** Every asset, placed: the building of a hovered `inside` asset takes the hover tint (V2-15.5). */
   assets: readonly PlacedAsset[];
+  /** The heat overlay (V2-17.3), or `null` while it is not shown: the shells' colours, and which ones fade. */
+  heat: HeatScene | null;
 }
+
+/** No asset is lifted out of anything for a building: the overlay's lifted codes are the equipment's. */
+const NO_CODES: ReadonlySet<string> = new Set();
 
 /**
  * The buildings (V2-12.7): every `building` zone extruded from the 2D map's footprint to its height
@@ -52,12 +58,17 @@ interface BuildingsProps {
  *   the equipment inside shows, at building, asset and part level; every other building is faded. Nothing is
  *   rebuilt and the picking table does not move (so a focus rebuilds no geometry); the faded and see-through groups
  *   are transparent and write no depth, so they never hide what is inside or behind them. `lib/twinLevel.ts`
- *   (`presenceOf`) is the rule. The look is a material per group, not a colour: the colour attribute stays the
- *   hover tint's, and the heat colouring's later (V2-17.3).
+ *   (`presenceOf`) is the rule. The look is a material per group, not a colour: the colour attribute is the building's
+ *   own colour, under the hover tint.
+ * - With the heat overlay shown (V2-17.3, `heat`) the attribute holds each building's ramp colour (`paintHeat`) and a
+ *   building with no reading is faded at campus level, by the same groups: no new mesh, material or geometry, only the
+ *   attribute written and the group list re-applied when the overlay changes (it is one object while nothing in it
+ *   does, `useHeatScene`). At building level the see-through shell's outline takes the building's ramp colour in place
+ *   of `--tw-hub`. With `null` the shells are as they were.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does not
  *   dispose a geometry it was handed as a prop.
  */
-export function Buildings({ zones, frame, assets }: BuildingsProps) {
+export function Buildings({ zones, frame, assets, heat }: BuildingsProps) {
   const picker = usePicker();
   const hover = useHoverRef();
   const focus = useSceneFocus();
@@ -106,16 +117,36 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
     [shell],
   );
 
-  // The look of each building (V2-15.7, V2-15.8): see-through for the one in focus, faded for the others, as it is with
-  // nothing in focus. A layout effect, so a shell born while a building is already in focus has its groups before
-  // its first frame.
+  // What the heat overlay changes about how the buildings are drawn (V2-17.3): the ones with no reading fade at campus
+  // level. `null` while the overlay is not shown. One object while the overlay's key is equal, so the groups below are
+  // re-applied for a change of the picture and not once a second.
+  const fade = useMemo<HeatFade | null>(
+    () => (heat === null ? null : { silent: heat.silent, lifted: NO_CODES }),
+    [heat],
+  );
+
+  // The look of each building (V2-15.7, V2-15.8, V2-17.3): see-through for the one in focus, faded for the others, as it
+  // is with nothing in focus, and with the overlay shown the ones with no reading faded too. A layout effect, so a shell
+  // born while a building is already in focus has its groups before its first frame.
   useLayoutEffect(() => {
     if (shell === null) return;
-    const looks = shell.ranges.map(({ zoneId }) => presenceOf({ kind: 'building', zoneId }, focus));
+    const looks = shell.ranges.map(({ zoneId }) =>
+      presenceOf({ kind: 'building', zoneId }, focus, fade),
+    );
     applyGroups(shell.faces, groupsForLooks(shell.faceSpans, looks, shell.faceTotal));
     applyGroups(shell.outline, groupsForLooks(shell.outlineSpans, looks, shell.outlineTotal));
     invalidate();
-  }, [shell, focus, invalidate]);
+  }, [shell, focus, fade, invalidate]);
+
+  // Each building's own colour (V2-17.3): its ramp colour while the overlay is shown, idle otherwise. Written to the
+  // attribute only, when the overlay changes or a shell is born (a rebuilt shell starts idle); the building under the
+  // hover tint keeps the tint. Asks for a frame, because a sleeping on-demand canvas draws nothing by itself.
+  useLayoutEffect(() => {
+    if (shell === null) return;
+    const hovered = painted.current.shell === shell ? painted.current.zone : null;
+    paintHeat(shell.colours, shell.ranges, heat?.colours ?? null, hovered);
+    invalidate();
+  }, [shell, heat, invalidate]);
 
   // The hover tint (V2-15.5): follows the hovered asset's building, repainting only when the zone changes. An `inside`
   // asset that is not drawn lights its building: at campus level, with another building in focus, and (V2-15.9) in
@@ -129,7 +160,7 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
     }
     const zone = hoveredShellZone(hover.current.asset, assets, focus);
     if (zone === last.zone) return;
-    paintShell(shell.colours, shell.ranges, zone, last.zone);
+    paintShell(shell.colours, shell.ranges, zone, last.zone, heat?.colours ?? null);
     last.zone = zone;
   });
 
@@ -140,6 +171,8 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
   }, [picker, shell]);
 
   if (shell === null) return null;
+  const focused = focus?.zoneId ?? null;
+  const edgeColour = (focused === null ? undefined : heat?.colours.get(focused)) ?? twinColors.hub;
   return (
     <>
       <mesh
@@ -189,8 +222,9 @@ export function Buildings({ zones, frame, assets }: BuildingsProps) {
           opacity={GHOST_OPACITY}
           depthWrite={false}
         />
-        {/* The see-through building keeps a clear outline: it is what shows where its walls are (frame 12). */}
-        <lineBasicMaterial attach="material-2" color={twinColors.hub} />
+        {/* The see-through building keeps a clear outline: it is what shows where its walls are (frame 12). With the
+            overlay shown it carries the building's ramp colour (V2-17.3, ADR-0020 "Settled in V2-17.1"). */}
+        <lineBasicMaterial attach="material-2" color={edgeColour} />
       </lineSegments>
     </>
   );

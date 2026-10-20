@@ -627,4 +627,82 @@ describe('TwinStage', () => {
       expect(screen.getByRole('button', { name: 'Legend' })).toBeInTheDocument();
     });
   });
+
+  describe('the heat overlay (V2-17.3)', () => {
+    const heat = () => vi.mocked(TwinCanvas).mock.lastCall?.[0].heat;
+    const indoorPoint = {
+      key: 'indoorTempC',
+      label: 'Indoor temperature',
+      unit: '°C',
+      kind: 'number',
+      min: null,
+      max: null,
+      enumValues: null,
+      expectedIntervalS: 60,
+      headline: 1,
+    } as TelemetryPoint;
+    const sensor = (): Asset => ({
+      ...asset('ICS-LIB', 'zone-0', CENTER),
+      headline: [indoorPoint],
+    });
+    const reading = (tempC: number) => ({
+      online: true,
+      receivedAt: new Date(Date.now() - 1_000).toISOString(),
+      headline: { indoorTempC: tempC },
+      values: { indoorTempC: tempC },
+      keyReceivedAt: {},
+    });
+    const report = (tempC: number) =>
+      act(() => {
+        useTelemetryStore.setState({
+          view: {
+            state: {
+              ...initialTelemetryState,
+              serverClock: { at: Date.now(), mono: performance.now() },
+              assets: { 'ICS-LIB': reading(tempC) },
+            },
+            series: new Map(),
+          },
+        });
+      });
+
+    beforeEach(() => {
+      resetStore(useConsole);
+      vi.mocked(TwinCanvas).mockClear();
+    });
+
+    afterEach(() => {
+      resetStore(useConsole);
+      act(() => resetStore(useTelemetryStore));
+    });
+
+    it('hands the canvas no overlay while the layer is off, which is how it starts', () => {
+      report(22);
+
+      renderStage([zone(0, 'building', 'Library')], [], [sensor()]);
+
+      expect(heat()).toBeNull();
+    });
+
+    it('hands it the overlay once the layer is on: a colour for the building that reports', () => {
+      report(22);
+      act(() => useConsole.getState().toggleLayer('heat'));
+
+      renderStage([zone(0, 'building', 'Library')], [], [sensor()]);
+
+      expect(heat()?.colours.get('zone-0')).toMatch(/^#[0-9a-f]{6}$/);
+      expect(heat()?.labels.get('zone-0')).toBe('22.0 °C');
+    });
+
+    it('takes the overlay back from the canvas when an asset is isolated', () => {
+      report(22);
+      act(() => useConsole.getState().toggleLayer('heat'));
+      renderStage([zone(0, 'building', 'Library')], [], [sensor()]);
+      expect(heat()).not.toBeNull();
+
+      act(() => useConsole.getState().selectAsset('ICS-LIB', 'zone-0'));
+
+      expect(heat()).toBeNull();
+    });
+  });
 });

@@ -171,9 +171,42 @@ export type Drawable =
  * - **Marker:** the camera markers recede only while an asset is isolated, not at building level (the frames' scene
  *   draws them as they are, and the Cameras layer is a toggle of its own).
  *
+ * - **Heat** (V2-17.3, ADR-0020 "Settled in V2-17.1"): with the overlay shown, at campus level only, a `drawn` building
+ *   with no reading is `faded` and a `drawn` asset that is not `lifted` (in alarm, or hovered) is `faded`. A focus
+ *   already says what recedes, and the overlay draws nothing different at building, asset and part level, so with a
+ *   focus `heat` changes nothing. `null` (the default) is no overlay: every caller and test keeps its answer.
+ *
  * The ground and the zone labels are not part of this rule (the labels fade by `focusZoneId` alone, in `ZoneLabels`).
  */
-export function presenceOf(target: Drawable, focus: SceneFocus | null): Presence {
+export function presenceOf(
+  target: Drawable,
+  focus: SceneFocus | null,
+  heat: HeatFade | null = null,
+): Presence {
+  const presence = presenceWithoutHeat(target, focus);
+  if (heat === null || focus !== null || presence !== 'drawn') return presence;
+  switch (target.kind) {
+    case 'building':
+      return heat.silent.has(target.zoneId) ? 'faded' : presence;
+    case 'asset':
+      return heat.lifted.has(target.code) ? presence : 'faded';
+    case 'marker':
+      return presence;
+  }
+}
+
+/**
+ * What the heat overlay changes about how things are drawn at campus level (V2-17.3): the zones whose building has no
+ * reading (`silent`, faded) and the asset codes that stay as they are although the rest of the equipment recedes
+ * (`lifted`: an open incident of their own, or the one under the pointer). Built from `HeatScene` (`lib/twinHeat.ts`)
+ * and the hover; it is `null` while the overlay is not shown.
+ */
+export interface HeatFade {
+  silent: ReadonlySet<string>;
+  lifted: ReadonlySet<string>;
+}
+
+function presenceWithoutHeat(target: Drawable, focus: SceneFocus | null): Presence {
   switch (target.kind) {
     case 'building':
       if (focus === null) return 'drawn';
@@ -195,15 +228,19 @@ export function presenceOf(target: Drawable, focus: SceneFocus | null): Presence
 const insideOff = (focus: SceneFocus | null): boolean =>
   focus !== null && focus.assetCode === null && !focus.inside;
 
-/** The presence of every placed asset, by code: one map per change of focus, shared by the boxes and the models. */
+/**
+ * The presence of every placed asset, by code: one map per change of focus (or of the heat overlay), shared by the
+ * boxes and the models.
+ */
 export function presenceMap(
   assets: readonly Pick<PlacedAsset, 'code' | 'zoneId' | 'placement'>[],
   focus: SceneFocus | null,
+  heat: HeatFade | null = null,
 ): Map<string, Presence> {
   return new Map(
     assets.map(({ code, zoneId, placement }) => [
       code,
-      presenceOf({ kind: 'asset', code, zoneId, placement }, focus),
+      presenceOf({ kind: 'asset', code, zoneId, placement }, focus, heat),
     ]),
   );
 }
