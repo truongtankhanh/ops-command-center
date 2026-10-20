@@ -17,7 +17,11 @@
     var(--shadow-1);
 }
 
-/* Grows: the row's end is where "Focus" will go (V2-12). */
+/* Grows: "Focus" (V2-15.11) comes after it, at the row's end, and keeps its size. */
 .report {
   flex: 1;
+}
+
+.focus {
+  flex: none;
 }

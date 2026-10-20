@@ -13,22 +13,26 @@ import styles from './ViewOnlyNote.module.css';
  * `footer` is only for tests and styling hooks (`data-footer`); the sentence is the caller's, in
  * `children`, usually a `<strong>` heading and a line.
  *
- * The row is the slot for what comes later at its end (a "Focus" button, V2-12): the text grows,
- * so a `flex: none` sibling is pushed to the edge without a shift.
+ * `action` is the slot at the row's end (V2-15.11: the asset inspector's "Focus", which a viewer has as well as the
+ * note). It sits after the paragraph, not inside it: the text grows and the action is `flex: none`, so it is pushed
+ * to the edge without a shift. A foot that has none renders exactly as before.
  */
 export function ViewOnlyNote({
   icon = Eye,
   footer = 'view-only',
+  action,
   children,
 }: {
   icon?: Glyph;
   footer?: 'view-only' | 'out-of-scope';
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <div className={styles.note} role="note" data-footer={footer}>
       <Icon glyph={icon} size={18} className={styles.icon} />
       <p className={styles.text}>{children}</p>
+      {action !== undefined && <div className={styles.action}>{action}</div>}
     </div>
   );
 }

@@ -515,6 +515,43 @@ their author, checked in CI, and served by nginx as immutable files.
       to a spinning blade while orbiting, hides behind the camera and off the stage, and the canvas draws no frame at
       rest; the generator's breaker reads "Open" or "Closed"; a stale asset reads "last …" and its age; the card stays
       clear of the tools row on a narrow stage; Close and Escape in the card leave the inspector open.
+  - Settled in V2-15.11 (2026-10-20), without changing the decision: the Parts rows select, and the inspector's "Focus".
+    - **A bound row is selectable, in the 3D view only.** `selectable = view === '3d' && row.bind !== null`: a static
+      part is merged into the model at load and is never a target (V2-15.1), so its row stays read-only, and in the 2D
+      view there is no scene to show a selection in, so every row is read only, as before (no control that does
+      nothing). Click, Enter or Space selects (`selectPart`, which opens the callout) and flies to the part; the same on
+      the selected row selects nothing again and does not fly, as a second click on the part does. The rows are
+      `li role="treeitem"` with `aria-selected` on selectable rows only; one tab stop, the arrow keys, Home and End are
+      as before. `aria-selected` follows the store, so a click on the blade in 3D marks its row.
+    - **Hover writes the asset and the part.** The scene ignores a part hovered without its asset (`assetHover`), so a
+      row writes `hoverAsset(code)` and `hoverPart(node)`, as the pointer does, and takes both back on leave. On unmount
+      (the inspector closes under the pointer, which fires no `mouseleave`) it takes back only what it wrote and only if
+      the store still holds it, so a hover written meanwhile by the map or the Assets tab stays. A part hovered in the
+      scene marks its row (`data-hovered`).
+    - **The look is the frames' accent tint, not the scene's `--tw-hover` colours.** `--tw-hover-*` are opaque WebGL
+      face colours and cannot be a row background; hover is `--accent-tint`, selected is the same tint with the 55 %
+      accent edge and glyph (frames 03, 08 and 17 `.tree-row[aria-current]`). No new colour.
+    - **"Focus" is the inspector's foot button, for every role.** Shown iff the 3D view is in effect and the scene draws
+      the asset (`focusAvailable`: not `hidden` by `presenceOf`, which only an `inside` asset whose building is not in
+      focus is). It follows the report button as a `flex: none` ghost button, and ends the viewer's note through the
+      note's new `action` slot. It has no `F` hint until V2-18.2.
+    - **How it flies.** The foot is main-chunk code and the part's bounds live in the lazy chunk, so `lib/twinFocus.ts`
+      holds a resolver the canvas registers (`useFocusTargets`, under `Equipment`): the part's world bounds at the
+      moment of the call (a spinning blade is where it is now), else the asset's box. `focusSelection` hands it to the
+      camera's existing `fitAsset`, so the camera, `TwinCommands` and the rig are unchanged. The distance floor of
+      4 m for an isolated asset and its parts holds, so a small part is shown from 4 m, centred on its bounds.
+    - **Escape is the ladder's first two steps in the sheet.** With focus in the inspector, Escape closes the callout
+      (`selectPart(null)`) and the next press closes the asset; the Close button ends both at once. `Sheet` calls its
+      `onClose` for Escape alone, so `AssetInspector` passes it the stepping handler and `Sheet` is unchanged. The Close
+      button keeps its `Esc` hint (one press away from the second step).
+    - **Tests.** `lib/twinFocus.test.ts` (the box, the availability rule, the registry), `AssetParts.test.tsx` (new:
+      selection by click and keys, the 2D read-only case, the hover and its cleanup, axe), and `AssetInspector.test.tsx`
+      (the Focus matrix by role and view, the Escape order). The resolver's `Box3` reading and the flight are not
+      unit-tested (no WebGL in jsdom, as for their siblings).
+    - **By eye, still to do in a browser:** clicking "Fan blade" flies to it and opens the callout; the blade clicked in
+      3D marks the row; a row hover tints the part and leaving clears it; closing the inspector under the pointer leaves
+      no stuck hover; "Focus" re-frames the part, and the asset after Escape; the viewer's note and "Focus" share one
+      row; the foot in 2D has no "Focus"; the ghost button reads on the foot's surface.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
       (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =

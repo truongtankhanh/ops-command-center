@@ -16,6 +16,8 @@ import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
 import type { NodeInfo } from '../lib/twinBindings';
+import type * as TwinFocus from '../lib/twinFocus';
+import { focusSelection } from '../lib/twinFocus';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -24,6 +26,13 @@ import { AssetInspector } from './AssetInspector';
 
 // The session module is tested on its own; here it only decides which token the client sends.
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+
+// "Focus" asks the canvas to fly; there is none here, so only the request is observed. The rule that shows the
+// button (`focusAvailable`) stays real.
+vi.mock('../lib/twinFocus', async (importOriginal) => ({
+  ...(await importOriginal<typeof TwinFocus>()),
+  focusSelection: vi.fn(),
+}));
 
 const RECEIVED = '2026-10-15T08:00:00.000Z';
 const RECEIVED_MS = Date.parse(RECEIVED);
@@ -381,6 +390,7 @@ describe('AssetInspector', () => {
     vi.stubGlobal('fetch', fetchMock);
     vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
     vi.mocked(renewSession).mockReset().mockResolvedValue(false);
+    vi.mocked(focusSelection).mockClear();
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -655,6 +665,60 @@ describe('AssetInspector', () => {
 
       expect(useConsole.getState().selectedAssetCode).toBeNull();
     });
+
+    describe('with a part selected (V2-15.11)', () => {
+      beforeEach(() => useConsole.getState().selectPart('FanBlade'));
+
+      const pressEscape = () =>
+        fireEvent.keyDown(screen.getByRole('complementary', { name: 'Asset CT-01' }), {
+          key: 'Escape',
+        });
+
+      it('closes the callout first with Escape and keeps the asset and the sheet', () => {
+        renderInspector({ incidents: [] });
+
+        pressEscape();
+
+        expect(useConsole.getState()).toMatchObject({
+          selectedPart: null,
+          selectedAssetCode: 'CT-01',
+        });
+        expect(screen.getByRole('complementary', { name: 'Asset CT-01' })).toBeInTheDocument();
+      });
+
+      it('closes the asset with the next Escape', () => {
+        renderInspector({ incidents: [] });
+
+        pressEscape();
+        pressEscape();
+
+        expect(useConsole.getState()).toMatchObject({
+          selectedPart: null,
+          selectedAssetCode: null,
+        });
+      });
+
+      it('reads the part at the press: one selected in the scene after the render counts', () => {
+        useConsole.getState().selectPart(null);
+        renderInspector({ incidents: [] });
+        act(() => useConsole.getState().selectPart('FanBlade'));
+
+        pressEscape();
+
+        expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+      });
+
+      it('closes the asset and the part together with Close', async () => {
+        renderInspector({ incidents: [] });
+
+        await userEvent.click(screen.getByRole('button', { name: 'Close asset' }));
+
+        expect(useConsole.getState()).toMatchObject({
+          selectedPart: null,
+          selectedAssetCode: null,
+        });
+      });
+    });
   });
 
   describe('parts', () => {
@@ -760,12 +824,44 @@ describe('AssetInspector', () => {
       ]);
     });
 
-    it('is not a control: no button, no selection', () => {
+    it('is read only in the 2D view: no button, no selection', () => {
       renderInspector({ incidents: [] });
 
       const tree = screen.getByRole('tree');
       expect(within(tree).queryByRole('button')).toBeNull();
       expect(within(tree).queryAllByRole('treeitem', { selected: true })).toHaveLength(0);
+      expect(partRow('Fan blade')).not.toHaveAttribute('aria-selected');
+    });
+
+    describe('in the 3D view (V2-15.11)', () => {
+      beforeEach(() => {
+        useConsole.setState({ view: '3d' });
+        useConsole.getState().selectAsset('CT-01', null);
+      });
+
+      it('selects a bound row and marks it, leaves a static row alone and has no button', () => {
+        renderInspector({ incidents: [] });
+
+        fireEvent.click(partRow('Casing'));
+        expect(useConsole.getState().selectedPart).toBeNull();
+
+        fireEvent.click(partRow('Fan blade'));
+
+        expect(useConsole.getState().selectedPart).toBe('FanBlade');
+        expect(partRow('Fan blade')).toHaveAttribute('aria-selected', 'true');
+        expect(partRow('Fan motor')).toHaveAttribute('aria-selected', 'false');
+        expect(partRow('Casing')).not.toHaveAttribute('aria-selected');
+        expect(within(screen.getByRole('tree')).queryByRole('button')).toBeNull();
+        expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', 'FanBlade');
+      });
+
+      it('marks the row of the part clicked in the scene', () => {
+        renderInspector({ incidents: [] });
+
+        act(() => useConsole.getState().selectPart('FanBlade'));
+
+        expect(partRow('Fan blade')).toHaveAttribute('aria-selected', 'true');
+      });
     });
 
     it('has one tab stop and moves it with the arrow keys, Home and End', () => {
@@ -1154,12 +1250,82 @@ describe('AssetInspector', () => {
       expect(content.at(-1)).toBe(foot);
     });
 
-    it('draws no Focus control and registers no key for it', () => {
-      signInAs('operator');
-      renderInspector({ incidents: [] });
+    describe('Focus (V2-15.11)', () => {
+      const focusButton = () => screen.queryByRole('button', { name: 'Focus' });
+      const roles = ['operator', 'supervisor', 'technician', 'viewer'] as const;
 
-      expect(screen.queryByRole('button', { name: /Focus/ })).toBeNull();
-      expect(document.querySelector('[aria-keyshortcuts="F"]')).toBeNull();
+      it.each(roles)('is not drawn in the 2D view, for a %s', (role) => {
+        signInAs(role);
+        useConsole.getState().selectAsset('CT-01', null);
+
+        renderInspector({ incidents: [] });
+
+        expect(focusButton()).toBeNull();
+      });
+
+      describe('in the 3D view', () => {
+        beforeEach(() => {
+          useConsole.setState({ view: '3d' });
+          useConsole.getState().selectAsset('CT-01', null);
+        });
+
+        it.each(['operator', 'supervisor', 'technician'] as const)(
+          'sits beside the report button for a %s and flies to the asset',
+          async (role) => {
+            signInAs(role);
+            renderInspector({ incidents: [] });
+
+            const report = screen.getByRole('button', { name: 'Report a fault on CT-01' });
+            expect(report.parentElement).toContainElement(focusButton());
+            await userEvent.click(focusButton() as HTMLElement);
+
+            expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', null);
+          },
+        );
+
+        it('sits at the end of the viewer’s note and flies to the asset', async () => {
+          signInAs('viewer');
+          renderInspector({ incidents: [] });
+
+          const note = screen.getByRole('note');
+          expect(within(note).getByText('View only')).toBeInTheDocument();
+          await userEvent.click(within(note).getByRole('button', { name: 'Focus' }));
+
+          expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', null);
+        });
+
+        it('flies to the selected part when there is one', async () => {
+          signInAs('operator');
+          useConsole.getState().selectPart('FanBlade');
+          renderInspector({ incidents: [] });
+
+          await userEvent.click(focusButton() as HTMLElement);
+
+          expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', 'FanBlade');
+        });
+
+        it('registers no key for it yet', () => {
+          signInAs('operator');
+          renderInspector({ incidents: [] });
+
+          expect(focusButton()).toBeInTheDocument();
+          expect(document.querySelector('[aria-keyshortcuts="F"]')).toBeNull();
+        });
+
+        it('is not drawn for an asset inside a building that is not in focus, and is when it is', () => {
+          signInAs('operator');
+          const inside: AssetDetail = { ...DETAIL, elevationM: 0 };
+
+          // Selected with no building in focus (the zones were not known yet): the scene does not draw it.
+          const first = renderInspector({ detail: inside, incidents: [], zones: [around()] });
+          expect(focusButton()).toBeNull();
+          first.unmount();
+
+          useConsole.getState().selectAsset('CT-01', zone.id);
+          renderInspector({ detail: inside, incidents: [], zones: [around()] });
+          expect(focusButton()).toBeInTheDocument();
+        });
+      });
     });
 
     it('is not drawn while the asset loads', () => {

@@ -413,8 +413,11 @@ Settled 2026-10-15 (V2-09.9) by the tech lead: every proposal of the analysis is
   point cannot follow; `bindingsFromNodes` reports it as a problem) reads "static", like a node with no binding. Not
   built, because there is no single bound reading behind them: frame 08's "stopped · 41 °C" and "fan stopped",
   frame 03's "71 °C · 18.6 A", "64 % open" and "On · Auto".
-- **Rows are read, not chosen.** A row is a `treeitem` and not a button until V2-15 makes parts selectable; the
-  list has one tab stop and the arrow keys, Home and End move through it.
+- **A bound row is chosen in the 3D view; every other row is read.** A row is a `treeitem` and not a button. In the 3D
+  view a row that follows a point is selectable (`aria-selected`; click, Enter or Space selects the part, opens its
+  callout and flies to it, and the same on the selected row deselects it), hovering it tints its part and a part
+  hovered in the scene marks its row (V2-15.11). A static row, and every row in the 2D view, is only read. The list
+  has one tab stop and the arrow keys, Home and End move through it.
 - **The section is keyed on the class having a model** (`model_key`, the class's `modelUrl`). Amended in V2-14.10: it
   is a skeleton while the file is read, and it is left out, with no message, when the file cannot be read or has no
   named part below the root; the rest of the sheet works as before. The "No 3D model" note is for a class with no
@@ -569,9 +572,11 @@ Settled 2026-10-15 (V2-09.10), the foot of the sheet:
 - **A viewer** (and anyone with no `incident:report`) gets the view-only note in its place: **View only** "Readings,
   parts and cameras are all yours to explore. Reporting a fault needs the operator, supervisor or technician role."
   The sheet never ends in a gap; the API's `403` is still the control (ADR-0011).
-- **Escape** closes the inspector. A report form opened from here is a draft only once something differs from what it
+- **Escape** takes the first step of the scene's ladder: with a part selected it closes the part's callout and the
+  inspector stays; with none it closes the inspector. The Close button closes the inspector in one press. A report form opened from here is a draft only once something differs from what it
   opened with, so an untouched one closes on Escape too; the form starts at its title.
-- **"Focus"** (V2-12) is not drawn and has no key: it is added to the foot's row, at its end.
+- **"Focus"** (V2-15.11) is drawn at the end of the foot's row, for every role (a viewer has it beside the note), in the
+  3D view only: it flies to the selected part, else to the asset. It has no key until V2-18.2.
 
 Proposed 2026-10-19 (V2-15.1), the tech lead to confirm: the words the 3D view adds to the sections above, as ADR-0020
 § Scene settles them.

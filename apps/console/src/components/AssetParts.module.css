@@ -1,7 +1,10 @@
 /*
  * The parts tree of the asset inspector (frames 03, 05, 08; the mockups' `twin.css` `.tree`,
  * `.tree-row`, `.l1`). State is an attribute: `data-level` for the indent, `data-stale` for a
- * remembered value. No hover or selected look: a row is read, not chosen, until V2-15.
+ * remembered value. A bound row is selectable in the 3D view (V2-15.11): `data-selectable` says it can be
+ * chosen, `data-hovered` that its part is under the pointer (the row's own or the scene's) and `aria-selected`
+ * that it is the selected part. Both looks are the accent tint of the frames' `.tree-row[aria-current]`, the
+ * selected row adding the accent edge and glyph: no new colour.
  */
 
 .tree {
@@ -43,6 +46,23 @@
   font-size: var(--type-s);
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+.row[data-selectable] {
+  cursor: pointer;
+}
+
+.row[data-hovered],
+.row[aria-selected='true'] {
+  background: var(--accent-tint);
+}
+
+.row[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.row[aria-selected='true'] .glyph {
+  color: var(--accent);
 }
 
 /* A remembered reading (frame 05): the word "last" says it, the tone only agrees. */

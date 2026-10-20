@@ -25,7 +25,7 @@
   margin-top: var(--space-0-5);
 }
 
-/* Grows, so what is added at the row's end (a "Focus" button) sits at the edge. */
+/* Grows, so the `action` at the row's end (the inspector's "Focus" button) sits at the edge. */
 .text {
   flex: 1;
   min-width: 0;
@@ -38,4 +38,9 @@
   font-family: var(--font-ui);
   font-size: var(--type-body);
   font-weight: var(--weight-semibold);
+}
+
+/* The row's end: it keeps its size while the text grows. */
+.action {
+  flex: none;
 }
