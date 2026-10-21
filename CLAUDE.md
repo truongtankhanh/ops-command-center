@@ -70,7 +70,7 @@ Design in full: `docs/architecture.md`; decisions: the ADR table in `README.md`.
 | `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                    |
 | `packages/contracts/src/`                      | `domain.ts`, `api.ts`, `events.ts`, `auth.ts`                                                                                                                                           |
 | `packages/camera-adapter/src/`                 | `CameraSource` port, mock and MediaMTX implementations                                                                                                                                  |
-| `ops/`                                         | Keycloak realm, Prometheus config, Grafana dashboard, `model-tools/` (the `models:check` CLI and its specs)                                                                             |
+| `ops/`                                         | Keycloak realm, Prometheus config, Grafana dashboard, `model-tools/` (the `models:check` CLI and its specs), `sign-in-backdrop/` (the sign-in picture's renderer)                       |
 | `docs/`                                        | `adr/`, `api/` (reference + `openapi.json`), `design/`, `architecture.md`, `roadmap.md`                                                                                                 |
 
 Specs sit next to the code they test (`*.spec.ts` in the API, `*.test.ts(x)` elsewhere).
@@ -113,6 +113,7 @@ pnpm test                                   # unit: Jest (API), Vitest (console,
 pnpm test:e2e                               # API against real PostgreSQL
 pnpm models:check                           # every .glb under ops/models against the model contract (ADR-0020); also models:test, models:typecheck
 pnpm models:standins                        # regenerate the demo's placeholder models into ops/models (V2-13.3); never deletes
+pnpm keycloak:test                          # the sign-in theme: size budget, realm, theme files (V2-20.7); also keycloak:typecheck
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)

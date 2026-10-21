@@ -18,6 +18,8 @@
     "models:standins": "node ops/model-tools/make-standins.ts",
     "models:test": "node --test \"ops/model-tools/*.test.ts\"",
     "models:typecheck": "tsc --noEmit -p ops/model-tools",
+    "keycloak:test": "node --test \"ops/keycloak/*.test.ts\"",
+    "keycloak:typecheck": "tsc --noEmit -p ops/sign-in-backdrop",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docker:up": "docker compose up -d postgres keycloak",

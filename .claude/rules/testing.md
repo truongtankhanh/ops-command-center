@@ -18,9 +18,11 @@ paths:
 | Console        | Vitest 4 + jsdom + Testing Library | `*.test.ts`, `*.test.tsx`      | beside source in `src/` |
 | camera-adapter | Vitest                             | `src/**/*.test.ts`             | beside source           |
 | Model tools    | `node:test` (no dependency)        | `*.test.ts`                    | `ops/model-tools/`      |
+| Keycloak theme | `node:test` (no dependency)        | `*.test.ts`                    | `ops/keycloak/`         |
 
 The API uses Jest and everything else Vitest. Do not unify them. The model tools use Node's own runner and are not part of `pnpm test`: `pnpm models:test`
-runs them (and CI's model-check step), `pnpm models:typecheck` type-checks them.
+runs them (and CI's model-check step), `pnpm models:typecheck` type-checks them. The sign-in theme's checks run the same way:
+`pnpm keycloak:test` (and `pnpm keycloak:typecheck`); its colour checks are part of the console's `lint`.
 
 ## API
 
