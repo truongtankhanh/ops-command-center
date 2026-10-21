@@ -302,67 +302,98 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--tw-edge`         | `--tw-ground`                             | 2.36  | 3       | reported only: decorative outline; the face tones carry the shape                          |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
+| `--text-primary`    | `--danger-tint` over `--surface-1`        | 11.37 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `sign-in backdrop, brightest`             | 9.33  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `sign-in backdrop, brightest`             | 5.42  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `sign-in backdrop, foot band`             | 5.40  | 4.5     | pass                                                                                       |
 
 ### Values copied out of tokens.css
 
-| Copy                                                 | Value                     | Must equal                | Result |
-| ---------------------------------------------------- | ------------------------- | ------------------------- | ------ |
-| `mapColors.ground` (src/styles/tokens.ts)            | #0c1821                   | #0c1821                   | match  |
-| `mapColors.severity.critical` (src/styles/tokens.ts) | #ff5a4e                   | #ff5a4e                   | match  |
-| `mapColors.severity.high` (src/styles/tokens.ts)     | #ff9f43                   | #ff9f43                   | match  |
-| `mapColors.severity.medium` (src/styles/tokens.ts)   | #f2d04b                   | #f2d04b                   | match  |
-| `mapColors.severity.low` (src/styles/tokens.ts)      | #6cc3d5                   | #6cc3d5                   | match  |
-| `mapColors.surface1` (src/styles/tokens.ts)          | #13222d                   | #13222d                   | match  |
-| `mapColors.surface2` (src/styles/tokens.ts)          | #1a2d3a                   | #1a2d3a                   | match  |
-| `mapColors.surface3` (src/styles/tokens.ts)          | #223848                   | #223848                   | match  |
-| `mapColors.accent` (src/styles/tokens.ts)            | #8c9bff                   | #8c9bff                   | match  |
-| `mapColors.onAccent` (src/styles/tokens.ts)          | #0c1821                   | #0c1821                   | match  |
-| `mapColors.textPrimary` (src/styles/tokens.ts)       | #e4edf3                   | #e4edf3                   | match  |
-| `mapColors.textSecondary` (src/styles/tokens.ts)     | #a6b8c5                   | #a6b8c5                   | match  |
-| `mapColors.textTertiary` (src/styles/tokens.ts)      | #91a5b4                   | #91a5b4                   | match  |
-| `mapColors.staleEdge` (src/styles/tokens.ts)         | #4a555c                   | #4a555c                   | match  |
-| `twinColors.ground` (src/styles/tokens.ts)           | #0f1d27                   | #0f1d27                   | match  |
-| `twinColors.grid` (src/styles/tokens.ts)             | #14242f                   | #14242f                   | match  |
-| `twinColors.road` (src/styles/tokens.ts)             | #182a36                   | #182a36                   | match  |
-| `twinColors.edge` (src/styles/tokens.ts)             | #3e5a6e                   | #3e5a6e                   | match  |
-| `twinColors.rail` (src/styles/tokens.ts)             | #8199aa                   | #8199aa                   | match  |
-| `twinColors.neutral` (src/styles/tokens.ts)          | #4b5d6b                   | #4b5d6b                   | match  |
-| `twinColors.blade` (src/styles/tokens.ts)            | #4d6a80                   | #4d6a80                   | match  |
-| `twinColors.hub` (src/styles/tokens.ts)              | #5a7488                   | #5a7488                   | match  |
-| `twinColors.screen` (src/styles/tokens.ts)           | #2b3f66                   | #2b3f66                   | match  |
-| `twinColors.idle.top` (src/styles/tokens.ts)         | #2a4658                   | #2a4658                   | match  |
-| `twinColors.idle.south` (src/styles/tokens.ts)       | #1f3748                   | #1f3748                   | match  |
-| `twinColors.idle.east` (src/styles/tokens.ts)        | #172b3a                   | #172b3a                   | match  |
-| `twinColors.steel.top` (src/styles/tokens.ts)        | #435766                   | #435766                   | match  |
-| `twinColors.steel.south` (src/styles/tokens.ts)      | #334553                   | #334553                   | match  |
-| `twinColors.steel.east` (src/styles/tokens.ts)       | #273745                   | #273745                   | match  |
-| `twinColors.concrete.top` (src/styles/tokens.ts)     | #363c41                   | #363c41                   | match  |
-| `twinColors.concrete.south` (src/styles/tokens.ts)   | #2b3034                   | #2b3034                   | match  |
-| `twinColors.concrete.east` (src/styles/tokens.ts)    | #22262a                   | #22262a                   | match  |
-| `twinColors.hover.top` (src/styles/tokens.ts)        | #47608a                   | #47608a                   | match  |
-| `twinColors.hover.south` (src/styles/tokens.ts)      | #40557f                   | #40557f                   | match  |
-| `twinColors.hover.east` (src/styles/tokens.ts)       | #3a4d75                   | #3a4d75                   | match  |
-| `twinColors.alarm.top` (src/styles/tokens.ts)        | #754d55                   | #754d55                   | match  |
-| `twinColors.alarm.south` (src/styles/tokens.ts)      | #6d434a                   | #6d434a                   | match  |
-| `twinColors.alarm.east` (src/styles/tokens.ts)       | #683b41                   | #683b41                   | match  |
-| `twinColors.stale.top` (src/styles/tokens.ts)        | #2b3338                   | #2b3338                   | match  |
-| `twinColors.stale.south` (src/styles/tokens.ts)      | #22292e                   | #22292e                   | match  |
-| `twinColors.stale.east` (src/styles/tokens.ts)       | #1b2125                   | #1b2125                   | match  |
-| `twinColors.staleEdge` (src/styles/tokens.ts)        | #4a555c                   | #4a555c                   | match  |
-| `twinColors.heat[0]` (src/styles/tokens.ts)          | #1f2a4d                   | #1f2a4d                   | match  |
-| `twinColors.heat[1]` (src/styles/tokens.ts)          | #2b3a72                   | #2b3a72                   | match  |
-| `twinColors.heat[2]` (src/styles/tokens.ts)          | #3d4f99                   | #3d4f99                   | match  |
-| `twinColors.heat[3]` (src/styles/tokens.ts)          | #5868c4                   | #5868c4                   | match  |
-| `twinColors.heat[4]` (src/styles/tokens.ts)          | #7b8af0                   | #7b8af0                   | match  |
-| `twinColors.heat[5]` (src/styles/tokens.ts)          | #b3bdff                   | #b3bdff                   | match  |
-| `twinColors.ghostOpacity` (src/styles/tokens.ts)     | 0.18                      | 0.18                      | match  |
-| `twinColors.alarmMix` (src/styles/tokens.ts)         | 35%                       | 35%                       | match  |
-| `twinColors.xrayOpacity` (src/styles/tokens.ts)      | 0.14                      | 0.14                      | match  |
-| `mapMotion.pulseMs` (src/styles/tokens.ts)           | 1800ms                    | 1800ms                    | match  |
-| `breakpoints.wall` (src/styles/tokens.ts)            | 1920px                    | 1920px                    | match  |
-| `breakpoints.wall4k` (src/styles/tokens.ts)          | 3200px                    | 3200px                    | match  |
-| `theme-color` (index.html)                           | #13222d                   | #13222d                   | match  |
-| `faviconMark` (src/styles/tokens.ts)                 | public/favicon.svg        | public/favicon.svg        | match  |
-| colours in public/favicon.svg                        | #0c1821, #8c9bff, #e4edf3 | #0c1821, #8c9bff, #e4edf3 | match  |
+| Copy                                                       | Value                                                          | Must equal                                                     | Result |
+| ---------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- | ------ |
+| `mapColors.ground` (src/styles/tokens.ts)                  | #0c1821                                                        | #0c1821                                                        | match  |
+| `mapColors.severity.critical` (src/styles/tokens.ts)       | #ff5a4e                                                        | #ff5a4e                                                        | match  |
+| `mapColors.severity.high` (src/styles/tokens.ts)           | #ff9f43                                                        | #ff9f43                                                        | match  |
+| `mapColors.severity.medium` (src/styles/tokens.ts)         | #f2d04b                                                        | #f2d04b                                                        | match  |
+| `mapColors.severity.low` (src/styles/tokens.ts)            | #6cc3d5                                                        | #6cc3d5                                                        | match  |
+| `mapColors.surface1` (src/styles/tokens.ts)                | #13222d                                                        | #13222d                                                        | match  |
+| `mapColors.surface2` (src/styles/tokens.ts)                | #1a2d3a                                                        | #1a2d3a                                                        | match  |
+| `mapColors.surface3` (src/styles/tokens.ts)                | #223848                                                        | #223848                                                        | match  |
+| `mapColors.accent` (src/styles/tokens.ts)                  | #8c9bff                                                        | #8c9bff                                                        | match  |
+| `mapColors.onAccent` (src/styles/tokens.ts)                | #0c1821                                                        | #0c1821                                                        | match  |
+| `mapColors.textPrimary` (src/styles/tokens.ts)             | #e4edf3                                                        | #e4edf3                                                        | match  |
+| `mapColors.textSecondary` (src/styles/tokens.ts)           | #a6b8c5                                                        | #a6b8c5                                                        | match  |
+| `mapColors.textTertiary` (src/styles/tokens.ts)            | #91a5b4                                                        | #91a5b4                                                        | match  |
+| `mapColors.staleEdge` (src/styles/tokens.ts)               | #4a555c                                                        | #4a555c                                                        | match  |
+| `twinColors.ground` (src/styles/tokens.ts)                 | #0f1d27                                                        | #0f1d27                                                        | match  |
+| `twinColors.grid` (src/styles/tokens.ts)                   | #14242f                                                        | #14242f                                                        | match  |
+| `twinColors.road` (src/styles/tokens.ts)                   | #182a36                                                        | #182a36                                                        | match  |
+| `twinColors.edge` (src/styles/tokens.ts)                   | #3e5a6e                                                        | #3e5a6e                                                        | match  |
+| `twinColors.rail` (src/styles/tokens.ts)                   | #8199aa                                                        | #8199aa                                                        | match  |
+| `twinColors.neutral` (src/styles/tokens.ts)                | #4b5d6b                                                        | #4b5d6b                                                        | match  |
+| `twinColors.blade` (src/styles/tokens.ts)                  | #4d6a80                                                        | #4d6a80                                                        | match  |
+| `twinColors.hub` (src/styles/tokens.ts)                    | #5a7488                                                        | #5a7488                                                        | match  |
+| `twinColors.screen` (src/styles/tokens.ts)                 | #2b3f66                                                        | #2b3f66                                                        | match  |
+| `twinColors.idle.top` (src/styles/tokens.ts)               | #2a4658                                                        | #2a4658                                                        | match  |
+| `twinColors.idle.south` (src/styles/tokens.ts)             | #1f3748                                                        | #1f3748                                                        | match  |
+| `twinColors.idle.east` (src/styles/tokens.ts)              | #172b3a                                                        | #172b3a                                                        | match  |
+| `twinColors.steel.top` (src/styles/tokens.ts)              | #435766                                                        | #435766                                                        | match  |
+| `twinColors.steel.south` (src/styles/tokens.ts)            | #334553                                                        | #334553                                                        | match  |
+| `twinColors.steel.east` (src/styles/tokens.ts)             | #273745                                                        | #273745                                                        | match  |
+| `twinColors.concrete.top` (src/styles/tokens.ts)           | #363c41                                                        | #363c41                                                        | match  |
+| `twinColors.concrete.south` (src/styles/tokens.ts)         | #2b3034                                                        | #2b3034                                                        | match  |
+| `twinColors.concrete.east` (src/styles/tokens.ts)          | #22262a                                                        | #22262a                                                        | match  |
+| `twinColors.hover.top` (src/styles/tokens.ts)              | #47608a                                                        | #47608a                                                        | match  |
+| `twinColors.hover.south` (src/styles/tokens.ts)            | #40557f                                                        | #40557f                                                        | match  |
+| `twinColors.hover.east` (src/styles/tokens.ts)             | #3a4d75                                                        | #3a4d75                                                        | match  |
+| `twinColors.alarm.top` (src/styles/tokens.ts)              | #754d55                                                        | #754d55                                                        | match  |
+| `twinColors.alarm.south` (src/styles/tokens.ts)            | #6d434a                                                        | #6d434a                                                        | match  |
+| `twinColors.alarm.east` (src/styles/tokens.ts)             | #683b41                                                        | #683b41                                                        | match  |
+| `twinColors.stale.top` (src/styles/tokens.ts)              | #2b3338                                                        | #2b3338                                                        | match  |
+| `twinColors.stale.south` (src/styles/tokens.ts)            | #22292e                                                        | #22292e                                                        | match  |
+| `twinColors.stale.east` (src/styles/tokens.ts)             | #1b2125                                                        | #1b2125                                                        | match  |
+| `twinColors.staleEdge` (src/styles/tokens.ts)              | #4a555c                                                        | #4a555c                                                        | match  |
+| `twinColors.heat[0]` (src/styles/tokens.ts)                | #1f2a4d                                                        | #1f2a4d                                                        | match  |
+| `twinColors.heat[1]` (src/styles/tokens.ts)                | #2b3a72                                                        | #2b3a72                                                        | match  |
+| `twinColors.heat[2]` (src/styles/tokens.ts)                | #3d4f99                                                        | #3d4f99                                                        | match  |
+| `twinColors.heat[3]` (src/styles/tokens.ts)                | #5868c4                                                        | #5868c4                                                        | match  |
+| `twinColors.heat[4]` (src/styles/tokens.ts)                | #7b8af0                                                        | #7b8af0                                                        | match  |
+| `twinColors.heat[5]` (src/styles/tokens.ts)                | #b3bdff                                                        | #b3bdff                                                        | match  |
+| `twinColors.ghostOpacity` (src/styles/tokens.ts)           | 0.18                                                           | 0.18                                                           | match  |
+| `twinColors.alarmMix` (src/styles/tokens.ts)               | 35%                                                            | 35%                                                            | match  |
+| `twinColors.xrayOpacity` (src/styles/tokens.ts)            | 0.14                                                           | 0.14                                                           | match  |
+| `mapMotion.pulseMs` (src/styles/tokens.ts)                 | 1800ms                                                         | 1800ms                                                         | match  |
+| `breakpoints.wall` (src/styles/tokens.ts)                  | 1920px                                                         | 1920px                                                         | match  |
+| `breakpoints.wall4k` (src/styles/tokens.ts)                | 3200px                                                         | 3200px                                                         | match  |
+| `theme-color` (index.html)                                 | #13222d                                                        | #13222d                                                        | match  |
+| `faviconMark` (src/styles/tokens.ts)                       | public/favicon.svg                                             | public/favicon.svg                                             | match  |
+| colours in public/favicon.svg                              | #0c1821, #8c9bff, #e4edf3                                      | #0c1821, #8c9bff, #e4edf3                                      | match  |
+| `--surface-0` (occ.css `:root`)                            | #0c1821                                                        | #0c1821                                                        | match  |
+| `--surface-1` (occ.css `:root`)                            | #13222d                                                        | #13222d                                                        | match  |
+| `--border-subtle` (occ.css `:root`)                        | #25394a                                                        | #25394a                                                        | match  |
+| `--border-strong` (occ.css `:root`)                        | #5a7488                                                        | #5a7488                                                        | match  |
+| `--text-primary` (occ.css `:root`)                         | #e4edf3                                                        | #e4edf3                                                        | match  |
+| `--text-secondary` (occ.css `:root`)                       | #a6b8c5                                                        | #a6b8c5                                                        | match  |
+| `--text-tertiary` (occ.css `:root`)                        | #91a5b4                                                        | #91a5b4                                                        | match  |
+| `--accent` (occ.css `:root`)                               | #8c9bff                                                        | #8c9bff                                                        | match  |
+| `--accent-hover` (occ.css `:root`)                         | #a8b3ff                                                        | #a8b3ff                                                        | match  |
+| `--accent-tint` (occ.css `:root`)                          | rgb(140 155 255 / 0.14)                                        | rgb(140 155 255 / 0.14)                                        | match  |
+| `--on-accent` (occ.css `:root`)                            | #0c1821                                                        | #0c1821                                                        | match  |
+| `--danger` (occ.css `:root`)                               | #ff7f8a                                                        | #ff7f8a                                                        | match  |
+| `--warning` (occ.css `:root`)                              | #f0b85e                                                        | #f0b85e                                                        | match  |
+| `--success` (occ.css `:root`)                              | #5ccf98                                                        | #5ccf98                                                        | match  |
+| `--shadow-3` (occ.css `:root`)                             | 0 16px 40px rgb(0 0 0 / 0.5)                                   | 0 16px 40px rgb(0 0 0 / 0.5)                                   | match  |
+| `--radius-m` (occ.css `:root`)                             | 6px                                                            | 6px                                                            | match  |
+| `--radius-l` (occ.css `:root`)                             | 10px                                                           | 10px                                                           | match  |
+| `--font-ui` (occ.css `:root`)                              | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | match  |
+| `--font-body` (occ.css `:root`)                            | 'Barlow', system-ui, sans-serif                                | 'Barlow', system-ui, sans-serif                                | match  |
+| `--focus-ring` (occ.css `:root`)                           | 2px solid var(--accent)                                        | 2px solid var(--accent)                                        | match  |
+| `--focus-offset` (occ.css `:root`)                         | 2px                                                            | 2px                                                            | match  |
+| the card, `--surface-1` at 96 % (occ.css)                  | rgb(19 34 45 / 0.96)                                           | rgb(19 34 45 / 0.96)                                           | match  |
+| the shade, `--surface-0` at 55 % (occ.css)                 | rgb(12 24 33 / 0.55)                                           | rgb(12 24 33 / 0.55)                                           | match  |
+| colours of the mark in template.ftl                        | #223848, #8c9bff, #e4edf3                                      | #223848, #8c9bff, #e4edf3                                      | match  |
+| `public/sign-in-backdrop.webp` (sha-256)                   | 628e3acbfdac                                                   | 628e3acbfdac                                                   | match  |
+| the poster the backdrop colours were measured on (sha-256) | 628e3acbfdac                                                   | 628e3acbfdac                                                   | match  |
+| the loop the backdrop colours were measured on (sha-256)   | a972581496aa                                                   | a972581496aa                                                   | match  |
 
 <!-- contrast:end -->

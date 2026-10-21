@@ -203,6 +203,9 @@ console's tokens.
   MFA and federation keep working. Errors use Keycloak's messages in the card.
 - The console's own auth states (V1 frames 08–11: signing in, failed, no access, insecure context) reuse the same
   backdrop behind their card, so the hand-off to Keycloak and back looks like one page.
+- Built in V2-20 (2026-10-21): the theme is `ops/keycloak/themes/occ/`, the picture is made by
+  `ops/sign-in-backdrop/render.ts`, and what is decided and checked is in ADR-0010 ("Settled in V2-20.1 and built in
+  V2-20.2 – V2-20.7").
 
 ### Accessibility
 

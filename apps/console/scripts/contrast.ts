@@ -7,10 +7,13 @@
  * Both modes exit 1 when a checked pair is below its minimum, or when a token value that has to be
  * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
  * longer matches it, when the copy of favicon.svg the title badge draws over has drifted, or when
- * the wall breakpoints in tokens.ts no longer match the media queries of tokens.css. Plain
+ * the wall breakpoints in tokens.ts no longer match the media queries of tokens.css, or when the
+ * sign-in theme in ops/keycloak/themes/occ (V2-20.7), which is served before anyone is signed in and
+ * so cannot read tokens.css, no longer matches it or the console's copy of its backdrop. Plain
  * Node 24 with type stripping and no dependency, so it stays cheap to run in lint. Ratios use the
  * WCAG 2.x relative-luminance formula.
  */
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
   breakpoints,
@@ -41,6 +44,20 @@ const TOKENS_CSS = new URL('../src/styles/tokens.css', import.meta.url);
 const INDEX_HTML = new URL('../index.html', import.meta.url);
 const FAVICON_SVG = new URL('../public/favicon.svg', import.meta.url);
 const TOKENS_MD = new URL('../../../docs/design/tokens.md', import.meta.url);
+// The Keycloak sign-in theme (V2-20) holds copies of tokens.css values and of the backdrop's poster.
+const THEME = new URL('../../../ops/keycloak/themes/occ/login/', import.meta.url);
+const THEME_CSS = new URL('resources/css/occ.css', THEME);
+const THEME_TEMPLATE = new URL('template.ftl', THEME);
+const THEME_POSTER = new URL('resources/img/campus-poster.webp', THEME);
+const THEME_LOOP = new URL('resources/img/campus-loop.webm', THEME);
+const CONSOLE_POSTER = new URL('../public/sign-in-backdrop.webp', import.meta.url);
+
+/**
+ * The files the two `sign-in backdrop` colours below were measured on (first 12 hex of their SHA-256). Remaking
+ * the loop or the poster changes them: run `node ops/sign-in-backdrop/measure.ts`, put its two colours in `MAP`
+ * and its hashes here. Without this, a brighter picture would slip under the contrast the text on it was proved on.
+ */
+const MEASURED_BACKDROP = { poster: '628e3acbfdac', loop: 'a972581496aa' } as const;
 const START = '<!-- contrast:start -->';
 const END = '<!-- contrast:end -->';
 
@@ -66,6 +83,10 @@ const MAP: Record<string, string> = {
   'map ground': mapColors.ground,
   'map zone outline': mapColors.zoneOutline,
   'map boundary': mapColors.site.boundaryFill,
+  // The sign-in page's backdrop under its 55 % shade (V2-20.5): the brightest pixel of any frame of the loop and
+  // of the poster, and the brightest in the bottom tenth, where the foot stands. From `measure.ts`, not by eye.
+  'sign-in backdrop, brightest': '#2c3e4b',
+  'sign-in backdrop, foot band': '#1f2f3a',
   ...Object.fromEntries(
     Object.entries(mapColors.zoneFill).map(([kind, fill]) => [`map zone ${kind}`, fill]),
   ),
@@ -214,6 +235,13 @@ const PAIRS: Pair[] = [
   // its over-limit tint (`--sev-*`) is the severity pairs on `--surface-0` … `--surface-2`. It sits
   // on `--surface-1` (the sheet) and `--surface-2` (the incident evidence block); both clear the 3:1
   // a graphic needs (WCAG 1.4.11).
+  // The sign-in theme (V2-20.5, 20.7). Its card is `--surface-1`, so the card's text, the button and the input
+  // edge are pairs above (text and accent on `--surface-1`, `--on-accent` on `--accent`, `--border-strong`).
+  // New here: a page message on the tint of `--danger`, and the tagline and the foot straight on the backdrop.
+  { fg: '--text-primary', bg: '--danger-tint', over: '--surface-1', min: TEXT },
+  { fg: '--text-primary', bg: 'sign-in backdrop, brightest', min: TEXT },
+  { fg: '--text-secondary', bg: 'sign-in backdrop, brightest', min: TEXT },
+  { fg: '--text-tertiary', bg: 'sign-in backdrop, foot band', min: TEXT },
 ];
 
 const tokensCss = readFileSync(TOKENS_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -466,6 +494,74 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       copy: 'colours in public/favicon.svg',
       actual: sorted([...svg.matchAll(/#[0-9a-f]{3,6}\b/gi)].map(([hex]) => normalise(hex))),
       expected: sorted(['--surface-0', '--text-primary', '--accent'].map((t) => hexOf(resolve(t)))),
+    },
+    ...themeCopies(sorted),
+  ];
+}
+
+function sha(file: URL): string {
+  return createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 12);
+}
+
+/**
+ * What the Keycloak sign-in theme holds out of tokens.css (V2-20.7): every custom property of its `:root`, the two
+ * literal colours of the card and the shade, the colours of the mark in its template, and the backdrop's poster
+ * (the theme's file and the console's copy) and the files the contrast over it was measured on.
+ */
+function themeCopies(
+  sorted: (hexes: string[]) => string,
+): { copy: string; actual: string; expected: string }[] {
+  const stripped = readFileSync(THEME_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  // `calc(6px * var(--ui-scale))` is `6px` at the theme's one scale.
+  const plain = (value: string) =>
+    value
+      .replace(/calc\(([\d.]+px) \* var\(--ui-scale\)\)/g, '$1')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const rgbOf = (token: string) => {
+    const c = resolve(token);
+    return `${Math.round(c.r)} ${Math.round(c.g)} ${Math.round(c.b)}`;
+  };
+  const properties = [...parseRoot(stripped)].map(([name, value]) => ({
+    copy: `\`${name}\` (occ.css \`:root\`)`,
+    actual: plain(value),
+    expected: plain(css.get(name) ?? 'missing'),
+  }));
+  const literal = (what: string, token: string, alpha: string) => {
+    const expected = `rgb(${rgbOf(token)} / ${alpha})`;
+    return {
+      copy: `${what} (occ.css)`,
+      actual: stripped.includes(expected) ? expected : 'missing',
+      expected,
+    };
+  };
+  // The mark drawn in template.ftl is the console's (`Brand.module.css`): ground, ring and dot.
+  const mark =
+    /<svg class="occ-mark"[\s\S]*?<\/svg>/.exec(readFileSync(THEME_TEMPLATE, 'utf8'))?.[0] ?? '';
+  const posters = { theme: sha(THEME_POSTER), console: sha(CONSOLE_POSTER) };
+  return [
+    ...properties,
+    literal('the card, `--surface-1` at 96 %', '--surface-1', '0.96'),
+    literal('the shade, `--surface-0` at 55 %', '--surface-0', '0.55'),
+    {
+      copy: 'colours of the mark in template.ftl',
+      actual: sorted([...mark.matchAll(/#[0-9a-f]{3,6}\b/gi)].map(([hex]) => normalise(hex))),
+      expected: sorted(['--surface-3', '--text-primary', '--accent'].map((t) => hexOf(resolve(t)))),
+    },
+    {
+      copy: '`public/sign-in-backdrop.webp` (sha-256)',
+      actual: posters.console,
+      expected: posters.theme,
+    },
+    {
+      copy: 'the poster the backdrop colours were measured on (sha-256)',
+      actual: posters.theme,
+      expected: MEASURED_BACKDROP.poster,
+    },
+    {
+      copy: 'the loop the backdrop colours were measured on (sha-256)',
+      actual: sha(THEME_LOOP),
+      expected: MEASURED_BACKDROP.loop,
     },
   ];
 }
