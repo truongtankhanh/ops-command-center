@@ -2,7 +2,9 @@ import { lazy, Suspense, useState } from 'react';
 import { levelOf } from '../lib/twinLevel';
 import { useTwinLoading } from '../lib/useTwinLoading';
 import { useConsole } from '../store';
+import { EmptyState } from '../ui/EmptyState';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
+import { CircleX } from '../ui/icons';
 import { CampusMap } from './CampusMap';
 import { ColourBy } from './ColourBy';
 import { LayersControl } from './LayersControl';
@@ -81,8 +83,13 @@ export function StageView() {
  * stage's place with a Retry. `React.lazy` keeps a rejected promise, so Retry makes a new lazy component to try
  * the import again; a boundary retry alone would show the same failure. The card is main-chunk code on purpose:
  * it has to show before the twin chunk and its CSS have arrived.
+ *
+ * **On the video wall** (`wall`, V2-21.6, `WallApp`) the same stage is mounted with the wall's props, through this one
+ * `import()`, and nothing in it can be pressed: the loading card has no Retry and a chunk that cannot be fetched is a
+ * plain message, not a button. What a wall does when 3D is not there is V2-21.9's (the 2D fallback) and a
+ * wall's recovery over a long session V2-21.10's.
  */
-function LazyTwinStage() {
+export function LazyTwinStage({ wall = false }: { wall?: boolean }) {
   const [codeLoaded, setCodeLoaded] = useState(twinChunkLoaded);
   const [Stage, setStage] = useState(() => lazyStage(() => setCodeLoaded(true)));
   const load = useTwinLoading(codeLoaded);
@@ -90,18 +97,24 @@ function LazyTwinStage() {
   return (
     <ErrorBoundary
       region="3D view"
-      fallback={(retry) => (
-        <RegionFallback
-          label="Campus 3D view"
-          message="The 3D view stopped working."
-          className={styles.twin}
-          retry={() => {
-            setCodeLoaded(false);
-            setStage(() => lazyStage(() => setCodeLoaded(true)));
-            retry();
-          }}
-        />
-      )}
+      fallback={(retry) =>
+        wall ? (
+          <section aria-label="Campus 3D view" className={styles.twin}>
+            <EmptyState icon={CircleX}>The 3D view stopped working.</EmptyState>
+          </section>
+        ) : (
+          <RegionFallback
+            label="Campus 3D view"
+            message="The 3D view stopped working."
+            className={styles.twin}
+            retry={() => {
+              setCodeLoaded(false);
+              setStage(() => lazyStage(() => setCodeLoaded(true)));
+              retry();
+            }}
+          />
+        )
+      }
     >
       <section
         className={styles.twin}
@@ -109,11 +122,14 @@ function LazyTwinStage() {
         aria-busy={load.loading}
       >
         <Suspense fallback={null}>
-          <Stage />
+          <Stage wall={wall} />
         </Suspense>
-        {waiting && (
-          <TwinLoading steps={load.steps} onRetry={load.retry} retrying={load.retrying} />
-        )}
+        {waiting &&
+          (wall ? (
+            <TwinLoading steps={load.steps} />
+          ) : (
+            <TwinLoading steps={load.steps} onRetry={load.retry} retrying={load.retrying} />
+          ))}
       </section>
     </ErrorBoundary>
   );

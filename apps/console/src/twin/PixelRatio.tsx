@@ -7,6 +7,8 @@ interface PixelRatioProps {
   initial: number;
   /** Called with the new step when the controller moves down; `TwinCanvas` keeps it and re-renders `<Canvas dpr>`. */
   onStep: (step: number) => void;
+  /** The video wall (V2-21.6): the controller is pinned to the last step, so it never judges and never calls `onStep`. */
+  wall?: boolean;
 }
 
 /**
@@ -22,15 +24,17 @@ interface PixelRatioProps {
  * - **When**: it is mounted with the scene, so the controller's grace (one window) starts at the first frame drawn
  *   with one, and the load's shader compiles and model uploads are not mistaken for a slow device. A step is never
  *   undone.
+ * - **On a video wall** (V2-21.6, `wall`) the controller starts and stays on the last step (1.0), so nothing is judged and
+ *   `onStep` is never called; the canvas starts at that ratio itself (`WALL_DPR`, in `TwinCanvas`), whatever the display's.
  * - A display whose pixel ratio is below the first steps is clamped (`deviceRatio`): a laptop at 1.25 goes 1.25 → 1.0.
  *
  * Frame demand: none. It only observes the frames that others asked for; its `useFrame` stays at the default priority,
- * which keeps R3F rendering the scene. Not unit-tested against WebGL (jsdom has none): its logic is the controller,
- * tested in `lib/twinPerf.test.ts`.
+ * which keeps R3F rendering the scene. Not tested against WebGL (jsdom has none): its logic is the controller, tested in
+ * `lib/twinPerf.test.ts`, and `PixelRatio.test.tsx` tests the wiring with a stand-in for `useFrame`.
  */
-export function PixelRatio({ initial, onStep }: PixelRatioProps) {
+export function PixelRatio({ initial, onStep, wall = false }: PixelRatioProps) {
   const [controller] = useState(() =>
-    createDprController({ initial, deviceRatio: window.devicePixelRatio || 1 }),
+    createDprController({ initial, deviceRatio: window.devicePixelRatio || 1, wall }),
   );
 
   useFrame((_state, delta) => {

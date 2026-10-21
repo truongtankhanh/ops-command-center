@@ -33,6 +33,8 @@ const fake = vi.hoisted(() => ({
 
 // `App` imports the whole console, and MapLibre cannot load without WebGL; the wall never draws a map, so an inert stand-in.
 vi.mock('maplibre-gl', () => ({ default: { Map: class {}, Marker: class {} } }));
+// The twin's chunk, stood in for: R3F needs WebGL. The wall mounts it, and what it draws is the twin's own tests'.
+vi.mock('./twin/TwinStage', () => ({ default: () => <p>3D stage</p> }));
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
 vi.mock('./auth/session', () => ({
   getAccessToken: vi.fn(() => Promise.resolve(null)),

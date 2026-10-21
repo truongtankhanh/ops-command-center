@@ -25,3 +25,12 @@
   gap: var(--space-2);
   max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px * var(--ui-scale));
 }
+
+/*
+ * The video wall's canvas wrapper (V2-21.6, `data-still` from `TwinStage.tsx`): a wall has no pointer, and a stray touch or
+ * click must not reach the canvas or scroll the page. The canvas is also locked in the rig; this is the second guard.
+ */
+.fill[data-still='true'] {
+  pointer-events: none;
+  touch-action: none;
+}

@@ -10,6 +10,14 @@ import {
 } from '../../test-utils';
 import { WallApp } from './WallApp';
 
+// `StageView` (which holds the lazy twin) imports the 2D map, and MapLibre cannot load without WebGL; the wall never draws a map.
+vi.mock('maplibre-gl', () => ({ default: { Map: class {}, Marker: class {} } }));
+
+// The twin's chunk, stood in for (R3F needs WebGL); the stand-in says whether the wall asked for its wall variant.
+vi.mock('../../twin/TwinStage', () => ({
+  default: ({ wall }: { wall?: boolean }) => <p>{wall ? '3D stage (wall)' : '3D stage'}</p>,
+}));
+
 const incident = (id: string, status: Incident['status']): Incident => ({
   id,
   code: id.toUpperCase(),
@@ -32,6 +40,14 @@ function renderWall(incidents: Incident[] = []) {
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.cameras, []);
   client.setQueryData(queryKeys.zones, []);
+  client.setQueryData(queryKeys.sitePlan, {
+    id: 'p',
+    code: 'P',
+    name: 'P',
+    center: [0, 0],
+    features: [],
+  });
+  client.setQueryData(queryKeys.assets, []);
   return renderWithQueryClient(<WallApp screen={3} />, client);
 }
 
@@ -67,9 +83,16 @@ describe('WallApp', () => {
   it("has the stage's region and the side column's two parts, each named", () => {
     renderWall();
 
-    expect(screen.getByRole('region', { name: 'Campus 3D view' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /^Campus 3D view/ })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Cameras — incident first' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: /^Active incidents · / })).toBeInTheDocument();
+  });
+
+  it('draws the twin on the stage with the wall variant, through the lazy chunk (V2-21.6)', async () => {
+    renderWall();
+
+    expect(await screen.findByText('3D stage (wall)')).toBeInTheDocument();
+    expect(screen.getByRole('main')).toContainElement(screen.getByText('3D stage (wall)'));
   });
 
   it('counts the active incidents in the list heading by the feed’s rule', () => {
