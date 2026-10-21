@@ -89,6 +89,11 @@ services:
       KC_HEALTH_ENABLED: 'true'
     volumes:
       - ./ops/keycloak:/opt/keycloak/data/import:ro
+      # The `occ` login theme (V2-20.2), mounted as that one directory: `/opt/keycloak/themes` takes custom
+      # themes without a build step and the built-in ones stay in Keycloak's own jar, so `keycloak.v2`
+      # (its parent) still resolves. `start-dev` does not cache themes, so an edit shows on reload. A real
+      # site mounts or packages its own theme with its own identity provider.
+      - ./ops/keycloak/themes/occ:/opt/keycloak/themes/occ:ro
     # Loopback only, for `pnpm dev`; remap with KEYCLOAK_PORT if 18081 is taken.
     ports:
       - '127.0.0.1:${KEYCLOAK_PORT:-18081}:8080'
