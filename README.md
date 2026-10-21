@@ -86,7 +86,7 @@ packages/
   contracts/        Shared types + event names: the API ↔ console contract
   camera-adapter/   CameraSource port with mock and MediaMTX implementations
 ops/
-  keycloak/         Demo realm, re-imported on every start
+  keycloak/         Demo realm, re-imported on every start, and the `occ` login theme
   prometheus/       Scrape config: every API replica on its metrics port
   grafana/          Provisioned datasource and the "OCC API" dashboard
 docs/
@@ -154,6 +154,8 @@ pnpm docker:restart   # recreates postgres and keycloak (also starts them when t
 None of the three touches the `pgdata` volume, so the database survives `docker:down` and `docker:restart`; deleting it takes an explicit `docker compose down -v`. `docker:restart` recreates the containers rather than restarting them, so Keycloak imports `ops/keycloak` again (an edited realm takes effect) and the command works whether or not they were running. `docker:down` stops everything in the project, including `api` and `console` if you ran the whole stack, but not the services of an opt-in profile (see the `telemetry` note below). `pnpm docker:stack` and `pnpm docker:stack:replicas`, at the top of this file, start the whole stack in the foreground (Ctrl+C stops it; `pnpm docker:down` removes it). The two `--profile` commands there stay as plain Compose, because they set an environment variable or need the profile on `down` too.
 
 The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DB_PORT`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
+
+Sign-in is Keycloak's own page in the console's `occ` login theme ([ADR-0010](docs/adr/0010-oidc-authentication.md)): the theme lives in `ops/keycloak/themes/occ/login/`, Compose mounts that one directory read-only into the `keycloak` container, and the realm file sets it as `loginTheme`. `start-dev` does not cache themes, so an edit shows on reload; a change to the mount or to `occ-realm.json` needs `pnpm docker:restart`. A real deployment mounts or packages its own theme with its own identity provider.
 
 The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 

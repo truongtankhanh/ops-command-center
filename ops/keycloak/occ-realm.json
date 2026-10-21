@@ -2,6 +2,7 @@
   "realm": "occ",
   "displayName": "Ops Command Center",
   "enabled": true,
+  "loginTheme": "occ",
   "sslRequired": "external",
   "registrationAllowed": false,
   "resetPasswordAllowed": false,
