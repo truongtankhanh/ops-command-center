@@ -77,6 +77,22 @@ test('the realm sets the theme, and turns on what the page says', () => {
   // "Keep me signed in on this device" and "Sign-ins are recorded." are sentences of the page.
   assert.equal(realm['rememberMe'], true);
   assert.equal(realm['eventsEnabled'], true);
+  // A video wall signs in once with "Keep me signed in" and must outlive Keycloak's defaults (30 min idle, 10 h at most;
+  // V2-21.10). The numbers are the demo's proposal; a real site sets its own.
+  const idle = realm['ssoSessionIdleTimeoutRememberMe'];
+  const max = realm['ssoSessionMaxLifespanRememberMe'];
+  assert.ok(
+    typeof idle === 'number' && idle > 10 * 3600,
+    'the remember-me idle limit is not above 10 h',
+  );
+  assert.ok(
+    typeof max === 'number' && max > 10 * 3600,
+    'the remember-me session limit is not above 10 h',
+  );
+  assert.ok(
+    typeof idle === 'number' && typeof max === 'number' && idle <= max,
+    'idle is longer than the whole session',
+  );
   assert.ok(
     Array.isArray(realm['enabledEventTypes']) && realm['enabledEventTypes'].includes('LOGIN'),
     'sign-ins are not recorded: LOGIN is not in enabledEventTypes',

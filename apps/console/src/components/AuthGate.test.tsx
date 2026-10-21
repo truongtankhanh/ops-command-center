@@ -1,11 +1,16 @@
-import { act, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { signInAgain, signOut } from '../auth/session';
+import { reauthenticate, signInAgain, signOut } from '../auth/session';
 import { useSession } from '../auth/store';
+import { useConsole } from '../store';
 import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../test-utils';
 import { AuthGate } from './AuthGate';
 
-vi.mock('../auth/session', () => ({ signInAgain: vi.fn(), signOut: vi.fn() }));
+vi.mock('../auth/session', () => ({
+  reauthenticate: vi.fn(),
+  signInAgain: vi.fn(),
+  signOut: vi.fn(),
+}));
 
 /** Inside a query client: signing out from the gate also clears the cache. */
 function renderGate() {
@@ -19,6 +24,9 @@ function renderGate() {
 describe('AuthGate', () => {
   beforeEach(() => {
     resetStore(useSession);
+    resetStore(useConsole);
+    sessionStorage.clear();
+    vi.mocked(reauthenticate).mockReset().mockResolvedValue(undefined);
     vi.mocked(signInAgain).mockReset();
     vi.mocked(signOut).mockReset();
   });
@@ -203,5 +211,49 @@ describe('AuthGate', () => {
     renderGate();
 
     await expectNoAxeViolations();
+  });
+
+  // A video wall has nobody to press "Sign in again" (V2-21.10).
+  describe('on a video wall', () => {
+    beforeEach(() => useConsole.setState({ wall: 1 }));
+
+    it('keeps the wall on screen and signs in again by itself, with no banner and nothing to press', async () => {
+      useSession.getState().signedIn({ displayName: 'Wall', roles: ['viewer'] });
+      useSession.getState().expire();
+
+      renderGate();
+
+      expect(screen.getByText('Console')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.queryByRole('button')).toBeNull();
+      await waitFor(() => expect(reauthenticate).toHaveBeenCalledTimes(1));
+      expect(signInAgain).not.toHaveBeenCalled();
+    });
+
+    it('does not ask again while the session is good', () => {
+      useSession.getState().signedIn({ displayName: 'Wall', roles: ['viewer'] });
+
+      renderGate();
+
+      expect(reauthenticate).not.toHaveBeenCalled();
+    });
+
+    it('shows a sign-in that did not complete as signing in again, with no "Try again", and retries', async () => {
+      useSession.getState().setStatus('failed');
+
+      renderGate();
+
+      expect(screen.getByRole('status')).toHaveTextContent('Signing in again…');
+      expect(screen.queryByRole('button')).toBeNull();
+      await waitFor(() => expect(reauthenticate).toHaveBeenCalledTimes(1));
+    });
+
+    it('has no axe violation while it signs in again', async () => {
+      useSession.getState().setStatus('failed');
+
+      renderGate();
+
+      await expectNoAxeViolations(document.body, { screen: true });
+    });
   });
 });

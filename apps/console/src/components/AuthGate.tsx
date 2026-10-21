@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { signInAgain } from '../auth/session';
 import { useSession } from '../auth/store';
 import { useSignOut } from '../auth/useSignOut';
+import { useConsole } from '../store';
 import { Banner } from '../ui/Banner';
 import { Button, type ButtonSize } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -9,6 +10,7 @@ import { CircleX, type Glyph, LoaderCircle, Lock, Shield } from '../ui/icons';
 import styles from './AuthGate.module.css';
 import { AuthBackdrop } from './AuthBackdrop';
 import { Brand } from './Brand';
+import { useWallReauth } from './wall/useWallReauth';
 
 /**
  * Renders the console only once the operator is signed in with a role, so no query or socket
@@ -21,6 +23,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // Derived, not a status: a renewal that grants a role brings the console back by itself.
   const noRole = useSession((s) => s.user?.roles.length === 0);
   const displayName = useSession((s) => s.user?.displayName);
+  // A video wall has no one to press "Sign in again" (V2-21.10): it signs itself in, and says so.
+  const wall = useConsole((s) => s.wall !== null);
 
   switch (status) {
     case 'signed-in':
@@ -40,7 +44,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       }
       return (
         <>
-          {expired && <SessionExpiredBanner />}
+          {expired && (wall ? <WallReauth /> : <SessionExpiredBanner />)}
           {children}
         </>
       );
@@ -64,12 +68,27 @@ export function AuthGate({ children }: { children: ReactNode }) {
         </AuthScreen>
       );
     case 'failed':
+      // A wall tries again by itself, throttled; there is nobody to press "Try again".
+      if (wall) {
+        return (
+          <AuthScreen tone="busy" glyph={LoaderCircle}>
+            <WallReauth />
+            Signing in again…
+          </AuthScreen>
+        );
+      }
       return (
         <AuthScreen tone="danger" glyph={CircleX} action={<SignInButton>Try again</SignInButton>}>
           Sign-in did not complete.
         </AuthScreen>
       );
   }
+}
+
+/** Runs the wall's automatic sign-in (`useWallReauth`) and draws nothing. */
+function WallReauth() {
+  useWallReauth();
+  return null;
 }
 
 /**

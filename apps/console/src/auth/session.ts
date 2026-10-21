@@ -123,6 +123,27 @@ export async function signInAgain(): Promise<void> {
   }
 }
 
+/**
+ * What an unattended video wall does when its session fails (V2-21.10): renew again, and only if that fails and the
+ * identity provider answers, go through its sign-in. The probe matters: a redirect to a Keycloak that is restarting leaves
+ * the window on the browser's error page, which nothing in it can recover from, whereas staying here keeps the wall and
+ * its last data on screen and lets the caller try again. `lib/wallReauth.ts` decides how often it is called.
+ */
+export async function reauthenticate(): Promise<void> {
+  if (await renewSession()) return;
+  if (!(await identityProviderReachable())) return;
+  await signInAgain();
+}
+
+async function identityProviderReachable(): Promise<boolean> {
+  try {
+    const url = `${window.location.origin}${REALM_PATH}/.well-known/openid-configuration`;
+    return (await fetch(url, { cache: 'no-store' })).ok;
+  } catch {
+    return false;
+  }
+}
+
 /** The current access token, renewed first if it has expired; `null` when there is none. */
 export async function getAccessToken(): Promise<string | null> {
   if (!manager) return null; // no session was started on this page

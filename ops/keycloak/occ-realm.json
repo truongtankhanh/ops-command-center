@@ -11,6 +11,8 @@
   "eventsExpiration": 7776000,
   "enabledEventTypes": ["LOGIN", "LOGIN_ERROR", "LOGOUT", "LOGOUT_ERROR"],
   "bruteForceProtected": true,
+  "ssoSessionIdleTimeoutRememberMe": 604800,
+  "ssoSessionMaxLifespanRememberMe": 2592000,
   "accessTokenLifespan": 300,
   "revokeRefreshToken": true,
   "refreshTokenMaxReuse": 0,

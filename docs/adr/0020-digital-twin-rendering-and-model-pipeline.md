@@ -1406,6 +1406,16 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       auth model for walls a third; the numbers and the choice are **the operations lead's**, and every detail of the
       client-level setting is `unverified` against 26.8. Where Keycloak shows its sign-in page (no session left), the wall
       stays on it, themed (V2-20), until a person comes.
+      Built in V2-21.10: in wall mode `AuthGate` does not show the "Session expired" banner and its button. A failed renewal
+      keeps the wall on screen with "Session reconnecting…" in the header (`WallSessionNotice`) and mounts `useWallReauth`, which
+      runs `reauthenticate` (`auth/session.ts`: renew again; only if that fails and the realm's discovery document answers,
+      `signInAgain`; the probe is there because a redirect to a Keycloak that is restarting would leave the window on the
+      browser's error page). `lib/wallReauth.ts` is the throttle: the first attempt of a run at once, then 1, 2, 4 … min up to 15
+      min, counted from the start of the last one, the record in the tab's `sessionStorage` and written **before** leaving so
+      that a redirect loop through page loads keeps backing off; a record older than 30 min is a finished run. A sign-in that did
+      not complete (`failed`) is "Signing in again…" and retried the same way, with no "Try again". The demo realm sets the
+      remember-me limits to 7 days idle and 30 days at most (the operations lead's call for a real site); nothing is added for
+      the wall in the API.
     - **Sound (Q6; V2-21.2).** None on the wall: a page that nobody touches cannot unlock audio, and the operators' consoles
       have the cue.
     - **The twin on the wall (V2-21.6).** The same lazy stage and the same single `import()` (`LazyTwinStage` in `StageView`),

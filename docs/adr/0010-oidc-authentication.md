@@ -115,7 +115,7 @@ Considered: the password grant with a regular user (deprecated, and a person's a
   - The API does not `depends_on` Keycloak in Compose.
 - **Revocation is not immediate.** A signed-out or disabled user's access token stays valid until it expires (5 min in the demo realm). That is the trade-off for not calling the IdP on every request (introspection, option 3).
   - The same holds across browser tabs: each tab has its own in-memory session, so signing out in one tab ends the Keycloak session, and the other tabs show "Session expired" when their next refresh fails, within 5 minutes.
-- **A reload signs in again.** Tokens are not stored, so reloading the console sends it through Keycloak once more. While the Keycloak session lives (30 min idle, 10 h at most, Keycloak's defaults) that is a redirect with no password prompt; a shift longer than 10 h asks for the password once more.
+- **A reload signs in again.** Tokens are not stored, so reloading the console sends it through Keycloak once more. While the Keycloak session lives (30 min idle, 10 h at most, Keycloak's defaults) that is a redirect with no password prompt; a shift longer than 10 h asks for the password once more. A video wall is signed in with "Keep me signed in on this device" (remember me), whose limits the realm sets apart (`ssoSessionIdleTimeoutRememberMe`, `ssoSessionMaxLifespanRememberMe`), and signs itself in again without a click when a renewal fails (V2-21.10).
 - **Demo only:** the realm, its known passwords and `start-dev` (plain HTTP, embedded store). A real deployment brings its own IdP or a hardened Keycloak:
   - `start` mode;
   - HTTPS;

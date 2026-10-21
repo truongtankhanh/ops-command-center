@@ -475,6 +475,58 @@ describe('session', () => {
     });
   });
 
+  describe('reauthenticate (a video wall, V2-21.10)', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    const providerAnswers = (answer: () => Promise<Response>) => {
+      const fetchMock = vi.fn((_input: RequestInfo | URL) => answer());
+      vi.stubGlobal('fetch', fetchMock);
+      return fetchMock;
+    };
+
+    it('stops at a renewal that works, without leaving the page', async () => {
+      const { session, manager } = await loadStarted();
+      manager.signinRedirect.mockClear();
+      manager.signinSilent.mockResolvedValueOnce({});
+      const fetchMock = providerAnswers(() => Promise.resolve(new Response('{}')));
+
+      await session.reauthenticate();
+
+      expect(manager.signinRedirect).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('signs in again through Keycloak when the renewal fails and Keycloak answers', async () => {
+      const { session, manager } = await loadStarted();
+      manager.signinRedirect.mockClear();
+      const fetchMock = providerAnswers(() => Promise.resolve(new Response('{}')));
+
+      await session.reauthenticate();
+
+      expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+        `${window.location.origin}/auth/realms/occ/.well-known/openid-configuration`,
+      );
+      expect(manager.signinRedirect).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['refuses the connection', () => Promise.reject(new TypeError('Failed to fetch'))],
+      ['answers with an error', () => Promise.resolve(new Response('', { status: 503 }))],
+    ])(
+      'stays on the wall, leaving nothing to a browser error page, when Keycloak %s',
+      async (_name, answer) => {
+        const { session, useSession, manager } = await loadStarted();
+        manager.signinRedirect.mockClear();
+        providerAnswers(answer);
+
+        await session.reauthenticate();
+
+        expect(manager.signinRedirect).not.toHaveBeenCalled();
+        expect(useSession.getState().expired).toBe(true);
+      },
+    );
+  });
+
   describe('signOut', () => {
     it('leaves the console at once, then ends the Keycloak session', async () => {
       const { session, useSession, manager } = await loadStarted();
