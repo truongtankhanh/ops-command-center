@@ -51,6 +51,24 @@ describe('AuthGate', () => {
     expect(screen.getByText('Langbiang Tech Campus')).toBeInTheDocument();
   });
 
+  // Decoration only (V2-20.6): the backdrop is not read, not focusable, and every state has it.
+  it('stands the sign-in screens on a decorative backdrop', () => {
+    renderGate();
+
+    const backdrop = document.querySelector('[data-backdrop]');
+    expect(backdrop).toBeInTheDocument();
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByRole('main')).toContainElement(backdrop as HTMLElement);
+  });
+
+  it('has no backdrop over the console itself', () => {
+    useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
+
+    renderGate();
+
+    expect(document.querySelector('[data-backdrop]')).toBeNull();
+  });
+
   it('shows a busy screen instead of the console while signing out', () => {
     useSession.getState().setStatus('signing-out');
 

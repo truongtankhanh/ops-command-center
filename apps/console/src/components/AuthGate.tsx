@@ -7,6 +7,7 @@ import { Button, type ButtonSize } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { CircleX, type Glyph, LoaderCircle, Lock, Shield } from '../ui/icons';
 import styles from './AuthGate.module.css';
+import { AuthBackdrop } from './AuthBackdrop';
 import { Brand } from './Brand';
 
 /**
@@ -92,7 +93,8 @@ function SessionExpiredBanner() {
 /**
  * Frames 08–11: the product on a card, then the state — a glyph in a toned circle, the message
  * (the live region: a status while busy, an alert otherwise), an optional secondary line and an
- * action. Only the busy glyph moves, and not under reduced motion.
+ * action. Only the busy glyph moves, and not under reduced motion. The card stands on the sign-in
+ * page's backdrop (`AuthBackdrop`, V2-20.6), which is decoration and the first child.
  */
 function AuthScreen({
   tone,
@@ -111,6 +113,7 @@ function AuthScreen({
   const busy = tone === 'busy';
   return (
     <main className={styles.screen} aria-busy={busy}>
+      <AuthBackdrop />
       <div className={styles.card}>
         <Brand size="lg" />
         <div className={styles.state}>

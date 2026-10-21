@@ -1,0 +1,15 @@
+/* Frame 19: the campus under a 55 % shade of the ground colour (`rgb(12 24 33 / 0.55)` is `--surface-0`). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--surface-0) url('/sign-in-backdrop.webp') center / cover no-repeat;
+}
+
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--surface-0) 55%, transparent);
+}
