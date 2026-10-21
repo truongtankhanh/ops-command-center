@@ -1,6 +1,75 @@
-/* The wall fills the window on the ground colour; V2-21.3 lays it out. */
+/*
+ * Frame 18's `.wall`: the header, then the stage and the side column in the frame's 1240 : 680 split. The proportions
+ * are of the window, not pixels, so a 4K screen is the same picture; type and spacing follow `--ui-scale`.
+ */
 .wall {
-  display: block;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
+  overflow: hidden;
   background: var(--surface-0);
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1240fr) minmax(0, 680fr);
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
+  overflow: hidden;
+}
+
+.side {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-1);
+  box-shadow: -1px 0 0 var(--border-subtle);
+}
+
+.listSection {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.heading {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.cams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.cam {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+}
+
+.list {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1-5);
+  overflow: hidden;
+}
+
+.row {
+  height: calc(52px * var(--ui-scale));
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
 }

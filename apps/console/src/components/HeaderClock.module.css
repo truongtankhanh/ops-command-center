@@ -1,0 +1,32 @@
+/* The clock (D4), shared by the header and the video wall. */
+
+.clock {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  font-family: var(--font-ui);
+}
+
+.clockTime {
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-xl);
+  line-height: var(--leading-m);
+}
+
+.clockDate {
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-xs);
+}
+
+/* D8: below the full width, the clock drops its date (the user menu hides its text itself). A video wall keeps it. */
+@media (max-width: 1439px) {
+  .clockDate {
+    display: none;
+  }
+}
+
+/* The video wall (V2-21.3) keeps the date at any width. */
+.clock[data-date='always'] .clockDate {
+  display: block;
+}
