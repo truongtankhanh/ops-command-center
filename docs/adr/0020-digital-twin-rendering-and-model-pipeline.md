@@ -1315,7 +1315,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       detail of one asset of the class, through the inspector's cache entry), its bindings are built from its `extras`
       and kept with the class; V2-14.8 mounts the telemetry feed and applies them. A bound part the catalogue cannot
       bind is logged once for the class, and the model loads without that binding.
-  - Settled in V2-21.1 (2026-10-21, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-21.1 (2026-10-21; built in V2-21.2 – V2-21.11, each bullet below says how), without changing the
     decision: how a window becomes a video wall, who it signs in as, what it shows and what moves its camera. Each bullet
     is the default the V2-21 tasks build to; it names the task it blocks and the open question (Q) of the phase's task
     list it answers. Read from the code at `e4d5c7c`, not from the frame alone.
