@@ -1345,6 +1345,13 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       during the flight or the hold replaces it and restarts the 60 s. Acknowledging or resolving the focused incident, its
       removal, or 60 s returns to the fixed campus view; if another critical is still open, the wall does **not** fly to it
       (only a new one does). Reduced motion: the jump is instant and the countdown still shows. It never moves otherwise.
+      Built in V2-21.7 as `lib/wallFocus.ts`, pure and with no clock of its own (the caller passes `now`, from a clock that
+      does not go backwards). Its input is the **difference between two reads of the incident list the cache holds**
+      (`wallFocusEvents`), not `useLiveIncidents`: that hook makes the toast and the sound, which a wall must not, and it
+      sees live events only, while the cache is also what a refetch after a lost link writes, through the same version rule.
+      The first list is a baseline, so what was already open when the wall started is not flown to. An update that does
+      not carry a higher `version` than the machine's is ignored; a creation that arrives already acknowledged or resolved
+      is not an emergency; a clock that goes backwards restarts the hold from `now`.
     - **The cameras (Q4, Q8; V2-21.4).** The grid's incident-first rule follows the focused incident while one is held,
       otherwise the most severe open incident's zone, otherwise the default order; six tiles at 1920 and at 4K
       (`wallStripSize`: a 4K wall is the 1920 wall twice as large, and the console's eight tiles at 4K would have left the
