@@ -31,6 +31,7 @@ function renderWall(incidents: Incident[] = []) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.cameras, []);
+  client.setQueryData(queryKeys.zones, []);
   return renderWithQueryClient(<WallApp screen={3} />, client);
 }
 

@@ -1,5 +1,5 @@
 import { useCameras, useIncidents } from '../../api/queries';
-import { cameraLink, stripCameras, stripSize, wallSubject } from '../../lib/cameras';
+import { cameraLink, stripCameras, wallStripSize, wallSubject } from '../../lib/cameras';
 import { useDisplayMode } from '../../lib/useDisplayMode';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
@@ -9,7 +9,7 @@ import styles from './WallCameras.module.css';
 
 /**
  * The video wall's camera grid (V2-21.4, frame 18): two columns of tiles, the incident's cameras first. Six tiles at
- * 1920 and eight at 4K (`stripSize`, four on a smaller window). It follows the incident the wall holds in focus, or
+ * 1920 and at 4K (`wallStripSize`, four on a smaller window: a 4K wall is the same picture twice as large). It follows the incident the wall holds in focus, or
  * else the one the feed puts first (`wallSubject`); that incident's zone's cameras come first and carry its code as
  * their tag, an offline camera after every online one (`stripCameras`, no pins). A tile is the console's `CameraTile`
  * with `readOnly`: the picture, the labels and the time, and nothing to press.
@@ -21,7 +21,7 @@ export function WallCameras() {
   const { data: cameras, isPending, isError } = useCameras();
   const { data: incidents = [] } = useIncidents();
   const focusedId = useConsole((s) => s.wallFocusId);
-  const size = stripSize(useDisplayMode());
+  const size = wallStripSize(useDisplayMode());
   const followed = wallSubject(incidents, focusedId);
 
   if (isPending) {

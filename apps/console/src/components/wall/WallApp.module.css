@@ -48,16 +48,3 @@
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
-
-.list {
-  display: grid;
-  align-content: start;
-  gap: var(--space-1-5);
-  overflow: hidden;
-}
-
-.row {
-  height: calc(52px * var(--ui-scale));
-  border-radius: var(--radius-m);
-  background: var(--surface-2);
-}

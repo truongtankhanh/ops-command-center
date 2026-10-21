@@ -121,7 +121,7 @@ describe('WallCameras', () => {
     expect(screen.queryByText(/^INC-/)).toBeNull();
   });
 
-  it('holds six tiles at 1920, eight at 4K and four on a smaller window', () => {
+  it('holds six tiles at 1920 and at 4K, and four on a smaller window', () => {
     const { unmount } = renderCameras();
     expect(screen.getAllByRole('figure')).toHaveLength(6);
     unmount();
@@ -129,7 +129,7 @@ describe('WallCameras', () => {
     vi.unstubAllGlobals();
     stubViewportWidth(3840);
     const wide = renderCameras();
-    expect(screen.getAllByRole('figure')).toHaveLength(8);
+    expect(screen.getAllByRole('figure')).toHaveLength(6);
     wide.unmount();
 
     vi.unstubAllGlobals();
