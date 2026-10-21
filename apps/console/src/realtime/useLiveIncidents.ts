@@ -98,6 +98,8 @@ export function useLiveIncidents(): void {
 
     // A toast already keyed to it is the reporter's own "Reported …": no second toast, no sound.
     const announce = (incident: Incident) => {
+      // A video wall screen has no toast region to show or clear one, and makes no sound (V2-21.2).
+      if (useConsole.getState().wall !== null) return;
       if (hasToast(incident.id)) return;
       const onView = () => useConsole.getState().select(incident.id);
       const onFly = useConsole.getState().view === '3d' ? flyTo(incident, onView) : undefined;

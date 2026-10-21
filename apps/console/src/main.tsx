@@ -12,6 +12,7 @@ import appStyles from './App.module.css';
 import { startSession } from './auth/session';
 import { AuthGate } from './components/AuthGate';
 import { RegionFallback } from './components/LoadStates';
+import { rememberWall, wallScreen } from './lib/wallMode';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
 const queryClient = new QueryClient({
@@ -19,6 +20,11 @@ const queryClient = new QueryClient({
     queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay, refetchOnWindowFocus: false },
   },
 });
+
+// A video wall screen is a window opened with `?wall=N` (V2-21.2). The sign-in redirect loses the query string, so the
+// number is kept for this tab before the redirect starts; the store reads it back when the console comes up again.
+const wall = wallScreen();
+if (wall !== null) rememberWall(wall);
 
 // Outside React, so StrictMode's double effects cannot exchange the single-use code twice.
 void startSession();

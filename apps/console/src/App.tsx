@@ -17,6 +17,7 @@ import { TelemetryBanner } from './components/TelemetryBanner';
 import { TelemetryWatchSet } from './components/TelemetryWatchSet';
 import { TwinFallbackBanner } from './components/TwinFallbackBanner';
 import { TwinShortcuts } from './components/TwinShortcuts';
+import { WallApp } from './components/wall/WallApp';
 import { useAudioUnlock } from './lib/criticalCue';
 import { useDensityAttribute } from './lib/density';
 import { useAttentionBadge } from './lib/useAttentionBadge';
@@ -66,9 +67,28 @@ function DisplayPreferences() {
   return null;
 }
 
+/**
+ * The console, or, in a window opened as a video wall screen (`?wall=N`, V2-21.2), the wall. The two live hooks stay
+ * on either way: the wall shows the same incidents and readings. Nothing else of the console is mounted on a wall: no
+ * shortcut, toast, sheet, form, account menu, camera viewer or audio unlock, so there is nothing to press and
+ * nothing that makes a sound. `TelemetryWatchSet` stays (it watches nothing until something is selected), and the
+ * display preferences, which only set attributes on `<html>`.
+ */
 export function App() {
   useLiveIncidents();
   useTelemetry();
+  const wall = useConsole((s) => s.wall);
+  if (wall === null) return <Console />;
+  return (
+    <>
+      <DisplayPreferences />
+      <TelemetryWatchSet />
+      <WallApp screen={wall} />
+    </>
+  );
+}
+
+function Console() {
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
   const reporting = useConsole((s) => s.reporting);

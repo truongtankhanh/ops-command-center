@@ -1,0 +1,6 @@
+/* The wall fills the window on the ground colour; V2-21.3 lays it out. */
+.wall {
+  display: block;
+  height: 100%;
+  background: var(--surface-0);
+}

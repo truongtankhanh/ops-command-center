@@ -340,6 +340,19 @@ describe('useLiveIncidents', () => {
 
     beforeEach(() => client.setQueryData(queryKeys.zones, [zone]));
 
+    // A video wall screen (V2-21.2) has no toast region to show or clear a toast and nobody to unlock audio: it still
+    // takes the incident, which is the list's and the wall's to show.
+    it('makes no toast and no sound on a video wall screen, and still takes the incident', () => {
+      useConsole.setState({ wall: 1, criticalSound: true });
+      renderLive();
+
+      socket.fire(IncidentEvents.Created, critical);
+
+      expect(toasts()).toEqual([]);
+      expect(playCriticalCue).not.toHaveBeenCalled();
+      expect(client.getQueryData<Incident[]>(queryKeys.incidents)).toEqual([critical]);
+    });
+
     it('shows an urgent toast for a new critical incident', () => {
       renderLive();
 

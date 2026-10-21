@@ -11,6 +11,7 @@ import { type TwinFault, twinCapability } from './lib/twinCapability';
 import type { SceneLayerKey, SceneLayers } from './lib/twinLayers';
 import { levelOf } from './lib/twinLevel';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
+import { wallScreen } from './lib/wallMode';
 
 /**
  * At most this many incidents are held as fresh. A row stays highlighted until it is looked at or
@@ -151,6 +152,12 @@ interface ConsoleState extends ReportLocation {
    */
   twinFault: TwinFault | null;
   /**
+   * The video wall screen this window is (`?wall=N`, V2-21.2), or `null` for the console people operate. Read once,
+   * when the store is created, and never changed in a session: a wall is a different window, not a mode that is
+   * switched. In wall mode the console mounts nothing interactive, makes no toast and plays no sound.
+   */
+  wall: number | null;
+  /**
    * Which layers are drawn (frame 14's "Show"). Not remembered: a console opens with all of them shown,
    * so a layer hidden for a while is never found hidden by the next person (Open question 4).
    * Selecting an incident, and a new critical one arriving, turn Incidents back on. `inside` is the 3D
@@ -271,6 +278,9 @@ interface ConsoleState extends ReportLocation {
 }
 
 /** UI state only. Server data lives in the TanStack Query cache. */
+/** Read once, here: the address still has its `?wall=N` when this module is created, and `main.tsx` keeps it for the redirect. */
+const WALL = wallScreen();
+
 export const useConsole = create<ConsoleState>((set, get) => ({
   selectedIncidentId: null,
   filter: 'active',
@@ -292,13 +302,15 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   noteDrafts: {},
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
-  criticalSound: readCriticalSound(),
+  // A wall makes no sound (ADR-0020, V2-21.1): nobody can unlock audio there, and the preference stays as stored.
+  criticalSound: WALL === null && readCriticalSound(),
   keyboardShortcuts: readKeyboardShortcuts(),
   shortcutHelpOpen: false,
   density: readDensity(),
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
   twinFault: null,
+  wall: WALL,
   layers: { incidents: true, cameras: true, assets: true, inside: true, heat: false },
   ...NO_REPORT_LOCATION,
 

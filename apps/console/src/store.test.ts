@@ -1336,4 +1336,47 @@ describe('useConsole', () => {
       expect(state().pinnedCameraIds).toEqual(['c1']);
     });
   });
+
+  // The store reads the window once, when its module is created, so these load it afresh (V2-21.2).
+  describe('wall mode', () => {
+    afterEach(() => {
+      vi.resetModules();
+      history.replaceState(null, '', '/');
+      sessionStorage.clear();
+      localStorage.clear();
+    });
+
+    const freshStore = async () => (await import('./store')).useConsole;
+
+    it('is off in the console people operate', () => {
+      expect(state().wall).toBeNull();
+    });
+
+    it('is on, with its number, for a window opened with ?wall=N', async () => {
+      history.replaceState(null, '', '/?wall=2');
+      vi.resetModules();
+
+      expect((await freshStore()).getState().wall).toBe(2);
+    });
+
+    it('is still on after the sign-in redirect, from what the tab remembered', async () => {
+      sessionStorage.setItem('occ.console.wall', '3');
+      history.replaceState(null, '', '/?code=abc&state=xyz');
+      vi.resetModules();
+
+      expect((await freshStore()).getState().wall).toBe(3);
+    });
+
+    it('makes no sound, whatever was stored for the console', async () => {
+      localStorage.setItem('occ.console.criticalSound', 'true');
+      history.replaceState(null, '', '/?wall=1');
+      vi.resetModules();
+
+      const wall = await freshStore();
+
+      expect(wall.getState().criticalSound).toBe(false);
+      // The stored choice is left as it was: it is the operators' consoles', not the wall's.
+      expect(localStorage.getItem('occ.console.criticalSound')).toBe('true');
+    });
+  });
 });
