@@ -24,7 +24,7 @@ export function resetView(): void {
 
 /**
  * Makes sure the 3D view is the one in effect, and says whether it is. `setView` does nothing where 3D cannot be
- * drawn (the preview gate, no WebGL 2, a lost context), so the answer is read back, not assumed.
+ * drawn (no WebGL 2, a lost context), so the answer is read back, not assumed.
  */
 function enterTwin(): boolean {
   const { view, setView } = useConsole.getState();

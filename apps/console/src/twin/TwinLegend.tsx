@@ -21,7 +21,6 @@ const NO_ASSETS: Asset[] = [];
  * are neutral; the camera entry is the camera glyph.
  *
  * It names what the stage will show: the incident markers arrive with V2-16 and the asset hover with V2-15.
- * The 3D view stays behind the preview gate until both are in (V2-19.8).
  *
  * "No data — last known state, not live" (frame 05 `.lg-stale`) is listed only while some asset is drawn that
  * way (V2-14.9): it has no data, its device is offline, or its latest reading is stale. That is the scene's

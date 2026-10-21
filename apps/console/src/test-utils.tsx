@@ -115,23 +115,35 @@ export async function expectNoAxeViolations(
   throw new Error(`${violations.length} axe violation(s):\n\n${report}`);
 }
 
+/** The `getContext` stub of `stubTwinAvailable`, kept so that `unstubTwin` can take it away. */
+let canvasSpy: { mockRestore(): void } | undefined;
+
 /**
- * Makes the 3D twin available to the code under test: the preview gate open (`MODE` is
- * `development`) and a WebGL 2 context that can be created, jsdom having none. Returns the spy on the
- * context's release. Undo it with `unstubTwin()` (and `vi.restoreAllMocks()`), so the next case sees
- * the production-like answer, `not-built`.
+ * Makes the 3D twin available to the code under test: a WebGL 2 context that can be created, jsdom
+ * having none. `MODE` is set to `development` as well, because the HUD's dynamic imports read it.
+ * Returns the spy on the context's release. Undo it with `unstubTwin()`, in the middle of a case or
+ * after it, so the next answer under jsdom is the default, `no-webgl2`.
  */
 export function stubTwinAvailable(): { loseContext: ReturnType<typeof vi.fn> } {
   const loseContext = vi.fn();
   vi.stubEnv('MODE', 'development');
   forgetWebgl2Probe();
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+  // A case may ask twice (every `show3d`): one layer only, so that one `unstubTwin` takes it all away.
+  canvasSpy?.mockRestore();
+  canvasSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     getExtension: () => ({ loseContext }),
   } as never);
   return { loseContext };
 }
 
+/**
+ * Takes the WebGL 2 context away again (the capability reads `no-webgl2` from the next call on). With
+ * the preview gate gone it is the `getContext` stub that makes the twin available, so it is the stub
+ * that is restored here, not only the environment.
+ */
 export function unstubTwin(): void {
+  canvasSpy?.mockRestore();
+  canvasSpy = undefined;
   vi.unstubAllEnvs();
   forgetWebgl2Probe();
 }

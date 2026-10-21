@@ -5,7 +5,7 @@ import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from
 import { ViewSwitch } from './ViewSwitch';
 
 const KEY = 'occ.console.view';
-const NOT_BUILT = "3D view isn't available in this version";
+const NO_WEBGL2 = "3D view isn't available on this device";
 
 const view3d = () => screen.getByRole('button', { name: '3D' });
 const view2d = () => screen.getByRole('button', { name: '2D' });
@@ -28,7 +28,7 @@ describe('ViewSwitch', () => {
     render(<ViewSwitch />);
 
     expect(view3d()).toHaveAttribute('aria-disabled', 'true');
-    expect(view3d()).toHaveAccessibleDescription(NOT_BUILT);
+    expect(view3d()).toHaveAccessibleDescription(NO_WEBGL2);
   });
 
   it('keeps 3D reachable by keyboard: it is aria-disabled, not disabled', async () => {
@@ -64,7 +64,7 @@ describe('ViewSwitch', () => {
     expect(localStorage.getItem(KEY)).toBe('2d');
   });
 
-  // The twin is offered (gate open, WebGL 2 stubbed), as in `pnpm dev`, then its context is lost.
+  // The twin is offered (WebGL 2 stubbed), then its context is lost.
   describe('where the twin can be drawn', () => {
     beforeEach(() => {
       stubTwinAvailable();

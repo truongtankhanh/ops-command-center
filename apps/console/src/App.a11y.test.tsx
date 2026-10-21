@@ -84,7 +84,7 @@ const fake = vi.hoisted(() => {
 
 vi.mock('maplibre-gl', () => ({ default: { Map: fake.FakeMap, Marker: class {} } }));
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
-// R3F needs WebGL too. Only the 3D cases reach the canvas (the preview gate is closed otherwise); the rest of
+// R3F needs WebGL too. Only the 3D cases reach the canvas (jsdom has no WebGL 2 otherwise); the rest of
 // the stage, its group, controls and legend, is the real one.
 // It records the props it is given (V2-16.8: the beacons the stage hands it), and draws the same canvas as ever.
 const twinCanvas = vi.hoisted(() => vi.fn());
@@ -902,7 +902,7 @@ describe('the console', () => {
         await checkPage();
       });
 
-      // Frames 07 / 14. The twin is not built, so the stage is the 2D map, and the banner, the switch
+      // Frames 07 / 14. jsdom has no WebGL 2, so the stage is the 2D map, and the banner, the switch
       // and the layers say so in words (no colour alone).
       it('the 2D view, with the fallback banner, the switch, the layers and the legend', async () => {
         renderConsole();
@@ -910,7 +910,7 @@ describe('the console', () => {
 
         // The reason is said twice on purpose: by the banner, and as the 3D option's own description,
         // so nothing is lost once the banner is dismissed (`TwinFallbackBanner`).
-        const reason = "3D view isn't available in this version";
+        const reason = "3D view isn't available on this device";
         expect(screen.getAllByText(reason)).toHaveLength(2);
         const view = screen.getByRole('group', { name: 'View' });
         expect(within(view).getByRole('button', { name: '2D' })).toBeInTheDocument();
@@ -928,7 +928,7 @@ describe('the console', () => {
         await checkPage();
       });
 
-      // V2-12.12. The twin is still behind the preview gate, so the cases open it and ask for 3D. The canvas is
+      // V2-12.12. jsdom has no WebGL 2, so the cases stub it and ask for 3D. The canvas is
       // the mock above; the group that names it, the controls and the legend are the real ones.
       describe('the 3D stage', () => {
         const show3d = () => {
