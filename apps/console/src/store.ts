@@ -158,6 +158,11 @@ interface ConsoleState extends ReportLocation {
    */
   wall: number | null;
   /**
+   * The incident the video wall's camera grid follows while the wall holds one in focus (V2-21.4), or `null`.
+   * Nothing sets it yet: V2-21.8 does, when a new critical incident takes the wall's camera. Not remembered.
+   */
+  wallFocusId: string | null;
+  /**
    * Which layers are drawn (frame 14's "Show"). Not remembered: a console opens with all of them shown,
    * so a layer hidden for a while is never found hidden by the next person (Open question 4).
    * Selecting an incident, and a new critical one arriving, turn Incidents back on. `inside` is the 3D
@@ -311,6 +316,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   view: effectiveView(readViewChoice(), twinCapability()),
   twinFault: null,
   wall: WALL,
+  wallFocusId: null,
   layers: { incidents: true, cameras: true, assets: true, inside: true, heat: false },
   ...NO_REPORT_LOCATION,
 

@@ -1,4 +1,4 @@
-import type { Camera, LngLat } from '@occ/contracts';
+import type { Camera, Incident, LngLat } from '@occ/contracts';
 import {
   cameraLink,
   canPin,
@@ -13,6 +13,7 @@ import {
   stripSize,
   stripSubject,
   togglePinned,
+  wallSubject,
   writePinnedCameras,
 } from '../lib/cameras';
 import { offsetM } from '../lib/geo';
@@ -424,5 +425,75 @@ describe('pinned camera storage', () => {
     });
 
     expect(() => writePinnedCameras(['a'])).not.toThrow();
+  });
+});
+
+describe('wallSubject', () => {
+  const incident = (id: string, overrides: Partial<Incident> = {}): Incident => ({
+    id,
+    code: id.toUpperCase(),
+    type: 'fire_alarm',
+    severity: 'medium',
+    status: 'open',
+    title: id,
+    description: null,
+    zoneId: `zone-${id}`,
+    position: [0, 0],
+    source: 'operator',
+    reportedAt: '2026-10-08T08:00:00.000Z',
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    ...overrides,
+  });
+
+  it('follows the incident the wall holds in focus, whatever else is open', () => {
+    const incidents = [incident('a', { severity: 'critical' }), incident('b', { severity: 'low' })];
+
+    const followed = wallSubject(incidents, 'b');
+
+    expect(followed?.incident.id).toBe('b');
+    expect(followed?.subject).toEqual({ kind: 'zone', zoneId: 'zone-b' });
+  });
+
+  it('follows the incident the feed puts first when none is in focus: the most severe, then the newest', () => {
+    const incidents = [
+      incident('low', { severity: 'low' }),
+      incident('high-old', { severity: 'high', reportedAt: '2026-10-08T07:00:00.000Z' }),
+      incident('high-new', { severity: 'high', reportedAt: '2026-10-08T09:00:00.000Z' }),
+    ];
+
+    expect(wallSubject(incidents, null)?.incident.id).toBe('high-new');
+  });
+
+  it('counts an acknowledged incident, but never a resolved one', () => {
+    const incidents = [
+      incident('done', { severity: 'critical', status: 'resolved' }),
+      incident('handled', { severity: 'low', status: 'acknowledged' }),
+    ];
+
+    expect(wallSubject(incidents, null)?.incident.id).toBe('handled');
+  });
+
+  it('falls back to the feed when the focused incident is no longer in the list', () => {
+    const incidents = [incident('a', { severity: 'high' })];
+
+    expect(wallSubject(incidents, 'gone')?.incident.id).toBe('a');
+  });
+
+  it('has no subject when nothing is active', () => {
+    expect(wallSubject([], null)).toBeUndefined();
+    expect(wallSubject([incident('done', { status: 'resolved' })], null)).toBeUndefined();
+  });
+
+  it('does not reorder the list it is given', () => {
+    const incidents = [
+      incident('low', { severity: 'low' }),
+      incident('high', { severity: 'high' }),
+    ];
+
+    wallSubject(incidents, null);
+
+    expect(incidents.map((i) => i.id)).toEqual(['low', 'high']);
   });
 });
