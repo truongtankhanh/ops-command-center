@@ -43,6 +43,15 @@
   background: var(--surface-2);
 }
 
+/* The video wall's rows (V2-21.5) are text: no pointer, no hover surface. */
+.row[data-readonly='true'] {
+  cursor: default;
+}
+
+.row[data-readonly='true']:hover {
+  background: none;
+}
+
 /* Selection is the raised surface and `aria-current`; the accent border only reinforces it. */
 .row[aria-current='true'] {
   background: var(--surface-2);

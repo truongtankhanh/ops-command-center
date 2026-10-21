@@ -21,6 +21,15 @@ export function stripSize(mode: DisplayMode): number {
   }
 }
 
+/**
+ * Tiles in the video wall's camera grid (V2-21.4): six on a wall of any size, four on a smaller window. A 4K wall is
+ * the 1920 wall twice as large and not a bigger one, so the grid stays at six tiles and the active list keeps its room
+ * (eight tiles at 4K, as `stripSize` has for the console, left the list one row).
+ */
+export function wallStripSize(mode: DisplayMode): number {
+  return mode === 'wall' || mode === 'wall-4k' ? 6 : PIN_LIMIT;
+}
+
 const PINNED_KEY = 'occ.console.pinnedCameras';
 
 /**

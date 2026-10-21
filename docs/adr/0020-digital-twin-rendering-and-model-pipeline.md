@@ -1346,8 +1346,9 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       removal, or 60 s returns to the fixed campus view; if another critical is still open, the wall does **not** fly to it
       (only a new one does). Reduced motion: the jump is instant and the countdown still shows. It never moves otherwise.
     - **The cameras (Q4, Q8; V2-21.4).** The grid's incident-first rule follows the focused incident while one is held,
-      otherwise the most severe open incident's zone, otherwise the default order; six tiles at 1920 and eight at 4K
-      (`stripSize`); a camera with no signal is a "No signal" tile with its code and the time since. Every screen shows the
+      otherwise the most severe open incident's zone, otherwise the default order; six tiles at 1920 and at 4K
+      (`wallStripSize`: a 4K wall is the 1920 wall twice as large, and the console's eight tiles at 4K would have left the
+      active list one row, V2-21.5); a camera with no signal is a "No signal" tile with its code and the time since. Every screen shows the
       same content: `N` is a label, and rotating groups are OCC-19's.
     - **Telemetry (Q17; V2-21.8).** The wall watches only the focused asset's data, so its fan turns while it is the
       subject; an idle wall watches none. The watch limit (`TELEMETRY_WATCH_LIMIT`, 4) is not widened, as the "Settled in

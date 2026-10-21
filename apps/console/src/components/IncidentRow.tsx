@@ -17,6 +17,9 @@ import styles from './IncidentRow.module.css';
  *
  * The feed owns keyboard navigation across rows: it passes the roving `tabIndex`, a `ref` to move
  * focus with the arrow keys, and `onFocus` to remember which row holds the tab stop.
+ *
+ * `readOnly` (the video wall's list, V2-21.5) draws the same row as text: not a button, so nothing to press or tab
+ * to, no selection and no hover. It also counts the incident the wall holds in focus as fresh, for as long as it is.
  */
 export function IncidentRow({
   incident,
@@ -26,30 +29,22 @@ export function IncidentRow({
   ref,
   tabIndex,
   onFocus,
+  readOnly = false,
 }: {
   incident: Incident;
   zone?: string;
   tag?: string;
   now: number;
+  readOnly?: boolean;
 } & Pick<ComponentProps<'button'>, 'ref' | 'tabIndex' | 'onFocus'>) {
   const selected = useConsole((s) => s.selectedIncidentId === incident.id);
   const fresh = useConsole((s) => s.fresh.has(incident.id));
+  const focusedOnWall = useConsole((s) => s.wallFocusId === incident.id);
   const select = useConsole((s) => s.select);
   const late = isPastAttention(incident, now);
 
-  return (
-    <button
-      ref={ref}
-      type="button"
-      tabIndex={tabIndex}
-      onFocus={onFocus}
-      className={styles.row}
-      data-severity={incident.severity}
-      data-status={incident.status}
-      data-fresh={fresh}
-      aria-current={selected}
-      onClick={() => select(selected ? null : incident.id)}
-    >
+  const body = (
+    <>
       <span className={styles.tile}>
         <Icon glyph={severityIcon(incident.severity)} size={18} />
         <span className={styles.hidden}>{severityLabel(incident.severity)} severity, </span>
@@ -77,6 +72,37 @@ export function IncidentRow({
         {tag && <span className={styles.tag}>{tag}</span>}
         <span className={styles.code}>{incident.code}</span>
       </span>
+    </>
+  );
+
+  if (readOnly) {
+    return (
+      <div
+        className={styles.row}
+        data-severity={incident.severity}
+        data-status={incident.status}
+        data-fresh={fresh || focusedOnWall}
+        data-readonly="true"
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      tabIndex={tabIndex}
+      onFocus={onFocus}
+      className={styles.row}
+      data-severity={incident.severity}
+      data-status={incident.status}
+      data-fresh={fresh}
+      aria-current={selected}
+      onClick={() => select(selected ? null : incident.id)}
+    >
+      {body}
     </button>
   );
 }

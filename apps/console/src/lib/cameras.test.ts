@@ -13,6 +13,7 @@ import {
   stripSize,
   stripSubject,
   togglePinned,
+  wallStripSize,
   wallSubject,
   writePinnedCameras,
 } from '../lib/cameras';
@@ -495,5 +496,19 @@ describe('wallSubject', () => {
     wallSubject(incidents, null);
 
     expect(incidents.map((i) => i.id)).toEqual(['low', 'high']);
+  });
+});
+
+describe('wallStripSize', () => {
+  it('is six on a wall of any size, and the strip’s four elsewhere', () => {
+    expect(wallStripSize('wall')).toBe(6);
+    expect(wallStripSize('wall-4k')).toBe(6);
+    expect(wallStripSize('laptop')).toBe(PIN_LIMIT);
+    expect(wallStripSize('tablet')).toBe(PIN_LIMIT);
+  });
+
+  it('keeps the active list its room at 4K: the console’s strip has eight tiles there, the wall does not', () => {
+    expect(stripSize('wall-4k')).toBe(8);
+    expect(wallStripSize('wall-4k')).toBeLessThan(stripSize('wall-4k'));
   });
 });
