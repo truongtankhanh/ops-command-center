@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Not a workspace member (see pnpm-workspace.yaml): this only marks the folder's .ts files as ES modules, so Node runs them without guessing. It needs no dependency; ffmpeg and cwebp come from the PATH.",
+  "type": "module"
+}
