@@ -1155,7 +1155,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       the tech lead decides before V2-19.7.
     - **Not done here and `unverified` until looked at in a browser:** that a healthy 60 Hz display never steps, that a
       throttled one steps down and stays, that the step survives a remount, that a cold load does not step. The
-      video wall's `wall: true` pin exists in the controller and nothing passes it in until V2-21.
+      video wall's `wall: true` pin exists in the controller; the wall's canvas passes it in (V2-21.6).
   - Settled in V2-19.4 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the draw-call and triangle budgets are held by estimate and guarded in development. Each question of the
     ticket's analysis was answered with its recommendation.
@@ -1372,6 +1372,16 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       stays on it, themed (V2-20), until a person comes.
     - **Sound (Q6; V2-21.2).** None on the wall: a page that nobody touches cannot unlock audio, and the operators' consoles
       have the cue.
+    - **The twin on the wall (V2-21.6).** The same lazy stage and the same single `import()` (`LazyTwinStage` in `StageView`),
+      mounted with `wall`: the picture and nothing that takes input. The rig is locked (`CameraControls` disabled, no mouse,
+      touch or Shift mapping), sets the home view for the stage's own shape and fits it again when that shape changes;
+      nothing but a command (V2-21.8's flight) moves it, and there is no idle rotation. The canvas starts at the pixel
+      ratio 1.0 (`WALL_DPR`) and `PixelRatio` is pinned there, whatever the display's ratio. No `PickLayer`, `Pointer`,
+      `ReportPin`, compass, controls, legends, hints, building card, callout or tooltip is mounted, the view has no tab
+      stop and takes no key, and the wrapper takes no pointer or touch (`data-still`). The camera markers and the beacons
+      draw at the wall's scale (`markerScale.ts`, the same factor as `--ui-scale`), the heat overlay is off, and the
+      Incidents and Cameras layers are the store's defaults, which a wall has nothing to change. If the stage cannot load
+      or breaks, the wall shows a message with nothing to press; the 2D fallback is V2-21.9's.
     - **Not here.** Multi-screen choreography, rotating camera groups, and the wall controller's figures: the brief's
       budgets were to be recorded on it for V2-21, V2-19.7 was closed without them, and V2-21.12 carries them.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings

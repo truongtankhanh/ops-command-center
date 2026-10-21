@@ -10,6 +10,7 @@ import {
   markTwin,
   rememberDprStep,
   rememberedDprStep,
+  WALL_DPR,
 } from '../lib/twinPerf';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
@@ -23,6 +24,7 @@ import { FrameDriver } from './FrameDriver';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
+import { MarkerScaleContext, useWallMarkerScale } from './markerScale';
 import { PickLayer } from './PickLayer';
 import { PixelRatio } from './PixelRatio';
 import { Pointer } from './Pointer';
@@ -97,6 +99,11 @@ interface TwinCanvasProps {
   leaderStartRef: RefObject<LeaderStart | null>;
   /** The developer HUD's description list (`Hud`, V2-19.1), which the probe writes into; unused unless the HUD is on. */
   hudRef: RefObject<HTMLDListElement | null>;
+  /**
+   * The video wall's canvas (V2-21.6): the rig is locked, the pixel ratio is pinned to 1.0, the markers are drawn at the
+   * wall's scale, and nothing that takes input is mounted (`PickLayer`, `Pointer`, `ReportPin`, `CompassSync`).
+   */
+  wall?: boolean;
 }
 
 /**
@@ -151,6 +158,11 @@ interface TwinCanvasProps {
  *   prop again on every configure, so a ratio set from inside the canvas would be undone by the next render. R3F
  *   clamps the display's ratio into the range, so the canvas draws at `min(devicePixelRatio, ratio)`. The step is
  *   remembered for the life of the page (`rememberDprStep`), so a switch to 2D and back does not start again at 1.5.
+ * - **On a video wall** (`wall`, V2-21.6) it draws the picture and takes nothing: no `PickLayer` (what is drawn registers no
+ *   pick: `usePicker` is `null` outside one), no `Pointer`, no `ReportPin`, no `CompassSync`, and a locked `Rig` that sets the
+ *   home view once and moves only for a command. The pixel ratio starts at `WALL_DPR` and `PixelRatio` is pinned there
+ *   (`wall`), whatever the display's ratio; the camera markers and the beacons are drawn at the wall's scale
+ *   (`markerScale.ts`), as the DOM labels are by `--ui-scale`.
  * - `flat`: no tone mapping, so the colours on screen are the token colours.
  *
  * R3F sizes the canvas to its parent, so the parent must have a size (`TwinStage`).
@@ -171,13 +183,34 @@ export function TwinCanvas({
   leaderDotRef,
   leaderStartRef,
   hudRef,
+  wall = false,
 }: TwinCanvasProps) {
   const [hudRequested] = useState(() => HudProbe !== null && debugTwinRequested(location.search));
-  const [ratio, setRatio] = useState(() => rememberedDprStep() ?? DPR_STEPS[0] ?? 1.5);
+  const [ratio, setRatio] = useState(() =>
+    wall ? WALL_DPR : (rememberedDprStep() ?? DPR_STEPS[0] ?? 1.5),
+  );
+  const markerScale = useWallMarkerScale(wall);
   const onStep = useCallback((step: number) => {
     rememberDprStep(step);
     setRatio(step);
   }, []);
+  // What is drawn and can be hit: with a `PickLayer` around it, or on its own on a wall.
+  const drawn = scene && (
+    <>
+      <Buildings zones={scene.zones} frame={scene.frame} assets={scene.assets} heat={heat} />
+      <Equipment
+        assets={scene.assets}
+        classes={scene.classes}
+        classPoints={classPoints}
+        feed={feed}
+        heat={heat}
+        leaderLineRef={leaderLineRef}
+        leaderDotRef={leaderDotRef}
+        leaderStartRef={leaderStartRef}
+      />
+      <Beacons beacons={beacons} />
+    </>
+  );
   return (
     <Canvas
       camera={LENS}
@@ -196,33 +229,34 @@ export function TwinCanvas({
         </Suspense>
       )}
       {scene && (
-        <FrameDriver>
-          <FirstFrameMark />
-          <PixelRatio initial={ratio} onStep={onStep} />
-          <Rig bounds={scene.bounds} boxes={boxes} assetBoxes={assetBoxes} beacons={beacons} />
-          <Lights />
-          <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
-          <PickLayer cameras={scene.cameras} frame={scene.frame}>
-            <Buildings zones={scene.zones} frame={scene.frame} assets={scene.assets} heat={heat} />
-            <Equipment
-              assets={scene.assets}
-              classes={scene.classes}
-              classPoints={classPoints}
-              feed={feed}
-              heat={heat}
-              leaderLineRef={leaderLineRef}
-              leaderDotRef={leaderDotRef}
-              leaderStartRef={leaderStartRef}
+        <MarkerScaleContext.Provider value={markerScale}>
+          <FrameDriver>
+            <FirstFrameMark />
+            <PixelRatio initial={ratio} onStep={onStep} wall={wall} />
+            <Rig
+              bounds={scene.bounds}
+              boxes={boxes}
+              assetBoxes={assetBoxes}
+              beacons={beacons}
+              locked={wall}
             />
-            <Beacons beacons={beacons} />
-            <ReportPin zones={scene.zones} frame={scene.frame} />
-          </PickLayer>
-          <Pointer assets={scene.assets} zones={scene.zones} frame={scene.frame} />
-          <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
-          <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
-          <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
-          <CompassSync compassRef={compassRef} />
-        </FrameDriver>
+            <Lights />
+            <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
+            {wall ? (
+              drawn
+            ) : (
+              <PickLayer cameras={scene.cameras} frame={scene.frame}>
+                {drawn}
+                <ReportPin zones={scene.zones} frame={scene.frame} />
+              </PickLayer>
+            )}
+            {!wall && <Pointer assets={scene.assets} zones={scene.zones} frame={scene.frame} />}
+            <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
+            <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
+            <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
+            {!wall && <CompassSync compassRef={compassRef} />}
+          </FrameDriver>
+        </MarkerScaleContext.Provider>
       )}
     </Canvas>
   );

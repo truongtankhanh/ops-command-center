@@ -293,6 +293,13 @@ export const needsFrame = (
 export const DPR_STEPS: readonly number[] = [1.5, 1.25, 1.0];
 
 /**
+ * The video wall's pixel ratio (V2-21.6, brief § Performance: "video wall 1.0"): the last step, which a wall never
+ * leaves. The canvas starts there, because a controller pinned to it (`wall`) never reports a step and so would never
+ * bring a canvas that started at the first one down.
+ */
+export const WALL_DPR: number = DPR_STEPS[DPR_STEPS.length - 1] ?? 1;
+
+/**
  * How long a frame may take, at the 95th percentile of a window, before the pixel ratio goes down a step (V2-19.3).
  * **18 ms, not the brief's 14.** The brief's "p95 ≤ 14 ms" is the *cost* of a frame; what the controller is fed is the
  * interval between drawn frames, and a display fixes that: about 16.7 ms at 60 Hz whatever a frame costs, so a budget of

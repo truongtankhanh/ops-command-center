@@ -787,3 +787,126 @@ describe('TwinStage keys', () => {
     rotate.mockRestore();
   });
 });
+
+// V2-21.6: on a video wall the stage is the picture and nothing that takes input.
+describe('TwinStage on a video wall', () => {
+  /** The stage with the reference data in the cache, mounted as the wall mounts it. */
+  function renderWall(zones: Zone[], assets: Asset[] = []) {
+    const client = createTestQueryClient();
+    client.setQueryData(queryKeys.zones, zones);
+    client.setQueryData(queryKeys.sitePlan, PLAN);
+    client.setQueryData(queryKeys.cameras, []);
+    client.setQueryData(queryKeys.incidents, []);
+    client.setQueryData(queryKeys.assets, assets);
+    return renderWithQueryClient(<TwinStage wall />, client);
+  }
+
+  const canvasProps = () => vi.mocked(TwinCanvas).mock.lastCall?.[0];
+
+  beforeEach(() => {
+    resetStore(useConsole);
+    vi.mocked(TwinCanvas).mockClear();
+  });
+  afterEach(() => {
+    resetStore(useConsole);
+    act(() => resetStore(useTelemetryStore));
+  });
+
+  it('hands the canvas `wall`, and the console never does', () => {
+    renderWall([zone(0, 'building', 'Library')]);
+    expect(canvasProps()?.wall).toBe(true);
+
+    vi.mocked(TwinCanvas).mockClear();
+    renderStage([zone(0, 'building', 'Library')]);
+    expect(canvasProps()?.wall).toBe(false);
+  });
+
+  it('draws the canvas and the zone labels, and nothing to press', () => {
+    const { container } = renderWall([zone(0, 'building', 'Library')]);
+
+    expect(screen.getByLabelText('3D canvas')).toBeInTheDocument();
+    expect(screen.getByText('Library')).toBeInTheDocument();
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(container.querySelectorAll('button, a[href], input, select, [tabindex]')).toHaveLength(
+      0,
+    );
+  });
+
+  it('mounts none of the chrome of the console: controls, legends, hints, summary, callout, tooltip', () => {
+    renderWall([zone(0, 'building', 'Library')]);
+
+    expect(screen.queryByRole('group', { name: 'Camera' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Legend' })).toBeNull();
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByText(/Drag to rotate/)).toBeNull();
+    expect(screen.queryByRole('tooltip')).toBeNull();
+    expect(screen.queryByRole('region', { name: /building/i })).toBeNull();
+  });
+
+  it('keeps the view as a named group for assistive technology, with no tab stop and no key', () => {
+    const rotate = vi.spyOn(twinCommands, 'rotateBy').mockImplementation(() => undefined);
+    renderWall([zone(0, 'building', 'Library')]);
+
+    const group = view();
+    expect(group).not.toHaveAttribute('tabindex');
+    expect(group).not.toHaveAttribute('aria-describedby');
+    fireEvent.keyDown(group, { key: 'ArrowLeft' });
+    expect(rotate).not.toHaveBeenCalled();
+    rotate.mockRestore();
+  });
+
+  it('takes no pointer or touch on the canvas wrapper', () => {
+    renderWall([zone(0, 'building', 'Library')]);
+
+    expect(screen.getByLabelText('3D canvas').parentElement).toHaveAttribute('data-still', 'true');
+  });
+
+  it('leaves the console’s canvas wrapper as it was', () => {
+    renderStage([zone(0, 'building', 'Library')]);
+
+    expect(screen.getByLabelText('3D canvas').parentElement).not.toHaveAttribute('data-still');
+  });
+
+  it('keeps the heat overlay off whatever the layer says: a wall has no switch to turn it on', () => {
+    const indoorPoint = {
+      key: 'indoorTempC',
+      label: 'Indoor temperature',
+      unit: '°C',
+      kind: 'number',
+      min: null,
+      max: null,
+      enumValues: null,
+      expectedIntervalS: 60,
+      headline: 1,
+    } as TelemetryPoint;
+    const sensor: Asset = {
+      ...asset('ICS-LIB', 'zone-0', CENTER),
+      headline: [indoorPoint],
+    };
+    act(() => useConsole.getState().toggleLayer('heat'));
+    act(() => {
+      useTelemetryStore.setState({
+        view: {
+          state: {
+            ...initialTelemetryState,
+            serverClock: { at: Date.now(), mono: performance.now() },
+            assets: {
+              'ICS-LIB': {
+                online: true,
+                receivedAt: new Date(Date.now() - 1_000).toISOString(),
+                headline: { indoorTempC: 22 },
+                values: { indoorTempC: 22 },
+                keyReceivedAt: {},
+              },
+            },
+          },
+          series: new Map(),
+        },
+      });
+    });
+
+    renderWall([zone(0, 'building', 'Library')], [sensor]);
+
+    expect(canvasProps()?.heat).toBeNull();
+  });
+});

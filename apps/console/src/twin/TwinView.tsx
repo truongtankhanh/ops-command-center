@@ -17,6 +17,8 @@ interface TwinViewProps {
   children: ReactNode;
   /** The heat overlay (V2-17.3), or `null` while it is not shown: the name then also says what the colours mean. */
   heat: HeatScene | null;
+  /** The video wall (V2-21.6): the group is a name for assistive technology and nothing more: no tab stop, no keys. */
+  wall?: boolean;
 }
 
 /**
@@ -48,11 +50,14 @@ interface TwinViewProps {
  *   so the capture phase is used, and `preventDefault()` is not called, so a drag is not affected. Without it a mouse
  *   user who orbited and then pressed an arrow would get nothing (V2-18.3, `unverified` in a browser).
  *
+ * - **On a video wall** (`wall`, V2-21.6) there is no keyboard and no pointer to serve: the group keeps its role and its
+ *   summary, and loses the tab stop, the key handler, the press-to-focus and the hidden list of keys.
+ *
  * A wrapper of its own so the incident subscription re-renders only this component: `children` are
  * elements made by `TwinStage`, which keep their identity, so the canvas tree is not rendered again
  * at every incident event.
  */
-export function TwinView({ children, heat }: TwinViewProps) {
+export function TwinView({ children, heat, wall = false }: TwinViewProps) {
   const { data: plan } = useSitePlan();
   const { data: incidents } = useIncidents();
   const summary = twinSummary({
@@ -60,6 +65,20 @@ export function TwinView({ children, heat }: TwinViewProps) {
     activeIncidents: incidents ? activeIncidentCount(incidents) : null,
     heat: heat === null ? null : { silentNames: heat.silentNames, domain: HEAT_DOMAIN },
   });
+
+  if (wall) {
+    return (
+      <div
+        id={TWIN_VIEW_ID}
+        role="group"
+        aria-roledescription="3D view"
+        aria-label={summary}
+        className={styles.view}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     <div

@@ -57,13 +57,20 @@ const HudReadout = import.meta.env.MODE === 'development' ? lazy(() => import('.
  * twin. The controls, the legend and the hint come after the group, so Tab goes from the view to the
  * camera controls to the legend and then leaves the stage.
  *
+ * - **On a video wall** (`wall`, V2-21.6, `WallApp`) it is the picture only: the canvas is locked and pinned to a pixel ratio of
+ *   1.0 (`TwinCanvas`), the view is not focusable and takes no key (`TwinView`), the wrapper takes no pointer or touch
+ *   (`data-still`), and none of the drawn controls is mounted: the drag hint, the pick hint, the legends, the building
+ *   summary, the part callout and its leader, the camera controls and the tooltip. The heat overlay is off whatever the layer
+ *   says (no switch to turn it on). The Incidents and Cameras layers are the store's, which are on and which a wall has
+ *   nothing to change.
+ *
  * A default export, the console's exception to named exports: `React.lazy` needs one.
  *
  * Frame demand: none of its own. `invalidateRef` holds the canvas's `invalidate` behind a wrapper that does nothing
  *   while the tab is hidden (V2-19.2); the feed (`useTwinFeed`) and the callout's leader (`onLeaderStart`) ask
  *   through it, each only after a change.
  */
-export default function TwinStage() {
+export default function TwinStage({ wall = false }: { wall?: boolean }) {
   const scene = useTwinScene();
   // The box of every building: the rig's first view reads it, and the camera follows the level with it (V2-15.6).
   const boxes = useMemo(
@@ -81,7 +88,8 @@ export default function TwinStage() {
   const highlightZoneId = useTwinHighlightZone(scene);
   // The heat overlay (V2-17.3): `null` unless the layer is on at campus or building level; one object while nothing in it
   // changes, so the canvas, the labels and the view's name do not render for a second that changed nothing.
-  const heat = useHeatScene(scene);
+  const shownHeat = useHeatScene(scene);
+  const heat = wall ? null : shownHeat;
   // The telemetry feed lives here for the same reason (it reads the query cache). The canvas's `invalidate`
   // only exists once the canvas does, so the feed calls it through a ref the canvas fills (V2-14.8).
   const invalidateRef = useRef<() => void>(NO_INVALIDATE);
@@ -110,9 +118,9 @@ export default function TwinStage() {
   useEffect(() => clearTwinMarks, []);
   return (
     <div className={styles.fill}>
-      <TwinView heat={heat}>
+      <TwinView heat={heat} wall={wall}>
         {/* The canvas is a picture of what the lists hold; `TwinView` names the group for it. */}
-        <div className={styles.fill} aria-hidden="true">
+        <div className={styles.fill} data-still={wall ? 'true' : undefined} aria-hidden="true">
           <TwinCanvas
             scene={scene}
             classPoints={classPoints}
@@ -134,37 +142,42 @@ export default function TwinStage() {
             leaderDotRef={leaderDotRef}
             leaderStartRef={leaderStartRef}
             hudRef={hudRef}
+            wall={wall}
           />
         </div>
         <ZoneLabels anchors={scene?.anchors ?? NO_ANCHORS} layerRef={labelLayer} heat={heat} />
       </TwinView>
-      <DragHint />
-      {/* While the report's location is picked (V2-16.7): where to click and how to stop. */}
-      <PickHint />
-      {/*
-        The legends explain what is drawn: with no scene there is nothing to explain (frame 06 has none while loading).
-        The heat legend (V2-17.4) is above the marker legend, in one column: the marker legend still explains the
-        beacons and the cameras, and at building level it holds the line that says `Esc` returns to the campus.
-      */}
-      {scene && (
-        <div className={styles.legends}>
-          <HeatLegend />
-          <TwinLegend />
-        </div>
+      {!wall && (
+        <>
+          <DragHint />
+          {/* While the report's location is picked (V2-16.7): where to click and how to stop. */}
+          <PickHint />
+          {/*
+          The legends explain what is drawn: with no scene there is nothing to explain (frame 06 has none while loading).
+          The heat legend (V2-17.4) is above the marker legend, in one column: the marker legend still explains the
+          beacons and the cameras, and at building level it holds the line that says `Esc` returns to the campus.
+        */}
+          {scene && (
+            <div className={styles.legends}>
+              <HeatLegend />
+              <TwinLegend />
+            </div>
+          )}
+          {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
+          {scene && <BuildingSummary />}
+          {/* The leader of the part callout (V2-15.10) under its card, which shows at part level only. */}
+          <LeaderOverlay lineRef={leaderLineRef} dotRef={leaderDotRef} />
+          {scene && <TwinCallout onStart={onLeaderStart} />}
+          <TwinControls compassRef={compass} />
+        </>
       )}
-      {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
-      {scene && <BuildingSummary />}
-      {/* The leader of the part callout (V2-15.10) under its card, which shows at part level only. */}
-      <LeaderOverlay lineRef={leaderLineRef} dotRef={leaderDotRef} />
-      {scene && <TwinCallout onStart={onLeaderStart} />}
-      <TwinControls compassRef={compass} />
       {hudRequested && HudReadout && (
         <Suspense fallback={null}>
           <HudReadout listRef={hudRef} />
         </Suspense>
       )}
       {/* Last, so it paints over the legend and the controls; it draws nothing until a hover rests (V2-15.5). */}
-      <TwinTooltip />
+      {!wall && <TwinTooltip />}
     </div>
   );
 }

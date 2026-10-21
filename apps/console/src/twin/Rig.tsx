@@ -100,6 +100,11 @@ interface RigProps {
    * moment of the command and does not register its commands again for each change.
    */
   beacons: readonly Pick<Beacon, 'id' | 'position'>[];
+  /**
+   * The video wall's rig (V2-21.6): the controls take no input at all (no wheel, drag, touch or Shift), and the view is
+   * fitted again when the stage's shape changes, because nobody is there to set it. The commands still work.
+   */
+  locked?: boolean;
 }
 
 /**
@@ -133,12 +138,16 @@ interface RigProps {
  *   by itself.
  * - **The keys** (V2-18.3) reach the camera through `rotateBy`, `tiltBy`, `panBy` and `zoomBy`: relative, smoothed moves that
  *   take the camera back from a fly-to and inherit the limits above (`unverified`: the feel of the steps, by eye).
+ * - **Locked** (V2-21.6, the video wall): `CameraControls` is disabled, so a stray wheel, drag or touch does nothing, and no
+ *   mouse mapping or Shift listener is set up. Nothing moves the camera but a command (`twinCommands`: V2-21.8's flight), and
+ *   there is no idle rotation. The first view is the home view for the stage's own shape, and a change of that shape (the
+ *   window moved to a bigger screen) fits it again, once per change, with one `invalidate()`.
  * - `frameloop="demand"`: the library asks for the next frame while it moves, the tween asks while it runs,
  *   and a resting stage draws nothing. Frame demand: the library invalidates on its own `update` event; the tween
  *   reports `demand.flying` while it runs (`FrameDriver` asks for the frames) and the command API calls `invalidate()`
  *   once when a flight begins or a reduced-motion jump lands.
  */
-export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
+export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigProps) {
   const controls = useRef<CameraControls>(null);
   const flight = useRef<Flight | null>(null);
   const reportDemand = useReportFrameDemand();
@@ -158,6 +167,9 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   const latestAssetBoxes = useRef(assetBoxes);
   const get = useThree((state) => state.get);
   const pan = useMemo(() => panBounds(bounds), [bounds]);
+  const { width, height } = useThree((state) => state.size);
+  // The shape the view was last fitted for; a locked rig fits again when it changes.
+  const fittedFor = useRef({ width, height });
 
   useSheetOffset();
 
@@ -200,6 +212,16 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
     applyLimits(rig, limitsNow());
   }, [get]);
 
+  // A wall's view is the home view, and nobody can set another: when the stage's shape changes, fit it again.
+  useEffect(() => {
+    const rig = controls.current;
+    const last = fittedFor.current;
+    if (!locked || !rig || (last.width === width && last.height === height)) return;
+    fittedFor.current = { width, height };
+    placeCamera(rig, homeView(initialBounds.current, visibleAspect(width, height, 0)));
+    get().invalidate();
+  }, [locked, width, height, get]);
+
   // The target never leaves the site boundary + 40 m, and never goes under the ground or above the roofs.
   useEffect(() => {
     const rig = controls.current;
@@ -215,7 +237,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
   // Mouse and touch. The nested objects are set on the instance (the library reads them through its own setters).
   useEffect(() => {
     const rig = controls.current;
-    if (!rig) return;
+    if (!rig || locked) return;
     rig.mouseButtons.left = ACTION.ROTATE;
     rig.mouseButtons.right = ACTION.SCREEN_PAN;
     rig.mouseButtons.wheel = ACTION.DOLLY;
@@ -241,7 +263,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
       window.removeEventListener('keyup', onKey);
       window.removeEventListener('blur', onBlur);
     };
-  }, []);
+  }, [locked]);
 
   // A drag or a touch takes the camera back from a fly-to. (The wheel does not emit this event; a wheel turn in
   // the 600 ms is overridden by the tween's next frame.)
@@ -371,6 +393,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons }: RigProps) {
       maxPolarAngle={MathUtils.degToRad(CAMERA_LIMITS.maxTiltDeg)}
       dollyToCursor
       smoothTime={SMOOTH_TIME_S}
+      enabled={!locked}
     />
   );
 }

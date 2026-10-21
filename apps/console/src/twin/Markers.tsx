@@ -10,6 +10,7 @@ import { PULSE_OPACITY_FROM, PULSE_SCALE_FROM, PULSE_SCALE_TO } from '../lib/map
 import { GROUND_LAYERS } from '../lib/twinGround';
 import { type MarkerPlacement, spriteInstances } from '../lib/twinMarkers';
 import { mapMotion } from '../styles/tokens';
+import { useMarkerScale } from './markerScale';
 import type { SpriteAtlas } from './useMarkerAtlas';
 
 /** After the ground (0 – 8) and the buildings (9, 10). */
@@ -41,6 +42,7 @@ const VERTEX = /* glsl */ `
   attribute vec2 aOffset;
   attribute float aPhase;
   uniform vec2 uViewport;
+  uniform float uScale;
   uniform float uTime;
   uniform float uPeriodMs;
   varying vec2 vUv;
@@ -48,17 +50,18 @@ const VERTEX = /* glsl */ `
 
   void main() {
     vec4 clip = projectionMatrix * viewMatrix * vec4(aAnchor, 1.0);
-    vec2 pixels = vec2((position.x - 0.5) * aSize.x, position.y * aSize.y);
+    vec2 size = aSize * uScale;
+    vec2 pixels = vec2((position.x - 0.5) * size.x, position.y * size.y);
     float fade = 1.0;
     if (aPhase >= 0.0) {
       float t = fract(uTime / uPeriodMs + aPhase);
       float eased = 1.0 - (1.0 - t) * (1.0 - t);
       float scale = ${glsl(PULSE_SCALE_FROM)} + (${glsl(PULSE_SCALE_TO)} - ${glsl(PULSE_SCALE_FROM)}) * eased;
-      vec2 centre = vec2(0.0, aSize.y * 0.5);
+      vec2 centre = vec2(0.0, size.y * 0.5);
       pixels = (pixels - centre) * scale + centre;
       fade = ${glsl(PULSE_OPACITY_FROM)} * (1.0 - eased);
     }
-    pixels += aOffset;
+    pixels += aOffset * uScale;
     clip.xy += pixels / uViewport * 2.0 * clip.w;
     gl_Position = clip;
     vUv = vec2(mix(aRect.x, aRect.z, position.x), mix(aRect.y, aRect.w, position.y));
@@ -115,6 +118,8 @@ interface MarkersProps {
  *
  * - Always drawn over the scene (`depthTest` off, after the opaque objects): an operator has to see every
  *   camera, including one behind a building.
+ * - **Bigger on the video wall** (V2-21.6): every size and offset is multiplied by the marker scale the canvas provides
+ *   (`markerScale.ts`), `1` outside a wall. It is a uniform, so the bitmaps and the buffers are the same at any scale.
  * - Nothing here is pickable; hover and click are V2-15.4's, which hit-tests in screen space from the same
  *   pixel rules (`lib/twinMarkers.ts`).
  * - `frustumCulled` is off: the base quad's bounds say nothing about where the instances are.
@@ -129,6 +134,7 @@ export function Markers({
   renderOrder = MARKERS_ORDER,
 }: MarkersProps) {
   const { width, height } = useThree((state) => state.size);
+  const scale = useMarkerScale();
 
   const geometry = useMemo(() => {
     const { count, anchors, rects, sizes, offsets, phases } = spriteInstances(
@@ -159,11 +165,12 @@ export function Markers({
     () => ({
       uMap: { value: atlas.texture },
       uViewport: { value: new Vector2(width, height) },
+      uScale: { value: scale },
       uOpacity: { value: opacity },
       uTime: clock,
       uPeriodMs: { value: periodMs },
     }),
-    [atlas, width, height, opacity, clock, periodMs],
+    [atlas, width, height, scale, opacity, clock, periodMs],
   );
 
   if (geometry === null) return null;
@@ -174,7 +181,7 @@ export function Markers({
         the program, so swapping the object on a live material would keep drawing with the old viewport.
       */}
       <shaderMaterial
-        key={`${width}x${height}x${opacity}`}
+        key={`${width}x${height}x${opacity}x${scale}`}
         vertexShader={VERTEX}
         fragmentShader={FRAGMENT}
         uniforms={uniforms}

@@ -13,7 +13,7 @@ import {
   unstubTwin,
 } from '../test-utils';
 import { CampusMap } from './CampusMap';
-import { StageView } from './StageView';
+import { LazyTwinStage, StageView } from './StageView';
 
 // MapLibre needs WebGL, which jsdom does not have; the map's own tests cover the map.
 vi.mock('./CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
@@ -22,11 +22,17 @@ vi.mock('./CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
 // imported, so `twin.evaluated` says whether anything asked for the chunk, and `twin.fail` makes
 // that import fail (a chunk that cannot be fetched). The factory stays synchronous: the registry then
 // forgets a failed import, so a Retry runs it again.
-const twin = vi.hoisted(() => ({ evaluated: 0, fail: false }));
+const twin = vi.hoisted(() => ({ evaluated: 0, fail: false, crash: false }));
 vi.mock('../twin/TwinStage', () => {
   twin.evaluated += 1;
   if (twin.fail) throw new Error('chunk failed to load');
-  return { default: () => <div>3D stage</div> };
+  return {
+    default: ({ wall }: { wall?: boolean }) => {
+      // A stage that breaks once it is drawn, for the boundary (the factory above is the chunk failing to load).
+      if (twin.crash) throw new Error('stage failed to render');
+      return <div>{wall ? '3D stage (wall)' : '3D stage'}</div>;
+    },
+  };
 });
 
 const PLAN: SitePlan = { id: 'plan-1', code: 'P', name: 'Plan', center: [0, 0], features: [] };
@@ -375,5 +381,44 @@ describe('StageView', () => {
         expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
       });
     });
+  });
+});
+
+// V2-21.6: the video wall mounts the same lazy stage, through the same import, with nothing to press.
+describe('LazyTwinStage on a video wall', () => {
+  beforeEach(() => {
+    resetStore(useConsole);
+    twin.fail = false;
+    twin.crash = false;
+  });
+  afterEach(() => {
+    twin.crash = false;
+    vi.restoreAllMocks();
+  });
+
+  it('hands the stage `wall`, in a region named for the 3D view', async () => {
+    renderWithQueryClient(<LazyTwinStage wall />, seededClient());
+
+    expect(await screen.findByText('3D stage (wall)')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /^Campus 3D view/ })).toBeInTheDocument();
+  });
+
+  it('shows the loading card with no Retry when the site plan fails', async () => {
+    vi.spyOn(api, 'get').mockRejectedValue(new Error('down'));
+    renderWithQueryClient(<LazyTwinStage wall />, createTestQueryClient());
+
+    expect(await screen.findByText('The 3D view is not ready')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('says the stage stopped working with no Retry to press', async () => {
+    twin.crash = true;
+    // The boundary logs the failure, as it does for any region that breaks.
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    renderWithQueryClient(<LazyTwinStage wall />, seededClient());
+
+    expect(await screen.findByText('The 3D view stopped working.')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Campus 3D view' })).toBeInTheDocument();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });
