@@ -1,7 +1,6 @@
 import { useId } from 'react';
 import { useIncidents } from '../../api/queries';
 import { isActive } from '../../lib/incidents';
-import { LazyTwinStage } from '../StageView';
 import styles from './WallApp.module.css';
 import { useWallFocus } from './useWallFocus';
 import { useWallScale } from './useWallScale';
@@ -10,12 +9,13 @@ import { WallFocusBanner } from './WallFocusBanner';
 import { WallHeader } from './WallHeader';
 import { WallIncidents } from './WallIncidents';
 import { WallLegend } from './WallLegend';
+import { WallStage } from './WallStage';
 
 /**
  * The video wall screen (V2-21.3, frame 18): the header over a stage 1240 : 680 beside a side column, at the wall's own
  * `--ui-scale`. The camera grid is `WallCameras` (V2-21.4) and the active list `WallIncidents` (V2-21.5); the stage is
- * the twin, held still (V2-21.6: the same lazy stage as the console's, with `wall`), and its fallback to 2D (V2-21.9) comes
- * in a later task. `useWallFocus` (V2-21.8) is what moves the camera, and it lives here so that only a wall mounts it; the
+ * `WallStage`: the twin, held still (V2-21.6: the same lazy stage as the console's, with `wall`), or the 2D map where 3D cannot
+ * be drawn (V2-21.9). `useWallFocus` (V2-21.8) is what moves the camera, and it lives here so that only a wall mounts it; the
  * focus banner and the legend are drawn over the stage.
  *
  * One `main`, named for the screen; the stage is a labelled region and the two parts of the side column are regions
@@ -34,7 +34,7 @@ export function WallApp({ screen }: { screen: number }) {
       <WallHeader screen={screen} />
       <main className={styles.main} aria-label={`Video wall ${screen}`}>
         <div className={styles.stage}>
-          <LazyTwinStage wall />
+          <WallStage />
           <WallFocusBanner {...focus} />
           <WallLegend />
         </div>

@@ -2,7 +2,7 @@
  * Something went wrong with the twin during this session. Only a WebGL context that was lost and did
  * not come back within 5 s (ADR-0020 § Capability check) so far; the 3D stage reports it (V2-12.11).
  */
-export type TwinFault = 'context-lost';
+export type TwinFault = 'context-lost' | 'too-slow';
 
 /**
  * Why the 3D twin cannot be drawn here. A `Record` over this union (`TWIN_UNAVAILABLE_COPY`) forces
@@ -68,5 +68,11 @@ export const TWIN_UNAVAILABLE_COPY: Record<
     title: '3D view stopped working',
     detail:
       'The graphics context was lost and did not come back. The 2D map shows the same incidents, cameras and assets.',
+  },
+  // Only a video wall raises it (V2-21.9, `FrameGuard`): a person on a laptop is never switched away from a slow 3D view.
+  'too-slow': {
+    title: '3D view was too slow',
+    detail:
+      'The 3D view could not hold its frame rate on this screen. The 2D map shows the same incidents, cameras and assets.',
   },
 };

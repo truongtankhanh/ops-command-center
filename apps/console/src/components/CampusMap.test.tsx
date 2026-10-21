@@ -242,7 +242,9 @@ async function renderMap(
     sitePlan = SITE_PLAN as SitePlan | null,
     cameras = [] as Camera[],
     assets = [] as Asset[],
+    wall = false,
   }: {
+    wall?: boolean;
     load?: boolean;
     zones?: Zone[] | null;
     sitePlan?: SitePlan | null;
@@ -258,7 +260,7 @@ async function renderMap(
   client.setQueryData(queryKeys.cameras, cameras);
   client.setQueryData(queryKeys.assets, assets);
   client.setQueryData(queryKeys.incidents, incidents);
-  const view = renderWithQueryClient(<CampusMap />, client);
+  const view = renderWithQueryClient(<CampusMap wall={wall} />, client);
   const map = fake.maps.at(-1)!;
   if (load) await act(async () => map.fire('load'));
   return { ...view, map };
@@ -1545,6 +1547,59 @@ describe('CampusMap', () => {
       act(() => useConsole.getState().startReport());
 
       expect(map.fitBounds).toHaveBeenLastCalledWith(campus(), { padding: FIT, duration: 600 });
+    });
+  });
+
+  describe('on a video wall (V2-21.9)', () => {
+    const OTHER: [number, number] = [108.443, 11.954];
+
+    it('takes no input: the map is not interactive, it draws no control, legend or tooltip', async () => {
+      const wall = await renderMap([incident({ id: 'a' })], { wall: true });
+      expect(wall.map.options.interactive).toBe(false);
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+      expect(screen.queryByRole('group', { name: 'Map view' })).toBeNull();
+      wall.unmount();
+
+      const console_ = await renderMap([incident({ id: 'a' })]);
+      expect(console_.map.options.interactive).toBe(true);
+      expect(screen.getByRole('group', { name: 'Map view' })).toBeInTheDocument();
+    });
+
+    it('follows the incident the wall holds, not the selected one, and goes back to the campus', async () => {
+      useConsole.setState({ selectedIncidentId: 'a', wallFocusId: 'b' });
+      const { map } = await renderMap(
+        [incident({ id: 'a' }), incident({ id: 'b', code: 'INC-000002', position: OTHER })],
+        { wall: true, zones: [zone()] },
+      );
+
+      expect(ids(lastData(map, MAP_SOURCES.selected))).toEqual(['b']);
+      expect(map.easeTo).toHaveBeenLastCalledWith(
+        expect.objectContaining({ center: OTHER, zoom: 18 }),
+      );
+
+      act(() => useConsole.setState({ wallFocusId: null }));
+
+      expect(map.fitBounds).toHaveBeenLastCalledWith(expect.anything(), {
+        padding: FIT,
+        duration: 600,
+      });
+      expect(ids(lastData(map, MAP_SOURCES.selected))).toEqual([]);
+    });
+
+    it('keeps no room for a sheet, which a wall never opens', async () => {
+      useConsole.setState({ wallFocusId: 'a' });
+      const { map } = await renderMap([incident({ id: 'a' })], { wall: true });
+
+      const [options] = map.easeTo.mock.lastCall as [{ offset: [number, number] }];
+      expect(options.offset[0] + 0).toBe(0);
+    });
+
+    it('on the console, goes to the incident without changing the zoom', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+
+      act(() => useConsole.getState().select('a'));
+
+      expect(map.easeTo.mock.lastCall?.[0]).not.toHaveProperty('zoom');
     });
   });
 

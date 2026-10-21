@@ -1382,6 +1382,20 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       `lib/twinPerf.ts` marks the twin lost (`markTwinLost`, the path of a lost context) when the p95 interval stays above
       the budget for a long window (60 s proposed), and the wall shows the map. The tech lead may prefer the capability
       fallback alone; both numbers are `unverified` until the wall controller (V2-21.12).
+    - **Built in V2-21.9: the fallback.** `WallStage` (in the stage cell) shows `LazyTwinStage wall` where `useTwinCapability`
+      says 3D can be drawn and otherwise `CampusMap wall` with a non-dismissible `role="status"` tag, "2D map — " and the
+      reason's title from `TWIN_UNAVAILABLE_COPY`, no button. **Only the capability decides**, not the store's `view`: a wall
+      has no switch, and the 2D choice an operator stored in the same browser is not the wall's. `CampusMap wall` is
+      MapLibre with `interactive: false` (no drag, wheel, touch or key; the canvas leaves the Tab order), no tooltip, legend or
+      controls, and it follows `wallFocusId` instead of the selected incident: it eases to the incident at zoom 18 and back to
+      the campus fit when the hold ends. The focus banner and the legend are over the stage cell, so they show on the map
+      too. The frame-budget detector is shipped: `createFallbackDetector` (`lib/twinPerf.ts`) judges 2 s windows as the
+      pixel-ratio controller does and trips, once, after a minute of back-to-back bad windows, a window being bad when it
+      kept at least 30 frames and their p95 interval is above 33 ms (`FALLBACK_BUDGET_MS`; a window with fewer frames, a
+      canvas that draws now and then, ends the run). `FrameGuard`, mounted in the wall's canvas only, marks the twin lost as
+      the new fault `too-slow` (`markTwinLost(fault)`, default `context-lost`), the path of a lost context. A wall does not go
+      back to 3D by itself and retries nothing on a timer; a reload does (V2-21.10). The 33 ms, the minute and the zoom are
+      `unverified` until the wall controller (V2-21.12); the 2D map's markers are not scaled for a 4K screen yet.
     - **Staying signed in (Q5; V2-21.10).** The wall renews its token as the console does. Where the renewal fails it
       starts the sign-in redirect itself, rate-limited and with a back-off, instead of waiting for a click that nobody is
       there to make. Keycloak's defaults end a session after 10 h at most (ADR-0010), and a reload asks for no password

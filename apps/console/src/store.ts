@@ -272,10 +272,11 @@ interface ConsoleState extends ReportLocation {
    */
   setView(view: ViewChoice): void;
   /**
-   * The twin failed during this session: records the fault and puts the stage on the 2D map. The
-   * operator's stored choice is left as it is, so a reload or a restore goes back to it.
+   * The twin failed during this session: records the fault (a lost context unless told otherwise; the wall's
+   * `FrameGuard` says `too-slow`) and puts the stage on the 2D map. The operator's stored choice is left as it is, so a
+   * reload or a restore goes back to it.
    */
-  markTwinLost(): void;
+  markTwinLost(fault?: TwinFault): void;
   /**
    * The twin works again: forgets the fault and returns to the view the stored choice and the
    * device allow. Nothing calls it yet; a context that restores in time never raises the fault.
@@ -490,7 +491,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     writeViewChoice(view);
     set({ view });
   },
-  markTwinLost: () => set({ twinFault: 'context-lost', view: '2d' }),
+  markTwinLost: (fault = 'context-lost') => set({ twinFault: fault, view: '2d' }),
   clearTwinLost: () =>
     set({ twinFault: null, view: effectiveView(readViewChoice(), twinCapability()) }),
   toggleLayer: (key) =>

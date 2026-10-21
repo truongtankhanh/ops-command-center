@@ -83,17 +83,30 @@ const FIT_PADDING = 48;
 /** Map width the open sheet always leaves for the view on a narrow screen. */
 const MIN_VISIBLE_PX = 160;
 
+/**
+ * The zoom a video wall's map eases to when it goes to an incident (V2-21.9): close enough to see the incident's surroundings,
+ * where the campus fit shows all of it. `unverified` until it is looked at on a wall (V2-21.12).
+ */
+const WALL_FOCUS_ZOOM = 18;
+
 /** What the view frames: the selected incident's drawn position, and whether the sheet is open. */
 interface ViewTarget {
   point: [number, number] | null;
   sheetOpen: boolean;
+  /** The zoom to ease to at `point`; the map keeps its own when unset. */
+  zoom?: number;
 }
 
 /**
  * Incidents and cameras are map layers, not DOM markers, so they are not in the Tab order: the
  * incident feed is the keyboard and screen-reader route to every incident the map draws.
+ *
+ * **On a video wall** (`wall`, V2-21.9) it is the picture the 3D view falls back to: the map takes no input (MapLibre
+ * `interactive: false`: no drag, wheel, touch or key, and the canvas leaves the Tab order), draws no tooltip, legend or
+ * control, and follows the incident the wall's camera is on (`wallFocusId`, set by `useWallFocus`) instead of the selected
+ * one, easing to it and back to the campus fit when the hold ends.
  */
-export function CampusMap() {
+export function CampusMap({ wall = false }: { wall?: boolean } = {}) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const {
@@ -108,7 +121,7 @@ export function CampusMap() {
   const { data: cameras } = useCameras();
   const { data: assets } = useAssets();
   const { data: incidents } = useIncidents();
-  const selectedId = useConsole((s) => s.selectedIncidentId);
+  const selectedId = useConsole((s) => (wall ? s.wallFocusId : s.selectedIncidentId));
   const reporting = useConsole((s) => s.reporting);
   const reportZoneId = useConsole((s) => s.reportZoneId);
   const picking = useConsole((s) => s.picking);
@@ -116,7 +129,7 @@ export function CampusMap() {
   const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
   const reducedMotion = usePrefersReducedMotion();
   // The inspector is a sheet too: the view keeps clear of it as of the incident's and the form's.
-  const sheetOpen = selectedId !== null || selectedAssetCode !== null || reporting;
+  const sheetOpen = !wall && (selectedId !== null || selectedAssetCode !== null || reporting);
   /** What the view frames; read by `useSiteLayers` when the ground is (re)drawn. */
   const focusRef = useRef<ViewTarget>({ point: null, sheetOpen: false });
 
@@ -132,6 +145,7 @@ export function CampusMap() {
       maxZoom: MAX_ZOOM,
       attributionControl: false,
       dragRotate: false,
+      interactive: !wall,
     });
     const loading = new AbortController();
     instance.on('styleimagemissing', (event) => addClusterCountImage(instance, event.id));
@@ -155,7 +169,7 @@ export function CampusMap() {
       observer.disconnect();
       instance.remove();
     };
-  }, []);
+  }, [wall]);
 
   const features = useMemo(
     () => (incidents ? incidentFeatures(incidents, selectedId) : null),
@@ -206,9 +220,10 @@ export function CampusMap() {
     focusRef.current = {
       point: point ? [point[0]!, point[1]!] : null,
       sheetOpen,
+      ...(wall && point ? { zoom: WALL_FOCUS_ZOOM } : {}),
     };
     if (map) focus(map, focusRef.current, focusMsRef.current);
-  }, [map, selectedId, selectedAssetCode, hasSelectedPoint, sheetOpen]);
+  }, [map, selectedId, selectedAssetCode, hasSelectedPoint, sheetOpen, wall]);
 
   const selected = incidents?.find((i) => i.id === selectedId);
 
@@ -226,7 +241,12 @@ export function CampusMap() {
   const mapLoading = zonesPending && !isRateLimited(zonesFailure);
 
   return (
-    <section className={styles.map} aria-label="Campus map" aria-busy={mapLoading || undefined}>
+    <section
+      className={styles.map}
+      aria-label="Campus map"
+      aria-busy={mapLoading || undefined}
+      data-still={wall || undefined}
+    >
       <div ref={container} className={styles.canvas} />
       {/* The zones are the campus: without them the map is an empty ground (Q9). The site plan and
           the marker images fail quietly instead, since the zones still carry the meaning. */}
@@ -254,9 +274,13 @@ export function CampusMap() {
           Click the map to place the incident · drag the pin to adjust
         </div>
       )}
-      <MapTooltip map={map} />
-      <MapLegend />
-      <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, focusMs)} />
+      {!wall && (
+        <>
+          <MapTooltip map={map} />
+          <MapLegend />
+          <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, focusMs)} />
+        </>
+      )}
     </section>
   );
 }
@@ -291,13 +315,18 @@ function fitCampus(map: maplibregl.Map, sheetOpen: boolean, duration = 0) {
  * there when there is no point. An `offset`, not MapLibre's `padding`: padding stays on the map
  * and `fitBounds` would add it to its own, so the map keeps none.
  */
-function focus(map: maplibregl.Map, { point, sheetOpen }: ViewTarget, duration: number) {
+function focus(map: maplibregl.Map, { point, sheetOpen, zoom }: ViewTarget, duration: number) {
   if (!point) {
     fitCampus(map, sheetOpen, duration);
     return;
   }
   const inset = sheetInset(map, sheetOpen);
-  map.easeTo({ center: point, offset: [-inset / 2, 0], duration });
+  map.easeTo({
+    center: point,
+    offset: [-inset / 2, 0],
+    duration,
+    ...(zoom === undefined ? {} : { zoom }),
+  });
 }
 
 /**

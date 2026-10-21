@@ -7,6 +7,8 @@ import {
   expectNoAxeViolations,
   renderWithQueryClient,
   resetStore,
+  stubTwinAvailable,
+  unstubTwin,
 } from '../../test-utils';
 import { WallApp } from './WallApp';
 
@@ -14,6 +16,13 @@ import { WallApp } from './WallApp';
 vi.mock('maplibre-gl', () => ({ default: { Map: class {}, Marker: class {} } }));
 
 // The twin's chunk, stood in for (R3F needs WebGL); the stand-in says whether the wall asked for its wall variant.
+// The map the wall falls back to (V2-21.9): MapLibre is the map's own tests'; what is asserted is that the wall asked for it.
+vi.mock('../CampusMap', () => ({
+  CampusMap: ({ wall }: { wall?: boolean }) => (
+    <section aria-label="Campus map">{wall ? '2D map (wall)' : '2D map'}</section>
+  ),
+}));
+
 vi.mock('../../twin/TwinStage', () => ({
   default: ({ wall }: { wall?: boolean }) => <p>{wall ? '3D stage (wall)' : '3D stage'}</p>,
 }));
@@ -55,6 +64,7 @@ describe('WallApp', () => {
   const width = window.innerWidth;
 
   beforeEach(() => {
+    stubTwinAvailable();
     resetStore(useConsole);
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
@@ -64,6 +74,7 @@ describe('WallApp', () => {
   });
 
   afterEach(() => {
+    unstubTwin();
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       writable: true,
@@ -127,6 +138,27 @@ describe('WallApp', () => {
     expect(screen.getByText('60 s')).toBeInTheDocument();
     expect(useConsole.getState().wallFocusId).toBe('crit');
     expect(useConsole.getState().selectedIncidentId).toBeNull();
+  });
+
+  it('keeps the focus banner over the map when the 3D view is lost mid-hold (V2-21.9)', async () => {
+    useConsole.setState({ wall: 3 });
+    const { client } = renderWall([incident('a', 'open')]);
+    act(() =>
+      client.setQueryData(queryKeys.incidents, [
+        incident('a', 'open'),
+        { ...incident('crit', 'open'), severity: 'critical', title: 'Motor over-temperature' },
+      ]),
+    );
+    expect(await screen.findByText('Campus view in')).toBeInTheDocument();
+    expect(await screen.findByText('3D stage (wall)')).toBeInTheDocument();
+
+    act(() => useConsole.getState().markTwinLost('too-slow'));
+
+    expect(await screen.findByText('2D map (wall)')).toBeInTheDocument();
+    expect(screen.queryByText('3D stage (wall)')).not.toBeInTheDocument();
+    expect(screen.getByText('Campus view in')).toBeInTheDocument();
+    expect(useConsole.getState().wallFocusId).toBe('crit');
+    expect(screen.getByText('2D map — 3D view was too slow')).toBeInTheDocument();
   });
 
   it('has nothing to press or tab to', () => {

@@ -11,6 +11,8 @@ import {
   expectNoAxeViolations,
   renderWithQueryClient,
   resetStore,
+  stubTwinAvailable,
+  unstubTwin,
 } from './test-utils';
 import { useToasts } from './ui/toasts';
 
@@ -35,6 +37,12 @@ const fake = vi.hoisted(() => ({
 vi.mock('maplibre-gl', () => ({ default: { Map: class {}, Marker: class {} } }));
 // The twin's chunk, stood in for: R3F needs WebGL. The wall mounts it, and what it draws is the twin's own tests'.
 vi.mock('./twin/TwinStage', () => ({ default: () => <p>3D stage</p> }));
+// The map the wall falls back to (V2-21.9): MapLibre is the map's own tests'; what is asserted is that the wall asked for it.
+vi.mock('./components/CampusMap', () => ({
+  CampusMap: ({ wall }: { wall?: boolean }) => (
+    <section aria-label="Campus map">{wall ? '2D map (wall)' : '2D map'}</section>
+  ),
+}));
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
 vi.mock('./auth/session', () => ({
   getAccessToken: vi.fn(() => Promise.resolve(null)),
@@ -65,6 +73,7 @@ function renderWall(role: Role) {
 
 describe('the console on a video wall screen', () => {
   beforeEach(() => {
+    stubTwinAvailable();
     resetStore(useConsole);
     resetStore(useSession);
     resetStore(useToasts);
@@ -76,7 +85,10 @@ describe('the console on a video wall screen', () => {
     );
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    unstubTwin();
+    vi.unstubAllGlobals();
+  });
 
   it.each(ROLES)('is one labelled screen with nothing to press, for a %s', (role) => {
     const { container } = renderWall(role);
@@ -88,6 +100,23 @@ describe('the console on a video wall screen', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('region', { name: /notifications/i })).toBeNull();
   });
+
+  it.each(ROLES)(
+    'shows the 2D map with its tag and nothing to press where 3D is off, for a %s',
+    async (role) => {
+      unstubTwin();
+
+      const { container } = renderWall(role);
+
+      expect(await screen.findByText('2D map (wall)')).toBeInTheDocument();
+      expect(screen.queryByText('3D stage')).toBeNull();
+      expect(
+        screen.getByText(/^2D map — 3D view isn't available on this device/),
+      ).toBeInTheDocument();
+      expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
+      await expectNoAxeViolations(document.body, { screen: true });
+    },
+  );
 
   it.each(ROLES)('asks for data and writes none, for a %s', (role) => {
     renderWall(role);

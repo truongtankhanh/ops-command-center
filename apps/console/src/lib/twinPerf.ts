@@ -408,6 +408,87 @@ export function createDprController({
   };
 }
 
+/**
+ * The p95 interval above which a video wall's 3D view counts as not holding its frame rate (V2-21.9): 33 ms, a rate under
+ * 30 fps. Well above `DPR_BUDGET_MS`, which a wall cannot act on (it is on the last pixel ratio already), so a wall that
+ * merely misses a vsync now and then never trips. `unverified` until it is read on the wall controller (V2-21.12).
+ */
+export const FALLBACK_BUDGET_MS = 33;
+
+/** How long the p95 must stay above `FALLBACK_BUDGET_MS` before the wall gives up on 3D: a minute, `unverified` (V2-21.12). */
+export const FALLBACK_AFTER_MS = 60_000;
+
+export interface FallbackDetectorOptions {
+  /** The p95 of a window above which it is a bad one. Default `FALLBACK_BUDGET_MS`. */
+  budgetMs?: number;
+  /** How long bad windows must run back to back. Default `FALLBACK_AFTER_MS`. */
+  afterMs?: number;
+  /** The length of a window, in milliseconds. Default 2,000, as the pixel-ratio controller's. */
+  windowMs?: number;
+  /** Nothing is judged until this long after the first frame (shaders, models, the first layout). Default one window. */
+  graceMs?: number;
+  /** A window with fewer kept frames than this is not judged bad: a canvas that draws now and then is not stuttering. */
+  minFrames?: number;
+  /** A frame time above this is an idle canvas waking up, not a frame. Default `MAX_FRAME_GAP_MS`. */
+  maxGapMs?: number;
+}
+
+/**
+ * Whether a video wall's 3D view should give way to the 2D map because it cannot hold its frame rate (V2-21.9, brief Open
+ * question 6). The pixel-ratio controller has nothing left to give on a wall (it is pinned to the last step), so this is
+ * the second line: fed every drawn frame's time and the clock (`frame(dtMs, now)`), it judges in tumbling windows like
+ * `createDprController` and returns `true` **once**, when windows judged bad have run back to back for `afterMs`.
+ *
+ * - **A bad window** kept at least `minFrames` frames and their p95 is above `budgetMs`. Any other window (a good one, a
+ *   quiet one with few frames, one that ended on the first frame after an idle gap) ends the run: the run is of a
+ *   problem that persists, not a total of bad seconds.
+ * - **Latched.** After it has tripped it never returns `true` again; the caller marks the twin lost and the stage goes away.
+ * - No clock inside: the caller passes `now`, so it tests without timers.
+ */
+export function createFallbackDetector({
+  budgetMs = FALLBACK_BUDGET_MS,
+  afterMs = FALLBACK_AFTER_MS,
+  windowMs = 2000,
+  graceMs = windowMs,
+  minFrames = 30,
+  maxGapMs = MAX_FRAME_GAP_MS,
+}: FallbackDetectorOptions = {}) {
+  const times = new Float64Array(1024);
+  let count = 0;
+  let startedAt: number | null = null;
+  let windowStart: number | null = null;
+  let badSince: number | null = null;
+  let tripped = false;
+
+  return {
+    frame(dtMs: number, now: number): boolean {
+      if (tripped) return false;
+      startedAt ??= now;
+      if (now - startedAt < graceMs) return false;
+      windowStart ??= now;
+      // Written so that NaN, zero and a gap all fail the test.
+      if (dtMs > 0 && dtMs <= maxGapMs && count < times.length) {
+        times[count] = dtMs;
+        count += 1;
+      }
+      if (now - windowStart < windowMs) return false;
+
+      const bad = count >= minFrames && percentile(times.subarray(0, count), 95) > budgetMs;
+      const began = windowStart;
+      count = 0;
+      windowStart = now;
+      if (!bad) {
+        badSince = null;
+        return false;
+      }
+      badSince ??= began;
+      if (now - badSince < afterMs) return false;
+      tripped = true;
+      return true;
+    },
+  };
+}
+
 // The step the controller has reached, for the life of the page (V2-19.3): a switch to 2D and back unmounts the stage,
 // and a stage that began again at 1.5 would flash a sharper picture and degrade a second time. Not in storage: a reload
 // is a fresh start and tries 1.5 again.

@@ -6,6 +6,11 @@
   isolation: isolate;
 }
 
+/* A video wall's map takes no pointer or touch, whatever MapLibre would do (V2-21.9). */
+.map[data-still] {
+  pointer-events: none;
+}
+
 .canvas {
   /* MapLibre sets position: relative on its container, so size it explicitly. */
   width: 100%;

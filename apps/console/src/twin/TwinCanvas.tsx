@@ -21,6 +21,7 @@ import { CompassSync } from './CompassSync';
 import { ContextGuard } from './ContextGuard';
 import { Equipment } from './Equipment';
 import { FrameDriver } from './FrameDriver';
+import { FrameGuard } from './FrameGuard';
 import { Ground } from './Ground';
 import { LabelProjector } from './LabelProjector';
 import { Lights } from './Lights';
@@ -161,7 +162,7 @@ interface TwinCanvasProps {
  * - **On a video wall** (`wall`, V2-21.6) it draws the picture and takes nothing: no `PickLayer` (what is drawn registers no
  *   pick: `usePicker` is `null` outside one), no `Pointer`, no `ReportPin`, no `CompassSync`, and a locked `Rig` that sets the
  *   home view once and moves only for a command. The pixel ratio starts at `WALL_DPR` and `PixelRatio` is pinned there
- *   (`wall`), whatever the display's ratio; the camera markers and the beacons are drawn at the wall's scale
+ *   (`wall`), whatever the display's ratio, and `FrameGuard` gives the 3D view up for the 2D map when frames stay too slow (V2-21.9); the camera markers and the beacons are drawn at the wall's scale
  *   (`markerScale.ts`), as the DOM labels are by `--ui-scale`.
  * - `flat`: no tone mapping, so the colours on screen are the token colours.
  *
@@ -233,6 +234,7 @@ export function TwinCanvas({
           <FrameDriver>
             <FirstFrameMark />
             <PixelRatio initial={ratio} onStep={onStep} wall={wall} />
+            {wall && <FrameGuard />}
             <Rig
               bounds={scene.bounds}
               boxes={boxes}

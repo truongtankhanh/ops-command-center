@@ -4,11 +4,14 @@ import {
   createBudgetGuard,
   createChangeTracker,
   createDprController,
+  createFallbackDetector,
   createFrameDemand,
   createFrameWindow,
   createPerfSampler,
   DPR_BUDGET_MS,
   DPR_STEPS,
+  FALLBACK_AFTER_MS,
+  FALLBACK_BUDGET_MS,
   debugTwinRequested,
   DRAW_CALL_BUDGET,
   forgetDprStep,
@@ -804,5 +807,103 @@ describe('createBudgetGuard', () => {
 
     expect(guard.check({ calls: Number.NaN, triangles: 10 })).toEqual({ over: [], fresh: [] });
     expect(guard.check({ calls: 151, triangles: 10 }).fresh).toHaveLength(1);
+  });
+});
+
+describe('createFallbackDetector (V2-21.9)', () => {
+  /** Feeds frames of `frameMs` from `from` for `forMs` and returns the times at which it tripped (it should be once at most). */
+  function run(
+    detector: ReturnType<typeof createFallbackDetector>,
+    frameMs: number,
+    from: number,
+    forMs: number,
+  ): number[] {
+    const trips: number[] = [];
+    for (let t = from; t <= from + forMs; t += frameMs) {
+      if (detector.frame(frameMs, t)) trips.push(t);
+    }
+    return trips;
+  }
+
+  it('is above the pixel-ratio controller’s budget, which a wall cannot act on', () => {
+    expect(FALLBACK_BUDGET_MS).toBeGreaterThan(DPR_BUDGET_MS);
+  });
+
+  it('never trips on a healthy run, at 60 Hz or at 40 fps', () => {
+    const detector = createFallbackDetector();
+
+    expect(run(detector, 1000 / 60, 0, 10 * 60_000)).toEqual([]);
+    expect(run(createFallbackDetector(), 25, 0, 10 * 60_000)).toEqual([]);
+  });
+
+  it('trips once, after the afterMs of bad windows, and not before', () => {
+    const detector = createFallbackDetector();
+
+    const trips = run(detector, 50, 0, 3 * 60_000);
+
+    expect(trips).toHaveLength(1);
+    // The grace window (2 s) and then the minute of bad ones, to the second.
+    expect(trips[0]).toBeGreaterThanOrEqual(2000 + FALLBACK_AFTER_MS);
+    expect(trips[0]).toBeLessThan(2000 + FALLBACK_AFTER_MS + 4000);
+  });
+
+  it('is judged on the p95, so a few long frames in a good window do not make it bad', () => {
+    const detector = createFallbackDetector();
+    let now = 0;
+    const trips: boolean[] = [];
+    // One frame in forty is 60 ms (2.5 %, so about three in a window); the rest are 16 ms: the p95 is 16 ms (nearest rank).
+    for (let i = 0; now < 3 * 60_000; i += 1) {
+      const dt = i % 40 === 0 ? 60 : 16;
+      now += dt;
+      trips.push(detector.frame(dt, now));
+    }
+
+    expect(trips).not.toContain(true);
+  });
+
+  it('starts the run again after a good window', () => {
+    const detector = createFallbackDetector();
+
+    // 50 s bad, a good window, 50 s bad: neither stretch is a minute on its own.
+    const first = run(detector, 50, 0, 50_000);
+    const good = run(detector, 16, 50_000, 6000);
+    const second = run(detector, 50, 56_000, 50_000);
+
+    expect([...first, ...good, ...second]).toEqual([]);
+  });
+
+  it('does not count a quiet canvas as slow: windows with few frames end the run', () => {
+    const detector = createFallbackDetector();
+
+    // One frame every 200 ms is 10 frames in a window, below the 30 that make a window worth judging.
+    expect(run(detector, 200, 0, 5 * 60_000)).toEqual([]);
+  });
+
+  it('ignores the first seconds, where shaders compile and models upload', () => {
+    const detector = createFallbackDetector({ afterMs: 4000 });
+
+    const slowStart = run(detector, 100, 0, 2000);
+    expect(slowStart).toEqual([]);
+  });
+
+  it('latches: once tripped it never says so again', () => {
+    const detector = createFallbackDetector({ afterMs: 4000 });
+
+    const trips = run(detector, 50, 0, 60_000);
+
+    expect(trips).toHaveLength(1);
+    expect(detector.frame(100, 100_000)).toBe(false);
+  });
+
+  it('refuses a gap, zero and NaN as frames', () => {
+    const detector = createFallbackDetector({ afterMs: 2000 });
+    let now = 0;
+    const trips: boolean[] = [];
+    for (let i = 0; i < 400; i += 1) {
+      now += 50;
+      trips.push(detector.frame([0, Number.NaN, 5000][i % 3] ?? 0, now));
+    }
+
+    expect(trips).not.toContain(true);
   });
 });
