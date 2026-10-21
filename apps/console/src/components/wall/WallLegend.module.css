@@ -1,0 +1,41 @@
+/* Frame 18's `.wall-legend`: the 3D legend's look (`TwinLegend.module.css`) at the wall's size, bottom left of the stage. */
+.legend {
+  position: absolute;
+  bottom: var(--space-4);
+  left: var(--space-4);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.swatch {
+  flex: none;
+  box-sizing: border-box;
+  width: calc(12px * var(--ui-scale));
+  height: calc(12px * var(--ui-scale));
+  border-radius: 50%;
+}
+
+.open {
+  background: var(--text-secondary);
+}
+
+.handled {
+  border: 2px solid var(--text-secondary);
+}

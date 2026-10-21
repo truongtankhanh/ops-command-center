@@ -70,6 +70,34 @@ describe('TelemetryWatchSet', () => {
     expect(lastSet()).toEqual(['CT-01']);
   });
 
+  describe('on a video wall (V2-21.8)', () => {
+    it('watches nothing while the wall is idle, whatever else is set', () => {
+      useConsole.setState({ wall: 1, selectedIncidentId: 'incident-1' });
+
+      renderSet();
+
+      expect(lastSet()).toEqual([]);
+    });
+
+    it('watches the asset of the incident the camera is on', () => {
+      useConsole.setState({ wall: 1, wallFocusId: 'incident-1' });
+
+      renderSet();
+
+      expect(lastSet()).toEqual(['CT-01']);
+    });
+
+    it('stops watching when the camera goes home', () => {
+      useConsole.setState({ wall: 1, wallFocusId: 'incident-1' });
+      renderSet();
+      expect(lastSet()).toEqual(['CT-01']);
+
+      act(() => useConsole.setState({ wallFocusId: null }));
+
+      expect(lastSet()).toEqual([]);
+    });
+  });
+
   it('watches the inspected asset alone', () => {
     useConsole.setState({ selectedAssetCode: 'LKS-B3' });
 

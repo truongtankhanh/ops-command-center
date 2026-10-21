@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { queryKeys } from '../../api/queries';
 import { useConsole } from '../../store';
 import {
@@ -101,6 +101,32 @@ describe('WallApp', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Active incidents · 2' }),
     ).toBeInTheDocument();
+  });
+
+  it('draws the legend over the stage (V2-21.8)', () => {
+    renderWall();
+
+    expect(screen.getByRole('list', { name: 'Legend' })).toHaveTextContent('Colour = severity');
+  });
+
+  it('flies to a new critical incident, shows the banner and counts down, with nothing selected (V2-21.8)', async () => {
+    useConsole.setState({ wall: 3 });
+    const { client } = renderWall([incident('a', 'open')]);
+    expect(screen.queryByText('Campus view in')).not.toBeInTheDocument();
+
+    act(() =>
+      client.setQueryData(queryKeys.incidents, [
+        incident('a', 'open'),
+        { ...incident('crit', 'open'), severity: 'critical', title: 'Motor over-temperature' },
+      ]),
+    );
+
+    // The title is in the list as well: the banner is known by its countdown and by what it announces.
+    expect(await screen.findByText('Campus view in')).toBeInTheDocument();
+    expect(screen.getByText('Critical incident CRIT: Motor over-temperature')).toBeInTheDocument();
+    expect(screen.getByText('60 s')).toBeInTheDocument();
+    expect(useConsole.getState().wallFocusId).toBe('crit');
+    expect(useConsole.getState().selectedIncidentId).toBeNull();
   });
 
   it('has nothing to press or tab to', () => {

@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
-import { twinCommands } from '../lib/twinCommands';
+import { PENDING_SHOW_MS, twinCommands } from '../lib/twinCommands';
 import { Rig } from './Rig';
 
 /**
@@ -71,12 +71,15 @@ vi.mock('./useSheetOffset', () => ({
 const BOUNDS = { minX: -200, maxX: 200, minZ: -150, maxZ: 150 };
 const NO_BOXES = new Map();
 
-const rig = (locked?: boolean) => (
+const rig = (
+  locked?: boolean,
+  beacons: { id: string; position: [number, number, number] }[] = [],
+) => (
   <Rig
     bounds={BOUNDS}
     boxes={NO_BOXES}
     assetBoxes={NO_BOXES}
-    beacons={[]}
+    beacons={beacons}
     {...(locked === undefined ? {} : { locked })}
   />
 );
@@ -166,5 +169,69 @@ describe('Rig', () => {
 
       expect(stage.invalidate).toHaveBeenCalledOnce();
     });
+
+    describe('flying to an incident whose beacon has not arrived yet', () => {
+      const BEACON = { id: 'i1', position: [10, 0, 20] as [number, number, number] };
+
+      it('waits for the beacon and then flies', () => {
+        const { rerender } = render(rig(true));
+        stage.invalidate.mockClear();
+
+        twinCommands.flyToIncident('i1');
+        expect(stage.invalidate).not.toHaveBeenCalled();
+
+        rerender(rig(true, [BEACON]));
+
+        expect(stage.invalidate).toHaveBeenCalledOnce();
+      });
+
+      it('flies at once when the beacon is already there, and only once', () => {
+        const { rerender } = render(rig(true, [BEACON]));
+        stage.invalidate.mockClear();
+
+        twinCommands.flyToIncident('i1');
+        expect(stage.invalidate).toHaveBeenCalledOnce();
+
+        rerender(rig(true, [BEACON, { id: 'i2', position: [0, 0, 0] }]));
+        expect(stage.invalidate).toHaveBeenCalledOnce();
+      });
+
+      it('forgets the request when the camera is sent home first', () => {
+        const { rerender } = render(rig(true));
+        twinCommands.flyToIncident('i1');
+        twinCommands.home();
+        stage.invalidate.mockClear();
+
+        rerender(rig(true, [BEACON]));
+
+        expect(stage.invalidate).not.toHaveBeenCalled();
+      });
+
+      it('forgets the request after it has waited too long', () => {
+        vi.useFakeTimers();
+        try {
+          const { rerender } = render(rig(true));
+          twinCommands.flyToIncident('i1');
+          vi.advanceTimersByTime(PENDING_SHOW_MS + 1);
+          stage.invalidate.mockClear();
+
+          rerender(rig(true, [BEACON]));
+
+          expect(stage.invalidate).not.toHaveBeenCalled();
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+    });
+  });
+
+  it('on the console, an incident with no beacon still does nothing, now or later', () => {
+    const { rerender } = render(rig());
+    stage.invalidate.mockClear();
+
+    twinCommands.flyToIncident('i1');
+    rerender(rig(false, [{ id: 'i1', position: [10, 0, 20] }]));
+
+    expect(stage.invalidate).not.toHaveBeenCalled();
   });
 });

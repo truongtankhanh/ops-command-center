@@ -159,7 +159,9 @@ interface ConsoleState extends ReportLocation {
   wall: number | null;
   /**
    * The incident the video wall's camera grid follows while the wall holds one in focus (V2-21.4), or `null`.
-   * Nothing sets it yet: V2-21.8 does, when a new critical incident takes the wall's camera. Not remembered.
+   * Set by `useWallFocus` (V2-21.8) when a new critical incident takes the wall's camera, and cleared when the camera
+   * goes home. It is the wall's own: `selectedIncidentId` is never written on a wall, because that opens the sheet.
+   * Not remembered.
    */
   wallFocusId: string | null;
   /**
@@ -187,6 +189,8 @@ interface ConsoleState extends ReportLocation {
    */
   startReport(preset?: ReportPreset): void;
   closeReport(): void;
+  /** The incident the wall's camera is on, or `null` for the campus view (V2-21.8). */
+  setWallFocusId(id: string | null): void;
   setFilter(filter: FeedFilter): void;
   /**
    * Selects `severity`, or clears it when it is already selected. Selecting also shows the active
@@ -347,6 +351,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
         : {}),
     }),
   closeReport: () => set({ reporting: false, ...NO_REPORT_LOCATION }),
+  setWallFocusId: (wallFocusId) => set({ wallFocusId }),
   setFilter: (filter) => set({ filter }),
   toggleSeverity: (severity) =>
     set((state) =>

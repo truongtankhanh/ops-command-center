@@ -24,7 +24,7 @@ import {
   positionToPose,
   unionLimits,
 } from '../lib/twinCamera';
-import { registerTwinCommands } from '../lib/twinCommands';
+import { PENDING_SHOW_MS, registerTwinCommands, twinCommands } from '../lib/twinCommands';
 import { levelOf } from '../lib/twinLevel';
 import { startAssetBoxOf, startBoxOf } from '../lib/twinLevelCamera';
 import { type Bounds, panBounds } from '../lib/twinScene';
@@ -130,8 +130,10 @@ interface RigProps {
  *   the stage's aspect and the sheet's inset, as `home` does; `fitAsset` flies to an asset's box from the
  *   camera's own yaw and tilt, with the width the inspector will take (it opens in the same update).
  * - **Fly to an incident** (V2-16.5, `flyToIncident`) is a fly-to like the others: the beacon's ground point as the
- *   target, the camera's own yaw and tilt, no farther than 120 m (`incidentView`), through the same limits. A flight is
- *   only ever asked for by a person (the toast's "Fly to"): an incident that arrives moves nothing.
+ *   target, the camera's own yaw and tilt, no farther than 120 m (`incidentView`), through the same limits. On the console a
+ *   flight is only ever asked for by a person (the toast's "Fly to"): an incident that arrives moves nothing. A locked rig
+ *   (the wall, V2-21.8) is asked by `useWallFocus` the moment a critical incident arrives, which can be before the beacon has
+ *   reached this canvas, so there the request waits up to `PENDING_SHOW_MS` for the beacon, and `home` cancels it.
  * - **Show asset** (V2-16.6, `showAsset`) frames an asset without isolating it: the asset fit's view (its box's middle, the
  *   camera's own yaw and tilt) flown through the level's limits, so from at least 60 m. A request made before this rig
  *   existed (the switch from 2D) runs when it registers (`lib/twinCommands.ts`). It selects nothing and moves nothing
@@ -177,8 +179,16 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
     reduced.current = reducedMotion;
   }, [reducedMotion]);
 
+  // A locked rig (the wall) is asked to fly to an incident the moment it arrives, which can be before its beacon reaches
+  // this canvas: the request waits here for the beacon instead of being lost (V2-21.8). Never set on the console.
+  const wantedIncident = useRef<{ id: string; at: number } | null>(null);
   useEffect(() => {
     latestBeacons.current = beacons;
+    const wanted = wantedIncident.current;
+    if (wanted === null) return;
+    if (Date.now() - wanted.at > PENDING_SHOW_MS) wantedIncident.current = null;
+    else if (beacons.some((beacon) => beacon.id === wanted.id))
+      twinCommands.flyToIncident(wanted.id);
   }, [beacons]);
 
   // The latest boxes, for "Show in 3D": a request that was waiting for this rig runs as its commands register, below.
@@ -321,7 +331,10 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
           tilt: tilt ?? now.tilt,
         });
       },
-      home: () => flyTo(home()),
+      home: () => {
+        wantedIncident.current = null;
+        flyTo(home());
+      },
       fit: ({ bounds: box, heightM }) => flyTo(fitBounds(box, aspect(), heightM)),
       fitAsset: (box) => {
         const now = currentPose(rig);
@@ -329,7 +342,12 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
       },
       flyToIncident: (id) => {
         const beacon = latestBeacons.current.find((candidate) => candidate.id === id);
-        if (beacon !== undefined) flyTo(incidentView(beacon.position, currentPose(rig)));
+        if (beacon === undefined) {
+          if (locked) wantedIncident.current = { id, at: Date.now() };
+          return;
+        }
+        wantedIncident.current = null;
+        flyTo(incidentView(beacon.position, currentPose(rig)));
       },
       showAsset: (code) => {
         const box = latestAssetBoxes.current.get(code);
@@ -363,7 +381,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
       faceNorth: () => flyTo({ ...currentPose(rig), yaw: 0 }),
       current: () => currentPose(rig),
     });
-  }, [bounds, pan, get]);
+  }, [bounds, pan, get, locked]);
 
   // The fly-to. Priority −2: before the controls' own update (−1), so the pose set here is applied in this frame.
   useFrame(() => {

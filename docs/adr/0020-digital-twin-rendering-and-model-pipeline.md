@@ -1360,6 +1360,21 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Telemetry (Q17; V2-21.8).** The wall watches only the focused asset's data, so its fan turns while it is the
       subject; an idle wall watches none. The watch limit (`TELEMETRY_WATCH_LIMIT`, 4) is not widened, as the "Settled in
       V2-14" block already says.
+      Built in V2-21.8: `TelemetryWatchSet` reads `wallFocusId` in place of `selectedIncidentId` when `wall` is set, so the
+      only slot is the incident the camera is on.
+    - **The flight (V2-21.8).** `useWallFocus`, mounted by `WallApp` only, feeds `wallFocusEvents` into the rules of
+      `lib/wallFocus.ts` on the clock `performance.now()`, runs one interval of a second **only while a focus is held**,
+      and turns the result into `twinCommands.flyToIncident` / `home()` and the store's `wallFocusId`. It never writes
+      `selectedIncidentId` (that opens the sheet): the beacon's ring (`useTwinBeacons`), the camera grid, the list's row and
+      the telemetry watch follow `wallFocusId`. A locked `Rig` keeps a `flyToIncident` whose beacon has not reached the canvas
+      yet (the incident and its beacon arrive through two readers of the same cache) for up to `PENDING_SHOW_MS`, and `home`
+      cancels it; the console's rig still does nothing for an incident it has no beacon for. The banner
+      (`WallFocusBanner`) shows the title, "code · zone · reading, limit · not acknowledged" (the first `reported` note read as
+      the sheet reads it, plus the asset's point for the unit; the line shortens without them) and "Campus view in N s". The
+      announcement is a hidden `role="status"` that is always mounted and holds the arrival from the list's data only (so the
+      reading arriving later does not repeat it) and "Back to the campus view"; the drawn card and the countdown are in no
+      live region. `WallLegend` is the strip bottom left. A critical created while the link was down and read after it is
+      flown to as if new, however old: it is still open and unacknowledged, so the wall showing it is not wrong.
     - **If 3D cannot be drawn (Q9, Q18; V2-21.9).** The same shell with the 2D map in the stage and the focus banner kept
       (frame 18 has no such variant: a row in the brief's "Frames to revise"). The camera rules still apply, with the map
       fitting the incident. A wall at pixel ratio 1.0 is already on the controller's last step (`wall: true`), so the

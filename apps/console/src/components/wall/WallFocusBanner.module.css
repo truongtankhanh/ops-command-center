@@ -1,0 +1,82 @@
+/*
+ * Frame 18's `.wall-focus`: top centre over the stage, edged in the critical colour with a soft halo, the title at the
+ * frame's 24 px and the detail at 16 px (the wall's `--ui-scale` carries them to 4K). The critical colour is on the edge
+ * and the glyph only: critical text never sits on `--surface-3` (tokens.css).
+ */
+.banner {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: calc(100% - var(--space-6));
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  transform: translateX(-50%);
+  border: 2px solid var(--sev-critical);
+  border-radius: var(--radius-l);
+  background: var(--surface-3);
+  box-shadow:
+    var(--shadow-3),
+    0 0 0 4px color-mix(in srgb, var(--sev-critical) 22%, transparent);
+}
+
+.glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(48px * var(--ui-scale));
+  height: calc(48px * var(--ui-scale));
+  border: 1px solid var(--sev-critical-border);
+  border-radius: var(--radius-m);
+  background: var(--sev-critical-bg);
+  color: var(--sev-critical);
+}
+
+.text {
+  min-width: 0;
+}
+
+.title {
+  display: block;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-2xl);
+  line-height: 1.15;
+}
+
+.detail {
+  display: block;
+  margin-top: var(--space-0-5);
+  font-size: var(--type-l);
+  color: var(--text-secondary);
+}
+
+.return {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  gap: var(--space-0-5);
+  padding-left: var(--space-4);
+  box-shadow: inset 1px 0 0 var(--border-subtle);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+}
+
+.return b {
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+/* Read by assistive tech, not drawn: the arrival and the return. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

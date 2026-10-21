@@ -19,7 +19,10 @@ const NO_ASSETS: readonly Asset[] = [];
 export function useTwinBeacons(scene: TwinScene | null): readonly Beacon[] {
   const { data: incidents } = useIncidents();
   const { data: assets } = useAssets();
-  const selectedId = useConsole((state) => state.selectedIncidentId);
+  // On a video wall nothing is ever selected (that opens a sheet): the incident the camera is on gets the ring (V2-21.8).
+  const selectedId = useConsole((state) =>
+    state.wall === null ? state.selectedIncidentId : state.wallFocusId,
+  );
 
   return useMemo(
     () =>
