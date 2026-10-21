@@ -1315,6 +1315,64 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       detail of one asset of the class, through the inspector's cache entry), its bindings are built from its `extras`
       and kept with the class; V2-14.8 mounts the telemetry feed and applies them. A bound part the catalogue cannot
       bind is logged once for the class, and the model loads without that binding.
+  - Settled in V2-21.1 (2026-10-21, proposed: the tech lead confirms or amends each bullet), without changing the
+    decision: how a window becomes a video wall, who it signs in as, what it shows and what moves its camera. Each bullet
+    is the default the V2-21 tasks build to; it names the task it blocks and the open question (Q) of the phase's task
+    list it answers. Read from the code at `e4d5c7c`, not from the frame alone.
+    - **Where it lives (Q1; blocks V2-21.2).** A wall mode of the console, not `apps/video-wall` (OCC-19, not built):
+      ADR-0001 forbids an app importing an app, and only `apps/console/src/twin/` may import `three` (lint-enforced), so a
+      second app would have to copy the twin or move it into a package that holds `three`. UI-17's display modes
+      (`useDisplayMode`, `--ui-scale`) are already in the console. OCC-19's choreography across screens and its rotating
+      camera groups stay on the roadmap.
+    - **How a window becomes a wall (Q2; V2-21.2).** `?wall=N`, `N` a positive integer, which is the number in "Wall N · view
+      only"; any other value is ignored. It is **kept in `sessionStorage` for the tab** (in `try/catch`) and read before
+      `startSession()`, because the sign-in redirect would lose it: the redirect URI is the origin root, and `signIn()` in
+      `auth/session.ts` replaces the address with its path once the callback is done. One window per screen is one tab per
+      screen. A route (`/wall/1`) would not survive the same redirect, and a role would make a person's viewer account a
+      wall.
+    - **Who it is (V2-21.2).** A `viewer` account (the brief names the video wall among the viewer's uses). The wall
+      draws no action for any role, so an operator who opens `?wall=1` still gets a read-only picture, and nothing in wall
+      mode calls a write route. The API stays the control (ADR-0011).
+    - **What it shows (V2-21.3).** Frame 18 and nothing else: the header (the four severity counts, the two connection
+      states, "Wall N · view only", the clock), the stage, the camera grid and the active list. No toast, no sound, no
+      keyboard shortcut, no account menu, no sheet or form, no density or layer control.
+    - **Scale (Q3; V2-21.3).** Wall mode sets its own `--ui-scale` from the window width against the frame's 1920 px,
+      starting at the frame's own factor for the 3D labels (`ui: 1.35`): 1.35 at 1920 and 2.7 at 3840, not UI-17's 1.125
+      and 1.75, which are for a console people still operate. Frame 18's sizes are absolutes at 1920 px (an 80 px header,
+      20 px row titles) and are read against the laptop sizes the components use. `unverified` until it is looked at on a
+      wall.
+    - **Which incident, and when it goes back (Q7; V2-21.7).** A new `critical` incident takes the camera. A second one
+      during the flight or the hold replaces it and restarts the 60 s. Acknowledging or resolving the focused incident, its
+      removal, or 60 s returns to the fixed campus view; if another critical is still open, the wall does **not** fly to it
+      (only a new one does). Reduced motion: the jump is instant and the countdown still shows. It never moves otherwise.
+    - **The cameras (Q4, Q8; V2-21.4).** The grid's incident-first rule follows the focused incident while one is held,
+      otherwise the most severe open incident's zone, otherwise the default order; six tiles at 1920 and eight at 4K
+      (`stripSize`); a camera with no signal is a "No signal" tile with its code and the time since. Every screen shows the
+      same content: `N` is a label, and rotating groups are OCC-19's.
+    - **Telemetry (Q17; V2-21.8).** The wall watches only the focused asset's data, so its fan turns while it is the
+      subject; an idle wall watches none. The watch limit (`TELEMETRY_WATCH_LIMIT`, 4) is not widened, as the "Settled in
+      V2-14" block already says.
+    - **If 3D cannot be drawn (Q9, Q18; V2-21.9).** The same shell with the 2D map in the stage and the focus banner kept
+      (frame 18 has no such variant: a row in the brief's "Frames to revise"). The camera rules still apply, with the map
+      fitting the incident. A wall at pixel ratio 1.0 is already on the controller's last step (`wall: true`), so the
+      budget the task names ("cannot hold the frame budget") has no step left to give: a pure `shouldFallBack` in
+      `lib/twinPerf.ts` marks the twin lost (`markTwinLost`, the path of a lost context) when the p95 interval stays above
+      the budget for a long window (60 s proposed), and the wall shows the map. The tech lead may prefer the capability
+      fallback alone; both numbers are `unverified` until the wall controller (V2-21.12).
+    - **Staying signed in (Q5; V2-21.10).** The wall renews its token as the console does. Where the renewal fails it
+      starts the sign-in redirect itself, rate-limited and with a back-off, instead of waiting for a click that nobody is
+      there to make. Keycloak's defaults end a session after 10 h at most (ADR-0010), and a reload asks for no password
+      only while that session lives, so the realm must allow a longer one for the wall: the default is that the wall
+      account signs in with "Keep me signed in on this device" and the realm sets the remember-me lifetimes
+      (`ssoSessionIdleTimeoutRememberMe`, `ssoSessionMaxLifespanRememberMe`, both properties of the 26.8 realm
+      representation). A dedicated Keycloak client with its own session limits is the alternative, and a different
+      auth model for walls a third; the numbers and the choice are **the operations lead's**, and every detail of the
+      client-level setting is `unverified` against 26.8. Where Keycloak shows its sign-in page (no session left), the wall
+      stays on it, themed (V2-20), until a person comes.
+    - **Sound (Q6; V2-21.2).** None on the wall: a page that nobody touches cannot unlock audio, and the operators' consoles
+      have the cue.
+    - **Not here.** Multi-screen choreography, rotating camera groups, and the wall controller's figures: the brief's
+      budgets were to be recorded on it for V2-21, V2-19.7 was closed without them, and V2-21.12 carries them.
 - **State.** Selection, hover, level and the 2D/3D choice live in a zustand store (already a dependency). Readings
   never enter React state: the telemetry worker owns the `/telemetry` socket (ADR-0019), keeps the ring buffers and
   posts one `Float32Array` of targets per frame; `useFrame` eases bound nodes toward them in refs.
