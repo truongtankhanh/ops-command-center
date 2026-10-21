@@ -79,11 +79,10 @@ describe('the console on a video wall screen', () => {
   it.each(ROLES)('is one labelled screen with nothing to press, for a %s', (role) => {
     const { container } = renderWall(role);
 
-    const wall = screen.getByRole('main', { name: 'Video wall 2' });
-    expect(wall).toBeEmptyDOMElement();
+    expect(screen.getByRole('main', { name: 'Video wall 2' })).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveTextContent('Wall 2 · view only');
     expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
-    // What the console has and the wall must not: the header, the help, a dialog, the toasts' region.
-    expect(screen.queryByRole('banner')).toBeNull();
+    // What the console has and the wall must not: a dialog, the toasts' region.
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('region', { name: /notifications/i })).toBeNull();
   });

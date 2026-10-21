@@ -98,3 +98,12 @@
     height: max(var(--kpi-height), calc(44px * var(--ui-scale)));
   }
 }
+
+/* The video wall's tiles (V2-21.3) are text: no pointer, no hover. */
+.tile[data-readonly='true'] {
+  cursor: default;
+}
+
+.tile[data-readonly='true']:hover:not([data-hot='true']) {
+  border-color: var(--border-subtle);
+}
