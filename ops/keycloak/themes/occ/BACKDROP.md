@@ -52,4 +52,4 @@ script or in the encoder's version.
 
 Frames at 0, 10, 30 s and the poster, by eye on 2026-10-21: no text, no glyph, buildings and roads in the twin's
 blues, the sort order holds at yaw 10° and 50°. A faint banding shows in the dark vignette at CRF 30; the shade
-hides it. Not yet seen behind the page itself: V2-20.5 looks at it there.
+mostly hides it; seen behind the page on 2026-10-21 (V2-20.5), it still shows as faint rings in the top third of the window and is not distracting.
