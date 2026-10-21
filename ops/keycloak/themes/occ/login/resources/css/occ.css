@@ -1,4 +1,526 @@
 /*
- * The `occ` login theme's stylesheet. Empty on purpose until V2-20.5 fills it from the console's
- * tokens (a checked copy, V2-20.7); it is linked now so the theme can be seen to load.
+ * The `occ` login theme (V2-20.5, frame 19): the sign-in card over the campus backdrop, in the console's look.
+ *
+ * Everything under `:root` below is a COPY of a value in apps/console/src/styles/tokens.css (laptop scale, so the
+ * `--ui-scale` factor is 1 here). Change a value there and change it here; `scripts/contrast.ts --check` compares
+ * the two (V2-20.7). This page cannot read the console's stylesheet: it is Keycloak's, on the same origin but
+ * served before anyone is signed in. Nothing here comes from a CDN.
+ *
+ * The page is laid over Keycloak's `keycloak.v2` (PatternFly 5) markup. Rules start at `body.occ-page` so they
+ * reach only this theme, and they restyle that markup instead of replacing it: the form, the password toggle,
+ * MFA and every other page keep working.
  */
+
+:root {
+  --surface-0: #0c1821;
+  --surface-1: #13222d;
+  --border-subtle: #25394a;
+  --border-strong: #5a7488;
+  --text-primary: #e4edf3;
+  --text-secondary: #a6b8c5;
+  --text-tertiary: #91a5b4;
+  --accent: #8c9bff;
+  --accent-hover: #a8b3ff;
+  --accent-tint: rgb(140 155 255 / 0.14);
+  --on-accent: #0c1821;
+  --danger: #ff7f8a;
+  --warning: #f0b85e;
+  --success: #5ccf98;
+  --shadow-3: 0 16px 40px rgb(0 0 0 / 0.5);
+  --radius-m: 6px;
+  --radius-l: 10px;
+  --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Barlow', system-ui, sans-serif;
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 2px;
+  color-scheme: dark;
+}
+
+/* The console's fonts, from this theme (the console ships the same four files). Licence: fonts/LICENSE-OFL.txt. */
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('../fonts/barlow-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../fonts/barlow-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('../fonts/barlow-semi-condensed-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('../fonts/barlow-semi-condensed-latin-600-normal.woff2') format('woff2');
+}
+
+/* ---- The page: the backdrop, the shade and the layers over them ------------------------------------------- */
+
+html.login-pf body.occ-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The poster is the layer's own background, so it shows before the video starts, when the video cannot play and
+   when it is removed for reduced motion. */
+.occ-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: var(--surface-0) url('../img/campus-poster.webp') center / cover no-repeat;
+}
+
+.occ-backdrop-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.occ-shade {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  background: rgb(12 24 33 / 0.55);
+  pointer-events: none;
+}
+
+body.occ-page .pf-v5-c-login {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  justify-content: flex-end;
+  height: auto;
+  overflow: visible;
+  padding: 24px 140px 24px 24px;
+  background: transparent;
+}
+
+/* ---- The card: Keycloak's container, with the brand and the main block inside it ------------------------- */
+
+body.occ-page .pf-v5-c-login__container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: none;
+  gap: 18px;
+  width: 420px;
+  max-width: 100%;
+  /* `margin: auto` centres the card and, unlike `align-items: center`, never pushes its top out of reach when
+     the card is taller than the window (200 % zoom, a short laptop). */
+  margin: auto 0;
+  padding: 32px 36px 28px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: rgb(19 34 45 / 0.96);
+  box-shadow: var(--shadow-3);
+}
+
+body.occ-page .pf-v5-c-login__header,
+body.occ-page .pf-v5-c-login__main {
+  grid-area: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.occ-page .occ-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.occ-mark {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+body.occ-page #kc-header-wrapper {
+  display: block;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  color: var(--text-primary) !important;
+}
+
+.occ-site {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+body.occ-page .pf-v5-c-login__main-header {
+  padding: 0;
+  border: 0;
+}
+
+body.occ-page .pf-v5-c-login__main-header::before,
+body.occ-page .pf-v5-c-login__main-header::after {
+  display: none;
+}
+
+body.occ-page .pf-v5-c-login__main-title,
+body.occ-page .pf-v5-c-title {
+  margin: 6px 0 0;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+
+body.occ-page .pf-v5-c-login__main-body {
+  padding: 18px 0 0;
+}
+
+body.occ-page .pf-v5-c-login__main-footer {
+  padding: 0;
+}
+
+/* ---- The form: Keycloak's fields and button, drawn as the console's ---------------------------------------- */
+
+body.occ-page .pf-v5-c-form {
+  gap: 14px;
+}
+
+body.occ-page .pf-v5-c-form__label,
+body.occ-page .pf-v5-c-form__label-text {
+  display: block;
+  margin: 0 0 6px;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+body.occ-page .pf-v5-c-form-control {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+
+body.occ-page .pf-v5-c-form-control::before,
+body.occ-page .pf-v5-c-form-control::after {
+  display: none;
+}
+
+body.occ-page .pf-v5-c-form-control input {
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 15px;
+}
+
+body.occ-page .pf-v5-c-form-control input:focus {
+  outline: none;
+}
+
+body.occ-page .pf-v5-c-form-control:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+
+body.occ-page .pf-v5-c-form-control.pf-m-error,
+body.occ-page .pf-v5-c-form-control[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+/* The error glyph sits at the end of the field, over nothing: the input leaves room for it. */
+body.occ-page .pf-v5-c-form-control__utilities {
+  position: absolute;
+  inset: 0 12px 0 auto;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+body.occ-page .pf-v5-c-form-control__icon.pf-m-status {
+  color: var(--danger);
+}
+
+body.occ-page .pf-v5-c-form-control.pf-m-error input {
+  padding-right: 40px;
+}
+
+/* The password's show / hide control sits in the field, as in the frame. */
+body.occ-page .pf-v5-c-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+body.occ-page .pf-v5-c-input-group .pf-m-fill {
+  flex: 1;
+}
+
+body.occ-page .pf-v5-c-button.pf-m-control {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+body.occ-page .pf-v5-c-button.pf-m-control:hover {
+  color: var(--text-primary);
+  background: var(--accent-tint);
+}
+
+body.occ-page .pf-v5-c-button::before,
+body.occ-page .pf-v5-c-button::after {
+  display: none;
+}
+
+body.occ-page .pf-v5-c-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+body.occ-page .pf-v5-c-check__input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+body.occ-page .pf-v5-c-check__label {
+  color: var(--text-secondary);
+}
+
+body.occ-page a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+body.occ-page a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* The one primary action. */
+body.occ-page .pf-v5-c-button.pf-m-primary {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+body.occ-page .pf-v5-c-button.pf-m-primary:hover {
+  background: var(--accent-hover);
+}
+
+body.occ-page .pf-v5-c-button.pf-m-primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+body.occ-page .pf-v5-c-button.pf-m-secondary,
+body.occ-page .pf-v5-c-button.pf-m-tertiary {
+  height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-weight: 600;
+}
+
+body.occ-page :focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* ---- Messages: Keycloak's alerts and field errors, with a glyph and the words ------------------------------ */
+
+body.occ-page .pf-v5-c-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+  color: var(--text-primary);
+}
+
+body.occ-page .pf-v5-c-alert.pf-m-danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface-1));
+}
+
+body.occ-page .pf-v5-c-alert.pf-m-danger .pf-v5-c-alert__icon {
+  color: var(--danger);
+}
+
+body.occ-page .pf-v5-c-alert.pf-m-warning .pf-v5-c-alert__icon {
+  color: var(--warning);
+}
+
+body.occ-page .pf-v5-c-alert.pf-m-success .pf-v5-c-alert__icon {
+  color: var(--success);
+}
+
+body.occ-page .pf-v5-c-alert.pf-m-info .pf-v5-c-alert__icon {
+  color: var(--accent);
+}
+
+body.occ-page .pf-v5-c-alert__title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+body.occ-page .pf-v5-c-helper-text__item.pf-m-error,
+body.occ-page .pf-v5-c-helper-text__item-text.pf-m-error {
+  color: var(--danger);
+}
+
+/* ---- The help line, the tagline and the foot ---------------------------------------------------------------- */
+
+.occ-help {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.occ-help-icon {
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.occ-tagline {
+  position: fixed;
+  z-index: 3;
+  left: 72px;
+  bottom: 64px;
+  max-width: 520px;
+}
+
+.occ-tagline strong {
+  display: block;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 34px;
+  line-height: 1.15;
+  color: var(--text-primary);
+}
+
+.occ-tagline p {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* In the flow, under the card, so it can never sit on the form; frame 19's place (the foot of the window) where
+   the window is tall and wide enough to have room for it. */
+.occ-foot {
+  position: relative;
+  z-index: 3;
+  padding: 0 24px 16px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+@media (min-width: 1181px) and (min-height: 760px) {
+  .occ-foot {
+    position: fixed;
+    left: 72px;
+    right: 72px;
+    bottom: 20px;
+    padding: 0;
+    text-align: left;
+  }
+}
+
+/* ---- Narrow windows: the card centres and the tagline gives way --------------------------------------------- */
+
+@media (max-width: 1180px) {
+  .occ-tagline {
+    display: none;
+  }
+
+  body.occ-page .pf-v5-c-login {
+    justify-content: center;
+    padding: 24px;
+  }
+
+  body.occ-page .pf-v5-c-login__container {
+    margin: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  body.occ-page .pf-v5-c-login {
+    padding: 12px;
+  }
+
+  body.occ-page .pf-v5-c-login__container {
+    padding: 24px 20px 20px;
+  }
+}
