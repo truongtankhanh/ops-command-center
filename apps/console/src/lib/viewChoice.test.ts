@@ -48,7 +48,7 @@ describe('the remembered view choice', () => {
 
 describe('effectiveView', () => {
   const available: TwinCapability = { available: true };
-  const unavailable: TwinCapability = { available: false, reason: 'not-built' };
+  const unavailable: TwinCapability = { available: false, reason: 'no-webgl2' };
 
   it('is 2D whatever was chosen while the twin cannot be drawn', () => {
     expect(effectiveView('3d', unavailable)).toBe('2d');

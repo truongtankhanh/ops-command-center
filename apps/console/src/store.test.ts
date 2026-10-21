@@ -1016,7 +1016,7 @@ describe('useConsole', () => {
 
     beforeEach(() => localStorage.clear());
 
-    // The preview gate is closed under Vitest (V2-12.4), so every view in effect is 2D here.
+    // jsdom has no WebGL 2, so every view in effect is 2D here.
     it('is 2D by default', () => {
       expect(useConsole.getInitialState().view).toBe('2d');
     });
@@ -1045,7 +1045,7 @@ describe('useConsole', () => {
       expect(localStorage.getItem(KEY)).toBe('2d');
     });
 
-    // The twin is offered (gate open, WebGL 2 stubbed), as in `pnpm dev`.
+    // The twin is offered (WebGL 2 stubbed).
     describe('where the twin can be drawn', () => {
       beforeEach(() => {
         stubTwinAvailable();

@@ -7,15 +7,14 @@ import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { TwinFallbackBanner } from './TwinFallbackBanner';
 import { ViewSwitch } from './ViewSwitch';
 
-// The cases that need another answer set it here. It keeps the real answer by default (the gate is
-// closed under Vitest): the store reads it when its module is first imported.
+// The cases that need another answer set it here. It keeps the real answer by default (no WebGL 2
+// under jsdom): the store reads it when its module is first imported.
 vi.mock('../lib/twinCapability', async (importOriginal) => {
   const actual = await importOriginal<typeof CapabilityModule>();
   return { ...actual, twinCapability: vi.fn(actual.twinCapability) };
 });
 
 const KEY = 'occ.console.twinBannerDismissed';
-const NOT_BUILT: TwinCapability = { available: false, reason: 'not-built' };
 const NO_WEBGL2: TwinCapability = { available: false, reason: 'no-webgl2' };
 
 const dismiss = () => screen.getByRole('button', { name: 'Dismiss' });
@@ -24,27 +23,18 @@ describe('TwinFallbackBanner', () => {
   beforeEach(() => {
     sessionStorage.clear();
     resetStore(useConsole);
-    vi.mocked(twinCapability).mockReturnValue(NOT_BUILT);
+    vi.mocked(twinCapability).mockReturnValue(NO_WEBGL2);
   });
 
   afterEach(() => vi.restoreAllMocks());
 
-  it('says the twin is not in this version, and that the 2D map shows the same', () => {
-    render(<TwinFallbackBanner />);
-
-    const banner = screen.getByRole('status');
-    expect(banner).toHaveTextContent("3D view isn't available in this version");
-    expect(banner).toHaveTextContent('The 2D map shows the same incidents, cameras and assets.');
-  });
-
   it('uses frame 07 wording for a device that refuses WebGL 2', () => {
-    vi.mocked(twinCapability).mockReturnValue(NO_WEBGL2);
-
     render(<TwinFallbackBanner />);
 
     const banner = screen.getByRole('status');
     expect(banner).toHaveTextContent("3D view isn't available on this device");
     expect(banner).toHaveTextContent('WebGL 2 is off or blocked.');
+    expect(banner).toHaveTextContent('The 2D map shows the same incidents, cameras and assets.');
   });
 
   it('shows nothing where the twin can be drawn', () => {
@@ -62,7 +52,7 @@ describe('TwinFallbackBanner', () => {
     await user.click(dismiss());
 
     expect(screen.queryByRole('status')).toBeNull();
-    expect(sessionStorage.getItem(KEY)).toBe('not-built');
+    expect(sessionStorage.getItem(KEY)).toBe('no-webgl2');
     expect(localStorage.getItem(KEY)).toBeNull();
 
     unmount();
@@ -72,11 +62,11 @@ describe('TwinFallbackBanner', () => {
   });
 
   it('shows again for another reason than the one dismissed', () => {
-    sessionStorage.setItem(KEY, 'no-webgl2');
+    sessionStorage.setItem(KEY, 'context-lost');
 
     render(<TwinFallbackBanner />);
 
-    expect(screen.getByRole('status')).toHaveTextContent("isn't available in this version");
+    expect(screen.getByRole('status')).toHaveTextContent("isn't available on this device");
   });
 
   // The capability follows the store's fault, as the real one does; the twin is fine until it is lost.

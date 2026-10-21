@@ -8,21 +8,21 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('the twin banner dismissal', () => {
   it('is not dismissed until it is written', () => {
-    expect(readTwinBannerDismissed('not-built')).toBe(false);
+    expect(readTwinBannerDismissed('no-webgl2')).toBe(false);
   });
 
   it('reads back what it wrote, in this tab only', () => {
-    writeTwinBannerDismissed('not-built');
+    writeTwinBannerDismissed('no-webgl2');
 
-    expect(readTwinBannerDismissed('not-built')).toBe(true);
-    expect(sessionStorage.getItem(KEY)).toBe('not-built');
+    expect(readTwinBannerDismissed('no-webgl2')).toBe(true);
+    expect(sessionStorage.getItem(KEY)).toBe('no-webgl2');
     expect(localStorage.getItem(KEY)).toBeNull();
   });
 
   it('is dismissed for that reason only, so another reason shows again', () => {
-    writeTwinBannerDismissed('not-built');
+    writeTwinBannerDismissed('no-webgl2');
 
-    expect(readTwinBannerDismissed('no-webgl2')).toBe(false);
+    expect(readTwinBannerDismissed('context-lost')).toBe(false);
   });
 
   it('is not dismissed, and remembering does not throw, when storage is blocked', () => {
@@ -32,7 +32,7 @@ describe('the twin banner dismissal', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
 
-    expect(readTwinBannerDismissed('not-built')).toBe(false);
-    expect(() => writeTwinBannerDismissed('not-built')).not.toThrow();
+    expect(readTwinBannerDismissed('no-webgl2')).toBe(false);
+    expect(() => writeTwinBannerDismissed('no-webgl2')).not.toThrow();
   });
 });

@@ -96,7 +96,19 @@ their author, checked in CI, and served by nginx as immutable files.
   - Settled in V2-12.1, without changing the decision: from V2-12.4 to V2-19.8 the capability also requires a preview
     gate (a development build, or `?twin=1` for the tab), so the 3D view cannot reach operators before incidents are
     drawn in it (V2-16) and the frame budgets are measured (V2-19). Until the gate is lifted the reason shown is
-    "3D view isn't available in this version".
+    "3D view isn't available in this version". (Lifted in V2-19.8, below.)
+  - Confirmed in V2-19.8 (2026-10-21), without changing the decision: the preview gate is removed. The capability is
+    the WebGL 2 check and the recorded fault, in that order; `not-built`, its copy and `?twin=1` are gone, so a device
+    that can create a WebGL 2 context opens in 3D unless the operator stored `2d`, and one that cannot opens in 2D with
+    frame 07's banner. The probe is asked once per page load, when the store is created, so every page that loads the
+    console, the sign-in screens and an operator whose stored choice is 2D included, creates and releases one
+    throwaway context; the 2D view, the fallback and the sign-in screens still download none of the twin chunk. The
+    twin chunk is 348,672 B gzip of its 375,000 B budget (348,670 B at V2-19.6). **The frame, main-thread, draw-call, triangle,
+    first-useful-frame, idle and memory budgets were not measured on the reference hardware:** V2-19.7 was closed on
+    2026-10-21 without a run, so they remain targets, and the HUD's "Frame (p95)" is still the interval between frames
+    (about 16.7 ms at 60 Hz), which the 14 ms target cannot be read from. The release can be undone by restoring the
+    gate in `lib/twinCapability.ts`; no data or contract changed. The blocks from "Settled in V2-15.1" onward are
+    confirmed with this release.
 - **Scene.**
   - Local coordinates in metres, east-north-up from `SitePlan.center` (ADR-0017), Y up. A campus fits an
     equirectangular conversion without visible error.
@@ -139,7 +151,7 @@ their author, checked in CI, and served by nginx as immutable files.
       pure helpers stay in `src/lib/twin*.ts`, so they test without WebGL.
     - **Camera floor.** The written limit, 78° from vertical (12° above the ground), stands; frame 00's note "never
       below 8° above" is a drawing note.
-  - Settled in V2-15.1 (2026-10-19, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-15.1 (2026-10-19, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the four levels, picking, hover, the callout and building focus fit together. The brief fixes the
     levels, hover, click, Escape and the BVH rule; this block adds what a build needs to start.
     - **Level is derived, never stored twice.** `part` when a part is selected, else `asset` when `selectedAssetCode`
@@ -558,7 +570,7 @@ their author, checked in CI, and served by nginx as immutable files.
       3D marks the row; a row hover tints the part and leaving clears it; closing the inspector under the pointer leaves
       no stuck hover; "Focus" re-frames the part, and the asset after Escape; the viewer's note and "Focus" share one
       row; the foot in 2D has no "Focus"; the ghost button reads on the foot's surface.
-  - Settled in V2-16.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.1 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how incidents are drawn in 3D, when the camera moves for them, and how a location is picked. Each proposal
     of the task is accepted unless a bullet says "changed".
     - **Beacon height: accepted, with the asset's height from the box the camera already fits.** An incident that
@@ -606,7 +618,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Not settled here:** the beacon's model (a sprite or a mesh, its size on screen) and its place in the pick
       precedence beyond "Beacon (V2-16) > part" are V2-16.3 and V2-16.5; beacons stay out of the pick scope while an
       asset is isolated, as every other target, so a beacon is reached then through the feed, the search or the toast.
-  - Settled in V2-16.2 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.2 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how an incident becomes a beacon, as plain data (`lib/twinBeacons.ts`, `beaconsOf`). Drawing is V2-16.3's.
     - **The set and the positions are the map's.** The drawn set is the map's (active incidents, and the selected one
       even when resolved), `x` and `z` are `fanOut`'s position over that set through the scene frame, so two incidents
@@ -633,7 +645,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Tests.** `lib/twinBeacons.test.ts`: frame 01's eight and frame 04's telemetry ninth, the roof and its edge
       cases, the resolved form, selection, the fan-out, an unknown type, an unresolved `assetId`, the order and
       purity.
-  - Settled in V2-16.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the incident beacons are drawn (`twin/Beacons.tsx`, one draw call).
     - **Never faded, over all geometry.** Unlike the camera markers, a beacon is drawn at full strength at every level
       (the frames that isolate an asset or focus a building still draw them) and has no depth test, so an incident
@@ -672,7 +684,7 @@ their author, checked in CI, and served by nginx as immutable files.
       the selected one; a beacon behind a wall; nothing with the Incidents layer off; no pulse under reduced motion and no
       frame drawn at rest with no critical incident; a new type adding one form without a flicker; an `inside` incident on
       its roof; the twin chunk's gzip size after `pnpm build` (10,403 B were left).
-  - Settled in V2-16.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.4 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how a beacon is hovered and selected, and how the incident's zone is outlined on the ground.
     - **A beacon is hit in screen space, on its disc.** It is a sprite, so it is not in the ray cast: the picker
       projects its ground point, lifts it by the stem (`DISC_CENTRE_PX`, a fixed number of screen pixels) and tests a
@@ -723,7 +735,7 @@ their author, checked in CI, and served by nginx as immutable files.
       a beacon in front of a building or an asset wins; the outline of the selected incident's zone and of the report's,
       its width at campus and at building distance, and against a building's walls; a technician on an out-of-scope
       incident sees the view-only footer; the twin chunk's gzip size after `pnpm build` (7,417 B were left).
-  - Settled in V2-16.5 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.5 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the toast of a new incident offers "Fly to" in the 3D view.
     - **The toast has two actions in 3D, one in 2D, chosen when it is made.** With the 3D view in effect at the moment
       the toast is built (`useConsole.view`), a new critical or high incident toasts with "Fly to" as its action and "Open
@@ -766,7 +778,7 @@ their author, checked in CI, and served by nginx as immutable files.
       still ends at the beacon; "Open incident" selects without moving; the toast goes after either; Tab, Enter and Space on
       each button and where focus lands; the three buttons fit at the wall scale (a `flex-wrap` on `.actions` is the fix if
       not); reduced motion; the 2D toast is unchanged; the twin chunk's gzip size after `pnpm build` (6,729 B were left).
-  - Settled in V2-16.6 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.6 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the incident sheet's "Show in 3D" frames the incident's asset.
     - **A second button beside "Open asset", for every role, wherever the twin is available.** On the sheet of an incident a
       telemetry rule raised (the only incident with an asset link: "Settled in V2-16.1", frame 10), `AssetLink` has "Show
@@ -810,7 +822,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       without WebGL 2 or the preview gate; an `inside` asset (the camera frames the building, the beacon shows where);
       the two buttons in a narrow sheet and at the wall scale (a wrap on `.assetActions` is the fix if they crowd the
       heading); reduced motion; the twin chunk's gzip size after `pnpm build` (6,655 B were left).
-  - Settled in V2-16.7 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-16.7 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the report's location is picked, shown and dragged in the 3D view.
     - **A pick can answer with a place.** `PickKind` gained `'ground'` and `PickRef` a variant with coordinates (scene
       metres, no id). While the location is picked the scope is the building shells and the ground, nothing else (no
@@ -869,7 +881,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       drop in another zone selects that zone, a drop outside returns it; Esc stops picking and the form and its draft
       stay; the hint and "Pick in 3D"; 2D unchanged; a viewer has no form; the twin chunk's gzip size after `pnpm build`
       (6,617 B were left).
-  - Settled in V2-17.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-17.1 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: what the heat overlay reads, how it colours a building and what it does to the rest of the scene. Each
     proposal of the task is accepted unless a bullet says "changed" or "rejected". The same facts are written as rules in
     `asset-classes.md` § Heat overlay.
@@ -924,7 +936,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       every number the colours stand for; the canvas stays `aria-hidden`.
     - **Left for the tickets, `unverified` until looked at:** the continuous colour against the legend's six stops, a
       silent building's look at campus level next to the 0.18 fade of the level, and where the labels stand.
-  - Settled in V2-17.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-17.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the heat overlay is drawn, what it costs and where it is wired. Each question of the ticket's analysis
     was answered with its recommendation.
     - **One value, `HeatScene`.** The overlay is data (`lib/twinHeat.ts`): a `#rrggbb` per building with a reading, the
@@ -966,7 +978,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's six stops, a
       silent building beside the 0.18 fade, the temperature line's place and size, and the draw calls with silent
       buildings (`DrawCallLog`, development build).
-  - Settled in V2-17.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-17.4 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the Heat toggle, the "Colour by" picker and the legend. Each question of the ticket's analysis was answered
     with its recommendation.
     - **The toggle is `layersOf`'s, at every 3D level.** Heat is the last entry in the 3D list (frames 12 and 13:
@@ -1008,7 +1020,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's strip, the two
       legends stacked at 1072 × 671 and narrower and with the sheet open, the picker beside the layers when the row
       wraps, and the listbox with a screen reader. The cross-cutting accessibility cases with Heat on are V2-17.5's.
-  - Settled in V2-18.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-18.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the 3D view's own keys. Each question of the ticket's analysis was answered with its recommendation.
     - **The keys are handled on the group, which has focus (Q1).** `TwinView` renders the one focusable element, so the
       `onKeyDown` is there and not in `TwinStage` as the task wrote. A pure `lib/twinKeys.ts` (`keyCommand`) maps a key
@@ -1044,7 +1056,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Left for the tickets, `unverified` until looked at:** the feel of 15° / 5° / a tenth of the distance with a held key,
       the clamps and the pan box under a held key, that a press on the canvas focuses the group, the ring over the canvas,
       and the description read once by a screen reader. The app-level axe, role and keyboard-only cases are V2-18.4's.
-  - Settled in V2-19.1 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.1 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the developer HUD and the load marks. Each question of the ticket's analysis was answered with its
     recommendation.
     - **The HUD is absent from production by construction and by a check.** Its two pieces (`Hud`, the readout, and `HudProbe`,
@@ -1072,7 +1084,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       browser; the HUD exists in `pnpm dev` only (React in development mode), so a figure read there is pessimistic and
       V2-19.7 must say which build it measured; the production build's `dist` has not been scanned until `pnpm build` is run.
       Logging telemetry worker faults once per change (the open item of Phase 3) is **not** part of this ticket and has no owner.
-  - Settled in V2-19.2 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.2 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: what asks the on-demand canvas for a frame, and the hidden tab. Each question of the ticket's analysis was
     answered with its recommendation.
     - **Three loops keep the canvas drawing; everything else is a one-shot.** The audit of every `useFrame` and `invalidate`
@@ -1109,7 +1121,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       moving) reads 0 frames on the HUD, that a background tab draws none, and that nothing stops short (a fan that spins
       down, a fly-to, a pulse). The demo is not idle by default: the Incidents layer is on and a critical open incident
       pulses at the display's rate.
-  - Settled in V2-19.3 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the pixel ratio steps down when frames run long. Each question of the ticket's analysis was answered with
     its recommendation.
     - **The rule.** `createDprController` (`lib/twinPerf.ts`) is fed every drawn frame's time and the clock and judges in
@@ -1144,7 +1156,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Not done here and `unverified` until looked at in a browser:** that a healthy 60 Hz display never steps, that a
       throttled one steps down and stays, that the step survives a remount, that a cold load does not step. The
       video wall's `wall: true` pin exists in the controller and nothing passes it in until V2-21.
-  - Settled in V2-19.4 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.4 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the draw-call and triangle budgets are held by estimate and guarded in development. Each question of the
     ticket's analysis was answered with its recommendation.
     - **The demo is under budget by estimate, so the ticket adds a guard and changes no scene.** Read from the code and from
@@ -1179,7 +1191,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       tests stub `gl.info.render`, as jsdom has no WebGL); that the `data-over` bar is visible and clear of the labels, the
       callout and the controls. V2-19.5 reduces triangles (LOD1 and culling); V2-19.7's scenes should read both figures in
       each view.
-  - Settled in V2-19.5 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.5 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: a lower level of detail below 5 % of the screen's height, and what frustum culling can and cannot do. Each
     question of the ticket's analysis was answered with its recommendation.
     - **The LOD.** `buildTemplate` merges the model's `<Root>_LOD1` sibling (the node named exactly so; its meshes at any
@@ -1228,7 +1240,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Not done here and `unverified`:** the thresholds and the hysteresis in a browser, that the swap shows no flicker and
       no pop beyond the simplification, that looking away lowers the HUD's triangles by the models', and how the far
       silhouettes look. Level 1 is `lod1`'s clone per instance: V2-19.6 frees it with the rest.
-  - Settled in V2-19.6 (2026-10-20, proposed: the tech lead confirms or amends each bullet), without changing the
+  - Settled in V2-19.6 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: what releases the twin's GPU resources, how that is seen, and why there is no registry. Each question of the
     ticket's analysis was answered with its recommendation.
     - **The audit: every site that creates a resource already releases it, in its own effect cleanup.** The ground's layers

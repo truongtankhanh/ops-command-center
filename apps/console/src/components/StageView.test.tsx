@@ -101,7 +101,7 @@ describe('StageView', () => {
     expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
   });
 
-  // The preview gate is closed under Vitest (V2-12.4), so the store never holds `3d` here (see `effectiveView`): what is stored cannot change
+  // jsdom has no WebGL 2, so the store never holds `3d` here (see `effectiveView`): what is stored cannot change
   // what is drawn: the stage keeps showing the map and the switch shows 2D pressed.
   it('still draws the map when a 3D choice was stored by a later build', () => {
     localStorage.setItem('occ.console.view', '3d');
@@ -277,7 +277,7 @@ describe('StageView', () => {
     // The fault is the session's, not the operator's choice: the stored `3d` stays, so a reload tries 3D again,
     // and the switch says why the 3D option is off.
     it('keeps the stored choice on a fault, and says why 3D is off', async () => {
-      // The preview gate is closed under Vitest; open it, so the reason shown is the fault and not `not-built`.
+      // jsdom has no WebGL 2; stub it, so the reason shown is the fault and not `no-webgl2`.
       stubTwinAvailable();
       localStorage.setItem('occ.console.view', '3d');
       renderStage();
