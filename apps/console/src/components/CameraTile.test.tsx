@@ -230,4 +230,41 @@ describe('CameraTile', () => {
       expect(pins()).toEqual(['c2', 'c3', 'c1']);
     });
   });
+
+  // The video wall's tile (V2-21.4): the picture and its labels, and nothing to press.
+  describe('read only', () => {
+    it('has no button: not to open the viewer, not to pin', () => {
+      renderTile({ readOnly: true });
+
+      expect(screen.queryAllByRole('button')).toHaveLength(0);
+      expect(screen.getByText('Library entrance')).toBeInTheDocument();
+      expect(screen.getByText('CAM-L01')).toBeInTheDocument();
+    });
+
+    it('draws no pinned badge, even for a pinned camera: the same glyphs as an unpinned one', () => {
+      const unpinned = renderTile({ readOnly: true });
+      const glyphs = unpinned.container.querySelectorAll('svg').length;
+      unpinned.unmount();
+
+      useConsole.setState({ pinnedCameraIds: ['c1'] });
+      const pinned = renderTile({ readOnly: true });
+
+      expect(pinned.container.querySelectorAll('svg')).toHaveLength(glyphs);
+    });
+
+    it("words the tag as it is told to ('INC-000042') and keeps the ring", () => {
+      const { container } = renderTile({ link: 'zone', tag: 'INC-000042', readOnly: true });
+
+      expect(screen.getByText('INC-000042')).toBeInTheDocument();
+      expect(screen.queryByText('In zone')).toBeNull();
+      expect(container.querySelector('figure')).toHaveAttribute('data-linked', 'zone');
+    });
+
+    it('is unchanged by the tag when it is not read only: the buttons are still there', () => {
+      renderTile({ link: 'zone', tag: 'INC-000042' });
+
+      expect(screen.getByText('INC-000042')).toBeInTheDocument();
+      expect(button('Open CAM-L01 in the viewer')).toBeInTheDocument();
+    });
+  });
 });

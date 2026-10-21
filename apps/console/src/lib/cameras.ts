@@ -1,5 +1,6 @@
 import type { Asset, Camera, Incident, LngLat } from '@occ/contracts';
 import { isInView } from './geo';
+import { compareIncidents, isActive } from './incidents';
 import type { DisplayMode } from './useDisplayMode';
 
 /**
@@ -125,6 +126,22 @@ export function incidentCameras(
   return shown.some((camera) => cameraLink(camera, subject) === 'asset')
     ? { cameras: shown, onAsset: true }
     : { cameras: inZone, onAsset: false };
+}
+
+/**
+ * What the video wall's camera grid follows (V2-21.4, ADR-0020 "Settled in V2-21.1"): the incident the wall holds in
+ * focus, if it is still in the list, otherwise the one the feed puts first among the active incidents (unresolved,
+ * then the most severe, then the newest), otherwise nothing. The subject is that incident's zone, so its cameras come
+ * first, as on the sheet of an incident; the incident itself comes back so a tile can name it.
+ */
+export function wallSubject(
+  incidents: Incident[],
+  focusedId: string | null,
+): { incident: Incident; subject: StripSubject } | undefined {
+  const focused = focusedId === null ? undefined : incidents.find((i) => i.id === focusedId);
+  const incident = focused ?? incidents.filter(isActive).sort(compareIncidents)[0];
+  if (incident === undefined) return undefined;
+  return { incident, subject: { kind: 'zone', zoneId: incident.zoneId } };
 }
 
 /** Pins whose camera still exists. */

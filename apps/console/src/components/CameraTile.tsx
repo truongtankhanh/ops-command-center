@@ -27,6 +27,8 @@ export function CameraTile({
   camera,
   variant = 'strip',
   link,
+  tag,
+  readOnly = false,
 }: {
   camera: Camera;
   variant?: 'strip' | 'compact';
@@ -36,6 +38,13 @@ export function CameraTile({
    * frame 03). Either draws the accent ring. Absent: an ordinary tile.
    */
   link?: CameraLink;
+  /** The words of the tag in place of `link`'s ("INC-000107" on the video wall); needs a `link`. */
+  tag?: string;
+  /**
+   * The video wall's tile (V2-21.4): the picture, the labels and the time, and nothing to press: no pin, no
+   * pinned badge and no button to open the viewer.
+   */
+  readOnly?: boolean;
 }) {
   const stream = useStream(camera);
   const { data: zones = [] } = useZones();
@@ -56,52 +65,54 @@ export function CameraTile({
 
   return (
     <figure className={styles.tile} data-linked={link}>
-      <CameraFeed camera={camera} />
+      <CameraFeed camera={camera} readOnly={readOnly} />
 
       <div className={styles.top}>
         <span className={styles.badges}>
           {live && <LivePill />}
-          {!compact && pinned && (
+          {!compact && !readOnly && pinned && (
             <span className={styles.pill} aria-hidden="true">
               <Icon glyph={Pin} size={14} />
             </span>
           )}
         </span>
         {link ? (
-          <span className={styles.tag}>{LINK_TAG[link]}</span>
+          <span className={styles.tag}>{tag ?? LINK_TAG[link]}</span>
         ) : (
           !(compact && live) && <span className={styles.pill}>{camera.code}</span>
         )}
       </div>
 
-      <div className={styles.actions}>
-        <Button
-          variant="ghost"
-          className={styles.action}
-          aria-label={`Open ${camera.code} in the viewer`}
-          onClick={() => openViewer(camera.id)}
-        >
-          <Icon glyph={Maximize2} size={16} />
-        </Button>
-        <Button
-          variant="ghost"
-          className={styles.action}
-          aria-label={pinned ? `Unpin ${camera.code}` : `Pin ${camera.code} to the strip`}
-          aria-disabled={!pinnable || undefined}
-          aria-describedby={pinnable ? undefined : fullHintId}
-          title={pinnable ? undefined : STRIP_FULL}
-          onClick={() => {
-            if (pinnable) toggleCameraPin(camera.id, knownIds);
-          }}
-        >
-          <Icon glyph={pinned ? PinOff : Pin} size={16} />
-        </Button>
-        {!pinnable && (
-          <span id={fullHintId} className={styles.hidden}>
-            {STRIP_FULL}
-          </span>
-        )}
-      </div>
+      {!readOnly && (
+        <div className={styles.actions}>
+          <Button
+            variant="ghost"
+            className={styles.action}
+            aria-label={`Open ${camera.code} in the viewer`}
+            onClick={() => openViewer(camera.id)}
+          >
+            <Icon glyph={Maximize2} size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            className={styles.action}
+            aria-label={pinned ? `Unpin ${camera.code}` : `Pin ${camera.code} to the strip`}
+            aria-disabled={!pinnable || undefined}
+            aria-describedby={pinnable ? undefined : fullHintId}
+            title={pinnable ? undefined : STRIP_FULL}
+            onClick={() => {
+              if (pinnable) toggleCameraPin(camera.id, knownIds);
+            }}
+          >
+            <Icon glyph={pinned ? PinOff : Pin} size={16} />
+          </Button>
+          {!pinnable && (
+            <span id={fullHintId} className={styles.hidden}>
+              {STRIP_FULL}
+            </span>
+          )}
+        </div>
+      )}
 
       <figcaption className={styles.caption}>
         <span className={styles.names}>

@@ -106,6 +106,17 @@ describe('CameraFeed', () => {
       expect(retry()).toBeEnabled();
     });
 
+    // The video wall's tile (V2-21.4): nobody there can press Retry, so the notice says No signal and offers none.
+    it('says No signal, with no Retry, when it is read only', async () => {
+      fetchMock.mockResolvedValueOnce(serverError());
+      const client = createTestQueryClient();
+      renderWithQueryClient(<CameraFeed camera={camera()} readOnly />, client);
+
+      expect(await screen.findByText('Stream unavailable')).toBeInTheDocument();
+      expect(screen.getByText('No signal')).toBeInTheDocument();
+      expect(screen.queryByRole('button')).toBeNull();
+    });
+
     it('retries, busy while it waits, then shows the stream', async () => {
       let resolve!: (response: Response) => void;
       fetchMock

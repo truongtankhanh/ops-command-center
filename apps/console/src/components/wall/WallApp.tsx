@@ -3,17 +3,16 @@ import { useIncidents } from '../../api/queries';
 import { isActive } from '../../lib/incidents';
 import styles from './WallApp.module.css';
 import { useWallScale } from './useWallScale';
+import { WallCameras } from './WallCameras';
 import { WallHeader } from './WallHeader';
 
-/** Frame 18's six camera tiles, drawn as placeholders until V2-21.4 fills them. */
-const CAMERA_SLOTS = 6;
 /** The active list's rows that fit, drawn as placeholders until V2-21.5 fills them. */
 const LIST_SLOTS = 6;
 
 /**
  * The video wall screen (V2-21.3, frame 18): the header over a stage 1240 : 680 beside a side column, at the wall's own
- * `--ui-scale`. What goes in them comes in later tasks: the 3D stage (V2-21.6, V2-21.9), the camera grid (V2-21.4) and the
- * active list (V2-21.5); until they land the three are labelled, empty places on the same ground.
+ * `--ui-scale`. The camera grid is `WallCameras` (V2-21.4); the 3D stage (V2-21.6, V2-21.9) and the active list
+ * (V2-21.5) come in later tasks, and until they land they are labelled, empty places on the same ground.
  *
  * One `main`, named for the screen; the stage is a labelled region and the two parts of the side column are regions
  * named by their headings. There is no control anywhere: a wall has no pointer and no keyboard.
@@ -35,11 +34,7 @@ export function WallApp({ screen }: { screen: number }) {
             <h2 id={camerasId} className={styles.heading}>
               Cameras — incident first
             </h2>
-            <div className={styles.cams} aria-hidden="true">
-              {Array.from({ length: CAMERA_SLOTS }, (_, i) => (
-                <div key={i} className={styles.cam} />
-              ))}
-            </div>
+            <WallCameras />
           </section>
           <section className={styles.listSection} aria-labelledby={listId}>
             <h2 id={listId} className={styles.heading}>

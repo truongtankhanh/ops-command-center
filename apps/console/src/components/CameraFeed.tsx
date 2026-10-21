@@ -29,9 +29,15 @@ const SCENE_HEIGHT = 180;
 export function CameraFeed({
   camera,
   resolution = 'tile',
+  readOnly = false,
 }: {
   camera: Camera;
   resolution?: FeedResolution;
+  /**
+   * The video wall's tile (V2-21.4): a stream that cannot be resolved reads "No signal", like an offline camera, with
+   * no Retry. Nobody at a wall can press it, and the query tries again by itself.
+   */
+  readOnly?: boolean;
 }) {
   const query = useStream(camera);
 
@@ -39,6 +45,9 @@ export function CameraFeed({
     case 'offline':
       return <Notice glyph={cameraIcon(false)} title="No signal" detail="Camera offline" />;
     case 'unavailable':
+      if (readOnly) {
+        return <Notice glyph={cameraIcon(false)} title="No signal" detail="Stream unavailable" />;
+      }
       return (
         <Notice
           glyph={cameraIcon(false)}

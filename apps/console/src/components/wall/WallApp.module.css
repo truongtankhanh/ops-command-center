@@ -49,18 +49,6 @@
   color: var(--text-tertiary);
 }
 
-.cams {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
-}
-
-.cam {
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-m);
-  background: var(--surface-2);
-}
-
 .list {
   display: grid;
   align-content: start;
