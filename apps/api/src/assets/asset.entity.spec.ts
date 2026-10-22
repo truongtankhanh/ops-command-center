@@ -43,6 +43,7 @@ const asset = (assetClassValue?: AssetClassEntity): AssetEntity =>
     lat: 11.95,
     elevationM: 14,
     headingDeg: 90,
+    levelCode: null,
     createdAt: new Date('2026-10-01T08:00:00Z'),
     assetClass: assetClassValue,
   });
@@ -66,8 +67,16 @@ describe('AssetEntity.toContract()', () => {
       position: [108.44, 11.95],
       elevationM: 14,
       headingDeg: 90,
+      levelCode: null,
       headline: [],
     });
+  });
+
+  it('carries the level the asset stands on, and `null` when it has none', () => {
+    const onLevel = Object.assign(asset(assetClass()), { levelCode: 'L2' });
+
+    expect(onLevel.toContract().levelCode).toBe('L2');
+    expect(asset(assetClass()).toContract().levelCode).toBeNull();
   });
 
   it("serves the class's model file under /models/ and `null` when it has none", () => {

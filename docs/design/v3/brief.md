@@ -1,6 +1,6 @@
 # Console V3 — premium operations UI over a realistic twin: design brief
 
-Status: **proposed** as a design until V3-20 (frames 00 – 24 accepted by the tech lead on 2026-10-22); its decisions are **accepted in ADR-0022** (2026-10-22), and the V3.5 data decisions in ADR-0023 and ADR-0024. Every open question was answered by the tech lead on 2026-10-21 (Q1, Q3, Q4, Q6 and both
+Status: **proposed** as a design until V3-20 (frames 00 – 25 accepted by the tech lead on 2026-10-22); its decisions are **accepted in ADR-0022** (2026-10-22), and the V3.5 data decisions in ADR-0023, ADR-0024 and ADR-0031. Every open question was answered by the tech lead on 2026-10-21 (Q1, Q3, Q4, Q6 and both
 principle amendments first, then Q2, Q5, Q7 – Q11 by accepting the recommendations); ADR-0022 and the ADR-0020
 amendment still have to record them (V3-00, V3-11). Mockups: [Ops Console V3 — Premium Digital Twin](https://claude.ai/artifact/BtgcJCPfsoqLp2fZJchGfy)
 (design canvas, private until shared from its Share menu); source of every frame in [mockups/](mockups/) —
@@ -214,6 +214,48 @@ is actually mown (the sports pitch, faintly on the central lawn); trees are lump
 shadow, in clusters and along the roads. In the build this is the ground material of V3-13 (a generated texture,
 never an image from outside), and Calm view mutes it with everything else in the environment.
 
+### Facades, roofs and equipment in the frames
+
+Added 2026-10-22 after the first frames read as plain boxes. The shared scene (`mockups/Scene.dc.html`, `v3.css`) now
+draws what an operator would recognise on site. This is the mockup's reading of V3-13 and V3-14, not a spec of the
+build's textures.
+
+- **Facades by use, not by one pattern.** Glass curtain wall with mullions and a sky streak (Innovation Hub, Science
+  Lab, Lecture Hall A); brick with punched windows and a string course (Library, Student Center, both dormitories);
+  ribbon windows between piers (Admin Building, Health Clinic, Security office); a windowless louvred block with a
+  roll-up door (the data hall); blank panels with a clerestory band (Sports Hall). Every building has a lit entrance with
+  a canopy, a dark ground floor, a darker foot where it meets the ground, and, at night, an irregular scatter of lit windows. Lit
+  windows are never a lattice and never a vertical stripe.
+- **Roofs.** A parapet, a membrane inside it, and plant that stands on the roof with its own sides: air handlers,
+  condenser fans that turn (and stop under reduced motion), skylights, a stair core, solar arrays on Lecture Hall A, a
+  rooftop water tank on Dormitory A, a mast with a beacon on the Innovation Hub.
+- **Equipment as objects.** Cooling towers CT-01 and CT-02 on the data hall's roof, the generator GEN-01 beside it (at its
+  level L1), the air handler AHU-H1 on the Hub, the fume-hood stack on the Science Lab; in the utility yard two
+  transformers with bushings, the switchgear with its cabinet doors and two chillers with fans. These are the devices
+  the Near tier names, now with a body under the marker.
+- **Street furniture.** Lamp posts along the roads, a pole under each camera marker, a barrier arm at the main gate,
+  paved pads under the buildings.
+- **Trees never compete with devices.** Trees were crowding the view the operator watches the devices through: the
+  frames now keep about a third of them (82 became 26), with smaller crowns, kept to the site's edge belt and around the
+  lake and the sports field. No tree stands within about 18 px of a building, 6 px of a road, or 22 px of any marker,
+  camera or device, so nothing a person has to read is behind a crown. In the build this is a placement rule
+  (clearance around buildings, roads, cameras and assets, then a low density) and the tiers thin trees further.
+- **Light follows the clock.** **Lamps and windows are lit only at night.** By day the lamp post stays and its light,
+  its pool on the ground and its glow go; the windows are plain glass with a little more sky in them and the entrance is
+  unlit (the scene's `night` switch in the mockup). The build reads the site's own local time: night is from sunset to
+  sunrise, computed from the site's coordinates by a small pure function (no dependency, no setting), and the console
+  looks again every minute and redraws only when it changes. This is not a Night mode (Q9, dark only): the scene stays
+  the dark theme either way, and only the lamps and the windows follow the clock. The rooftop mast's beacon is a safety
+  light and stays. Calm view mutes the glow with the rest of the environment. The beacons, markers and severity colours
+  never follow the clock.
+- **Scene modes still hold.** Spotlight and Calm filter the flat faces only; the heat overlay paints the shells in its
+  ramp and hides windows, plant, masts and lamps; building level fades everything but the focused building and keeps
+  the data hall's own equipment (`b-dc`).
+
+Not decided here, and `unverified` until V3-11 measures: how much of this the build draws at Medium, which parts are
+generated geometry and which are the V2 stand-in models, and the cost of the lamp glow and the fans. The build never
+draws more detail than its tier's budget allows; at Far the scene stays boxes and markers.
+
 ### Quality tiers
 
 | Tier     | When                                                        | Differences                                                                              |
@@ -269,6 +311,39 @@ age, status. The selected object is the only neon in the panel (a lit edge on th
 - Same view-only footer for a viewer and for a technician outside their categories (V2 frames 11, 17).
 - Width: **360 px**. Frame 02 shows the lifecycle stepper and the action bar fitting, and the tech lead accepted it on
   2026-10-22 (Q5), so the 400 px fallback is not used.
+
+## Place views (V3.5, frame 25)
+
+Added 2026-10-22. Buildings and areas do not look alike, and devices are not only outside: a smoke detector is in a
+lab, a temperature sensor in an aisle between racks, a leak sensor in a laundry. A footprint with dots (frame 20b)
+cannot say which room, and every building would read the same. A **place view** gives each building level and each
+open area its own plan.
+
+- **What it is.** A stylised plan, not a CAD floor plan: outer walls, interior walls, named rooms, the few fixed props
+  that make a place recognisable (rack rows, lab benches, beds, transformers, chillers), and every device standing in
+  its room. Walls are drawn low so a device is never behind one; markers and labels are drawn above the geometry.
+  Decided by the tech lead on 2026-10-22: **a stylised plan per place** (not just a floor outline).
+- **Three kinds of place.** A **building with levels** (a plan per level, the level selector of frame 20), an **area**
+  (one plan, no selector: the utility yard, parking, the field, the gate), and a **place without a plan yet** (the
+  footprint with dots and the words "No plan drawn yet"; nothing is invented).
+- **Ways in and out.** In: double-click a building, Open plan in its summary, Show in plan in an asset or incident
+  inspector. Out: Esc, the breadcrumb, double-click on empty ground. **The view moves only because the operator asked:**
+  a new alarm never opens a plan, and selecting an incident in the feed still flies to its building as before.
+- **Plan or Shell.** Plan is the cut-away; Shell is the closed building of frame 08 with the level highlighted and the
+  heat overlay. Plant on the roof belongs to the building's Roof level.
+- **Rooms panel.** The rooms of the level with their device counts and worst open incident; selecting a row flies to the
+  room. An alarm tints its room in the severity colour and pulses on the floor.
+- **Data it needs (additive, on top of ADR-0023).** Rooms per level (code, name, kind, outline in metres) with a short
+  list of props, and an optional `plan_x`, `plan_y` on an asset inside its level. Without them a device keeps its
+  footprint dot, so an older console and an older API still work. This is a **new ADR** (**ADR-0031, accepted 2026-10-22**; the
+  number keeps clear of V4's reserved 0025 – 0030) and it **extends ADR-0023's "not decided here: floor plans"**; it
+  does not contradict it. The demo's five places are authored in the repo as seed data. A real site needs an editor or an
+  import, which is not designed and not in V3.5.
+- **Rules.** Every role sees every plan; a viewer cannot act and a technician's actions follow their categories
+  (frames 11 and 17). Moving the camera is not an action on the site. Plans load with the level, cached; while loading
+  or on failure the footprint shows. Reduced motion cuts instead of flying. An unattended wall never opens a plan.
+- **Unverified until V3-11 and the build.** The cost of a plan (walls, props, room labels) against the Near tier's
+  budget, the plan's camera angle and the wall height. The frames draw it with CSS; the build uses three.js.
 
 ## Status bar
 
@@ -486,54 +561,56 @@ notifications, and bulk acknowledge (which the table mode defers).
 
 ## Frame index
 
-Frames 00 – 24 are drawn on the [design canvas](https://claude.ai/artifact/BtgcJCPfsoqLp2fZJchGfy) (one board each, plus
+Frames 00 – 25 are drawn on the [design canvas](https://claude.ai/artifact/BtgcJCPfsoqLp2fZJchGfy) (one board each, plus
 the shared components Header, StatusBar, Sidebar, Strip, Scene and Map2D) and were accepted by the tech lead on
 2026-10-22. Source of every frame: `mockups/`. Numbering restarts at 00; "V2 frame n" always names the V2 one.
 
-| Frame                               | Shows                                                                                                                                             |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 00 Foundations V3                   | Palette and contrast table, surfaces, neon rules (do / don't), type scale, buttons, tabs, chips, panel, marker family and states, severity badges |
-| 01 Overview — nothing selected      | Header, sidebar, 3D campus at medium tier, camera strip, status bar, no inspector                                                                 |
-| 02 Incident selected                | Focus flight done, spotlight, pulse ring and label, inspector on Details at 360 px, selected row                                                  |
-| 03 Inspector tabs                   | Related, Telemetry, Timeline of frame 02                                                                                                          |
-| 04 Asset inspector                  | A device: information card, live tiles with deltas, sparkline with an abnormal point, parts, actions; stale variant                               |
-| 05 Critical arrives                 | Toast, hot KPI tile, new row, beacon; the camera has not moved                                                                                    |
-| 06 Semantic zoom                    | Far, medium and near of the same campus; clusters and count chips                                                                                 |
-| 07 Telemetry paused, offline        | Pills, banner, status bar in a degraded state, stale markers                                                                                      |
-| 08 Building level and heat overlay  | V2 frames 12 and 13 in the new look                                                                                                               |
-| 09 2D view                          | V2 frame 14 in the new look (map style from tokens)                                                                                               |
-| 10 Loading, no WebGL, Standard tier | V2 frames 06 and 07, plus the tier change notice                                                                                                  |
-| 11 Roles                            | Viewer and technician on frames 02 and 04 (view-only footer, hidden actions)                                                                      |
-| 12 Report incident                  | V2 frame 09 in the new look                                                                                                                       |
-| 13 Camera strip                     | Collapsed, expanded, filtered to Offline; camera viewer                                                                                           |
-| 14 Video wall, sign-in              | V2 frames 18 and 19 on the new tokens                                                                                                             |
-| 15 Calm view and settings           | The same incident scene in full colour and in Calm view, the account menu with its switches, what Calm mutes and never mutes                      |
-| 16 Alarm load and flood             | Status bar segment, the Alarm load popover (rate, flood, standing, noisy devices), the flood banner with Group by zone                            |
-| 17 Attention countdown              | Feed rows and inspector chip in the normal, soon and overdue states; acknowledged clears it                                                       |
-| 18 Reading range                    | Telemetry tab with 15 min, 1 h and Around the alarm: loaded, loading, error and empty                                                             |
-| 19 Table mode                       | The List / Table switch, the table over the stage with sortable columns, filters, Export CSV, a row open in the inspector                         |
-| 20 Floors (V3.5)                    | Level selector at building level, a level's footprint with its devices, Assets filtered by level, "Level 2" in the inspector                      |
-| 21 Shift handover (V3.5)            | The handover sheet for the outgoing operator and the banner and acceptance for the incoming one                                                   |
-| 22 Trend warnings (V3.5)            | Trend tag on a tile, dashed projection on the chart, the Watch filter in the Assets tab                                                           |
-| 23 Saved views (V3.5)               | The Views popover on the camera rail: Campus, saved views, Save current view                                                                      |
-| 24 Pan tool and 8-direction pad     | The rail with the Orbit / Pan pair, the pad with its eight arrows and centre button, cursors, held and disabled states, the new hint              |
+| Frame                               | Shows                                                                                                                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 00 Foundations V3                   | Palette and contrast table, surfaces, neon rules (do / don't), type scale, buttons, tabs, chips, panel, marker family and states, severity badges                                       |
+| 01 Overview — nothing selected      | Header, sidebar, 3D campus at medium tier, camera strip, status bar, no inspector                                                                                                       |
+| 02 Incident selected                | Focus flight done, spotlight, pulse ring and label, inspector on Details at 360 px, selected row                                                                                        |
+| 03 Inspector tabs                   | Related, Telemetry, Timeline of frame 02                                                                                                                                                |
+| 04 Asset inspector                  | A device: information card, live tiles with deltas, sparkline with an abnormal point, parts, actions; stale variant                                                                     |
+| 05 Critical arrives                 | Toast, hot KPI tile, new row, beacon; the camera has not moved                                                                                                                          |
+| 06 Semantic zoom                    | Far, medium and near of the same campus; clusters and count chips                                                                                                                       |
+| 07 Telemetry paused, offline        | Pills, banner, status bar in a degraded state, stale markers                                                                                                                            |
+| 08 Building level and heat overlay  | V2 frames 12 and 13 in the new look                                                                                                                                                     |
+| 09 2D view                          | V2 frame 14 in the new look (map style from tokens)                                                                                                                                     |
+| 10 Loading, no WebGL, Standard tier | V2 frames 06 and 07, plus the tier change notice                                                                                                                                        |
+| 11 Roles                            | Viewer and technician on frames 02 and 04 (view-only footer, hidden actions)                                                                                                            |
+| 12 Report incident                  | V2 frame 09 in the new look                                                                                                                                                             |
+| 13 Camera strip                     | Collapsed, expanded, filtered to Offline; camera viewer                                                                                                                                 |
+| 14 Video wall, sign-in              | V2 frames 18 and 19 on the new tokens                                                                                                                                                   |
+| 15 Calm view and settings           | The same incident scene in full colour and in Calm view, the account menu with its switches, what Calm mutes and never mutes                                                            |
+| 16 Alarm load and flood             | Status bar segment, the Alarm load popover (rate, flood, standing, noisy devices), the flood banner with Group by zone                                                                  |
+| 17 Attention countdown              | Feed rows and inspector chip in the normal, soon and overdue states; acknowledged clears it                                                                                             |
+| 18 Reading range                    | Telemetry tab with 15 min, 1 h and Around the alarm: loaded, loading, error and empty                                                                                                   |
+| 19 Table mode                       | The List / Table switch, the table over the stage with sortable columns, filters, Export CSV, a row open in the inspector                                                               |
+| 20 Floors (V3.5)                    | Level selector at building level, a level's footprint with its devices, Assets filtered by level, "Level 2" in the inspector                                                            |
+| 21 Shift handover (V3.5)            | The handover sheet for the outgoing operator and the banner and acceptance for the incoming one                                                                                         |
+| 22 Trend warnings (V3.5)            | Trend tag on a tile, dashed projection on the chart, the Watch filter in the Assets tab                                                                                                 |
+| 23 Saved views (V3.5)               | The Views popover on the camera rail: Campus, saved views, Save current view                                                                                                            |
+| 24 Pan tool and 8-direction pad     | The rail with the Orbit / Pan pair, the pad with its eight arrows and centre button, cursors, held and disabled states, the new hint                                                    |
+| 25 Place views (V3.5)               | A building level or an area as its own plan: rooms named, walls low, devices where they stand, the rooms panel, Plan / Shell; Data Center, Science Lab, Dormitory B, Utility Plant yard |
 
 ### Frames to revise
 
 Where a drawn frame and the text above differ, the column says which wins. None is a change of decision.
 
-| Frame      | Difference                                                                                                  | Wins                                                                          |
-| ---------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 02, 04     | The inspector is 360 px, not the 320 – 360 range or V2's 440                                                | The frame and the Layout table (Q5, 2026-10-22)                               |
-| 01, 02, 06 | The scene follows the real site plan (`campus.ts`, north-up, camera from the south-west) with natural grass | The frames; the brief's "The mockup scene follows the real site plan" section |
-| 00         | Foundations lists the Low tint as neutral steel and the text accent as `--accent-ink`                       | The brief's token tables; V3-02.1 aligns the numbers                          |
-| 24         | The pad sits above the legends column, bottom-left, and hides under 720 px                                  | The frame and V3-29; the brief's pad section gives the behaviour              |
+| Frame              | Difference                                                                                                                | Wins                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| 02, 04             | The inspector is 360 px, not the 320 – 360 range or V2's 440                                                              | The frame and the Layout table (Q5, 2026-10-22)                                   |
+| 01, 02, 06         | The scene follows the real site plan (`campus.ts`, north-up, camera from the south-west) with natural grass               | The frames; the brief's "The mockup scene follows the real site plan" section     |
+| 00                 | Foundations lists the Low tint as neutral steel and the text accent as `--accent-ink`                                     | The brief's token tables; V3-02.1 aligns the numbers                              |
+| 01, 02, 06, 08, 20 | Buildings carry facades by use, roof plant, equipment bodies and lamps (see "Facades, roofs and equipment in the frames") | The frames; V3-14.1 turns it into facade rules and V3-11 sets what the tiers draw |
+| 24                 | The pad sits above the legends column, bottom-left, and hides under 720 px                                                | The frame and V3-29; the brief's pad section gives the behaviour                  |
 
 Implementation tickets, order and dependencies: [implementation-order.md](implementation-order.md).
 
 ## Architecture impact
 
-(Added with the operations aids: the V3 additions need no ADR. V3.5 needs **ADR-0023 — building levels** and
+(Added with the operations aids: the V3 additions need no ADR. V3.5 needs **ADR-0023 — building levels**, **ADR-0031 — place plans** (rooms and positions, added with place views) and
 **ADR-0024 — shift handover**, both additive. V4's ADRs are named in [../v4/brief.md](../v4/brief.md).)
 
 Visual work needs no API change. The decisions that need a record before building:
@@ -586,6 +663,11 @@ Visual work needs no API change. The decisions that need a record before buildin
     model are produced by scripts kept in the repo, in the manner of `models:standins` and `ops/sign-in-backdrop`, so
     the art is reproducible and has no vendor lead time. The model contract (V2) applies to the `.glb`. A vendor can
     replace any piece later without a code change.
+    **Amended 2026-10-22 (tech lead): free sources are welcome as inputs.** The script may start from **CC0** assets instead of
+    generated noise: textures from ambientCG or Poly Haven, the tree (and any prop) from Quaternius's Stylized Nature MegaKit or a
+    Kenney kit, each checked against its own page on the day it is downloaded. Nothing that is not CC0 goes in without the tech lead.
+    The script still does the work (resize, tile check, WebP, simplification to the model contract), the output is still hashed and
+    reproducible, and every input is recorded in `ops/environment/SOURCES.md` (source, address, asset, licence, date, what was changed).
 
 ## Settled while breaking the work into tasks
 
@@ -621,6 +703,9 @@ Defaults are proposed; each is settled in the ticket named.
     **Decided 2026-10-22 (tech lead): acceptance by the incoming operator is enough**; ADR-0024 records it, and a technician may accept any operator's handover.
 17. **Trend fit.** Horizon 30 minutes, window 10 minutes, a minimum fit quality. All constants, `unverified`.
     Settled in V3-27.
+18. **Rooms and device positions in a plan.** Whether a place's rooms and a device's position in its level are stored
+    (a `room` table and optional `plan_x`, `plan_y`), and how a real site would author them. **Decided 2026-10-22 (tech
+    lead): a stylised plan per place**; the storage and the authoring are ADR-0031's, accepted 2026-10-22.
 
 ## Notes
 

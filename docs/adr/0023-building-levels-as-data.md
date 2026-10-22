@@ -1,6 +1,7 @@
 # ADR-0023: Building levels are data: a table per building, and a nullable level on assets and incidents
 
 - **Status:** Accepted 2026-10-22
+- **Extended by:** [ADR-0031](0031-place-plans.md) (point 7: rooms and plans)
 - **Date:** 2026-10-22
 - **Context documents:** [Console V3 design brief](../design/v3/brief.md) (§ V3.5, "Floors"),
   [ADR-0017](0017-site-plan-as-data.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md),

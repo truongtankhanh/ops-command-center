@@ -22,6 +22,11 @@ export interface ReportIncidentRequest {
   zoneId: string;
   /** Must lie inside the zone's polygon or on its edge. Defaults to the zone center when omitted. */
   position?: LngLat;
+  /**
+   * A `code` of the zone's `levels` (ADR-0023). Omit when no level applies; a code the zone does not
+   * have is refused.
+   */
+  levelCode?: string;
 }
 
 /**

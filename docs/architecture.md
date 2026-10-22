@@ -244,3 +244,4 @@ A production deployment guide is not published yet.
 | [0022](adr/0022-console-visual-language.md)                     | Console colour, neon and camera rules                    |
 | [0023](adr/0023-building-levels-as-data.md)                     | Building levels as data                                  |
 | [0024](adr/0024-shift-handover.md)                              | Shift handover as its own record                         |
+| [0031](adr/0031-place-plans.md)                                 | Place plans: rooms and positions                         |

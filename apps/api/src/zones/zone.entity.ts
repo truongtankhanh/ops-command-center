@@ -1,5 +1,6 @@
 import type { LngLat, Zone, ZoneKind, ZoneUse } from '@occ/contracts';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { BuildingLevelEntity } from './building-level.entity';
 
 @Entity('zone')
 export class ZoneEntity {
@@ -33,6 +34,10 @@ export class ZoneEntity {
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
+  /** A building's levels (ADR-0023). Loaded for reads only; nothing writes them through the entity. */
+  @OneToMany(() => BuildingLevelEntity, (level) => level.zone)
+  levels?: BuildingLevelEntity[];
+
   get center(): LngLat {
     return [this.centerLng, this.centerLat];
   }
@@ -45,6 +50,10 @@ export class ZoneEntity {
       kind: this.kind,
       use: this.use,
       heightM: this.heightM,
+      // Only when the relation is loaded: an unloaded relation must not pass for "no levels".
+      ...(this.levels && {
+        levels: [...this.levels].sort((a, b) => a.sort - b.sort).map((level) => level.toContract()),
+      }),
       polygon: this.polygon,
       center: this.center,
     };

@@ -125,6 +125,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0022](docs/adr/0022-console-visual-language.md)                           | Console colour carries one meaning per hue (Low is neutral), neon marks selection and live data only, and the camera moves when the operator asks                |
 | [0023](docs/adr/0023-building-levels-as-data.md)                           | Building levels are data: a `building_level` table, and a nullable level on assets and incidents                                                                 |
 | [0024](docs/adr/0024-shift-handover.md)                                    | A shift handover is its own record, accepted by the incoming operator, and the console polls for it                                                              |
+| [0031](docs/adr/0031-place-plans.md)                                       | A place's plan is data: rooms on a level (a `building_room` table) and an optional position on an asset inside it                                                |
 
 ### Design details worth a look
 

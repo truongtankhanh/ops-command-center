@@ -1880,3 +1880,660 @@ body {
   background: var(--accent);
   box-shadow: 0 0 8px rgb(49 133 255 / 0.7);
 }
+
+/* Scene realism (V3-14, V3-15): facades, roofs and equipment. Everything below is drawn from gradients, masks and
+   box-shadow stacks on the existing faces, so it stays flat per face: a filter, opacity or mask never lands on a
+   preserve-3d box. Floors are 5.9 px apart in these frames and the ground floor is the lowest of them. */
+.bx > i {
+  --px: 4.6px;
+  --py: 5.9px;
+  --gf: 5.9px;
+  --dw: 5px;
+  --dx: 40px;
+  --cornice: linear-gradient(180deg, rgb(255 255 255 / 0.3) 0 1px, rgb(0 0 0 / 0.22) 1px 2px, transparent 2px);
+  --ao: linear-gradient(0deg, rgb(0 0 0 / 0.42) 0, transparent 22%);
+  --ground: linear-gradient(0deg, rgb(255 205 140 / 0.3) 0 1px, rgb(8 16 26 / 0.8) 1px var(--gf), transparent var(--gf));
+  --door: linear-gradient(180deg, #ffe9c4, #ffc884) var(--dx) 100% / var(--dw) 4.4px no-repeat;
+  --canopy: linear-gradient(rgb(236 245 252 / 0.9), rgb(236 245 252 / 0.9)) calc(var(--dx) - 1.6px) calc(100% - 5.1px) /
+    calc(var(--dw) + 3.2px) 1px no-repeat;
+  --sky: linear-gradient(
+    112deg,
+    transparent 0 28%,
+    rgb(255 255 255 / 0.11) 28% 40%,
+    transparent 40% 66%,
+    rgb(255 255 255 / 0.07) 66% 74%,
+    transparent 74%
+  );
+  --sky-e: linear-gradient(68deg, transparent 0 34%, rgb(255 255 255 / 0.06) 34% 46%, transparent 46%);
+}
+/* Windows are masked cells over the wall: `::before` is the pane, `::after` the warm light behind some of them. */
+.bx > .fs::before,
+.bx > .fs::after,
+.bx > .fe::before,
+.bx > .fe::after {
+  content: '';
+  position: absolute;
+  left: 0.5px;
+  right: 0;
+  top: 1.8px;
+  bottom: var(--gf);
+  pointer-events: none;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.bx > .fs::after,
+.bx > .fe::after {
+  background: rgb(255 214 150 / 0.7);
+  -webkit-mask-image: var(--lit-x), var(--lit-y);
+  mask-image: var(--lit-x), var(--lit-y);
+}
+.bx > .fe::after {
+  background: rgb(255 200 130 / 0.6);
+}
+.bx > .fs::before,
+.bx > .fe::before {
+  -webkit-mask-image: var(--cell-x), var(--cell-y);
+  mask-image: var(--cell-x), var(--cell-y);
+}
+
+/* Curtain wall: glass panes between mullions, a sky streak, spandrel lines. */
+.bx.w-glass > .fs,
+.bx.w-glass > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 3.7px, transparent 3.7px 4.6px);
+  --cell-y: repeating-linear-gradient(0deg, #000 0 4.6px, transparent 4.6px 5.9px);
+}
+.bx.w-glass > .fs::before,
+.bx.w-glass > .fe::before {
+  background: linear-gradient(180deg, rgb(12 36 72 / 0.42), rgb(12 36 72 / 0.1));
+}
+.bx.w-glass > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground), var(--sky),
+    repeating-linear-gradient(0deg, var(--sw) 0 1.2px, transparent 1.2px var(--py)),
+    repeating-linear-gradient(90deg, var(--sw) 0 0.9px, transparent 0.9px var(--px)),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-glass > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground), var(--sky-e),
+    repeating-linear-gradient(0deg, var(--ew) 0 1.2px, transparent 1.2px var(--py)),
+    repeating-linear-gradient(90deg, var(--ew) 0 0.9px, transparent 0.9px var(--px)),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Punched openings in brick: dark windows in a coursed wall, a stronger corner, a light string course. */
+.bx.w-punch {
+  --sg1: #8a5d5c;
+  --sg2: #58393d;
+  --eg1: #6a4547;
+  --eg2: #402a2f;
+  --sw: rgb(0 0 0 / 0.16);
+  --ew: rgb(0 0 0 / 0.2);
+}
+.bx.w-punch > .fs,
+.bx.w-punch > .fe {
+  --cell-x: repeating-linear-gradient(90deg, transparent 0 0.9px, #000 0.9px 3.7px, transparent 3.7px 4.6px);
+  --cell-y: repeating-linear-gradient(0deg, transparent 0 1.2px, #000 1.2px 4.6px, transparent 4.6px 5.9px);
+  --string: linear-gradient(0deg, transparent 0 calc(var(--gf) + 0.3px), rgb(238 222 210 / 0.5) calc(var(--gf) + 0.3px) calc(var(--gf) + 0.9px), transparent calc(var(--gf) + 0.9px));
+}
+.bx.w-punch > .fs::before,
+.bx.w-punch > .fe::before {
+  background: linear-gradient(180deg, #25415e, #142a42);
+}
+.bx.w-punch > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground), var(--string),
+    repeating-linear-gradient(0deg, var(--sw) 0 0.5px, transparent 0.5px 1.6px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.08) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-punch > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground), var(--string),
+    repeating-linear-gradient(0deg, var(--ew) 0 0.5px, transparent 0.5px 1.6px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.1) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Ribbon windows between concrete piers, with a thin fascia. */
+.bx.w-ribbon > .fs,
+.bx.w-ribbon > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 9.6px);
+  --cell-y: repeating-linear-gradient(0deg, transparent 0 1.7px, #000 1.7px 4.3px, transparent 4.3px 5.9px);
+}
+.bx.w-ribbon > .fs::before,
+.bx.w-ribbon > .fe::before {
+  background: linear-gradient(180deg, #2c5470, #1b3649);
+}
+.bx.w-ribbon > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.16) 0 0.6px, transparent 0.6px 9.6px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.1) 0 0.6px, transparent 0.6px var(--py)),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-ribbon > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.2) 0 0.6px, transparent 0.6px 9.6px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.06) 0 0.6px, transparent 0.6px var(--py)),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* A windowless block (the data hall): louvre bays, a roll-up door, no light behind anything. */
+.bx.w-blank > .fs,
+.bx.w-blank > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 8.6px, transparent 8.6px 10.6px);
+  --cell-y: linear-gradient(0deg, transparent 0 calc(var(--gf) + 1px), #000 calc(var(--gf) + 1px) calc(var(--gf) + 5px), transparent calc(var(--gf) + 5px));
+}
+.bx.w-blank > .fs::before,
+.bx.w-blank > .fe::before {
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.42) 0 0.6px, rgb(160 190 215 / 0.12) 0.6px 1.5px);
+}
+.bx.w-blank > .fs::after,
+.bx.w-blank > .fe::after {
+  display: none;
+}
+.bx.w-blank > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao),
+    linear-gradient(0deg, rgb(10 18 28 / 0.55) 0 var(--gf), transparent var(--gf)),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 0.6px, transparent 0.6px 10.6px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-blank > .fe {
+  background:
+    var(--cornice), var(--ao),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.26) 0 0.6px, transparent 0.6px 10.6px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* A hall with a clerestory: blank panels below, a band of glass under the eaves. */
+.bx.w-clere > .fs,
+.bx.w-clere > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 5.4px, transparent 5.4px 6.6px);
+  --cell-y: linear-gradient(0deg, transparent 0 66%, #000 66% 86%, transparent 86%);
+}
+.bx.w-clere > .fs::before,
+.bx.w-clere > .fe::before {
+  background: linear-gradient(180deg, rgb(190 226 250 / 0.7), rgb(120 170 210 / 0.5));
+}
+.bx.w-clere > .fs::after,
+.bx.w-clere > .fe::after {
+  display: none;
+}
+.bx.w-clere > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao),
+    linear-gradient(0deg, rgb(10 18 28 / 0.5) 0 var(--gf), transparent var(--gf)),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.2) 0 0.6px, transparent 0.6px 6.6px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-clere > .fe {
+  background:
+    var(--cornice), var(--ao),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.24) 0 0.6px, transparent 0.6px 6.6px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Lit windows: an irregular subset of the pane cells, so no wall shows a lattice. */
+.bx.w-glass > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 4.6px, #000 4.6px 8.3px, transparent 8.3px 9.2px, #000 9.2px 12.9px, transparent 12.9px 27.6px, #000 27.6px 31.3px, transparent 31.3px 32.2px, #000 32.2px 35.9px, transparent 35.9px 41.4px, #000 41.4px 45.1px, transparent 45.1px 50.6px, #000 50.6px 54.3px, transparent 54.3px 73.6px, #000 73.6px 77.3px, transparent 77.3px 78.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 5.9px, #000 5.9px 10.5px, transparent 10.5px 17.7px, #000 17.7px 22.3px, transparent 22.3px 23.6px, #000 23.6px 28.2px, transparent 28.2px 41.3px);
+}
+.bx.w-glass > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.0px, #000 0.0px 3.7px, transparent 3.7px 18.4px, #000 18.4px 22.1px, transparent 22.1px 23.0px, #000 23.0px 26.7px, transparent 26.7px 36.8px, #000 36.8px 40.5px, transparent 40.5px 41.4px, #000 41.4px 45.1px, transparent 45.1px 59.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 0.0px, #000 0.0px 4.6px, transparent 4.6px 5.9px, #000 5.9px 10.5px, transparent 10.5px 29.5px, #000 29.5px 34.1px, transparent 34.1px 41.3px);
+}
+.bx.w-punch > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.9px, #000 0.9px 3.7px, transparent 3.7px 10.1px, #000 10.1px 12.9px, transparent 12.9px 19.3px, #000 19.3px 22.1px, transparent 22.1px 56.1px, #000 56.1px 58.9px, transparent 58.9px 65.3px, #000 65.3px 68.1px, transparent 68.1px 69.9px, #000 69.9px 72.7px, transparent 72.7px 74.5px, #000 74.5px 77.3px, transparent 77.3px 78.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.2px, #000 1.2px 4.6px, transparent 4.6px 24.8px, #000 24.8px 28.2px, transparent 28.2px 36.6px, #000 36.6px 40.0px, transparent 40.0px 41.3px);
+}
+.bx.w-punch > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.9px, #000 0.9px 3.7px, transparent 3.7px 5.5px, #000 5.5px 8.3px, transparent 8.3px 10.1px, #000 10.1px 12.9px, transparent 12.9px 23.9px, #000 23.9px 26.7px, transparent 26.7px 28.5px, #000 28.5px 31.3px, transparent 31.3px 59.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.2px, #000 1.2px 4.6px, transparent 4.6px 13.0px, #000 13.0px 16.4px, transparent 16.4px 24.8px, #000 24.8px 28.2px, transparent 28.2px 41.3px);
+}
+.bx.w-ribbon > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.0px, #000 0.0px 8.0px, transparent 8.0px 19.2px, #000 19.2px 27.2px, transparent 27.2px 28.8px, #000 28.8px 36.8px, transparent 36.8px 57.6px, #000 57.6px 65.6px, transparent 65.6px 67.2px, #000 67.2px 75.2px, transparent 75.2px 105.6px, #000 105.6px 113.6px, transparent 113.6px 144.0px, #000 144.0px 152.0px, transparent 152.0px 163.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 7.6px, #000 7.6px 10.2px, transparent 10.2px 25.3px, #000 25.3px 27.9px, transparent 27.9px 31.2px, #000 31.2px 33.8px, transparent 33.8px 41.3px);
+}
+.bx.w-ribbon > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 19.2px, #000 19.2px 27.2px, transparent 27.2px 38.4px, #000 38.4px 46.4px, transparent 46.4px 48.0px, #000 48.0px 56.0px, transparent 56.0px 67.2px, #000 67.2px 75.2px, transparent 75.2px 86.4px, #000 86.4px 94.4px, transparent 94.4px 124.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.7px, #000 1.7px 4.3px, transparent 4.3px 7.6px, #000 7.6px 10.2px, transparent 10.2px 19.4px, #000 19.4px 22.0px, transparent 22.0px 41.3px);
+}
+
+/* Roofs: a parapet, a membrane inside it, and plant that stands on the roof with its own sides. */
+.bx > .ft {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent 55%), var(--top);
+  box-shadow:
+    inset 0 0 0 0.8px rgb(255 255 255 / 0.28),
+    inset 0 0 0 2.2px rgb(0 0 0 / 0.2);
+}
+.bx > .ft::before {
+  content: '';
+  position: absolute;
+  inset: 2.2px;
+  background:
+    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.07) 0 0.7px, transparent 0.7px 2.4px),
+    linear-gradient(180deg, rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.02));
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.18);
+}
+.hv {
+  background: linear-gradient(135deg, #b9c9d6, #8aa0b2);
+  box-shadow:
+    1px 1px 0 #70869a,
+    2px 2px 0 #62788b,
+    3px 3px 0 #556a7c,
+    5px 6px 4px rgb(0 0 0 / 0.4);
+}
+.hv.ahu {
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.28) 0 0.6px, transparent 0.6px 1.8px),
+    linear-gradient(135deg, #c3d1dd, #94a8b9);
+}
+.hv.stair {
+  background: linear-gradient(135deg, #a9b9c7, #7d93a6);
+  box-shadow:
+    1px 1px 0 #667b8e,
+    2px 2px 0 #5b7083,
+    3px 3px 0 #506577,
+    4px 4px 0 #465a6c,
+    5px 5px 0 #3d5062,
+    7px 8px 5px rgb(0 0 0 / 0.42);
+}
+.hv.sky {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.5) 0 0.6px, transparent 0.6px 4px),
+    linear-gradient(135deg, #8fc3e6, #4f86b4);
+  box-shadow:
+    1px 1px 0 #3e6d93,
+    2px 2px 0 #35607f,
+    4px 5px 3px rgb(0 0 0 / 0.35);
+}
+.hv.lantern {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.28) 0 0.7px, transparent 0.7px 7px),
+    linear-gradient(135deg, #7f98ad, #5e7890);
+  box-shadow:
+    1px 1px 0 #526b81,
+    2px 2px 0 #485f74,
+    3px 3px 0 #3e5468,
+    4px 4px 0 #354a5c,
+    6px 7px 5px rgb(0 0 0 / 0.4);
+}
+.hv.solar {
+  background:
+    repeating-linear-gradient(90deg, rgb(150 190 255 / 0.45) 0 0.5px, transparent 0.5px 3.6px),
+    repeating-linear-gradient(0deg, rgb(150 190 255 / 0.45) 0 0.5px, transparent 0.5px 3.6px),
+    linear-gradient(135deg, #2b5aa8, #12306b);
+  box-shadow:
+    1px 1px 0 #9fb4c8,
+    2px 2px 0 #7c91a6,
+    4px 5px 3px rgb(0 0 0 / 0.38);
+}
+.hv.fan {
+  border-radius: 50%;
+  background: #4d5e6e;
+  box-shadow:
+    1px 1px 0 #3f4e5c,
+    2px 2px 0 #36444f,
+    3px 3px 0 #2f3b46,
+    5px 6px 4px rgb(0 0 0 / 0.4);
+}
+.hv.fan > s {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, #d6e1ea 0 11deg, #55687a 11deg 30deg);
+  animation: fan-spin 1.3s linear infinite;
+  text-decoration: none;
+}
+.hv.fan > s::after {
+  content: '';
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background: #27323d;
+}
+.hv.vent {
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 36%, #c6d3de 0, #8499ab 70%);
+}
+@keyframes fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hv.fan > s {
+    animation: none;
+  }
+}
+
+/* Equipment is a small box with its own faces, so it has a side that catches the light and one that does not. */
+.eq > .fs,
+.eq > .fe {
+  background-image: none;
+}
+.eq > i::before,
+.eq > i::after {
+  display: none;
+}
+.eq > .ft::before {
+  display: none;
+}
+.eq > .ft {
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.38);
+}
+.eq.ahu {
+  --top: #b3c2ce;
+  --sg1: #9eb0be;
+  --sg2: #7a8e9e;
+  --eg1: #6f8393;
+  --eg2: #566a7a;
+}
+.eq.ahu > .fs,
+.eq.ahu > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.3) 0 0.5px, transparent 0.5px 1.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.ahu > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.34) 0 0.5px, transparent 0.5px 1.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.ct {
+  --top: #9aaebd;
+  --sg1: #7e93a4;
+  --sg2: #566c7e;
+  --eg1: #5d7284;
+  --eg2: #3f5465;
+}
+.eq.ct > .fs,
+.eq.ct > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.38) 0 0.5px, rgb(255 255 255 / 0.1) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(10 40 70 / 0.6) 0 1.4px, transparent 1.4px), linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.ct > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.42) 0 0.5px, rgb(255 255 255 / 0.06) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(10 40 70 / 0.6) 0 1.4px, transparent 1.4px), linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.xf {
+  --top: #8c9d88;
+  --sg1: #839481;
+  --sg2: #5a6b58;
+  --eg1: #66775f;
+  --eg2: #44543f;
+}
+.eq.xf > .fs,
+.eq.xf > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.38) 0 0.5px, transparent 0.5px 1.4px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.xf > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.42) 0 0.5px, transparent 0.5px 1.4px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.sg {
+  --top: #aebdc9;
+  --sg1: #9aaebd;
+  --sg2: #72879a;
+  --eg1: #6a7f92;
+  --eg2: #4f6376;
+}
+.eq.sg > .fs,
+.eq.sg > .fe {
+  background-image: radial-gradient(circle, #2a3945 0 0.45px, transparent 0.6px) 1.4px 50% / 3.2px 100% repeat-x,
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.42) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.sg > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.4) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.gn {
+  --top: #e0a23a;
+  --sg1: #d99a32;
+  --sg2: #a8721f;
+  --eg1: #b9801f;
+  --eg2: #8a5b14;
+}
+.eq.gn > .fs,
+.eq.gn > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0 0.5px, transparent 0.5px 4.6px),
+    linear-gradient(0deg, rgb(20 20 20 / 0.7) 0 1px, transparent 1px), linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.gn > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.55) 0 0.5px, rgb(255 255 255 / 0.05) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(20 20 20 / 0.7) 0 1px, transparent 1px), linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.stack {
+  --top: #a7b6c3;
+  --sg1: #94a6b4;
+  --sg2: #6c8091;
+  --eg1: #63788a;
+  --eg2: #485c6d;
+}
+.hv.bush {
+  border-radius: 50%;
+  background: radial-gradient(circle, #f3f6f8 0 30%, #2c3a46 32% 100%);
+  box-shadow:
+    1px 1px 0 #26323d,
+    2px 2px 0 #1f2a33,
+    3px 3px 0 #19222a,
+    4px 5px 3px rgb(0 0 0 / 0.4);
+}
+.hv.rad {
+  background: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.4) 0 0.5px, #7e9183 0.5px 1.3px);
+  box-shadow:
+    1px 1px 0 #55655a,
+    2px 2px 0 #4a5a4f,
+    3px 3px 0 #405046,
+    4px 5px 3px rgb(0 0 0 / 0.35);
+}
+
+/* Things that stand on the ground or on a roof and face the camera, drawn like the trees: a pole with a light, a mast
+   with a beacon, a tank. The ground glow is flat, under the pole. */
+.lp,
+.rfi {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.rfi {
+  transform: translateZ(var(--h));
+}
+.lp::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 218 160 / 0.3) 0, rgb(255 218 160 / 0.1) 45%, transparent 70%);
+}
+.lp u,
+.rfi u {
+  position: absolute;
+  display: block;
+  transform-origin: 50% 100%;
+  transform: rotateZ(-45deg) rotateX(-60deg);
+  text-decoration: none;
+}
+.lp u {
+  left: -3.5px;
+  top: -14px;
+  width: 7px;
+  height: 14px;
+  background:
+    radial-gradient(circle at 50% 3.5px, #fff6e4 0 1.3px, rgb(255 222 168 / 0.6) 1.6px 3px, transparent 3.5px),
+    linear-gradient(90deg, transparent 3px, #8fa1b4 3px 4px, transparent 4px) 0 4px / 100% 100% no-repeat;
+}
+.rfi u.mast {
+  left: -0.4px;
+  top: -16px;
+  width: 0.8px;
+  height: 16px;
+  background: linear-gradient(90deg, #d9e3ec, #6c7f91);
+}
+.rfi u.mast::before {
+  content: '';
+  position: absolute;
+  left: -2.6px;
+  top: 3px;
+  width: 6px;
+  height: 0.8px;
+  background: #b8c7d4;
+  box-shadow: 0 3px 0 #b8c7d4, 0 6px 0 #b8c7d4;
+}
+.rfi u.mast::after {
+  content: '';
+  position: absolute;
+  left: -1.2px;
+  top: -1.6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ff5c7c;
+  box-shadow: 0 0 5px 2px rgb(255 92 124 / 0.7);
+  animation: beacon 2.4s ease-in-out infinite;
+}
+@keyframes beacon {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  25% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rfi u.mast::after {
+    animation: none;
+  }
+}
+.rfi u.tank {
+  left: -5px;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px 1px 2px 2px / 1px 1px 3px 3px;
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 0.5px, transparent 0.5px 3px),
+    linear-gradient(90deg, #5f7385, #d3dee8 38%, #7d92a4 70%, #4c5f70);
+}
+.rfi u.tank::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2.5px;
+  width: 10px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 40%, #e9f0f6, #9fb2c3);
+}
+
+/* Cameras: the stem under the marker is a pole with a footing. */
+.core.cm::after {
+  width: 2px;
+  margin-left: -1px;
+  background: linear-gradient(90deg, #c4d1dd, #607385);
+}
+.cmk .up::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -1.5px;
+  width: 8px;
+  height: 3px;
+  border-radius: 50%;
+  background: #1d2c3a;
+  box-shadow: 0 0 0 0.6px rgb(160 190 215 / 0.35);
+}
+
+/* The pads and the yard read as paving, not as a dark hole. */
+.pz {
+  background:
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.015) 0 2px, transparent 2px 5px), #24364a;
+  box-shadow:
+    inset 0 0 0 1px rgb(170 200 230 / 0.18),
+    inset 0 0 0 2.5px rgb(8 16 26 / 0.18);
+}
+.yard {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.03) 0 0.7px, transparent 0.7px 5px), #202f3d;
+}
+.arm {
+  position: absolute;
+  background: repeating-linear-gradient(90deg, #f3f6f8 0 3px, #ff4b5d 3px 6px);
+  border-radius: 1px;
+}
+.arm.post {
+  background: linear-gradient(135deg, #cfd9e2, #7f93a5);
+}
+
+/* The existing scene modes reach the new parts. */
+.scene[data-heat='1'] .bx > .fs,
+.scene[data-heat='1'] .bx > .fe {
+  background: linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.scene[data-heat='1'] .bx > .fe {
+  background: linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.scene[data-heat='1'] .bx > i::before,
+.scene[data-heat='1'] .bx > i::after,
+.scene[data-heat='1'] .rfi,
+.scene[data-heat='1'] .lp {
+  display: none;
+}
+.scene[data-heat='1'] .bx > .ft {
+  background: var(--top);
+}
+.scene[data-focus='dc'] .lp u,
+.scene[data-focus='dc'] .rfi u {
+  opacity: 0.3;
+}
+.scene[data-focus='dc'] .lp::before {
+  opacity: 0.3;
+}
+.scene[data-calm='1'] .lp u,
+.scene[data-calm='1'] .lp::before,
+.scene[data-calm='1'] .rfi u:not(.mast),
+.scene[data-calm='1'] .arm {
+  filter: saturate(0.18) brightness(0.96);
+}
+
+/* Lamps and windows are lit only at night (the scene's `night` switch; the build reads the site's local time). By day
+   the post stays and the light, its pool on the ground and the glow go; the windows are plain glass, the entrance is
+   unlit, and the panes pick up a little more sky. */
+.scene[data-night='0'] .lp::before {
+  display: none;
+}
+.scene[data-night='0'] .lp u {
+  background:
+    radial-gradient(circle at 50% 3.5px, #7f8fa0 0 1.3px, transparent 1.6px),
+    linear-gradient(90deg, transparent 3px, #8fa1b4 3px 4px, transparent 4px) 0 4px / 100% 100% no-repeat;
+}
+.scene[data-night='0'] .bx > .fs::after,
+.scene[data-night='0'] .bx > .fe::after {
+  display: none;
+}
+.scene[data-night='0'] .bx > i {
+  --door: linear-gradient(180deg, #4b6178, #34485d) var(--dx) 100% / var(--dw) 4.4px no-repeat;
+  --ground: linear-gradient(0deg, rgb(8 16 26 / 0.72) 0 var(--gf), transparent var(--gf));
+}
+.scene[data-night='0'] .bx.w-glass > .fs::before,
+.scene[data-night='0'] .bx.w-glass > .fe::before {
+  background: linear-gradient(180deg, rgb(170 205 240 / 0.3), rgb(60 100 150 / 0.18));
+}
+.scene[data-night='0'] .bx.w-punch > .fs::before,
+.scene[data-night='0'] .bx.w-punch > .fe::before {
+  background: linear-gradient(180deg, #3a5877, #223c57);
+}
+.scene[data-night='0'] .bx.w-ribbon > .fs::before,
+.scene[data-night='0'] .bx.w-ribbon > .fe::before {
+  background: linear-gradient(180deg, #3f6a88, #29475e);
+}

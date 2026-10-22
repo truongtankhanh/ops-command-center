@@ -170,9 +170,11 @@ Settled by the tech lead on 2026-10-21 (the brief records each, as Q1, Q3, Q4, Q
 Accepted with these four points open; none changes a decision above, and each is settled in the ticket named.
 
 - **Inspector width.** 360 px if the incident sheet's lifecycle stepper and action bar fit (the V3 frame 02 is drawn at
-  360); the tech lead judges the frame on the canvas. It is a layout value, so it does not hold up this ADR.
+  360); the tech lead judges the frame on the canvas. It is a layout value, so it does not hold up this ADR. **Settled 2026-10-22:** the tech lead accepted frame 02 at 360 px, so the
+  inspector is 360 px.
 - **The art source** (generated in the repository, from "procedural first") is derived rather than separately answered;
-  confirm in V3-00.2.
+  confirm in V3-00.2. **Settled 2026-10-22:** generated in the repository, and free **CC0** assets are welcome as inputs to the same
+  script (brief Q11), each recorded in `ops/environment/SOURCES.md`.
 - **Follow selection's scope** (per browser, as the other account-menu switches) is to be confirmed against
   `UserMenu.tsx` in V3-17.
 - **How the Low change reaches the control room** (a release-notes line and a legend entry are decided; who tells the

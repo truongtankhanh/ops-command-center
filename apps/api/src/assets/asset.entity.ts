@@ -57,6 +57,14 @@ export class AssetEntity {
   @Column({ name: 'heading_deg', type: 'double precision' })
   headingDeg: number;
 
+  /**
+   * One of the zone's levels (ADR-0023); `null` when the asset has none. A plain column on purpose:
+   * the database enforces the key (`fk_asset_level`, composite with `zone_id`), so a level of
+   * another building is refused.
+   */
+  @Column({ name: 'level_code', type: 'varchar', length: 8, nullable: true })
+  levelCode: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
@@ -78,6 +86,7 @@ export class AssetEntity {
       position: [this.lng, this.lat],
       elevationM: this.elevationM,
       headingDeg: this.headingDeg,
+      levelCode: this.levelCode,
       headline,
     };
   }
