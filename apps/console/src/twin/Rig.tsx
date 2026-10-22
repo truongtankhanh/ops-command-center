@@ -14,6 +14,7 @@ import {
   fitBounds,
   type FitBox,
   flyProgress,
+  HOME_FOV_DEG,
   HOME_TILT_DEG,
   HOME_YAW_DEG,
   homeView,
@@ -23,9 +24,11 @@ import {
   poseToPosition,
   positionToPose,
   unionLimits,
+  type Vec3,
 } from '../lib/twinCamera';
 import { PENDING_SHOW_MS, registerTwinCommands, twinCommands } from '../lib/twinCommands';
 import { levelOf } from '../lib/twinLevel';
+import { holdDelta, padStep } from '../lib/twinPan';
 import { startAssetBoxOf, startBoxOf } from '../lib/twinLevelCamera';
 import { type Bounds, panBounds } from '../lib/twinScene';
 import { useConsole } from '../store';
@@ -116,9 +119,10 @@ interface RigProps {
  *   (`setBoundary`), wheel zoom toward the cursor, a response of about 300 ms. The controls take a level's
  *   distance limits when a flight to it has landed (and at the first view); during the flight they allow both
  *   levels' range, or the library would clamp a camera still far from the new range in a jump.
- * - **Mouse:** drag orbits, right-drag or Shift-drag pans along the ground (`SCREEN_PAN`), wheel zooms.
- *   camera-controls has no modifier-key setting, so Shift switches the left button while it is held.
- *   **Touch:** one finger orbits, two fingers pan and pinch.
+ * - **Mouse:** with the Orbit tool (the default) a drag orbits and with the Pan tool (`panTool` in the store, V3-29) a drag
+ *   pans along the ground (`SCREEN_PAN`); `Shift` held does the other one, so the modifier always means "the other tool".
+ *   Right-drag pans and the wheel zooms in both. camera-controls has no modifier-key setting, so the rig switches the left
+ *   button while `Shift` is held. **Touch:** one finger orbits (pans with the Pan tool), two fingers pan and pinch.
  * - **Fly-to** is a timed tween of ours (the library's transitions are smoothing, not a duration): per drawn
  *   frame, `flyPath` and `setLookAt`, 600 ms, ending exactly on the target; a drag or a touch cancels it; under
  *   reduced motion it is one frame. It runs before the controls update (priority −2 < −1) so each frame
@@ -140,6 +144,10 @@ interface RigProps {
  *   by itself.
  * - **The keys** (V2-18.3) reach the camera through `rotateBy`, `tiltBy`, `panBy` and `zoomBy`: relative, smoothed moves that
  *   take the camera back from a fly-to and inherit the limits above (`unverified`: the feel of the steps, by eye).
+ * - **The pad** (V3-29) reaches it through `panStep` (one press: a share of the visible ground width, gliding), `panHold` (a
+ *   held press: a continuous move each frame, with no easing tail, until it is let go) and `centreOn` (the target to an
+ *   asset's box or an incident's beacon, the distance, yaw and tilt kept). All go through the pan box, so the view stops at
+ *   the site's edge. Under reduced motion a step lands at once; a held move is the operator's own action and still moves.
  * - **Locked** (V2-21.6, the video wall): `CameraControls` is disabled, so a stray wheel, drag or touch does nothing, and no
  *   mouse mapping or Shift listener is set up. Nothing moves the camera but a command (`twinCommands`: V2-21.8's flight), and
  *   there is no idle rotation. The first view is the home view for the stage's own shape, and a change of that shape (the
@@ -162,6 +170,11 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
   );
   const reducedMotion = usePrefersReducedMotion();
   const reduced = useRef(reducedMotion);
+  const panTool = useConsole((state) => state.panTool);
+  // `Shift` held flips the tool for the left button; kept here so a change of tool keeps it right (V3-29).
+  const shiftHeld = useRef(false);
+  // The pad's held direction, a unit vector (`twinCommands.panHold`), or `null`.
+  const hold = useRef<{ dx: number; dy: number } | null>(null);
   const initialBounds = useRef(bounds);
   const initialBoxes = useRef(boxes);
   const initialAssetBoxes = useRef(assetBoxes);
@@ -245,26 +258,33 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
   }, [pan]);
 
   // Mouse and touch. The nested objects are set on the instance (the library reads them through its own setters).
+  // The left button pans when exactly one of "the Pan tool is on" and "Shift is held" is true (V3-29): Shift always means
+  // the other tool. A finger has no Shift, so one finger follows the tool alone.
   useEffect(() => {
     const rig = controls.current;
     if (!rig || locked) return;
-    rig.mouseButtons.left = ACTION.ROTATE;
     rig.mouseButtons.right = ACTION.SCREEN_PAN;
     rig.mouseButtons.wheel = ACTION.DOLLY;
     rig.mouseButtons.middle = ACTION.DOLLY;
-    rig.touches.one = ACTION.TOUCH_ROTATE;
+    rig.touches.one = panTool ? ACTION.TOUCH_SCREEN_PAN : ACTION.TOUCH_ROTATE;
     // Pinch and pan along the ground. The library's readme lists `TOUCH_DOLLY_SCREEN_PAN` for two fingers but its
     // typings leave it out of the union, so the cast only satisfies the type checker (`unverified` on a device).
     rig.touches.two = ACTION.TOUCH_DOLLY_SCREEN_PAN as typeof ACTION.TOUCH_DOLLY_TRUCK;
     rig.touches.three = ACTION.TOUCH_SCREEN_PAN;
 
-    const shiftPans = (held: boolean) => {
-      rig.mouseButtons.left = held ? ACTION.SCREEN_PAN : ACTION.ROTATE;
+    const mapLeft = () => {
+      rig.mouseButtons.left = panTool !== shiftHeld.current ? ACTION.SCREEN_PAN : ACTION.ROTATE;
     };
+    mapLeft();
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Shift') shiftPans(event.type === 'keydown');
+      if (event.key !== 'Shift') return;
+      shiftHeld.current = event.type === 'keydown';
+      mapLeft();
     };
-    const onBlur = () => shiftPans(false);
+    const onBlur = () => {
+      shiftHeld.current = false;
+      mapLeft();
+    };
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKey);
     window.addEventListener('blur', onBlur);
@@ -273,7 +293,7 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
       window.removeEventListener('keyup', onKey);
       window.removeEventListener('blur', onBlur);
     };
-  }, [locked]);
+  }, [locked, panTool]);
 
   // A drag or a touch takes the camera back from a fly-to. (The wheel does not emit this event; a wheel turn in
   // the 600 ms is overridden by the tween's next frame.)
@@ -374,14 +394,65 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
       panBy: (dx, dy) => {
         flight.current = null;
         // `truck` moves the target along the camera's right and `forward` along the ground, not along the view ray.
+        // Under reduced motion it lands without the glide (V3-29 extends this to the keys too).
         const { distance } = currentPose(rig);
-        void rig.truck(dx * distance, 0, true);
-        void rig.forward(dy * distance, true);
+        const glide = !reduced.current;
+        void rig.truck(dx * distance, 0, glide);
+        void rig.forward(dy * distance, glide);
+      },
+      // The pad (V3-29). One press is a share of the visible ground width, the same on any stage and at any distance.
+      panStep: (dx, dy) => {
+        flight.current = null;
+        const step = padStep(HOME_FOV_DEG, aspect());
+        const { distance } = currentPose(rig);
+        const glide = !reduced.current;
+        void rig.truck(dx * step * distance, 0, glide);
+        void rig.forward(dy * step * distance, glide);
+      },
+      // A held press: the direction is read by the frame loop below, which also asks the canvas for frames while it lasts.
+      panHold: (direction) => {
+        hold.current = direction;
+        if (direction === null) {
+          reportDemand('panning', false);
+          return;
+        }
+        flight.current = null;
+        reportDemand('panning', true);
+        get().invalidate();
+      },
+      // The target goes to the middle of the asset's box or the incident's ground point; distance, yaw and tilt stay.
+      centreOn: (target) => {
+        let middle: Vec3 | null = null;
+        if (target.kind === 'asset') {
+          const box = latestAssetBoxes.current.get(target.code);
+          if (box !== undefined) {
+            middle = [
+              (box.bounds.minX + box.bounds.maxX) / 2,
+              (box.baseM ?? 0) + box.heightM / 2,
+              (box.bounds.minZ + box.bounds.maxZ) / 2,
+            ];
+          }
+        } else {
+          const beacon = latestBeacons.current.find((candidate) => candidate.id === target.id);
+          if (beacon !== undefined) {
+            middle = [beacon.position[0], beacon.position[1], beacon.position[2]];
+          }
+        }
+        if (middle !== null) flyTo({ ...currentPose(rig), target: middle });
       },
       faceNorth: () => flyTo({ ...currentPose(rig), yaw: 0 }),
       current: () => currentPose(rig),
     });
-  }, [bounds, pan, get, locked]);
+  }, [bounds, pan, get, locked, reportDemand]);
+
+  // A hold never outlives the rig it was made on.
+  useEffect(
+    () => () => {
+      hold.current = null;
+      reportDemand('panning', false);
+    },
+    [reportDemand],
+  );
 
   // The fly-to. Priority −2: before the controls' own update (−1), so the pose set here is applied in this frame.
   useFrame(() => {
@@ -399,6 +470,19 @@ export function Rig({ bounds, boxes, assetBoxes, beacons, locked = false }: RigP
     }
     // `FrameDriver` asks for the next frame while the flight lasts; this runs below its priority (−2 < 0).
     reportDemand('flying', progress < 1);
+  }, -2);
+
+  // The pad's held move: each drawn frame moves the target by a share of the distance, without an easing tail. Priority -2
+  // like the fly-to, so it lands in this frame; it asks for the next frame while a button is held (`FrameDriver`).
+  useFrame((_, delta) => {
+    const rig = controls.current;
+    const held = hold.current;
+    if (!rig || held === null) return;
+    const move = holdDelta(held, delta);
+    const { distance } = currentPose(rig);
+    void rig.truck(move.dx * distance, 0, false);
+    void rig.forward(move.dy * distance, false);
+    reportDemand('panning', true);
   }, -2);
 
   return (

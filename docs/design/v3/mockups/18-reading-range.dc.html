@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reading range</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.col{position:absolute;top:30px;width:330px}
+.col .lab{font-size:12px;line-height:16px;color:#8fa5bf;margin-bottom:10px;height:48px}
+.col .lab b{color:#e7f2ff;font-size:14px;font-weight:600;display:block;margin-bottom:2px}
+.col .box{display:flex;flex-direction:column;gap:10px;height:790px;padding:14px;border-radius:12px;border:1px solid #1e3450;background:rgb(13 28 45 / .95);box-shadow:0 18px 48px rgb(0 0 0 / .55)}
+.rg{display:flex;gap:2px;padding:3px;border-radius:8px;border:1px solid #1e3450;background:#07111f}
+.rg span{flex:1;display:flex;align-items:center;justify-content:center;height:30px;border-radius:6px;font-size:12px;font-weight:500;color:#a9bed6;text-align:center}
+.rg span.on{background:rgb(49 133 255 / .16);color:#e7f2ff;box-shadow:inset 0 0 0 1px #3185ff}
+.pt{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;border:1px solid #1e3450;background:#142940}
+.sk{border-radius:6px;background:linear-gradient(90deg,#1c3552,#244264,#1c3552);background-size:200% 100%;animation:shim 1.4s linear infinite}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){.sk{animation:none}}
+.hd{display:flex;align-items:center;gap:10px}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="col" style="left:24px">
+<div class="lab"><b>18a 1 h loaded</b>The range switch above the charts. The window is shown in words under each chart.</div>
+<div class="box">
+<div class="hd"><span class="sb" style="font-size:15px">Telemetry</span><span class="t3 xs" style="margin-left:auto">Smoke detector SD-0043</span></div>
+<div class="rg" role="group" aria-label="Reading range"><span>15 min</span><span class="on">1 h</span><span>Around the alarm</span></div>
+<div class="pt"><div class="row" style="justify-content:space-between"><span class="s12 t2">Smoke level</span><span class="sb num" style="color:#ff426d">12.8 ppm</span></div><svg viewBox="0 0 280 64" width="100%" height="64" role="img" aria-label="Smoke level over one hour"><line x1="0" x2="280" y1="24" y2="24" stroke="#5a7488" stroke-dasharray="4 4"/><polyline points="0,54 30,53 60,54 90,52 120,53 150,52 180,50 205,46 225,40 245,30 262,18 276,8" fill="none" stroke="#35e7ff" stroke-width="2"/><polyline points="245,30 262,18 276,8" fill="none" stroke="#ff426d" stroke-width="2.5"/><circle cx="276" cy="8" r="4" fill="#ff426d"/></svg><div class="row xs t3" style="justify-content:space-between"><span>14:42</span><span>limit 10 ppm</span><span>15:42</span></div></div>
+<div class="pt"><div class="row" style="justify-content:space-between"><span class="s12 t2">Temperature</span><span class="sb num">62.4 °C</span></div><svg viewBox="0 0 280 40" width="100%" height="40" role="img" aria-label="Temperature over one hour"><polyline points="0,32 40,32 80,31 120,31 160,30 200,26 240,16 276,8" fill="none" stroke="#35e7ff" stroke-width="2"/></svg></div>
+<div class="pt"><div class="row" style="justify-content:space-between"><span class="s12 t2">Humidity</span><span class="sb num">45.2 %</span></div><svg viewBox="0 0 280 40" width="100%" height="40" role="img" aria-label="Humidity over one hour"><polyline points="0,10 40,11 80,12 120,12 160,14 200,18 240,22 276,24" fill="none" stroke="#8b7cff" stroke-width="2"/></svg></div>
+<div class="t3 xs" style="margin-top:auto">Window 14:42–15:42. Read from the stored 5-second samples; the last bucket can still change.</div>
+</div>
+</div>
+
+<div class="col" style="left:372px">
+<div class="lab"><b>18b Around the alarm</b>From 10 minutes before the incident was raised to 5 minutes after, with the raise marked.</div>
+<div class="box">
+<div class="hd"><span class="sb" style="font-size:15px">Telemetry</span><span class="t3 xs" style="margin-left:auto">Smoke detector SD-0043</span></div>
+<div class="rg"><span>15 min</span><span>1 h</span><span class="on">Around the alarm</span></div>
+<div class="pt"><div class="row" style="justify-content:space-between"><span class="s12 t2">Smoke level</span><span class="sb num">15:29 – 15:44</span></div><svg viewBox="0 0 280 74" width="100%" height="74" role="img" aria-label="Smoke level from ten minutes before the alarm to five after"><line x1="0" x2="280" y1="34" y2="34" stroke="#5a7488" stroke-dasharray="4 4"/><line x1="186" x2="186" y1="0" y2="66" stroke="#ff426d" stroke-dasharray="3 3"/><text x="190" y="10" fill="#ff8da1" font-size="10">raised 15:39</text><polyline points="0,60 30,59 60,60 90,58 120,57 150,52 172,42 186,34" fill="none" stroke="#35e7ff" stroke-width="2"/><polyline points="186,34 214,22 244,16 276,10" fill="none" stroke="#ff426d" stroke-width="2.5"/></svg><div class="row xs t3" style="justify-content:space-between"><span>−10 min</span><span>+5 min</span></div></div>
+<div class="t2 s12">The rule fired when the reading stayed above 10 ppm for 60 s.</div>
+<div class="t3 xs" style="margin-top:auto">Shown only for an incident raised by telemetry; others offer 15 min and 1 h.</div>
+</div>
+</div>
+
+<div class="col" style="left:720px">
+<div class="lab"><b>18c Loading and error</b>Skeletons keep the layout still. An error keeps the 15 min data and offers Retry.</div>
+<div class="box">
+<div class="hd"><span class="sb" style="font-size:15px">Telemetry</span></div>
+<div class="rg"><span>15 min</span><span class="on">1 h</span><span>Around the alarm</span></div>
+<div class="pt"><div class="sk" style="height:14px;width:40%"></div><div class="sk" style="height:64px;margin-top:8px"></div><div class="sk" style="height:10px;width:100%;margin-top:6px"></div></div>
+<div class="pt"><div class="sk" style="height:14px;width:35%"></div><div class="sk" style="height:40px;margin-top:8px"></div></div>
+<div class="s12 t2" role="status">Loading the last hour…</div>
+<div style="height:1px;background:#1e3450;margin:6px 0"></div>
+<div class="row" style="gap:10px;padding:12px;border-radius:8px;border:1px solid rgb(255 141 161 / .5);background:rgb(255 141 161 / .08)" role="alert"><svg class="ic l" style="color:#ff8da1" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><div style="flex:1"><div class="sb" style="font-size:13px">Could not load the last hour</div><div class="t2 xs">The 15 minutes already shown are unchanged.</div></div><button class="btn s">Retry</button></div>
+<div class="t3 xs" style="margin-top:auto">A fetched range is kept for 30 s per asset and range; switching back does not call the route again.</div>
+</div>
+</div>
+
+<div class="col" style="left:1068px">
+<div class="lab"><b>18d Empty and stale</b>A range with no readings says so; a gap in the data is drawn, never joined.</div>
+<div class="box">
+<div class="hd"><span class="sb" style="font-size:15px">Telemetry</span></div>
+<div class="rg"><span>15 min</span><span class="on">1 h</span><span>Around the alarm</span></div>
+<div class="pt" style="border-style:dashed"><div class="row" style="justify-content:space-between"><span class="s12 t2">Motor temperature</span><span class="sb num t2">last 71.2 °C · 2 min old</span></div><svg viewBox="0 0 280 54" width="100%" height="54" role="img" aria-label="Motor temperature stops at a gap"><polyline points="0,40 40,39 80,38 120,36 150,34 170,32" fill="none" stroke="#8fa5bf" stroke-width="2"/><rect x="170" y="4" width="110" height="46" fill="none" stroke="#5a7488" stroke-dasharray="3 3"/><text x="225" y="30" fill="#8fa5bf" font-size="10" text-anchor="middle">no data</text></svg></div>
+<div class="pt" style="align-items:center;padding:22px 10px;border-style:dashed"><svg class="ic xl t3" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></svg><div class="s12 t2 sb">No readings in this range</div><div class="t3 xs" style="text-align:center">The asset sent nothing between 14:42 and 15:42. Try 15 min or the other range.</div></div>
+<div class="t3 xs" style="margin-top:auto">Longer history, or a campus-wide replay, needs a new endpoint: V4.</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

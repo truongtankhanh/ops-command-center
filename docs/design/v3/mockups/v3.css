@@ -1,0 +1,2539 @@
+/*
+ * Ops Console V3 — mockup tokens and shared classes (frames 00–14).
+ * Values are the direction's palette (IoT_Digital_Twin_UI_Design_Direction.pdf) as proposed in brief.md § Colour.
+ * Surfaces 2–3, --accent-ink and --sev-low are mockup proposals: V3-02 computes the final contrast table.
+ */
+:root {
+  --s0: #07111f;
+  --s1: #0d1c2d;
+  --s2: #142940;
+  --s3: #1c3552;
+  --camera-ground: #050c16;
+  --border: #1e3450;
+  --border-strong: #5a7488;
+  --t1: #e7f2ff;
+  --t2: #a9bed6;
+  --t3: #8fa5bf;
+  --accent: #3185ff;
+  --accent-ink: #6aa6ff;
+  --accent-tint: rgb(49 133 255 / 0.16);
+  --accent-2: #8b7cff;
+  --signal: #35e7ff;
+  --crit: #ff426d;
+  --high: #ffad42;
+  --med: #f2d04b;
+  --low: #8fa3b8;
+  --crit-bg: rgb(255 66 109 / 0.15);
+  --high-bg: rgb(255 173 66 / 0.15);
+  --med-bg: rgb(242 208 75 / 0.14);
+  --low-bg: rgb(143 163 184 / 0.16);
+  --crit-bd: rgb(255 66 109 / 0.5);
+  --high-bd: rgb(255 173 66 / 0.5);
+  --med-bd: rgb(242 208 75 / 0.5);
+  --low-bd: rgb(143 163 184 / 0.45);
+  --ok: #35e0a1;
+  --warn: #e8c070;
+  --danger: #ff8da1;
+  --r-s: 4px;
+  --r-m: 8px;
+  --r-l: 12px;
+  --shadow-panel: 0 18px 48px rgb(0 0 0 / 0.55);
+  --shadow-bar: 0 1px 2px rgb(0 0 0 / 0.4);
+  --edge: 0 0 0 1px var(--accent), 0 0 14px rgb(49 133 255 / 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #030912;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--t1);
+  font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+.root {
+  position: relative;
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+  background: var(--s0);
+  font-size: 13px;
+  line-height: 18px;
+}
+.ic {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+.ic.l {
+  width: 20px;
+  height: 20px;
+}
+.ic.xl {
+  width: 24px;
+  height: 24px;
+}
+.ic.s {
+  width: 14px;
+  height: 14px;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.t2 {
+  color: var(--t2);
+}
+.t3 {
+  color: var(--t3);
+}
+.xs {
+  font-size: 11px;
+  line-height: 14px;
+}
+.s12 {
+  font-size: 12px;
+  line-height: 16px;
+}
+.sb {
+  font-weight: 600;
+}
+.md {
+  font-weight: 500;
+}
+.row {
+  display: flex;
+  align-items: center;
+}
+
+/* ---------- surfaces ---------- */
+.panel {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-l);
+}
+.glass {
+  background: rgb(13 28 45 / 0.9);
+  border: 1px solid var(--border);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow-panel);
+}
+.glass.blur {
+  backdrop-filter: blur(10px);
+  background: rgb(13 28 45 / 0.78);
+}
+
+/* ---------- header ---------- */
+.hdr {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-bar);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 292px;
+}
+.logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #1d4fa8, #0d2c66);
+  border: 1px solid rgb(106 166 255 / 0.5);
+  display: grid;
+  place-items: center;
+  color: var(--t1);
+}
+.kpis {
+  display: flex;
+  gap: 8px;
+}
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 124px;
+  height: 52px;
+  padding: 0 12px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: var(--s2);
+}
+.kpi .v {
+  font-size: 26px;
+  line-height: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.kpi .l {
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--t2);
+}
+.kpi.crit {
+  background: var(--crit-bg);
+  border-color: var(--crit-bd);
+}
+.kpi.high {
+  background: var(--high-bg);
+  border-color: var(--high-bd);
+}
+.kpi.med {
+  background: var(--med-bg);
+  border-color: var(--med-bd);
+}
+.kpi.low {
+  background: var(--low-bg);
+  border-color: var(--low-bd);
+}
+.kpi.crit .ic {
+  color: var(--crit);
+}
+.kpi.high .ic {
+  color: var(--high);
+}
+.kpi.med .ic {
+  color: var(--med);
+}
+.kpi.low .ic {
+  color: var(--low);
+}
+.kpi.hot {
+  background: color-mix(in srgb, var(--crit) 20%, var(--s1));
+  border-color: var(--crit);
+  box-shadow: 0 0 0 3px rgb(255 66 109 / 0.22);
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  font-weight: 500;
+  background: var(--s2);
+}
+.pill.live {
+  color: var(--signal);
+  border-color: rgb(53 231 255 / 0.45);
+  background: rgb(53 231 255 / 0.08);
+}
+.pill.warn {
+  color: var(--warn);
+  border-color: rgb(232 192 112 / 0.5);
+  background: rgb(232 192 112 / 0.1);
+}
+.pill.off {
+  color: var(--t2);
+  border-style: dashed;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--t1);
+  font: 500 13px/18px 'Inter', sans-serif;
+  white-space: nowrap;
+}
+.btn.p {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #07111f;
+  font-weight: 600;
+}
+.btn.s {
+  height: 36px;
+  padding: 0 12px;
+}
+.btn.ghost {
+  border-color: var(--border);
+  background: var(--s2);
+}
+.btn.edge {
+  box-shadow: var(--edge);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgb(7 17 31 / 0.35);
+  border: 1px solid rgb(7 17 31 / 0.35);
+  font-size: 11px;
+  font-weight: 600;
+}
+.btn:not(.p) .kbd {
+  background: var(--s3);
+  border-color: var(--border);
+  color: var(--t2);
+}
+.acct {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 10px;
+  border-radius: var(--r-m);
+}
+.av {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--s3);
+  border: 1px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+}
+.clock .t {
+  font-size: 20px;
+  line-height: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- tabs, chips, inputs ---------- */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  color: var(--t2);
+  font-weight: 500;
+}
+.tab .n {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--s3);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  color: var(--t1);
+}
+.tab.on {
+  color: var(--t1);
+}
+.tab.on::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgb(49 133 255 / 0.7);
+}
+.tab.on .n {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  flex: 1;
+  padding: 0 12px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border-strong);
+  background: var(--s0);
+  color: var(--t3);
+}
+.ibtn {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border-strong);
+  background: var(--s0);
+  display: grid;
+  place-items: center;
+  color: var(--t2);
+  flex: none;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  color: var(--t2);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--s1);
+}
+.chip.on {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.chip .n {
+  font-size: 11px;
+  color: var(--t3);
+}
+
+/* ---------- severity ---------- */
+.sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px 0 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+}
+.sev.crit {
+  color: var(--crit);
+  background: var(--crit-bg);
+  border-color: var(--crit-bd);
+}
+.sev.high {
+  color: var(--high);
+  background: var(--high-bg);
+  border-color: var(--high-bd);
+}
+.sev.med {
+  color: var(--med);
+  background: var(--med-bg);
+  border-color: var(--med-bd);
+}
+.sev.low {
+  color: var(--low);
+  background: var(--low-bg);
+  border-color: var(--low-bd);
+}
+.sev .ic {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---------- sidebar ---------- */
+.side {
+  position: absolute;
+  left: 12px;
+  top: 84px;
+  width: 348px;
+  bottom: 44px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.side .head {
+  padding: 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rows {
+  flex: 1;
+  overflow: hidden;
+  padding: 8px 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.irow {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: var(--r-m);
+  border: 1px solid transparent;
+}
+.irow .tile {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-m);
+  display: grid;
+  place-items: center;
+  border: 1px solid;
+  flex: none;
+}
+.tile.crit {
+  color: var(--crit);
+  background: var(--crit-bg);
+  border-color: var(--crit-bd);
+}
+.tile.high {
+  color: var(--high);
+  background: var(--high-bg);
+  border-color: var(--high-bd);
+}
+.tile.med {
+  color: var(--med);
+  background: var(--med-bg);
+  border-color: var(--med-bd);
+}
+.tile.low {
+  color: var(--low);
+  background: var(--low-bg);
+  border-color: var(--low-bd);
+}
+.irow .body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.irow .ttl {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.irow .meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--t2);
+}
+.irow .age {
+  font-size: 12px;
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+.irow.sel {
+  background: var(--s2);
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent), 0 0 18px rgb(49 133 255 / 0.18);
+}
+.irow.new::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-m);
+  background: var(--accent-tint);
+  pointer-events: none;
+}
+.irow.hotrow {
+  background: color-mix(in srgb, var(--crit) 9%, var(--s1));
+}
+
+/* ---------- stage ---------- */
+.stage {
+  position: absolute;
+  left: 372px;
+  top: 84px;
+  width: 1056px;
+  height: 590px;
+  border-radius: var(--r-l);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--s0);
+}
+.stage .vig {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, transparent 52%, rgb(3 8 16 / 0.72) 100%);
+}
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: rgb(13 28 45 / 0.9);
+}
+.seg .o {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--t2);
+  font-weight: 500;
+}
+.seg .o.on {
+  background: var(--accent-tint);
+  color: var(--t1);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.layers {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: rgb(13 28 45 / 0.9);
+}
+.layers .o {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: var(--t2);
+  font-weight: 500;
+}
+.layers .o.on {
+  color: var(--t1);
+  background: var(--s3);
+}
+.rail {
+  position: absolute;
+  left: 12px;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: rgb(13 28 45 / 0.9);
+}
+.rail .b {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--t2);
+}
+.rail .b.on {
+  color: var(--accent-ink);
+  background: var(--accent-tint);
+}
+.scalebar {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--t2);
+}
+.scalebar .bar {
+  width: 120px;
+  height: 6px;
+  border: 1px solid var(--t3);
+  border-top: 0;
+}
+.legend {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--t2);
+}
+.legend .i {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ---------- camera strip ---------- */
+.strip {
+  position: absolute;
+  left: 372px;
+  top: 686px;
+  width: 1056px;
+  height: 170px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.strip .tiles {
+  display: flex;
+  gap: 10px;
+}
+.cam {
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: none;
+}
+.cam .th {
+  position: relative;
+  height: 84px;
+  border-radius: var(--r-m);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--camera-ground);
+}
+.cam.first .th {
+  border-color: var(--crit);
+  box-shadow: 0 0 0 1px var(--crit-bd);
+}
+.cam .live {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgb(5 12 22 / 0.78);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.cam .live i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+}
+.cam .cd {
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  padding: 0 6px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgb(5 12 22 / 0.78);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--t2);
+}
+.cam .tm {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  font-size: 10px;
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+.cam .nm {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--t1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.feed-a {
+  background: linear-gradient(180deg, #16314a 0%, #0e2236 55%, #0a1827 100%);
+}
+.feed-a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 38%, rgb(255 255 255 / 0.07) 38% 40%, transparent 40% 60%, rgb(255 255 255 / 0.07) 60% 62%, transparent 62%),
+    linear-gradient(0deg, rgb(255 255 255 / 0.05) 0 28%, transparent 28%);
+}
+.feed-b {
+  background: linear-gradient(180deg, #1d3550 0%, #12273b 60%, #0b1a29 100%);
+}
+.feed-b::before {
+  content: '';
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  top: 28%;
+  bottom: 0;
+  background: linear-gradient(180deg, #284767, #17314a);
+  clip-path: polygon(14% 0, 86% 0, 100% 100%, 0 100%);
+}
+.feed-c {
+  background: linear-gradient(180deg, #1a3b3e 0%, #10282c 55%, #0b1b20 100%);
+}
+.feed-c::before {
+  content: '';
+  position: absolute;
+  inset: 40% 8% 0 8%;
+  background: repeating-linear-gradient(90deg, #243f46 0 22px, #1a3037 22px 26px);
+}
+.feed-d {
+  background: linear-gradient(180deg, #1b3350 0%, #112a45 50%, #0a1a2c 100%);
+}
+.feed-d::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  background: linear-gradient(180deg, #223b52, #13263a);
+}
+.feed-off {
+  background: repeating-linear-gradient(135deg, #081019 0 8px, #0a1520 8px 16px);
+}
+
+/* ---------- status bar ---------- */
+.sbar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 16px;
+  background: var(--s1);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--t2);
+}
+.sbar .g {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sbar .ok {
+  color: var(--ok);
+  font-weight: 500;
+}
+
+/* ---------- inspector ---------- */
+.insp {
+  position: absolute;
+  left: 1068px;
+  top: 84px;
+  width: 360px;
+  height: 772px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: rgb(13 28 45 / 0.95);
+  border: 1px solid var(--border);
+  border-radius: var(--r-l);
+  box-shadow: var(--shadow-panel);
+}
+.insp .ph {
+  display: flex;
+  gap: 12px;
+  padding: 14px 14px 10px;
+}
+.insp .tile {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-m);
+  display: grid;
+  place-items: center;
+  border: 1px solid;
+  flex: none;
+}
+.insp .ttl {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.insp .pm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px 10px;
+  font-size: 12px;
+  color: var(--t2);
+}
+.insp .tabs .tab {
+  padding: 0 11px;
+  height: 40px;
+  font-size: 13px;
+}
+.insp .pb {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.insp .pf {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--s1);
+}
+.insp .pf .btn {
+  flex: 1;
+}
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-m);
+  background: var(--s1);
+}
+.card .ch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.kv {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  row-gap: 6px;
+  padding: 0 12px 12px;
+  font-size: 12px;
+}
+.kv .k {
+  color: var(--t3);
+}
+.stepper {
+  display: flex;
+  align-items: center;
+}
+.stepper .st {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--t3);
+  font-weight: 500;
+}
+.stepper .st i {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+}
+.stepper .st.done {
+  color: var(--t1);
+}
+.stepper .st.done i {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #07111f;
+}
+.stepper .st.cur {
+  color: var(--t1);
+}
+.stepper .st.cur i {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-tint);
+}
+.stepper .ln {
+  flex: 1;
+  height: 2px;
+  background: var(--border-strong);
+  margin: 0 8px;
+  min-width: 14px;
+}
+.stepper .ln.done {
+  background: var(--accent);
+}
+.tiles3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.lt {
+  padding: 8px 10px;
+  border-radius: var(--r-m);
+  border: 1px solid var(--border);
+  background: var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lt .a {
+  font-size: 11px;
+  color: var(--t3);
+}
+.lt .b {
+  font-size: 18px;
+  line-height: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.lt .b small {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--t2);
+  margin-left: 2px;
+}
+.lt .d {
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.lt .d.up {
+  color: var(--high);
+}
+.lt .d.dn {
+  color: var(--t2);
+}
+.lt .d.fl {
+  color: var(--t3);
+}
+
+/* ---------- toast ---------- */
+.toast {
+  position: absolute;
+  width: 392px;
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+  border-radius: var(--r-l);
+  background: var(--s3);
+  border: 1px solid var(--crit);
+  box-shadow: var(--shadow-panel), 0 0 0 3px rgb(255 66 109 / 0.18);
+}
+
+/* ---------- scene ---------- */
+.scene {
+  position: relative;
+  width: 1056px;
+  height: 590px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 42%, #10253b 0, #0a1a2c 45%, #060f1b 100%);
+}
+.plane {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1000px;
+  height: 800px;
+  margin: -400px 0 0 -500px;
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+}
+.gnd {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 20%, #17303f 0, #112634 55%, #0e202c 100%);
+  border-radius: 14px;
+  box-shadow: 0 0 0 10px #0b1a27, 0 0 0 11px #1a3144;
+}
+.gnd::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: repeating-linear-gradient(90deg, rgb(255 255 255 / 0.012) 0 3px, transparent 3px 6px);
+}
+.flat {
+  position: absolute;
+}
+.rd {
+  position: absolute;
+  background: #162533;
+  box-shadow: inset 0 0 0 1px rgb(150 180 210 / 0.1);
+}
+.rd.h {
+  background: linear-gradient(90deg, #8aa0b5 0 14px, transparent 14px 28px) 0 50% / 28px 2px repeat-x, #162533;
+}
+.rd.v {
+  background: linear-gradient(0deg, #8aa0b5 0 14px, transparent 14px 28px) 50% 0 / 2px 28px repeat-y, #162533;
+}
+.lawn {
+  position: absolute;
+  border-radius: 10px;
+  background: repeating-linear-gradient(0deg, #1d4a35 0 14px, #1a4130 14px 28px);
+  box-shadow: inset 0 0 0 2px #245a41;
+}
+.field {
+  position: absolute;
+  border-radius: 8px;
+  background: repeating-linear-gradient(90deg, #226b45 0 20px, #1f6140 20px 40px);
+  box-shadow: inset 0 0 0 3px #d5e8dd55;
+}
+.field::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #d5e8dd66;
+}
+.field::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  border: 2px solid #d5e8dd66;
+}
+.lake {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 38% 34%, #2a7399 0, #1a5273 38%, #103550 100%);
+  box-shadow: 0 0 0 8px #1d4a35, 0 0 0 10px #245a41, inset 0 0 22px rgb(0 0 0 / 0.4);
+}
+.park {
+  position: absolute;
+  background: repeating-linear-gradient(90deg, rgb(200 220 240 / 0.28) 0 2px, transparent 2px 18px), #152331;
+  box-shadow: inset 0 0 0 1px rgb(150 180 210 / 0.12);
+  border-radius: 4px;
+}
+.car {
+  position: absolute;
+  width: 11px;
+  height: 18px;
+  border-radius: 3px;
+}
+.bx {
+  position: absolute;
+  width: var(--w);
+  height: var(--d);
+  transform-style: preserve-3d;
+}
+.bx > i {
+  position: absolute;
+  display: block;
+}
+.bx .sh {
+  inset: 0;
+  background: rgb(2 6 12 / 0.55);
+  filter: blur(4px);
+  transform: translate(calc(var(--h) * 0.55), calc(var(--h) * -0.2)) scale(1.04);
+}
+.bx .ft {
+  inset: 0;
+  transform: translateZ(var(--h));
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.08), transparent 55%), var(--top);
+  box-shadow: inset 0 0 0 1.2px rgb(0 0 0 / 0.28);
+}
+.bx .fs {
+  left: 0;
+  top: calc(0px - var(--h) + var(--d));
+  width: var(--w);
+  height: var(--h);
+  transform-origin: 50% 100%;
+  transform: rotateX(-90deg);
+  background-image: repeating-linear-gradient(0deg, var(--sw) 0 1.6px, transparent 1.6px 5.9px),
+    repeating-linear-gradient(90deg, var(--sw) 0 1.4px, transparent 1.4px 4.6px),
+    repeating-linear-gradient(90deg, transparent 0 14px, rgb(255 205 130 / 0.42) 14px 18.4px, transparent 18.4px 32px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx .fe {
+  left: var(--w);
+  top: calc(0px - var(--h));
+  width: var(--d);
+  height: var(--h);
+  transform-origin: 0 100%;
+  transform: rotateZ(90deg) rotateX(-90deg);
+  background-image: repeating-linear-gradient(0deg, var(--ew) 0 1.6px, transparent 1.6px 5.9px),
+    repeating-linear-gradient(90deg, var(--ew) 0 1.4px, transparent 1.4px 4.6px),
+    repeating-linear-gradient(90deg, transparent 0 11px, rgb(255 205 130 / 0.3) 11px 15.4px, transparent 15.4px 27px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.m-conc {
+  --top: #5d7388;
+  --sw: #3f566b;
+  --ew: #2c4054;
+  --sg1: #46698c;
+  --sg2: #2a4863;
+  --eg1: #30506d;
+  --eg2: #1d3750;
+}
+.m-glass {
+  --top: #4f7ba3;
+  --sw: #2c5478;
+  --ew: #1f3f5c;
+  --sg1: #5e93c2;
+  --sg2: #28557c;
+  --eg1: #3c6b93;
+  --eg2: #1c4062;
+}
+.m-brick {
+  --top: #77666c;
+  --sw: #5b4a51;
+  --ew: #3f3339;
+  --sg1: #4a6280;
+  --sg2: #2a3e57;
+  --eg1: #34485f;
+  --eg2: #1f2f43;
+}
+.hv {
+  position: absolute;
+  background: #8aa0b2;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25);
+}
+/* Incident spotlight: the other buildings drop a little in contrast. The filter goes on the flat faces, never on
+   the preserve-3d box, which a filter would flatten. */
+.scene[data-spot='1'][data-sel] .bx > i:not(.sh) {
+  filter: brightness(0.7) saturate(0.8);
+}
+.scene[data-spot='1'][data-sel='sci'] .b-sci > i,
+.scene[data-spot='1'][data-sel='hub'] .b-hub > i,
+.scene[data-spot='1'][data-sel='dmb'] .b-dmb > i,
+.scene[data-spot='1'][data-sel='stc'] .b-stc > i,
+.scene[data-spot='1'][data-sel='spt'] .b-spt > i,
+.scene[data-spot='1'][data-sel='dc'] .b-dc > i {
+  filter: none;
+}
+.tr {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.tr::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: -3px;
+  width: 15px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgb(2 8 14 / 0.42);
+  filter: blur(1.5px);
+}
+.tr u {
+  position: absolute;
+  left: -6px;
+  top: -15px;
+  width: 12px;
+  height: 15px;
+  border-radius: 46% 54% 50% 50%;
+  background: radial-gradient(circle at 30% 28%, rgb(98 168 98 / 0.9) 0, transparent 46%),
+    radial-gradient(circle at 70% 42%, rgb(70 138 80 / 0.9) 0, transparent 52%),
+    radial-gradient(circle at 45% 70%, #14341f 0, transparent 70%),
+    radial-gradient(circle at 40% 40%, #2f6b3b 0, #1d4a2b 55%, #103420 100%);
+  box-shadow: inset -1.5px -2px 3px rgb(2 12 6 / 0.55);
+  transform-origin: 50% 100%;
+  transform: rotateZ(-45deg) rotateX(-60deg);
+  text-decoration: none;
+}
+.tr.sm u {
+  left: -4.5px;
+  top: -10px;
+  width: 9px;
+  height: 10px;
+}
+.tr.dk u {
+  background: radial-gradient(circle at 30% 28%, rgb(84 150 96 / 0.9) 0, transparent 46%),
+    radial-gradient(circle at 45% 70%, #0f2c1a 0, transparent 70%),
+    radial-gradient(circle at 40% 40%, #28603a 0, #17432a 55%, #0d2e1b 100%);
+}
+.bb {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(var(--h));
+}
+.bb .up {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  transform: rotateZ(-45deg) rotateX(-60deg) scale(var(--iz));
+}
+.bb .hl {
+  position: absolute;
+  left: -34px;
+  top: -34px;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+}
+.bb .hl.crit {
+  background: radial-gradient(circle, rgb(255 66 109 / 0.55) 0, rgb(255 66 109 / 0.12) 55%, transparent 70%);
+  border: 1px solid var(--crit-bd);
+}
+.bb .hl.high {
+  background: radial-gradient(circle, rgb(255 173 66 / 0.5) 0, rgb(255 173 66 / 0.1) 55%, transparent 70%);
+  border: 1px solid var(--high-bd);
+}
+.bb .hl.med {
+  background: radial-gradient(circle, rgb(242 208 75 / 0.45) 0, rgb(242 208 75 / 0.1) 55%, transparent 70%);
+  border: 1px solid var(--med-bd);
+}
+.bb .hl.low {
+  background: radial-gradient(circle, rgb(143 163 184 / 0.4) 0, rgb(143 163 184 / 0.08) 55%, transparent 70%);
+  border: 1px solid var(--low-bd);
+}
+.bb .hl.ok {
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  background: radial-gradient(circle, rgb(53 231 255 / 0.4) 0, transparent 70%);
+  border: 1px solid rgb(53 231 255 / 0.4);
+}
+.bb .hl.p::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--crit);
+  animation: pulse 1.8s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb .hl.p::after {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+.core {
+  position: absolute;
+  left: -15px;
+  top: -52px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--s1);
+  border: 2px solid;
+}
+.core::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(180deg, currentColor, transparent);
+}
+.core.crit {
+  color: var(--crit);
+  border-color: var(--crit);
+  box-shadow: 0 0 0 4px var(--crit-bg), 0 0 18px rgb(255 66 109 / 0.5);
+}
+.core.high {
+  color: var(--high);
+  border-color: var(--high);
+  box-shadow: 0 0 0 4px var(--high-bg);
+}
+.core.med {
+  color: var(--med);
+  border-color: var(--med);
+  box-shadow: 0 0 0 4px var(--med-bg);
+}
+.core.low {
+  color: var(--low);
+  border-color: var(--low);
+  box-shadow: 0 0 0 4px var(--low-bg);
+}
+.core.ok {
+  left: -6px;
+  top: -34px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--signal);
+  color: var(--signal);
+  box-shadow: 0 0 10px rgb(53 231 255 / 0.55);
+  background: var(--s0);
+}
+.core.ok::after {
+  height: 14px;
+}
+.core .ic {
+  width: 16px;
+  height: 16px;
+}
+.scene[data-sel='sci'] .m-sci .core,
+.scene[data-sel='hub'] .m-hub .core,
+.scene[data-sel='dmb'] .m-dmb .core,
+.scene[data-sel='stc'] .m-stc .core {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}
+.lbl {
+  position: absolute;
+  left: 0;
+  top: -92px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t1);
+  background: rgb(13 28 45 / 0.88);
+  border: 1px solid rgb(231 242 255 / 0.28);
+}
+.lbl.big {
+  top: -128px;
+  height: 28px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-color: var(--accent);
+  box-shadow: var(--edge);
+}
+.lbl .n {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  color: #07111f;
+}
+.lbl .n.crit {
+  background: var(--crit);
+}
+.lbl .n.high {
+  background: var(--high);
+}
+.lbl .n.med {
+  background: var(--med);
+}
+.lbl .n.low {
+  background: var(--low);
+}
+.lbl .n.neu {
+  background: var(--s3);
+  color: var(--t1);
+}
+.t-far,
+.t-mid,
+.t-near,
+.t-sel {
+  display: none;
+}
+.scene[data-tier='far'] .t-far,
+.scene[data-tier='medium'] .t-mid,
+.scene[data-tier='near'] .t-near {
+  display: flex;
+}
+.scene[data-sel='sci'] .m-sci .t-sel,
+.scene[data-sel='hub'] .m-hub .t-sel,
+.scene[data-sel='dmb'] .m-dmb .t-sel,
+.scene[data-sel='stc'] .m-stc .t-sel {
+  display: flex;
+}
+.scene[data-tier='far'] .core,
+.scene[data-tier='far'] .hl.ok {
+  display: none;
+}
+.scene[data-tier='far'] .core.crit,
+.scene[data-tier='far'] .core.high,
+.scene[data-tier='far'] .core.med,
+.scene[data-tier='far'] .core.low {
+  display: grid;
+}
+.scene[data-tier='far'] .t-hide-far {
+  display: none;
+}
+.scene[data-tier='far'] .hl.crit,
+.scene[data-tier='far'] .hl.high,
+.scene[data-tier='far'] .hl.med,
+.scene[data-tier='far'] .hl.low {
+  display: block;
+}
+.dv {
+  display: none;
+}
+.scene[data-tier='near'] .dv {
+  display: block;
+}
+.mini {
+  position: absolute;
+  height: 20px;
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: rgb(13 28 45 / 0.86);
+  border: 1px solid rgb(53 231 255 / 0.4);
+  color: var(--t1);
+  white-space: nowrap;
+}
+.scene[data-tier='near'] .t-mid {
+  display: flex;
+}
+
+/* Telemetry stale: live rings go grey and dashed, the shape says it, not only the colour. */
+.scene[data-stale='1'] .core.ok {
+  border: 2px dashed #5a7488;
+  color: #8fa5bf;
+  box-shadow: none;
+}
+.scene[data-stale='1'] .hl.ok {
+  background: none;
+  border: 1px dashed #3a5068;
+}
+
+/* Building level: the rest of the campus is faded (ghost), the focused building stays. Opacity goes on the flat
+   faces and labels, never on a preserve-3d box. */
+.scene[data-focus='dc'] .bx:not(.b-dc) > i:not(.sh) {
+  opacity: 0.16;
+}
+.scene[data-focus='dc'] .bx:not(.b-dc) > .sh {
+  opacity: 0;
+}
+.scene[data-focus='dc'] .bb:not(.m-dc) .up,
+.scene[data-focus='dc'] .bb:not(.m-dc) .hl {
+  opacity: 0.16;
+}
+.scene[data-focus='dc'] .tr u {
+  opacity: 0.3;
+}
+
+/* Heat overlay: buildings coloured by indoor temperature on one sequential ramp in the accent's hue. */
+.scene[data-heat='1'] .bx {
+  --top: #2766c4;
+  --sw: #1b4a8f;
+  --ew: #12315f;
+  --sg1: #2766c4;
+  --sg2: #1b4a8f;
+  --eg1: #1b4a8f;
+  --eg2: #12315f;
+}
+.scene[data-heat='1'] .b-adm,
+.scene[data-heat='1'] .b-lib {
+  --top: #1b4a8f;
+  --sw: #12315f;
+  --ew: #0c2347;
+  --sg1: #1b4a8f;
+  --sg2: #12315f;
+  --eg1: #12315f;
+  --eg2: #0c2347;
+}
+.scene[data-heat='1'] .b-stc,
+.scene[data-heat='1'] .b-dma,
+.scene[data-heat='1'] .b-cln,
+.scene[data-heat='1'] .b-hub {
+  --top: #3185ff;
+  --sw: #2766c4;
+  --ew: #1b4a8f;
+  --sg1: #3185ff;
+  --sg2: #2766c4;
+  --eg1: #2766c4;
+  --eg2: #1b4a8f;
+}
+.scene[data-heat='1'] .b-dmb,
+.scene[data-heat='1'] .b-dc {
+  --top: #6aa6ff;
+  --sw: #3185ff;
+  --ew: #2766c4;
+  --sg1: #6aa6ff;
+  --sg2: #3185ff;
+  --eg1: #3185ff;
+  --eg2: #2766c4;
+}
+.scene[data-heat='1'] .b-sci {
+  --top: #b6d5ff;
+  --sw: #6aa6ff;
+  --ew: #3185ff;
+  --sg1: #b6d5ff;
+  --sg2: #6aa6ff;
+  --eg1: #6aa6ff;
+  --eg2: #3185ff;
+}
+.scene[data-heat='1'] .bx > .fs,
+.scene[data-heat='1'] .bx > .fe {
+  background-image: linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.scene[data-heat='1'] .bx > .fe {
+  background-image: linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.scene[data-heat='1'] .hv {
+  display: none;
+}
+.scene[data-heat='1'] .core.ok,
+.scene[data-heat='1'] .hl.ok {
+  display: none;
+}
+
+/* Decorative backdrop (sign-in): the campus without any marker, label or reading. */
+.scene[data-tier='plain'] .bb {
+  display: none;
+}
+
+/* Healthy devices are not drawn at Medium: a ring on every device is noise over a 12-hour shift. They show on hover
+   (a 40 px invisible hit area), on selection, at Near, and always when stale, because stale is abnormal. */
+.scene[data-tier='medium'] .core.ok,
+.scene[data-tier='medium'] .hl.ok {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.scene[data-tier='medium'] .core.ok::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.scene[data-tier='medium'] .core.ok:hover,
+.scene[data-tier='medium'] .bb:hover .hl.ok {
+  opacity: 1;
+}
+.scene[data-tier='medium'][data-stale='1'] .core.ok,
+.scene[data-tier='medium'][data-stale='1'] .hl.ok {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene[data-tier='medium'] .core.ok,
+  .scene[data-tier='medium'] .hl.ok {
+    transition: none;
+  }
+}
+
+/* Calm view: the environment loses its colour so the abnormal stands out (ISA-101 habit: grey normal, colour
+   abnormal). Only environment surfaces: ground, lawns, water, roads, trees, cars and building faces. Markers,
+   labels, severity rings and the accent are never touched. Filters go on flat leaf elements only. */
+.scene[data-calm='1'] .gnd,
+.scene[data-calm='1'] .lawn,
+.scene[data-calm='1'] .field,
+.scene[data-calm='1'] .lake,
+.scene[data-calm='1'] .rd,
+.scene[data-calm='1'] .park,
+.scene[data-calm='1'] .car,
+.scene[data-calm='1'] .tr u,
+.scene[data-calm='1'] .bx > i {
+  filter: saturate(0.18) brightness(0.96);
+}
+.scene[data-calm='1'][data-spot='1'][data-sel] .bx > i:not(.sh) {
+  filter: saturate(0.18) brightness(0.68);
+}
+.scene[data-calm='1'][data-spot='1'][data-sel='sci'] .b-sci > i,
+.scene[data-calm='1'][data-spot='1'][data-sel='hub'] .b-hub > i,
+.scene[data-calm='1'][data-spot='1'][data-sel='dmb'] .b-dmb > i,
+.scene[data-calm='1'][data-spot='1'][data-sel='stc'] .b-stc > i {
+  filter: saturate(0.18) brightness(1);
+}
+.scene[data-calm='1'] .bx > .sh {
+  filter: blur(4px);
+}
+
+/* Operations aids: flood segment in the status bar, attention ring, tables. */
+.sbar .warnseg {
+  color: var(--warn);
+  font-weight: 500;
+}
+.ring {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+.ring svg {
+  width: 22px;
+  height: 22px;
+  transform: rotate(-90deg);
+}
+.ring .tr0 {
+  stroke: #1c3552;
+}
+.cdn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--t2);
+}
+.cdn.soon {
+  color: var(--warn);
+}
+.cdn.over {
+  color: var(--danger);
+}
+.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.tbl th {
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t3);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.tbl tr.sel td {
+  background: var(--s2);
+}
+.tbl tr.sel td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+
+/* ---- V3 scene on the real site plan (metres, plane x = east, y = south) ---- */
+.scene .grass {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+.pz {
+  position: absolute;
+  border-radius: 3px;
+  background: #1c2c3a;
+  box-shadow: inset 0 0 0 1px rgb(150 180 210 / 0.1);
+}
+.pa {
+  position: absolute;
+  background: #263847;
+  border-radius: 1px;
+}
+.yard {
+  position: absolute;
+  background: #1a2733;
+  box-shadow: inset 0 0 0 1px rgb(150 180 210 / 0.18);
+  outline: 1px dashed rgb(150 180 210 / 0.28);
+  outline-offset: -3px;
+}
+.stripes {
+  background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.03) 0 9px, transparent 9px 18px);
+}
+.cm {
+  display: none;
+}
+.scene[data-tier='medium'] .cm,
+.scene[data-tier='near'] .cm {
+  display: grid;
+}
+.core.cm {
+  left: -8px;
+  top: -26px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid #8fa5bf;
+  color: #cfe0f2;
+  box-shadow: none;
+  background: #0d1c2d;
+}
+.core.cm.off {
+  border-style: dashed;
+  color: #8fa5bf;
+}
+.core.cm::after {
+  height: 10px;
+}
+.core.cm .ic {
+  width: 10px;
+  height: 10px;
+}
+.scene[data-calm='1'] .grass,
+.scene[data-calm='1'] .pz,
+.scene[data-calm='1'] .pa,
+.scene[data-calm='1'] .yard {
+  filter: saturate(0.18) brightness(0.96);
+}
+
+/* Pan tool and the 8-direction pad (frame 24). Directions are screen directions along the ground. */
+.pad8 {
+  position: absolute;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: rgb(13 28 45 / 0.92);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-panel);
+}
+.pad8 .pd {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--t2);
+}
+.pad8 .pd .ic {
+  width: 16px;
+  height: 16px;
+}
+.pad8 .pd.held {
+  background: var(--accent-tint);
+  color: var(--t1);
+  box-shadow: inset 0 0 0 1px var(--accent), 0 0 12px rgb(49 133 255 / 0.4);
+}
+.pad8 .pd.dis {
+  opacity: 0.35;
+}
+.pad8 .pn {
+  left: 37px;
+  top: 1px;
+}
+.pad8 .pne {
+  left: 62.5px;
+  top: 11.5px;
+}
+.pad8 .pe {
+  left: 73px;
+  top: 37px;
+}
+.pad8 .pse {
+  left: 62.5px;
+  top: 62.5px;
+}
+.pad8 .ps {
+  left: 37px;
+  top: 73px;
+}
+.pad8 .psw {
+  left: 11.5px;
+  top: 62.5px;
+}
+.pad8 .pw {
+  left: 1px;
+  top: 37px;
+}
+.pad8 .pnw {
+  left: 11.5px;
+  top: 11.5px;
+}
+.pad8 .pc {
+  left: 38px;
+  top: 38px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  color: var(--accent-ink);
+}
+.pad8 .pc.dis {
+  color: var(--t3);
+}
+.rail .b.tool {
+  position: relative;
+}
+.rail .b.tool.on::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgb(49 133 255 / 0.7);
+}
+
+/* Scene realism (V3-14, V3-15): facades, roofs and equipment. Everything below is drawn from gradients, masks and
+   box-shadow stacks on the existing faces, so it stays flat per face: a filter, opacity or mask never lands on a
+   preserve-3d box. Floors are 5.9 px apart in these frames and the ground floor is the lowest of them. */
+.bx > i {
+  --px: 4.6px;
+  --py: 5.9px;
+  --gf: 5.9px;
+  --dw: 5px;
+  --dx: 40px;
+  --cornice: linear-gradient(180deg, rgb(255 255 255 / 0.3) 0 1px, rgb(0 0 0 / 0.22) 1px 2px, transparent 2px);
+  --ao: linear-gradient(0deg, rgb(0 0 0 / 0.42) 0, transparent 22%);
+  --ground: linear-gradient(0deg, rgb(255 205 140 / 0.3) 0 1px, rgb(8 16 26 / 0.8) 1px var(--gf), transparent var(--gf));
+  --door: linear-gradient(180deg, #ffe9c4, #ffc884) var(--dx) 100% / var(--dw) 4.4px no-repeat;
+  --canopy: linear-gradient(rgb(236 245 252 / 0.9), rgb(236 245 252 / 0.9)) calc(var(--dx) - 1.6px) calc(100% - 5.1px) /
+    calc(var(--dw) + 3.2px) 1px no-repeat;
+  --sky: linear-gradient(
+    112deg,
+    transparent 0 28%,
+    rgb(255 255 255 / 0.11) 28% 40%,
+    transparent 40% 66%,
+    rgb(255 255 255 / 0.07) 66% 74%,
+    transparent 74%
+  );
+  --sky-e: linear-gradient(68deg, transparent 0 34%, rgb(255 255 255 / 0.06) 34% 46%, transparent 46%);
+}
+/* Windows are masked cells over the wall: `::before` is the pane, `::after` the warm light behind some of them. */
+.bx > .fs::before,
+.bx > .fs::after,
+.bx > .fe::before,
+.bx > .fe::after {
+  content: '';
+  position: absolute;
+  left: 0.5px;
+  right: 0;
+  top: 1.8px;
+  bottom: var(--gf);
+  pointer-events: none;
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+.bx > .fs::after,
+.bx > .fe::after {
+  background: rgb(255 214 150 / 0.7);
+  -webkit-mask-image: var(--lit-x), var(--lit-y);
+  mask-image: var(--lit-x), var(--lit-y);
+}
+.bx > .fe::after {
+  background: rgb(255 200 130 / 0.6);
+}
+.bx > .fs::before,
+.bx > .fe::before {
+  -webkit-mask-image: var(--cell-x), var(--cell-y);
+  mask-image: var(--cell-x), var(--cell-y);
+}
+
+/* Curtain wall: glass panes between mullions, a sky streak, spandrel lines. */
+.bx.w-glass > .fs,
+.bx.w-glass > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 3.7px, transparent 3.7px 4.6px);
+  --cell-y: repeating-linear-gradient(0deg, #000 0 4.6px, transparent 4.6px 5.9px);
+}
+.bx.w-glass > .fs::before,
+.bx.w-glass > .fe::before {
+  background: linear-gradient(180deg, rgb(12 36 72 / 0.42), rgb(12 36 72 / 0.1));
+}
+.bx.w-glass > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground), var(--sky),
+    repeating-linear-gradient(0deg, var(--sw) 0 1.2px, transparent 1.2px var(--py)),
+    repeating-linear-gradient(90deg, var(--sw) 0 0.9px, transparent 0.9px var(--px)),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-glass > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground), var(--sky-e),
+    repeating-linear-gradient(0deg, var(--ew) 0 1.2px, transparent 1.2px var(--py)),
+    repeating-linear-gradient(90deg, var(--ew) 0 0.9px, transparent 0.9px var(--px)),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Punched openings in brick: dark windows in a coursed wall, a stronger corner, a light string course. */
+.bx.w-punch {
+  --sg1: #8a5d5c;
+  --sg2: #58393d;
+  --eg1: #6a4547;
+  --eg2: #402a2f;
+  --sw: rgb(0 0 0 / 0.16);
+  --ew: rgb(0 0 0 / 0.2);
+}
+.bx.w-punch > .fs,
+.bx.w-punch > .fe {
+  --cell-x: repeating-linear-gradient(90deg, transparent 0 0.9px, #000 0.9px 3.7px, transparent 3.7px 4.6px);
+  --cell-y: repeating-linear-gradient(0deg, transparent 0 1.2px, #000 1.2px 4.6px, transparent 4.6px 5.9px);
+  --string: linear-gradient(0deg, transparent 0 calc(var(--gf) + 0.3px), rgb(238 222 210 / 0.5) calc(var(--gf) + 0.3px) calc(var(--gf) + 0.9px), transparent calc(var(--gf) + 0.9px));
+}
+.bx.w-punch > .fs::before,
+.bx.w-punch > .fe::before {
+  background: linear-gradient(180deg, #25415e, #142a42);
+}
+.bx.w-punch > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground), var(--string),
+    repeating-linear-gradient(0deg, var(--sw) 0 0.5px, transparent 0.5px 1.6px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.08) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-punch > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground), var(--string),
+    repeating-linear-gradient(0deg, var(--ew) 0 0.5px, transparent 0.5px 1.6px),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.1) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Ribbon windows between concrete piers, with a thin fascia. */
+.bx.w-ribbon > .fs,
+.bx.w-ribbon > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 8px, transparent 8px 9.6px);
+  --cell-y: repeating-linear-gradient(0deg, transparent 0 1.7px, #000 1.7px 4.3px, transparent 4.3px 5.9px);
+}
+.bx.w-ribbon > .fs::before,
+.bx.w-ribbon > .fe::before {
+  background: linear-gradient(180deg, #2c5470, #1b3649);
+}
+.bx.w-ribbon > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao), var(--ground),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.16) 0 0.6px, transparent 0.6px 9.6px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.1) 0 0.6px, transparent 0.6px var(--py)),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-ribbon > .fe {
+  background:
+    var(--cornice), var(--ao), var(--ground),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.2) 0 0.6px, transparent 0.6px 9.6px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.06) 0 0.6px, transparent 0.6px var(--py)),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* A windowless block (the data hall): louvre bays, a roll-up door, no light behind anything. */
+.bx.w-blank > .fs,
+.bx.w-blank > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 8.6px, transparent 8.6px 10.6px);
+  --cell-y: linear-gradient(0deg, transparent 0 calc(var(--gf) + 1px), #000 calc(var(--gf) + 1px) calc(var(--gf) + 5px), transparent calc(var(--gf) + 5px));
+}
+.bx.w-blank > .fs::before,
+.bx.w-blank > .fe::before {
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.42) 0 0.6px, rgb(160 190 215 / 0.12) 0.6px 1.5px);
+}
+.bx.w-blank > .fs::after,
+.bx.w-blank > .fe::after {
+  display: none;
+}
+.bx.w-blank > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao),
+    linear-gradient(0deg, rgb(10 18 28 / 0.55) 0 var(--gf), transparent var(--gf)),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.22) 0 0.6px, transparent 0.6px 10.6px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-blank > .fe {
+  background:
+    var(--cornice), var(--ao),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.26) 0 0.6px, transparent 0.6px 10.6px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* A hall with a clerestory: blank panels below, a band of glass under the eaves. */
+.bx.w-clere > .fs,
+.bx.w-clere > .fe {
+  --cell-x: repeating-linear-gradient(90deg, #000 0 5.4px, transparent 5.4px 6.6px);
+  --cell-y: linear-gradient(0deg, transparent 0 66%, #000 66% 86%, transparent 86%);
+}
+.bx.w-clere > .fs::before,
+.bx.w-clere > .fe::before {
+  background: linear-gradient(180deg, rgb(190 226 250 / 0.7), rgb(120 170 210 / 0.5));
+}
+.bx.w-clere > .fs::after,
+.bx.w-clere > .fe::after {
+  display: none;
+}
+.bx.w-clere > .fs {
+  background:
+    var(--door), var(--canopy), var(--cornice), var(--ao),
+    linear-gradient(0deg, rgb(10 18 28 / 0.5) 0 var(--gf), transparent var(--gf)),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.2) 0 0.6px, transparent 0.6px 6.6px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.bx.w-clere > .fe {
+  background:
+    var(--cornice), var(--ao),
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.24) 0 0.6px, transparent 0.6px 6.6px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+
+/* Lit windows: an irregular subset of the pane cells, so no wall shows a lattice. */
+.bx.w-glass > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 4.6px, #000 4.6px 8.3px, transparent 8.3px 9.2px, #000 9.2px 12.9px, transparent 12.9px 27.6px, #000 27.6px 31.3px, transparent 31.3px 32.2px, #000 32.2px 35.9px, transparent 35.9px 41.4px, #000 41.4px 45.1px, transparent 45.1px 50.6px, #000 50.6px 54.3px, transparent 54.3px 73.6px, #000 73.6px 77.3px, transparent 77.3px 78.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 5.9px, #000 5.9px 10.5px, transparent 10.5px 17.7px, #000 17.7px 22.3px, transparent 22.3px 23.6px, #000 23.6px 28.2px, transparent 28.2px 41.3px);
+}
+.bx.w-glass > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.0px, #000 0.0px 3.7px, transparent 3.7px 18.4px, #000 18.4px 22.1px, transparent 22.1px 23.0px, #000 23.0px 26.7px, transparent 26.7px 36.8px, #000 36.8px 40.5px, transparent 40.5px 41.4px, #000 41.4px 45.1px, transparent 45.1px 59.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 0.0px, #000 0.0px 4.6px, transparent 4.6px 5.9px, #000 5.9px 10.5px, transparent 10.5px 29.5px, #000 29.5px 34.1px, transparent 34.1px 41.3px);
+}
+.bx.w-punch > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.9px, #000 0.9px 3.7px, transparent 3.7px 10.1px, #000 10.1px 12.9px, transparent 12.9px 19.3px, #000 19.3px 22.1px, transparent 22.1px 56.1px, #000 56.1px 58.9px, transparent 58.9px 65.3px, #000 65.3px 68.1px, transparent 68.1px 69.9px, #000 69.9px 72.7px, transparent 72.7px 74.5px, #000 74.5px 77.3px, transparent 77.3px 78.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.2px, #000 1.2px 4.6px, transparent 4.6px 24.8px, #000 24.8px 28.2px, transparent 28.2px 36.6px, #000 36.6px 40.0px, transparent 40.0px 41.3px);
+}
+.bx.w-punch > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.9px, #000 0.9px 3.7px, transparent 3.7px 5.5px, #000 5.5px 8.3px, transparent 8.3px 10.1px, #000 10.1px 12.9px, transparent 12.9px 23.9px, #000 23.9px 26.7px, transparent 26.7px 28.5px, #000 28.5px 31.3px, transparent 31.3px 59.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.2px, #000 1.2px 4.6px, transparent 4.6px 13.0px, #000 13.0px 16.4px, transparent 16.4px 24.8px, #000 24.8px 28.2px, transparent 28.2px 41.3px);
+}
+.bx.w-ribbon > .fs {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 0.0px, #000 0.0px 8.0px, transparent 8.0px 19.2px, #000 19.2px 27.2px, transparent 27.2px 28.8px, #000 28.8px 36.8px, transparent 36.8px 57.6px, #000 57.6px 65.6px, transparent 65.6px 67.2px, #000 67.2px 75.2px, transparent 75.2px 105.6px, #000 105.6px 113.6px, transparent 113.6px 144.0px, #000 144.0px 152.0px, transparent 152.0px 163.2px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 7.6px, #000 7.6px 10.2px, transparent 10.2px 25.3px, #000 25.3px 27.9px, transparent 27.9px 31.2px, #000 31.2px 33.8px, transparent 33.8px 41.3px);
+}
+.bx.w-ribbon > .fe {
+  --lit-x: repeating-linear-gradient(90deg, transparent 0.0px 19.2px, #000 19.2px 27.2px, transparent 27.2px 38.4px, #000 38.4px 46.4px, transparent 46.4px 48.0px, #000 48.0px 56.0px, transparent 56.0px 67.2px, #000 67.2px 75.2px, transparent 75.2px 86.4px, #000 86.4px 94.4px, transparent 94.4px 124.8px);
+  --lit-y: repeating-linear-gradient(0deg, transparent 0.0px 1.7px, #000 1.7px 4.3px, transparent 4.3px 7.6px, #000 7.6px 10.2px, transparent 10.2px 19.4px, #000 19.4px 22.0px, transparent 22.0px 41.3px);
+}
+
+/* Roofs: a parapet, a membrane inside it, and plant that stands on the roof with its own sides. */
+.bx > .ft {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.1), transparent 55%), var(--top);
+  box-shadow:
+    inset 0 0 0 0.8px rgb(255 255 255 / 0.28),
+    inset 0 0 0 2.2px rgb(0 0 0 / 0.2);
+}
+.bx > .ft::before {
+  content: '';
+  position: absolute;
+  inset: 2.2px;
+  background:
+    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.07) 0 0.7px, transparent 0.7px 2.4px),
+    linear-gradient(180deg, rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.02));
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.18);
+}
+.hv {
+  background: linear-gradient(135deg, #b9c9d6, #8aa0b2);
+  box-shadow:
+    1px 1px 0 #70869a,
+    2px 2px 0 #62788b,
+    3px 3px 0 #556a7c,
+    5px 6px 4px rgb(0 0 0 / 0.4);
+}
+.hv.ahu {
+  background:
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.28) 0 0.6px, transparent 0.6px 1.8px),
+    linear-gradient(135deg, #c3d1dd, #94a8b9);
+}
+.hv.stair {
+  background: linear-gradient(135deg, #a9b9c7, #7d93a6);
+  box-shadow:
+    1px 1px 0 #667b8e,
+    2px 2px 0 #5b7083,
+    3px 3px 0 #506577,
+    4px 4px 0 #465a6c,
+    5px 5px 0 #3d5062,
+    7px 8px 5px rgb(0 0 0 / 0.42);
+}
+.hv.sky {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.5) 0 0.6px, transparent 0.6px 4px),
+    linear-gradient(135deg, #8fc3e6, #4f86b4);
+  box-shadow:
+    1px 1px 0 #3e6d93,
+    2px 2px 0 #35607f,
+    4px 5px 3px rgb(0 0 0 / 0.35);
+}
+.hv.lantern {
+  background:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.28) 0 0.7px, transparent 0.7px 7px),
+    linear-gradient(135deg, #7f98ad, #5e7890);
+  box-shadow:
+    1px 1px 0 #526b81,
+    2px 2px 0 #485f74,
+    3px 3px 0 #3e5468,
+    4px 4px 0 #354a5c,
+    6px 7px 5px rgb(0 0 0 / 0.4);
+}
+.hv.solar {
+  background:
+    repeating-linear-gradient(90deg, rgb(150 190 255 / 0.45) 0 0.5px, transparent 0.5px 3.6px),
+    repeating-linear-gradient(0deg, rgb(150 190 255 / 0.45) 0 0.5px, transparent 0.5px 3.6px),
+    linear-gradient(135deg, #2b5aa8, #12306b);
+  box-shadow:
+    1px 1px 0 #9fb4c8,
+    2px 2px 0 #7c91a6,
+    4px 5px 3px rgb(0 0 0 / 0.38);
+}
+.hv.fan {
+  border-radius: 50%;
+  background: #4d5e6e;
+  box-shadow:
+    1px 1px 0 #3f4e5c,
+    2px 2px 0 #36444f,
+    3px 3px 0 #2f3b46,
+    5px 6px 4px rgb(0 0 0 / 0.4);
+}
+.hv.fan > s {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, #d6e1ea 0 11deg, #55687a 11deg 30deg);
+  animation: fan-spin 1.3s linear infinite;
+  text-decoration: none;
+}
+.hv.fan > s::after {
+  content: '';
+  position: absolute;
+  inset: 36%;
+  border-radius: 50%;
+  background: #27323d;
+}
+.hv.vent {
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 36%, #c6d3de 0, #8499ab 70%);
+}
+@keyframes fan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hv.fan > s {
+    animation: none;
+  }
+}
+
+/* Equipment is a small box with its own faces, so it has a side that catches the light and one that does not. */
+.eq > .fs,
+.eq > .fe {
+  background-image: none;
+}
+.eq > i::before,
+.eq > i::after {
+  display: none;
+}
+.eq > .ft::before {
+  display: none;
+}
+.eq > .ft {
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.38);
+}
+.eq.ahu {
+  --top: #b3c2ce;
+  --sg1: #9eb0be;
+  --sg2: #7a8e9e;
+  --eg1: #6f8393;
+  --eg2: #566a7a;
+}
+.eq.ahu > .fs,
+.eq.ahu > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.3) 0 0.5px, transparent 0.5px 1.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.ahu > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.34) 0 0.5px, transparent 0.5px 1.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.ct {
+  --top: #9aaebd;
+  --sg1: #7e93a4;
+  --sg2: #566c7e;
+  --eg1: #5d7284;
+  --eg2: #3f5465;
+}
+.eq.ct > .fs,
+.eq.ct > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.38) 0 0.5px, rgb(255 255 255 / 0.1) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(10 40 70 / 0.6) 0 1.4px, transparent 1.4px), linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.ct > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.42) 0 0.5px, rgb(255 255 255 / 0.06) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(10 40 70 / 0.6) 0 1.4px, transparent 1.4px), linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.xf {
+  --top: #8c9d88;
+  --sg1: #839481;
+  --sg2: #5a6b58;
+  --eg1: #66775f;
+  --eg2: #44543f;
+}
+.eq.xf > .fs,
+.eq.xf > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.38) 0 0.5px, transparent 0.5px 1.4px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.xf > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.42) 0 0.5px, transparent 0.5px 1.4px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.sg {
+  --top: #aebdc9;
+  --sg1: #9aaebd;
+  --sg2: #72879a;
+  --eg1: #6a7f92;
+  --eg2: #4f6376;
+}
+.eq.sg > .fs,
+.eq.sg > .fe {
+  background-image: radial-gradient(circle, #2a3945 0 0.45px, transparent 0.6px) 1.4px 50% / 3.2px 100% repeat-x,
+    repeating-linear-gradient(90deg, rgb(0 0 0 / 0.42) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.sg > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.4) 0 0.5px, transparent 0.5px 3.2px),
+    linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.gn {
+  --top: #e0a23a;
+  --sg1: #d99a32;
+  --sg2: #a8721f;
+  --eg1: #b9801f;
+  --eg2: #8a5b14;
+}
+.eq.gn > .fs,
+.eq.gn > .fe {
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.3) 0 0.5px, transparent 0.5px 4.6px),
+    linear-gradient(0deg, rgb(20 20 20 / 0.7) 0 1px, transparent 1px), linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.eq.gn > .fe {
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.55) 0 0.5px, rgb(255 255 255 / 0.05) 0.5px 1.2px),
+    linear-gradient(0deg, rgb(20 20 20 / 0.7) 0 1px, transparent 1px), linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.eq.stack {
+  --top: #a7b6c3;
+  --sg1: #94a6b4;
+  --sg2: #6c8091;
+  --eg1: #63788a;
+  --eg2: #485c6d;
+}
+.hv.bush {
+  border-radius: 50%;
+  background: radial-gradient(circle, #f3f6f8 0 30%, #2c3a46 32% 100%);
+  box-shadow:
+    1px 1px 0 #26323d,
+    2px 2px 0 #1f2a33,
+    3px 3px 0 #19222a,
+    4px 5px 3px rgb(0 0 0 / 0.4);
+}
+.hv.rad {
+  background: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.4) 0 0.5px, #7e9183 0.5px 1.3px);
+  box-shadow:
+    1px 1px 0 #55655a,
+    2px 2px 0 #4a5a4f,
+    3px 3px 0 #405046,
+    4px 5px 3px rgb(0 0 0 / 0.35);
+}
+
+/* Things that stand on the ground or on a roof and face the camera, drawn like the trees: a pole with a light, a mast
+   with a beacon, a tank. The ground glow is flat, under the pole. */
+.lp,
+.rfi {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.rfi {
+  transform: translateZ(var(--h));
+}
+.lp::before {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 218 160 / 0.3) 0, rgb(255 218 160 / 0.1) 45%, transparent 70%);
+}
+.lp u,
+.rfi u {
+  position: absolute;
+  display: block;
+  transform-origin: 50% 100%;
+  transform: rotateZ(-45deg) rotateX(-60deg);
+  text-decoration: none;
+}
+.lp u {
+  left: -3.5px;
+  top: -14px;
+  width: 7px;
+  height: 14px;
+  background:
+    radial-gradient(circle at 50% 3.5px, #fff6e4 0 1.3px, rgb(255 222 168 / 0.6) 1.6px 3px, transparent 3.5px),
+    linear-gradient(90deg, transparent 3px, #8fa1b4 3px 4px, transparent 4px) 0 4px / 100% 100% no-repeat;
+}
+.rfi u.mast {
+  left: -0.4px;
+  top: -16px;
+  width: 0.8px;
+  height: 16px;
+  background: linear-gradient(90deg, #d9e3ec, #6c7f91);
+}
+.rfi u.mast::before {
+  content: '';
+  position: absolute;
+  left: -2.6px;
+  top: 3px;
+  width: 6px;
+  height: 0.8px;
+  background: #b8c7d4;
+  box-shadow: 0 3px 0 #b8c7d4, 0 6px 0 #b8c7d4;
+}
+.rfi u.mast::after {
+  content: '';
+  position: absolute;
+  left: -1.2px;
+  top: -1.6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ff5c7c;
+  box-shadow: 0 0 5px 2px rgb(255 92 124 / 0.7);
+  animation: beacon 2.4s ease-in-out infinite;
+}
+@keyframes beacon {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  25% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rfi u.mast::after {
+    animation: none;
+  }
+}
+.rfi u.tank {
+  left: -5px;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 1px 1px 2px 2px / 1px 1px 3px 3px;
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.18) 0 0.5px, transparent 0.5px 3px),
+    linear-gradient(90deg, #5f7385, #d3dee8 38%, #7d92a4 70%, #4c5f70);
+}
+.rfi u.tank::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2.5px;
+  width: 10px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 40% 40%, #e9f0f6, #9fb2c3);
+}
+
+/* Cameras: the stem under the marker is a pole with a footing. */
+.core.cm::after {
+  width: 2px;
+  margin-left: -1px;
+  background: linear-gradient(90deg, #c4d1dd, #607385);
+}
+.cmk .up::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -1.5px;
+  width: 8px;
+  height: 3px;
+  border-radius: 50%;
+  background: #1d2c3a;
+  box-shadow: 0 0 0 0.6px rgb(160 190 215 / 0.35);
+}
+
+/* The pads and the yard read as paving, not as a dark hole. */
+.pz {
+  background:
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.015) 0 2px, transparent 2px 5px), #24364a;
+  box-shadow:
+    inset 0 0 0 1px rgb(170 200 230 / 0.18),
+    inset 0 0 0 2.5px rgb(8 16 26 / 0.18);
+}
+.yard {
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.03) 0 0.7px, transparent 0.7px 5px), #202f3d;
+}
+.arm {
+  position: absolute;
+  background: repeating-linear-gradient(90deg, #f3f6f8 0 3px, #ff4b5d 3px 6px);
+  border-radius: 1px;
+}
+.arm.post {
+  background: linear-gradient(135deg, #cfd9e2, #7f93a5);
+}
+
+/* The existing scene modes reach the new parts. */
+.scene[data-heat='1'] .bx > .fs,
+.scene[data-heat='1'] .bx > .fe {
+  background: linear-gradient(180deg, var(--sg1), var(--sg2));
+}
+.scene[data-heat='1'] .bx > .fe {
+  background: linear-gradient(180deg, var(--eg1), var(--eg2));
+}
+.scene[data-heat='1'] .bx > i::before,
+.scene[data-heat='1'] .bx > i::after,
+.scene[data-heat='1'] .rfi,
+.scene[data-heat='1'] .lp {
+  display: none;
+}
+.scene[data-heat='1'] .bx > .ft {
+  background: var(--top);
+}
+.scene[data-focus='dc'] .lp u,
+.scene[data-focus='dc'] .rfi u {
+  opacity: 0.3;
+}
+.scene[data-focus='dc'] .lp::before {
+  opacity: 0.3;
+}
+.scene[data-calm='1'] .lp u,
+.scene[data-calm='1'] .lp::before,
+.scene[data-calm='1'] .rfi u:not(.mast),
+.scene[data-calm='1'] .arm {
+  filter: saturate(0.18) brightness(0.96);
+}
+
+/* Lamps and windows are lit only at night (the scene's `night` switch; the build reads the site's local time). By day
+   the post stays and the light, its pool on the ground and the glow go; the windows are plain glass, the entrance is
+   unlit, and the panes pick up a little more sky. */
+.scene[data-night='0'] .lp::before {
+  display: none;
+}
+.scene[data-night='0'] .lp u {
+  background:
+    radial-gradient(circle at 50% 3.5px, #7f8fa0 0 1.3px, transparent 1.6px),
+    linear-gradient(90deg, transparent 3px, #8fa1b4 3px 4px, transparent 4px) 0 4px / 100% 100% no-repeat;
+}
+.scene[data-night='0'] .bx > .fs::after,
+.scene[data-night='0'] .bx > .fe::after {
+  display: none;
+}
+.scene[data-night='0'] .bx > i {
+  --door: linear-gradient(180deg, #4b6178, #34485d) var(--dx) 100% / var(--dw) 4.4px no-repeat;
+  --ground: linear-gradient(0deg, rgb(8 16 26 / 0.72) 0 var(--gf), transparent var(--gf));
+}
+.scene[data-night='0'] .bx.w-glass > .fs::before,
+.scene[data-night='0'] .bx.w-glass > .fe::before {
+  background: linear-gradient(180deg, rgb(170 205 240 / 0.3), rgb(60 100 150 / 0.18));
+}
+.scene[data-night='0'] .bx.w-punch > .fs::before,
+.scene[data-night='0'] .bx.w-punch > .fe::before {
+  background: linear-gradient(180deg, #3a5877, #223c57);
+}
+.scene[data-night='0'] .bx.w-ribbon > .fs::before,
+.scene[data-night='0'] .bx.w-ribbon > .fe::before {
+  background: linear-gradient(180deg, #3f6a88, #29475e);
+}

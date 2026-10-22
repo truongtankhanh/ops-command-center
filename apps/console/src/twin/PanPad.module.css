@@ -1,0 +1,118 @@
+/*
+ * The 8-direction pad (V3-29, frame 24): a round box with eight arrows at the compass points of the screen and a centre
+ * button. Sizes follow `--ui-scale`; the arrows sit by percentages of the box, so they stay on the circle at any scale.
+ * It is a flex item of the stage's bottom-left column (`TwinStage.module.css .legends`), above the legends.
+ */
+.pad {
+  position: relative;
+  flex: none;
+  width: calc(104px * var(--ui-scale));
+  height: calc(104px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  box-shadow: var(--shadow-2);
+  touch-action: none;
+}
+
+.arrow,
+.centre {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.arrow {
+  width: calc(30px * var(--ui-scale));
+  height: calc(30px * var(--ui-scale));
+  /* One press must not select text or start a native drag while it is held. */
+  user-select: none;
+  touch-action: none;
+}
+
+.arrow:hover,
+.centre:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+/* Held: the pointer is down on it (its capture keeps `:active` while the pointer wanders). */
+.arrow:active {
+  background: var(--accent-tint);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Positions on the circle: the left and top of each 30 px button, as a share of the 104 px box. */
+.arrow[data-dir='up'] {
+  left: 35.6%;
+  top: 1%;
+}
+.arrow[data-dir='up-right'] {
+  left: 60.1%;
+  top: 11.1%;
+  transform: rotate(45deg);
+}
+.arrow[data-dir='right'] {
+  left: 70.2%;
+  top: 35.6%;
+  transform: rotate(90deg);
+}
+.arrow[data-dir='down-right'] {
+  left: 60.1%;
+  top: 60.1%;
+  transform: rotate(135deg);
+}
+.arrow[data-dir='down'] {
+  left: 35.6%;
+  top: 70.2%;
+  transform: rotate(180deg);
+}
+.arrow[data-dir='down-left'] {
+  left: 11.1%;
+  top: 60.1%;
+  transform: rotate(225deg);
+}
+.arrow[data-dir='left'] {
+  left: 1%;
+  top: 35.6%;
+  transform: rotate(270deg);
+}
+.arrow[data-dir='up-left'] {
+  left: 11.1%;
+  top: 11.1%;
+  transform: rotate(315deg);
+}
+
+.centre {
+  left: 36.5%;
+  top: 36.5%;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
+  border: 1px solid var(--border-strong);
+  color: var(--accent);
+}
+
+/* Nothing selected: dimmed, and still in the tab order (it is `aria-disabled`, not `disabled`). */
+.centre[aria-disabled='true'] {
+  color: var(--text-tertiary);
+  border-color: var(--border-subtle);
+  cursor: default;
+}
+
+.centre[aria-disabled='true']:hover {
+  background: transparent;
+}
+
+/* A phone drags with fingers and the 104 px pad would cover a third of the stage. */
+@media (max-width: 720px) {
+  .pad {
+    display: none;
+  }
+}

@@ -151,17 +151,18 @@ describe('the priority of useFrame', () => {
     expect(bad, 'A useFrame priority must be a literal number that is 0 or below.').toEqual([]);
   });
 
+  // `Rig.tsx` has two loops, the fly-to and the pad's held move (V3-29); both run before `FrameDriver`.
   it.each([
-    ['../twin/Rig.tsx', -2],
-    ['../twin/useBoundParts.ts', -1],
-    ['../twin/Beacons.tsx', -1],
+    ['../twin/Rig.tsx', -2, 2],
+    ['../twin/useBoundParts.ts', -1, 1],
+    ['../twin/Beacons.tsx', -1, 1],
   ])(
     'runs the loop of %s below priority 0, so FrameDriver reads its flag in the same frame',
-    (path, priority) => {
+    (path, priority, count) => {
       const own = calls.filter((call) => call.path === path);
 
-      expect(own).toHaveLength(1);
-      expect(own[0]?.priority).toBe(priority);
+      expect(own).toHaveLength(count);
+      expect(own.map((call) => call.priority)).toEqual(Array(count).fill(priority));
     },
   );
 

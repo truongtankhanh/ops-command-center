@@ -265,6 +265,7 @@ export const cameraIcon = (online: boolean): Glyph => (online ? Video : VideoOff
 export {
   Activity,
   ArrowLeft,
+  ArrowUp,
   Box,
   Check,
   ChevronDown,
@@ -276,6 +277,7 @@ export {
   Eye,
   Fan,
   Flag,
+  Hand,
   House,
   Info,
   Keyboard,
@@ -287,6 +289,7 @@ export {
   Maximize,
   Maximize2,
   Minus,
+  Orbit,
   Pause,
   Pin,
   PinOff,

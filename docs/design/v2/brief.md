@@ -129,6 +129,7 @@ V1's seven principles still apply. V2 adds:
 2. **Severity is still the only loud colour.** Parts are one neutral material. Hover and selection use the accent.
    A part takes a severity colour only while an incident it raised is open. The telemetry overlay uses one
    sequential hue (the accent's), never red, orange, yellow or cyan.
+   _Superseded in part by V3: [ADR-0022](../../adr/0022-console-visual-language.md) ("severity is the only loud meaning"; the heat ramp follows the blue accent)._
 3. **Never pretend to be live.** When telemetry stops, parts stop moving, turn grey with dashed edges, and every
    value shows its age (frame 05). Motion means data is arriving.
 4. **The view never moves on its own.** No idle rotation, no auto fly-to on an alarm; the toast offers "Fly to"
@@ -136,6 +137,7 @@ V1's seven principles still apply. V2 adds:
    so on a new critical incident it flies to it, shows a countdown, and returns to its fixed campus view after 60 s
    (or once the incident is acknowledged). It never rotates when idle. **And the sign-in page** (frame 19): its
    decorative campus turns slowly (2° a second), because nothing on it is being watched; reduced motion stops it.
+   _Superseded in part by V3: [ADR-0022](../../adr/0022-console-visual-language.md) ("the view moves only because the operator asked")._
 5. **3D is progressive.** The site plan, incidents and cameras appear before any model; a device without WebGL 2
    gets the 2D map with a one-line reason (frames 06, 07).
 
@@ -389,6 +391,8 @@ of one neutral; in WebGL they become one material's base colour (`--tw-top`) und
 | `--tw-stale-*`, `--tw-stale-edge` | desaturated, `#4a555c` dashed     | No recent data                            |
 | `--tw-ghost-opacity`              | 0.18                              | Context while an asset is isolated        |
 | `--heat-0 … --heat-5`             | `#1f2a4d` → `#b3bdff`             | Telemetry overlay, sequential, accent hue |
+
+_Superseded in part by V3: [ADR-0022](../../adr/0022-console-visual-language.md) (`--heat-*` follows the blue accent; the values are in `tokens.md`)._
 
 Contrast (V2-02.1): a hover, selected or alarmed part's edge is held to 3:1 on the ground and on idle neighbours, not
 on the part's own face, where it only draws the shape; the stale edge stays below 3:1 on purpose, because the dash,

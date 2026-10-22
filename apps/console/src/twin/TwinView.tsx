@@ -9,6 +9,7 @@ import {
   TWIN_VIEW_KEYS_ID,
   twinSummary,
 } from '../lib/twinSummary';
+import { useConsole } from '../store';
 import { runKeyCommand } from './runKeyCommand';
 import styles from './TwinView.module.css';
 
@@ -58,6 +59,7 @@ interface TwinViewProps {
  * at every incident event.
  */
 export function TwinView({ children, heat, wall = false }: TwinViewProps) {
+  const panTool = useConsole((s) => s.panTool);
   const { data: plan } = useSitePlan();
   const { data: incidents } = useIncidents();
   const summary = twinSummary({
@@ -88,6 +90,7 @@ export function TwinView({ children, heat, wall = false }: TwinViewProps) {
       aria-roledescription="3D view"
       aria-label={summary}
       aria-describedby={TWIN_VIEW_KEYS_ID}
+      data-tool={panTool ? 'pan' : undefined}
       className={styles.view}
       onKeyDown={(event) => {
         const command = keyCommand(event.nativeEvent);

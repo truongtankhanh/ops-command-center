@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Table mode</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.ti{display:flex;align-items:center;gap:10px}
+.ti .tile{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:1px solid;flex:none}
+.ti .tile .ic{width:16px;height:16px}
+.th2{display:inline-flex;align-items:center;gap:4px}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" hot="{{ true }}" hint-size="1440px,72px"></dc-import></div>
+<div style="position:absolute;left:0;top:84px"><dc-import name="Sidebar" table="{{ true }}" sel="110" hint-size="360px,772px"></dc-import></div>
+<div class="stage" style="opacity:.55"><div style="position:absolute;left:0;top:0"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div></div>
+<div style="position:absolute;left:372px;top:686px;opacity:.55"><dc-import name="Strip" hint-size="1056px,170px"></dc-import></div>
+<div style="position:absolute;left:0;top:868px"><dc-import name="StatusBar" hint-size="1440px,32px"></dc-import></div>
+
+<div class="glass" style="position:absolute;left:372px;top:84px;width:1056px;height:772px;display:flex;flex-direction:column;background:rgb(13 28 45 / .97)" role="region" aria-label="Incidents table">
+<div class="row" style="gap:12px;padding:14px 16px;border-bottom:1px solid #1e3450">
+<span class="sb" style="font-size:16px">Incidents</span>
+<span class="chip on">All <span class="n">10</span></span><span class="chip">Open <span class="n">5</span></span><span class="chip">Resolved <span class="n">2</span></span>
+<div class="search" style="flex:none;width:300px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search incident, device, location…</div>
+<div style="flex:1"></div>
+<button class="btn ghost s"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>Export CSV</button>
+<span class="ibtn" style="width:36px;height:36px" aria-label="Close table"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span>
+</div>
+<div style="flex:1;overflow:hidden">
+<table class="tbl">
+<thead><tr>
+<th style="width:130px" aria-sort="ascending"><span class="th2">Severity <svg class="ic s" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></span></th>
+<th>Incident</th><th>Place</th><th>Status</th><th>Source</th><th aria-sort="none"><span class="th2">Raised <svg class="ic s t3" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg></span></th><th>Attention</th><th>Code</th>
+</tr></thead>
+<tbody>
+<tr class="sel"><td><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span></td><td><div class="ti"><span class="tile crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span>Smoke detector</div></td><td>Science Lab · level 2</td><td>Open</td><td>Telemetry rule</td><td class="num">15:39</td><td><span class="cdn soon"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#e8c070" stroke-width="3" stroke-linecap="round" stroke-dasharray="11 56.5"/></svg></span>0:24 left</span></td><td class="num t2">INC-000110</td></tr>
+<tr><td><span class="sev high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>High</span></td><td><div class="ti"><span class="tile high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>Door forced open</div></td><td>Innovation Hub · service corridor</td><td>Open</td><td>Operator</td><td class="num">15:28</td><td><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="45 56.5"/></svg></span>4:02 left</span></td><td class="num t2">INC-000104</td></tr>
+<tr><td><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span></td><td><div class="ti"><span class="tile med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></span>Water leak</div></td><td>Dormitory B · level 3</td><td>Acknowledged</td><td>Telemetry rule</td><td class="num">15:17</td><td class="t3">—</td><td class="num t2">INC-000108</td></tr>
+<tr><td><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span></td><td><div class="ti"><span class="tile med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>Unattended bag</div></td><td>Student Center</td><td>Acknowledged</td><td>Operator</td><td class="num">15:20</td><td class="t3">—</td><td class="num t2">INC-000103</td></tr>
+<tr><td><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span></td><td><div class="ti"><span class="tile low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span>Student fell</div></td><td>Sports Hall · court 2</td><td>Open</td><td>Operator</td><td class="num">15:33</td><td><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="50 56.5"/></svg></span>21:00 left</span></td><td class="num t2">INC-000109</td></tr>
+<tr><td><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span></td><td><div class="ti"><span class="tile low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></span>Fire lane blocked</div></td><td>East Parking</td><td>Open</td><td>Operator</td><td class="num">15:38</td><td><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="54 56.5"/></svg></span>26:00 left</span></td><td class="num t2">INC-000111</td></tr>
+<tr><td><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span></td><td><div class="ti"><span class="tile low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span>Queue building</div></td><td>Main Gate</td><td>Open</td><td>Operator</td><td class="num">15:36</td><td><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="53 56.5"/></svg></span>24:00 left</span></td><td class="num t2">INC-000106</td></tr>
+<tr><td><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span></td><td><div class="ti"><span class="tile low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></span>Camera offline</div></td><td>Data Center · loading bay</td><td>Acknowledged</td><td>Telemetry rule</td><td class="num">14:42</td><td class="t3">—</td><td class="num t2">INC-000105</td></tr>
+</tbody>
+</table>
+</div>
+<div class="row" style="gap:12px;padding:12px 16px;border-top:1px solid #1e3450;font-size:12px;color:#a9bed6">
+<span>8 of 10 shown</span><span class="t3">·</span><span>Sorted by severity, then raised</span><span class="t3">·</span><span>Click a row to open it; Esc closes the table</span>
+<div style="flex:1"></div><span class="t3">Bulk acknowledge is not in V3; it needs a batch route and per-incident audit</span>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

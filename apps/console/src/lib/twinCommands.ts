@@ -1,11 +1,13 @@
 import type { FitBox, Pose, Vec3 } from './twinCamera';
+import type { CentreTarget } from './twinPan';
 
 /*
  * The 3D camera's command API (V2-12.9): what the on-screen buttons (V2-12.10), the keys (V2-18), the toast
  * (V2-16.5) and the incident sheet call to move the view, without any of them needing the canvas. The rig
  * (`twin/Rig.tsx`) registers its implementation when it mounts and unregisters it when it goes; with no rig
  * (the 2D view, a stage that has not loaded, one that lost its context) every command does nothing and
- * `current()` is `null`, so a caller never has to know whether a 3D view exists. The exceptions are `showAsset`
+ * `current()` is `null`, so a caller never has to know whether a 3D view exists. The pad's three (`panStep`, `panHold`,
+ * `centreOn`, V3-29) are like `zoomBy` and `panBy`: with no rig they do nothing and wait for nothing. The exceptions are `showAsset`
  * (V2-16.6) and `flyToIncident` (V2-18.2): their callers (`Show in 3D`, the `F` key) switch to the 3D view first,
  * whose stage does not exist yet, so the request waits for the rig (see `PENDING_SHOW_MS`).
  *
@@ -54,6 +56,24 @@ export interface TwinCommands {
    * know the level's scale. The pan box (site + 40 m) clamps the target.
    */
   panBy(dx: number, dy: number): void;
+  /**
+   * One step of the pad (V3-29): `dx` to the camera's right and `dy` forward as **unit** direction components. The rig
+   * scales them to a share of the visible ground width (`padStep`), because only it knows the lens and the stage's shape.
+   * The pan box clamps it, and it glides as `Shift` and the arrows do (at once under reduced motion).
+   */
+  panStep(dx: number, dy: number): void;
+  /**
+   * Starts a continuous move of the view in `direction` (a unit vector as in `panStep`), or stops it with `null` (V3-29,
+   * a pad button held down). The speed is a fraction of the camera's distance per second. A rig that goes away stops any
+   * hold, so a held button cannot outlive its rig.
+   */
+  panHold(direction: { dx: number; dy: number } | null): void;
+  /**
+   * Moves the camera's target to the middle of an asset's box or to an incident's beacon (V3-29, the pad's centre button),
+   * keeping the distance, the yaw and the tilt. Unlike `showAsset` and `flyToIncident` it does not choose a distance. An
+   * unknown asset or incident does nothing.
+   */
+  centreOn(target: CentreTarget): void;
   /** Turns until north is up, keeping the target and the distance. */
   faceNorth(): void;
   /**
@@ -100,6 +120,8 @@ let pending: (PendingRequest & { at: number }) | null = null;
  * not undo its successor when its own cleanup runs late.
  */
 export function registerTwinCommands(commands: TwinCommands): () => void {
+  // A hold belongs to the rig that started it: let it go before another takes over (V3-29).
+  if (registered !== null && registered !== commands) registered.panHold(null);
   registered = commands;
   const waiting = pending;
   pending = null;
@@ -108,7 +130,10 @@ export function registerTwinCommands(commands: TwinCommands): () => void {
     else commands.flyToIncident(waiting.id);
   }
   return () => {
-    if (registered === commands) registered = null;
+    if (registered === commands) {
+      commands.panHold(null);
+      registered = null;
+    }
   };
 }
 
@@ -130,6 +155,9 @@ export const twinCommands: TwinCommands = {
   rotateBy: (degrees) => registered?.rotateBy(degrees),
   tiltBy: (degrees) => registered?.tiltBy(degrees),
   panBy: (dx, dy) => registered?.panBy(dx, dy),
+  panStep: (dx, dy) => registered?.panStep(dx, dy),
+  panHold: (direction) => registered?.panHold(direction),
+  centreOn: (target) => registered?.centreOn(target),
   faceNorth: () => registered?.faceNorth(),
   current: () => registered?.current() ?? null,
 };

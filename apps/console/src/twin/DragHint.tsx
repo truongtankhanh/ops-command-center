@@ -10,7 +10,8 @@ const STORAGE_KEY = 'occ.console.twinDragHintSeen';
 const DRAG_PX = 4;
 
 /**
- * "Drag to rotate · Shift + drag to pan" (V2-12.10, frame 01 `.tw-drag-hint`): a pill over the 3D stage until
+ * "Drag to rotate · Pan tool or Shift + drag to pan" (V2-12.10, frame 01 `.tw-drag-hint`; V3-29 added the tool and the
+ * Pan tool's own wording, "Drag to pan · Shift + drag to rotate"): a pill over the 3D stage until
  * the operator has dragged it once in this tab. It is decoration (`aria-hidden`, no pointer events): the same
  * instruction is in the stage's label for assistive tech (V2-12.12). It sits at the bottom, left of the camera
  * controls; with the sheet open it moves to the top of the part the sheet leaves visible (frame 01), where
@@ -20,6 +21,7 @@ const DRAG_PX = 4;
  */
 export function DragHint() {
   const hint = useRef<HTMLParagraphElement>(null);
+  const panTool = useConsole((s) => s.panTool);
   const [seen, setSeen] = useState(readSeen);
   // The sheet is open when an incident or an asset is selected or a report is being written (as `App` and
   // `CampusMap` decide it).
@@ -63,7 +65,15 @@ export function DragHint() {
       data-at={sheetOpen ? 'top' : undefined}
       aria-hidden="true"
     >
-      Drag to rotate · <Kbd>Shift</Kbd> + drag to pan
+      {panTool ? (
+        <>
+          Drag to pan · <Kbd>Shift</Kbd> + drag to rotate
+        </>
+      ) : (
+        <>
+          Drag to rotate · Pan tool or <Kbd>Shift</Kbd> + drag to pan
+        </>
+      )}
     </p>
   );
 }

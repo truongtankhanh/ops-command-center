@@ -79,6 +79,14 @@ export class IncidentEntity {
   @Column({ name: 'telemetry_rule_id', type: 'uuid', nullable: true })
   telemetryRuleId: string | null;
 
+  /**
+   * A level of the zone (ADR-0023): copied from the asset for a telemetry incident, picked by the
+   * reporter otherwise, `null` when none applies. A coarse field, not a height. A plain column on
+   * purpose: the database enforces the key (`fk_incident_level`, composite with `zone_id`).
+   */
+  @Column({ name: 'level_code', type: 'varchar', length: 8, nullable: true })
+  levelCode: string | null;
+
   @Column({ name: 'reported_at', type: 'timestamptz' })
   reportedAt: Date;
 
@@ -123,6 +131,7 @@ export class IncidentEntity {
       source: IncidentSource;
       assetId?: string | null;
       telemetryRuleId?: string | null;
+      levelCode?: string | null;
       note?: string | null;
       at: Date;
     },
@@ -134,6 +143,7 @@ export class IncidentEntity {
       description: props.description ?? null,
       assetId: props.assetId ?? null,
       telemetryRuleId: props.telemetryRuleId ?? null,
+      levelCode: props.levelCode ?? null,
       status: 'open' as const,
       reportedAt: props.at,
       acknowledgedAt: null,
@@ -183,6 +193,7 @@ export class IncidentEntity {
       position: [this.lng, this.lat],
       source: this.source,
       assetId: this.assetId,
+      levelCode: this.levelCode,
       reportedAt: this.reportedAt.toISOString(),
       acknowledgedAt: this.acknowledgedAt?.toISOString() ?? null,
       resolvedAt: this.resolvedAt?.toISOString() ?? null,

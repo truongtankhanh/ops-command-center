@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alarm load and flood</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.grp{display:flex;align-items:center;gap:12px;padding:10px;border-radius:8px;border:1px solid transparent}
+.grp .tile{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid;flex:none}
+.grp .nm{font-size:14px;font-weight:500;line-height:18px}
+.grp .ct{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:#a9bed6}
+.cnt{min-width:24px;height:22px;padding:0 7px;border-radius:11px;font-size:12px;font-weight:700;line-height:22px;text-align:center;color:#07111f}
+.mr{display:flex;align-items:center;gap:10px;font-size:12px}
+.mr .b{height:6px;border-radius:3px;background:#3185ff;flex:none}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" hot="{{ true }}" crit="{{ 3 }}" hint-size="1440px,72px"></dc-import></div>
+
+<div class="side panel">
+<div class="tabs" style="padding:0 6px"><div class="tab on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Incidents <span class="n">14</span></div><div class="tab"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>Assets <span class="n">31</span></div></div>
+<div class="head" style="padding-bottom:8px">
+<div class="row" style="gap:10px;padding:10px 12px;border-radius:8px;border:1px solid rgb(232 192 112 / .5);background:rgb(232 192 112 / .08)">
+<svg class="ic l" style="color:#e8c070" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+<div style="flex:1"><div class="sb" style="font-size:13px">Alarm flood</div><div class="t2 xs">14 raised in 10 min, since 15:36</div></div>
+</div>
+<div class="row" style="gap:10px;justify-content:space-between;padding:0 4px"><span class="s12 t2" id="gz">Group by zone</span><span class="sw2" style="position:relative;display:inline-block;width:36px;height:20px;border-radius:10px;background:#3185ff;border:1px solid #3185ff"><i style="position:absolute;left:18px;top:2px;width:14px;height:14px;border-radius:50%;background:#07111f"></i></span></div>
+</div>
+<div class="rows">
+<div class="grp"><div class="tile crit"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><div><div class="nm">Science Lab</div><div class="t2 xs">worst: Critical · 3 open</div></div><div class="ct"><span class="cnt" style="background:#ff426d">4</span></div></div>
+<div class="grp"><div class="tile high"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg></div><div><div class="nm">Innovation Hub</div><div class="t2 xs">worst: High · 3 open</div></div><div class="ct"><span class="cnt" style="background:#ffad42">3</span></div></div>
+<div class="grp"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div><div><div class="nm">Dormitory B</div><div class="t2 xs">worst: Medium · 2 open</div></div><div class="ct"><span class="cnt" style="background:#f2d04b">3</span></div></div>
+<div class="grp"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div><div><div class="nm">Student Center</div><div class="t2 xs">worst: Medium · 1 open</div></div><div class="ct"><span class="cnt" style="background:#f2d04b">2</span></div></div>
+<div class="grp"><div class="tile low"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div><div><div class="nm">Main Gate</div><div class="t2 xs">worst: Low · 2 open</div></div><div class="ct"><span class="cnt" style="background:#8fa3b8">2</span></div></div>
+<div class="t3 xs" style="padding:10px 12px">Grouping is a view of the same incidents, one row per zone. Opening a row lists its incidents. Real grouping of related alarms is V4.</div>
+</div>
+</div>
+
+<div class="stage">
+<div style="position:absolute;left:0;top:0"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="glass" style="position:absolute;left:228px;top:14px;width:600px;padding:12px 14px;display:flex;gap:12px;align-items:center;border-color:rgb(232 192 112 / .55);background:rgb(13 28 45 / .94)" role="status">
+<svg class="ic xl" style="color:#e8c070" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+<div style="flex:1"><div class="sb" style="font-size:14px">Alarm flood: 14 raised in 10 min</div><div class="t2 s12">More than 10 in 10 minutes. It ends below 5. The feed is grouped by zone; the camera has not moved.</div></div>
+<button class="btn s">Alarm load</button>
+</div>
+</div>
+
+<div style="position:absolute;left:372px;top:686px"><dc-import name="Strip" first="{{ true }}" hint-size="1056px,170px"></dc-import></div>
+<div style="position:absolute;left:0;top:868px"><dc-import name="StatusBar" flood="{{ true }}" hint-size="1440px,32px"></dc-import></div>
+
+<div class="glass" style="position:absolute;left:372px;top:384px;width:392px;padding:14px;display:flex;flex-direction:column;gap:12px" role="dialog" aria-label="Alarm load">
+<div class="row" style="justify-content:space-between"><div class="sb" style="font-size:15px">Alarm load</div><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+<div class="row" style="gap:14px;align-items:flex-end">
+<div><div style="font-size:32px;line-height:34px;font-weight:600;font-variant-numeric:tabular-nums">14</div><div class="t2 xs">raised in 10 min</div></div>
+<span class="sev high" style="margin-bottom:4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>Flood</span>
+<div class="t2 xs" style="margin-bottom:6px">since 15:36</div>
+</div>
+<div class="tiles3" style="grid-template-columns:repeat(3,1fr)">
+<div class="lt"><span class="a">Standing</span><span class="b">3</span><span class="d fl">open past attention</span></div>
+<div class="lt"><span class="a">Last hour</span><span class="b">19</span><span class="d fl">raised</span></div>
+<div class="lt"><span class="a">Peak today</span><span class="b">14</span><span class="d fl">per 10 min</span></div>
+</div>
+<div>
+<div class="s12 t2 sb" style="margin-bottom:6px">Raised per 10 min · last 3 h</div>
+<svg viewBox="0 0 364 74" width="100%" height="74" role="img" aria-label="Raised per 10 minutes over three hours; the last bar is 14, above the flood line of 10">
+<line x1="0" x2="364" y1="30" y2="30" stroke="#e8c070" stroke-dasharray="4 4"/><text x="362" y="26" fill="#e8c070" font-size="10" text-anchor="end">flood 10</text>
+<line x1="0" x2="364" y1="52" y2="52" stroke="#5a7488" stroke-dasharray="2 4"/><text x="362" y="48" fill="#8fa5bf" font-size="10" text-anchor="end">ends 5</text>
+<rect x="4" y="66" width="14" height="6" fill="#3185ff"/><rect x="24" y="64" width="14" height="8" fill="#3185ff"/><rect x="44" y="68" width="14" height="4" fill="#3185ff"/><rect x="64" y="60" width="14" height="12" fill="#3185ff"/><rect x="84" y="66" width="14" height="6" fill="#3185ff"/><rect x="104" y="62" width="14" height="10" fill="#3185ff"/><rect x="124" y="68" width="14" height="4" fill="#3185ff"/><rect x="144" y="64" width="14" height="8" fill="#3185ff"/><rect x="164" y="58" width="14" height="14" fill="#3185ff"/><rect x="184" y="66" width="14" height="6" fill="#3185ff"/><rect x="204" y="62" width="14" height="10" fill="#3185ff"/><rect x="224" y="64" width="14" height="8" fill="#3185ff"/><rect x="244" y="56" width="14" height="16" fill="#3185ff"/><rect x="264" y="60" width="14" height="12" fill="#3185ff"/><rect x="284" y="52" width="14" height="20" fill="#3185ff"/><rect x="304" y="44" width="14" height="28" fill="#6aa6ff"/><rect x="324" y="22" width="14" height="50" fill="#e8c070"/><rect x="344" y="14" width="14" height="58" fill="#e8c070"/>
+</svg>
+</div>
+<div>
+<div class="s12 t2 sb" style="margin-bottom:6px">Noisy devices · last 24 h</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div class="mr"><span class="num" style="width:62px">LKS-B3</span><span class="b" style="width:140px"></span><span class="num t2">7</span><span class="t3 xs">Leak sensor</span></div>
+<div class="mr"><span class="num" style="width:62px">GAS-L1</span><span class="b" style="width:100px"></span><span class="num t2">5</span><span class="t3 xs">Gas detector</span></div>
+<div class="mr"><span class="num" style="width:62px">CAM-D03</span><span class="b" style="width:80px"></span><span class="num t2">4</span><span class="t3 xs">Camera</span></div>
+<div class="mr"><span class="num" style="width:62px">ICS-ADMIN</span><span class="b" style="width:60px"></span><span class="num t2">3</span><span class="t3 xs">Climate sensor</span></div>
+<div class="mr"><span class="num" style="width:62px">BAR-02</span><span class="b" style="width:60px"></span><span class="num t2">3</span><span class="t3 xs">Barrier arm</span></div>
+</div>
+</div>
+<div class="t3 xs">Counts incidents already raised: nothing here is sent anywhere. Thresholds are starting values for operations to confirm.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

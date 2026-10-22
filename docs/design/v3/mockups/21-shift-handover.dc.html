@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shift handover</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.lab{position:absolute;font-size:12px;line-height:16px;color:#8fa5bf}
+.lab b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.hs{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid #1e3450;background:#142940}
+.hs .tile{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;border:1px solid;flex:none}
+.hs .tile .ic{width:16px;height:16px}
+.sh{font-size:12px;font-weight:600;color:#a9bed6;display:flex;justify-content:space-between;margin:2px 0}
+.fld{height:40px;border-radius:8px;border:1px solid #5a7488;background:#07111f;padding:0 12px;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+.ta2{min-height:92px;border-radius:8px;border:1px solid #5a7488;background:#07111f;padding:10px 12px;font-size:13px;line-height:19px;color:#e7f2ff}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="lab" style="left:24px;top:20px;width:640px"><b>21a Outgoing operator — hand over</b>Opened from the account menu. Open items are filled in from the incidents; the operator adds what only they know.</div>
+<div class="glass" style="position:absolute;left:24px;top:76px;width:640px;height:800px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div class="row" style="justify-content:space-between"><div><div class="sb" style="font-size:18px;line-height:24px">Shift handover</div><div class="t2 s12">Demo Operator · 07:00 – 19:00 · Wed 21 Oct</div></div><span class="ibtn" style="width:32px;height:32px;border:0;background:transparent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span></div>
+<div class="row" style="gap:10px"><div style="flex:1"><div class="sh"><span>From</span></div><div class="fld">Demo Operator</div></div><svg class="ic l t3" style="margin-top:20px" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg><div style="flex:1"><div class="sh"><span>To</span><span class="t3" style="font-weight:400">optional</span></div><div class="fld"><span class="t2">Whoever takes the next shift</span><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div></div></div>
+<div class="tiles3" style="grid-template-columns:repeat(3,1fr)"><div class="lt"><span class="a">Raised this shift</span><span class="b">41</span></div><div class="lt"><span class="a">Peak load</span><span class="b">14<small>/ 10 min</small></span></div><div class="lt"><span class="a">Floods</span><span class="b">1</span></div></div>
+<div><div class="sh"><span>Open · 5</span><span class="t3" style="font-weight:400">filled in automatically</span></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div class="hs"><span class="tile crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span style="flex:1">Smoke detector — Science Lab, level 2</span><span class="sev crit">Critical</span><span class="num t2 xs">INC-000110</span></div>
+<div class="hs"><span class="tile high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span><span style="flex:1">Door forced open — service corridor</span><span class="sev high">High</span><span class="num t2 xs">INC-000104</span></div>
+<div class="hs"><span class="tile low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></span><span style="flex:1">Student fell — Sports Hall, court 2</span><span class="sev low">Low</span><span class="num t2 xs">INC-000109</span></div>
+<div class="t3 xs" style="padding:2px 4px">+ 2 more Low</div>
+</div></div>
+<div><div class="sh"><span>Acknowledged, not resolved · 3</span></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div class="hs"><span class="tile med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></span><span style="flex:1">Water leak — Dormitory B, level 3</span><span class="sev med">Medium</span><span class="num t2 xs">INC-000108</span></div>
+<div class="hs"><span class="tile med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span><span style="flex:1">Unattended bag — Student Center</span><span class="sev med">Medium</span><span class="num t2 xs">INC-000103</span></div>
+<div class="t3 xs" style="padding:2px 4px">+ 1 more Low</div>
+</div></div>
+<div><div class="sh"><span>Notes for the next shift</span></div><div class="ta2">Dorm B leak: plumber booked for 08:00, level 3 corridor closed. Science Lab alarm: fume hood check after the all-clear. CAM-D03 still dark, facilities informed.</div></div>
+<div style="flex:1"></div>
+<div class="row" style="gap:10px;justify-content:space-between"><span class="t3 xs" style="max-width:300px">Handing over changes no incident. It records who handed over what, and when.</span><div class="row" style="gap:8px"><button class="btn">Cancel</button><button class="btn p">Hand over</button></div></div>
+</div>
+
+<div class="lab" style="left:700px;top:20px;width:700px"><b>21b Incoming operator — banner and acceptance</b>Shown at sign-in until the handover is accepted; opening it first is the first thing the shift does.</div>
+<div class="glass" style="position:absolute;left:700px;top:76px;width:716px;padding:12px 14px;display:flex;gap:12px;align-items:center;border-color:#3185ff;background:rgb(13 28 45 / .94)" role="status">
+<svg class="ic xl" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+<div style="flex:1"><div class="sb" style="font-size:14px">Handover from Demo Operator · 19:02</div><div class="t2 s12">5 open, 3 acknowledged, 1 note. Review before you take over.</div></div>
+<button class="btn p s">Review</button>
+</div>
+<div class="glass" style="position:absolute;left:700px;top:160px;width:716px;padding:18px;display:flex;flex-direction:column;gap:12px">
+<div class="row" style="justify-content:space-between"><div><div class="sb" style="font-size:16px">Take over the shift</div><div class="t2 s12">From Demo Operator · handed over 19:02</div></div></div>
+<div class="tiles3" style="grid-template-columns:repeat(4,1fr)"><div class="lt"><span class="a">Open</span><span class="b">5</span></div><div class="lt"><span class="a">Acknowledged</span><span class="b">3</span></div><div class="lt"><span class="a">Critical</span><span class="b" style="color:#ff426d">1</span></div><div class="lt"><span class="a">Standing</span><span class="b">3</span></div></div>
+<div class="ta2" style="min-height:70px">Dorm B leak: plumber booked for 08:00, level 3 corridor closed. Science Lab alarm: fume hood check after the all-clear. CAM-D03 still dark, facilities informed.</div>
+<label class="row" style="gap:10px;font-size:13px;color:#a9bed6"><input type="checkbox" checked style="width:18px;height:18px;accent-color:#3185ff">I have read the open incidents and the notes</label>
+<div class="row" style="gap:10px;justify-content:space-between"><span class="t3 xs" style="max-width:360px">Accepting is recorded with your name and time. Until then the banner stays; nothing else is blocked.</span><div class="row" style="gap:8px"><button class="btn">Later</button><button class="btn p">Accept handover</button></div></div>
+</div>
+<div class="panel" style="position:absolute;left:700px;top:560px;width:716px;padding:16px;display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:18px;color:#a9bed6">
+<div class="sb" style="color:#e7f2ff;font-size:13px">Rules</div>
+<div><b style="color:#e7f2ff">Who.</b> Operators and supervisors hand over; technicians for their categories (Facilities, Environment). Viewers see no handover.</div>
+<div><b style="color:#e7f2ff">What it stores.</b> Outgoing and incoming user, notes, the ids of the open and acknowledged incidents at that moment, created and accepted times. A new table; no incident changes.</div>
+<div><b style="color:#e7f2ff">Approval.</b> The incoming operator's acceptance is enough by default; a supervisor's approval is an open question (ADR-0024).</div>
+<div><b style="color:#e7f2ff">History.</b> The latest handover is read at sign-in; older ones are searchable later.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

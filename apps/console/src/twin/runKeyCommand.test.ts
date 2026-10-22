@@ -20,6 +20,9 @@ function fakeCommands(): FakeCommands {
     tiltBy: vi.fn<TwinCommands['tiltBy']>(),
     panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+    panStep: vi.fn<TwinCommands['panStep']>(),
+    panHold: vi.fn<TwinCommands['panHold']>(),
+    centreOn: vi.fn<TwinCommands['centreOn']>(),
     current: vi.fn<TwinCommands['current']>(() => null),
   };
 }

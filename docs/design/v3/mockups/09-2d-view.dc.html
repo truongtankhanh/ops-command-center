@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2D view</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" hint-size="1440px,72px"></dc-import></div>
+<div style="position:absolute;left:0;top:84px"><dc-import name="Sidebar" hint-size="360px,772px"></dc-import></div>
+
+<div class="stage">
+<div style="position:absolute;left:0;top:0"><dc-import name="Map2D" tip="{{ true }}" hint-size="1056px,590px"></dc-import></div>
+<div class="row" style="position:absolute;left:12px;top:12px;gap:8px">
+<div class="seg"><span class="o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>3D</span><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>2D</span></div>
+<div class="layers"><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Incidents</span><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cameras</span><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/></svg>Assets</span></div>
+</div>
+<div class="rail" aria-label="Map controls">
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg></div>
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></div>
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg></div>
+</div>
+<div class="scalebar"><div class="bar"></div><span>0 — 100 m</span></div>
+<div class="legend glass" style="background:rgb(13 28 45 / .88)">
+<div class="i"><span class="dot" style="background:#ff426d"></span>Incident — severity ring and glyph</div>
+<div class="i"><span class="dot" style="background:#07111f;border:2px solid #35e7ff;width:12px;height:12px"></span>Asset — live</div>
+<div class="i"><span class="dot" style="background:#07111f;border:2px solid #ffad42;width:12px;height:12px"></span>Asset — fault, with the incident's severity</div>
+<div class="i"><span class="dot" style="background:#07111f;border:2px dashed #5a7488;width:12px;height:12px"></span>Asset — stale</div>
+</div>
+</div>
+
+<div style="position:absolute;left:372px;top:686px"><dc-import name="Strip" hint-size="1056px,170px"></dc-import></div>
+<div style="position:absolute;left:0;top:868px"><dc-import name="StatusBar" tier="2D" hint-size="1440px,32px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

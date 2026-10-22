@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calm view and settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.zw{position:absolute;width:676px;height:378px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f;top:84px}
+.zw .in{position:absolute;left:0;top:0;width:1056px;height:590px;transform:scale(.64);transform-origin:0 0}
+.zl{position:absolute;top:22px;width:676px;font-size:12px;line-height:16px;color:#8fa5bf}
+.zl b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.swr{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px}
+.swr .tx{flex:1;font-size:13px;line-height:18px}
+.swr .tx small{display:block;font-size:11px;line-height:14px;color:#8fa5bf}
+.sw2{position:relative;width:36px;height:20px;border-radius:10px;background:#1c3552;border:1px solid #5a7488;flex:none}
+.sw2 i{position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#a9bed6}
+.sw2.on{background:#3185ff;border-color:#3185ff}
+.sw2.on i{left:18px;background:#07111f}
+.swr.hi{background:rgb(49 133 255 / .12);box-shadow:inset 0 0 0 1px #3185ff}
+.cl2{display:flex;flex-direction:column;gap:6px;font-size:12px;line-height:18px;color:#a9bed6}
+.cl2 li{margin-left:16px}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="zl" style="left:24px"><b>15a Full colour (default)</b>The campus keeps its materials: green lawns, blue glass, warm windows.</div>
+<div class="zw" style="left:24px"><div class="in"><dc-import name="Scene" tier="medium" sel="sci" spot="{{ true }}" zoom="{{ 1.6 }}" px="{{ -668 }}" py="{{ 103 }}" hint-size="1056px,590px"></dc-import></div></div>
+
+<div class="zl" style="left:740px"><b>15b Calm view</b>Same scene, environment desaturated; the red, orange and yellow rings, labels and the accent are untouched.</div>
+<div class="zw" style="left:740px"><div class="in"><dc-import name="Scene" tier="medium" sel="sci" spot="{{ true }}" calm="{{ true }}" zoom="{{ 1.6 }}" px="{{ -668 }}" py="{{ 103 }}" hint-size="1056px,590px"></dc-import></div></div>
+
+<div style="position:absolute;left:24px;top:488px;width:420px">
+<div class="s12 t3" style="margin-bottom:8px">15c Account menu · Settings</div>
+<div class="glass" style="padding:8px">
+<div class="swr"><div class="tx">Sound on critical incidents<small>Off by default</small></div><span class="sw2"><i></i></span></div>
+<div class="swr"><div class="tx">Single-key shortcuts<small>N, A, R, F, V, /, ?</small></div><span class="sw2 on"><i></i></span></div>
+<div class="swr"><div class="tx">Compact layout<small>Tighter rows and bars</small></div><span class="sw2"><i></i></span></div>
+<div class="swr"><div class="tx">Fly to an incident when I open it<small>Feed rows and search; never on arrival</small></div><span class="sw2 on"><i></i></span></div>
+<div class="swr hi"><div class="tx"><b>Calm view</b><small>Mute the campus colours so alerts stand out</small></div><span class="sw2 on"><i></i></span></div>
+</div>
+</div>
+
+<div style="position:absolute;left:480px;top:488px;width:456px;display:flex;flex-direction:column;gap:8px">
+<div class="s12 t3">15d What Calm changes</div>
+<div class="panel" style="padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:6px">Muted</div>
+<ul class="cl2" style="margin:0;padding:0"><li>Lawns, field, lake, roads, parking, trees, cars</li><li>Building faces and lit windows</li><li>Saturation drops to about 18 %, lightness stays</li></ul>
+</div>
+<div class="panel" style="padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:6px">Never muted</div>
+<ul class="cl2" style="margin:0;padding:0"><li>Severity rings, halos, glyphs and labels</li><li>The selection outline, the accent and the live cyan</li><li>Stale and fault markers, the heat ramp, every panel</li></ul>
+</div>
+</div>
+
+<div style="position:absolute;left:972px;top:488px;width:444px;display:flex;flex-direction:column;gap:8px">
+<div class="s12 t3">15e Rules</div>
+<div class="panel" style="padding:14px;display:flex;flex-direction:column;gap:8px;font-size:12px;line-height:18px;color:#a9bed6">
+<div><b style="color:#e7f2ff">Default off.</b> The first run shows the full look; Calm is a per-person choice for long shifts.</div>
+<div><b style="color:#e7f2ff">Per browser.</b> Remembered in local storage; a blocked store simply reads off.</div>
+<div><b style="color:#e7f2ff">3D only.</b> The 2D map is already flat; the row is hidden where 3D is unavailable. The wall has no menu and stays full colour.</div>
+<div><b style="color:#e7f2ff">Every role.</b> It changes how the scene looks, not what anyone may do.</div>
+<div><b style="color:#e7f2ff">No contrast loss.</b> Labels and markers keep their ratios; only the backdrop calms.</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

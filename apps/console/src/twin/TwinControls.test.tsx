@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import type { Mock } from 'vitest';
@@ -22,6 +22,9 @@ function fakeCommands(): FakeCommands {
     tiltBy: vi.fn<TwinCommands['tiltBy']>(),
     panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+    panStep: vi.fn<TwinCommands['panStep']>(),
+    panHold: vi.fn<TwinCommands['panHold']>(),
+    centreOn: vi.fn<TwinCommands['centreOn']>(),
     current: vi.fn<TwinCommands['current']>(() => null),
   };
 }
@@ -50,6 +53,48 @@ describe('TwinControls', () => {
         .map((b) => b.getAttribute('aria-label')),
     ).toEqual(['Zoom in', 'Zoom out', 'Rotate left', 'Rotate right', 'Reset view']);
     expect(screen.getByRole('button', { name: 'Face north' })).toBeInTheDocument();
+  });
+
+  describe('the drag tool (V3-29)', () => {
+    it('is a pair of toggle buttons, Orbit pressed first', () => {
+      render(<TwinControls compassRef={createRef()} />);
+
+      const group = screen.getByRole('group', { name: 'Drag tool' });
+      const [orbit, pan] = within(group).getAllByRole('button');
+      expect(orbit).toHaveAccessibleName('Orbit: drag rotates');
+      expect(pan).toHaveAccessibleName('Pan: drag moves the view');
+      expect(orbit).toHaveAttribute('aria-pressed', 'true');
+      expect(pan).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('switches to Pan and back, and the store holds the choice', async () => {
+      render(<TwinControls compassRef={createRef()} />);
+
+      await press('Pan: drag moves the view');
+      expect(useConsole.getState().panTool).toBe(true);
+      expect(screen.getByRole('button', { name: 'Pan: drag moves the view' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByRole('button', { name: 'Orbit: drag rotates' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+
+      await press('Orbit: drag rotates');
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+
+    it('names the P key only while single-key shortcuts are on', () => {
+      const { rerender } = render(<TwinControls compassRef={createRef()} />);
+      const pan = () => screen.getByRole('button', { name: 'Pan: drag moves the view' });
+      expect(pan()).toHaveAttribute('aria-keyshortcuts', 'P');
+
+      act(() => useConsole.setState({ keyboardShortcuts: false }));
+      rerender(<TwinControls compassRef={createRef()} />);
+
+      expect(pan()).not.toHaveAttribute('aria-keyshortcuts');
+    });
   });
 
   it('zooms in to 0.8 of the distance and out to 1.25 of it', async () => {

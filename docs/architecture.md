@@ -241,3 +241,7 @@ A production deployment guide is not published yet.
 | [0011](adr/0011-role-based-authorization-and-timeline-actor.md) | Role-based authorization and the timeline actor          |
 | [0013](adr/0013-liveness-and-readiness-probes.md)               | Separate liveness and readiness probes                   |
 | [0017](adr/0017-site-plan-as-data.md)                           | Site plan and camera fields of view served by the API    |
+| [0022](adr/0022-console-visual-language.md)                     | Console colour, neon and camera rules                    |
+| [0023](adr/0023-building-levels-as-data.md)                     | Building levels as data                                  |
+| [0024](adr/0024-shift-handover.md)                              | Shift handover as its own record                         |
+| [0031](adr/0031-place-plans.md)                                 | Place plans: rooms and positions                         |

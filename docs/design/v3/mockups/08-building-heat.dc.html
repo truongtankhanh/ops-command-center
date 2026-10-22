@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Building level and heat overlay</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.zw{position:absolute;width:697px;height:389px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f}
+.zw .in{position:absolute;left:0;top:0;width:1056px;height:590px;transform:scale(.66);transform-origin:0 0}
+.zl{position:absolute;font-size:12px;line-height:16px;color:#8fa5bf;width:697px}
+.zl b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.hrow{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #1e3450}
+.hrow:last-child{border-bottom:0}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="zl" style="left:24px;top:22px"><b>08a Heat overlay</b>Buildings coloured by indoor temperature on one sequential ramp in the accent's hue; no red, orange or yellow, so heat never reads as severity.</div>
+<div class="zw" style="left:24px;top:76px"><div class="in"><dc-import name="Scene" tier="medium" heat="{{ true }}" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="row" style="position:absolute;left:12px;top:12px;gap:6px"><span class="layers" style="padding:2px"><span class="o on" style="height:28px;font-size:12px;background:var(--accent-tint);box-shadow:inset 0 0 0 1px #3185ff;color:#e7f2ff">Heat</span></span><span class="seg" style="padding:2px"><span class="o" style="height:28px;font-size:12px">Colour by: Indoor temperature</span></span></div>
+</div>
+<div style="position:absolute;left:24px;top:480px;width:697px;display:flex;gap:16px">
+<div class="panel" style="flex:1;padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:10px">Legend</div>
+<div style="height:12px;border-radius:6px;background:linear-gradient(90deg,#12315f,#1b4a8f,#2766c4,#3185ff,#6aa6ff,#b6d5ff)"></div>
+<div class="row xs t2 num" style="justify-content:space-between;margin-top:6px"><span>≤ 19 °C</span><span>23 °C</span><span>≥ 27 °C</span></div>
+<div class="t3 s12" style="margin-top:10px">A building above 27 °C or below 19 °C reads its real mean and sits at the ramp's end. A building with no fresh sensor is faded and reads "No data". The Assets tab lists each reading.</div>
+</div>
+<div class="panel" style="flex:1;padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:6px">Warmest buildings</div>
+<div class="hrow"><span>Science Lab</span><span class="num sb">26.8 °C</span></div>
+<div class="hrow"><span>Data Center</span><span class="num sb">24.1 °C</span></div>
+<div class="hrow"><span>Dormitory B</span><span class="num sb">23.6 °C</span></div>
+<div class="hrow"><span>Library</span><span class="num t2">No data</span></div>
+</div>
+</div>
+
+<div class="zl" style="left:719px;top:22px"><b>08b Building level — Data Center</b>The rest of the campus fades to ghost, the building stays, equipment inside is pickable. Esc returns to Campus.</div>
+<div class="zw" style="left:719px;top:76px"><div class="in"><dc-import name="Scene" tier="near" focus="dc" zoom="{{ 2.6 }}" px="{{ -472 }}" py="{{ -91 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="row" style="position:absolute;left:12px;top:12px;gap:6px;padding:6px 10px;border-radius:8px;border:1px solid #1e3450;background:rgb(13 28 45 / .9);font-size:12px"><span class="t2">Campus</span><svg class="ic s t3" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg><b>Data Center</b></div>
+</div>
+<div style="position:absolute;left:719px;top:480px;width:697px;display:flex;gap:16px">
+<div class="panel" style="flex:1;padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:6px">Building summary</div>
+<div class="hrow"><span class="t2">Assets</span><span class="num sb">5 · 0 without data</span></div>
+<div class="hrow"><span class="t2">Open incidents</span><span class="num sb">1 · Low</span></div>
+<div class="hrow"><span class="t2">Indoor temperature</span><span class="num sb">24.1 °C</span></div>
+</div>
+<div class="panel" style="flex:1;padding:14px">
+<div class="sb" style="font-size:13px;margin-bottom:8px">Assets · Data Center</div>
+<div class="row" style="gap:6px;flex-wrap:wrap"><span class="chip">CT-01</span><span class="chip">CT-02</span><span class="chip">UPS-01</span><span class="chip">BAT-01</span><span class="chip">CRAC-01</span></div>
+<div class="t3 s12" style="margin-top:10px">The Assets tab filters to the building; hovering a row highlights the part, and the other way round.</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

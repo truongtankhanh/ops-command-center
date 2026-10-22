@@ -33,7 +33,17 @@ describe('DragHint', () => {
     renderOnStage();
 
     const hint = screen.getByText(TEXT);
-    expect(hint).toHaveTextContent('Drag to rotate · Shift + drag to pan');
+    expect(hint).toHaveTextContent('Drag to rotate · Pan tool or Shift + drag to pan');
+    expect(hint.querySelector('kbd')).toHaveTextContent('Shift');
+  });
+
+  it('says it the other way round while the Pan tool is on', () => {
+    renderOnStage();
+
+    act(() => useConsole.getState().setPanTool(true));
+
+    const hint = screen.getByText(/Drag to pan/);
+    expect(hint).toHaveTextContent('Drag to pan · Shift + drag to rotate');
     expect(hint.querySelector('kbd')).toHaveTextContent('Shift');
   });
 

@@ -26,6 +26,9 @@ function fakeCommands(pose: Pose | null = POSE): FakeCommands {
     tiltBy: vi.fn<TwinCommands['tiltBy']>(),
     panBy: vi.fn<TwinCommands['panBy']>(),
     faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+    panStep: vi.fn<TwinCommands['panStep']>(),
+    panHold: vi.fn<TwinCommands['panHold']>(),
+    centreOn: vi.fn<TwinCommands['centreOn']>(),
     current: vi.fn<TwinCommands['current']>(() => pose),
   };
 }
@@ -58,6 +61,10 @@ describe('twinCommands with nothing registered', () => {
       twinCommands.rotateBy(30);
       twinCommands.tiltBy(5);
       twinCommands.panBy(0.1, -0.1);
+      twinCommands.panStep(1, 0);
+      twinCommands.panHold({ dx: 0, dy: 1 });
+      twinCommands.panHold(null);
+      twinCommands.centreOn({ kind: 'asset', code: 'CT-01' });
       twinCommands.faceNorth();
     }).not.toThrow();
     expect(twinCommands.current()).toBeNull();
@@ -79,6 +86,9 @@ describe('registerTwinCommands', () => {
     twinCommands.rotateBy(-30);
     twinCommands.tiltBy(-5);
     twinCommands.panBy(0.1, -0.1);
+    twinCommands.panStep(Math.SQRT1_2, Math.SQRT1_2);
+    twinCommands.panHold({ dx: 0, dy: -1 });
+    twinCommands.centreOn({ kind: 'incident', id: 'incident-1' });
     twinCommands.faceNorth();
 
     expect(rig.flyTo).toHaveBeenCalledWith({ target: [5, 0, 6], distance: 120 });
@@ -91,7 +101,30 @@ describe('registerTwinCommands', () => {
     expect(rig.rotateBy).toHaveBeenCalledWith(-30);
     expect(rig.tiltBy).toHaveBeenCalledWith(-5);
     expect(rig.panBy).toHaveBeenCalledWith(0.1, -0.1);
+    expect(rig.panStep).toHaveBeenCalledWith(Math.SQRT1_2, Math.SQRT1_2);
+    expect(rig.panHold).toHaveBeenCalledWith({ dx: 0, dy: -1 });
+    expect(rig.centreOn).toHaveBeenCalledWith({ kind: 'incident', id: 'incident-1' });
     expect(rig.faceNorth).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a held pan go when its rig is replaced or taken away (V3-29)', () => {
+    const first = fakeCommands();
+    const unregisterFirst = register(first);
+    twinCommands.panHold({ dx: 1, dy: 0 });
+
+    const second = fakeCommands();
+    const unregisterSecond = register(second);
+
+    // The one going away is told to stop; the new one is not asked to.
+    expect(first.panHold).toHaveBeenLastCalledWith(null);
+    expect(second.panHold).not.toHaveBeenCalled();
+
+    // A late cleanup of the replaced rig must not stop its successor.
+    unregisterFirst();
+    expect(second.panHold).not.toHaveBeenCalled();
+
+    unregisterSecond();
+    expect(second.panHold).toHaveBeenLastCalledWith(null);
   });
 
   it('answers current() from the rig', () => {

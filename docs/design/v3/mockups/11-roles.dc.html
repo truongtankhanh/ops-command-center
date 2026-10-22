@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Roles</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.col{position:absolute;top:92px;width:360px}
+.col .lab{font-size:12px;line-height:16px;color:#8fa5bf;margin-bottom:10px;height:34px}
+.col .lab b{color:#e7f2ff;font-size:14px;font-weight:600;display:block;margin-bottom:2px}
+.col .insp{position:relative;left:auto;top:auto;height:700px}
+.vo{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-top:1px solid #1e3450;background:#0d1c2d}
+.vo .t{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:16px;color:#a9bed6}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" viewer="{{ true }}" hint-size="1440px,72px"></dc-import></div>
+
+<div class="col" style="left:60px">
+<div class="lab"><b>11a Viewer — incident</b>No Report incident, no Acknowledge or Resolve: a designed footer, never a gap.</div>
+<div class="insp">
+<div class="ph"><div class="tile crit"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div style="flex:1;min-width:0"><div class="ttl">Smoke detector — Science Lab, level 2</div><div class="t2 s12 num">INC-000110 · Science Lab</div></div><span class="ibtn" style="width:32px;height:32px;border:0;background:transparent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span></div>
+<div class="pm"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span>3m ago</span><span class="t3">·</span><span>Open</span></div>
+<div class="tabs" style="padding:0 6px"><div class="tab on" style="padding:0 11px;height:40px">Details</div><div class="tab" style="padding:0 11px;height:40px">Related <span class="n">3</span></div><div class="tab" style="padding:0 11px;height:40px">Telemetry</div><div class="tab" style="padding:0 11px;height:40px">Timeline</div></div>
+<div class="pb">
+<div class="stepper"><div class="st cur"><i></i>Open</div><div class="ln"></div><div class="st"><i></i>Acknowledged</div><div class="ln"></div><div class="st"><i></i>Resolved</div></div>
+<div class="card" style="padding:10px 12px"><div class="sb" style="font-size:12px">Why it was raised</div><div class="t2 s12 num">smokePpm 12.8 &gt; 10 for 60 s · rule SD-SMOKE-HIGH</div></div>
+<div class="tiles3"><div class="lt"><span class="a">Smoke level</span><span class="b">12.8<small>ppm</small></span></div><div class="lt"><span class="a">Temperature</span><span class="b">62.4<small>°C</small></span></div><div class="lt"><span class="a">Humidity</span><span class="b">45.2<small>%</small></span></div></div>
+<button class="btn ghost" style="justify-content:space-between;width:100%"><span class="row" style="gap:8px">View camera CAM-L03</span><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+</div>
+<div class="vo"><div class="t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span><b style="color:#e7f2ff">View only.</b> Acknowledging and resolving are for operators. The API enforces this; hiding the buttons is only presentation.</span></div><button class="btn s">Show in 3D <span class="kbd">F</span></button></div>
+</div>
+</div>
+
+<div class="col" style="left:540px">
+<div class="lab"><b>11b Viewer — asset</b>Readings, parts and Focus stay; "Report a fault" gives way to the same footer.</div>
+<div class="insp">
+<div class="ph"><div class="tile" style="color:#35e7ff;border-color:rgb(53 231 255 / .4);background:rgb(53 231 255 / .08)"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg></div><div style="flex:1;min-width:0"><div class="ttl">Cooling tower 1</div><div class="t2 s12 num">CT-01 · Data Center · roof</div></div><span class="ibtn" style="width:32px;height:32px;border:0;background:transparent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span></div>
+<div class="pm"><span class="pill live" style="height:22px;font-size:11px;padding:0 8px">Running</span><span class="t2">Live · updated 1 s ago</span></div>
+<div class="tabs" style="padding:0 6px"><div class="tab on" style="padding:0 11px;height:40px">Details</div><div class="tab" style="padding:0 11px;height:40px">Related <span class="n">0</span></div><div class="tab" style="padding:0 11px;height:40px">Telemetry</div><div class="tab" style="padding:0 11px;height:40px">Timeline</div></div>
+<div class="pb">
+<div class="tiles3"><div class="lt"><span class="a">Fan speed</span><span class="b" style="color:#35e7ff">1,420<small>rpm</small></span></div><div class="lt"><span class="a">Motor temp</span><span class="b" style="color:#35e7ff">71.2<small>°C</small></span></div><div class="lt"><span class="a">Current</span><span class="b" style="color:#35e7ff">18.6<small>A</small></span></div></div>
+<div class="card"><div class="kv" style="padding-top:12px"><span class="k">Asset ID</span><span class="num">CT-01</span><span class="k">Class</span><span>Cooling tower</span><span class="k">Location</span><span>Data Center · roof</span></div></div>
+</div>
+<div class="vo"><div class="t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span><b style="color:#e7f2ff">View only.</b> Faults are reported by operators and technicians.</span></div><button class="btn s">Focus <span class="kbd">F</span></button></div>
+</div>
+</div>
+
+<div class="col" style="left:1020px">
+<div class="lab"><b>11c Technician — out of scope</b>A Security incident opened by a technician: read-only, pointed to "Mine to handle".</div>
+<div class="insp">
+<div class="ph"><div class="tile high"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div style="flex:1;min-width:0"><div class="ttl">Door forced open — service corridor</div><div class="t2 s12 num">INC-000104 · Innovation Hub</div></div><span class="ibtn" style="width:32px;height:32px;border:0;background:transparent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></span></div>
+<div class="pm"><span class="sev high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>High</span><span class="chip" style="height:22px;font-size:11px">Security</span><span>14m ago</span></div>
+<div class="tabs" style="padding:0 6px"><div class="tab on" style="padding:0 11px;height:40px">Details</div><div class="tab" style="padding:0 11px;height:40px">Related <span class="n">1</span></div><div class="tab" style="padding:0 11px;height:40px">Telemetry</div><div class="tab" style="padding:0 11px;height:40px">Timeline</div></div>
+<div class="pb">
+<div class="stepper"><div class="st cur"><i></i>Open</div><div class="ln"></div><div class="st"><i></i>Acknowledged</div><div class="ln"></div><div class="st"><i></i>Resolved</div></div>
+<div class="card" style="padding:10px 12px"><div class="sb" style="font-size:12px">Reported by</div><div class="t2 s12">Door controller DC-H-07 · Innovation Hub, service corridor</div></div>
+<button class="btn ghost" style="justify-content:space-between;width:100%"><span class="row" style="gap:8px">View camera CAM-H01</span><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+</div>
+<div class="vo"><div class="t"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span><b style="color:#e7f2ff">Security incidents are handled by operators.</b> Technicians act on Facilities and Environment incidents.</span></div><button class="btn s">Show Mine to handle</button></div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -122,6 +122,10 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0019](docs/adr/0019-telemetry-transport.md)                               | Telemetry reaches only the API over MQTT and goes to consoles on a best-effort `/telemetry` Socket.IO namespace with the same tokens; the broker is never public |
 | [0020](docs/adr/0020-digital-twin-rendering-and-model-pipeline.md)         | The 3D twin renders with three.js in a lazy console chunk; models are budgeted, content-hashed `.glb` files whose named parts move with readings                 |
 | [0021](docs/adr/0021-incident-categories-zone-uses-and-technician-role.md) | Incident types grouped in six categories, zones carry a building use, and a `technician` role acts only on Facilities and Environment incidents                  |
+| [0022](docs/adr/0022-console-visual-language.md)                           | Console colour carries one meaning per hue (Low is neutral), neon marks selection and live data only, and the camera moves when the operator asks                |
+| [0023](docs/adr/0023-building-levels-as-data.md)                           | Building levels are data: a `building_level` table, and a nullable level on assets and incidents                                                                 |
+| [0024](docs/adr/0024-shift-handover.md)                                    | A shift handover is its own record, accepted by the incoming operator, and the console polls for it                                                              |
+| [0031](docs/adr/0031-place-plans.md)                                       | A place's plan is data: rooms on a level (a `building_room` table) and an optional position on an asset inside it                                                |
 
 ### Design details worth a look
 

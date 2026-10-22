@@ -159,6 +159,21 @@ export type ActorKind = (typeof ACTOR_KINDS)[number];
 /** [longitude, latitude] — GeoJSON order. */
 export type LngLat = [number, number];
 
+/** A level code: `L1`, `L2`, `B1`, `ROOF` (ADR-0023). Server-side validation and the console's form share it. */
+export const LEVEL_CODE_PATTERN = /^[A-Z0-9]{1,8}$/;
+
+/** The level at a building's `heightM`: plant and the roof's devices stand on it (ADR-0023). */
+export const ROOF_LEVEL_CODE = 'ROOF';
+
+/** One level of a building: a slab at a height, with the label operators read ("Level 2", "Roof"). */
+export interface ZoneLevel {
+  /** Matches `LEVEL_CODE_PATTERN` and is unique within the zone. */
+  code: string;
+  label: string;
+  /** Metres above ground of the level's slab: ≥ 0. */
+  elevationM: number;
+}
+
 export interface Zone {
   id: string;
   code: string;
@@ -174,6 +189,11 @@ export interface Zone {
    * missing `heightM` as `null`: an API before the `zone.height_m` column never sends it.
    */
   heightM?: number | null;
+  /**
+   * A building's levels, ordered from the lowest (ADR-0023). A client reads a missing `levels` as
+   * `[]`: an API before `building_level` never sends it, and a zone that is not a building has none.
+   */
+  levels?: ZoneLevel[];
   /** Closed ring of [lng, lat] points. */
   polygon: LngLat[];
   center: LngLat;
@@ -311,6 +331,11 @@ export interface Asset {
    * model, the direction its front faces.
    */
   headingDeg: number;
+  /**
+   * The `code` of one of its zone's `levels` (ADR-0023); `null` when the asset has no level. A
+   * client reads a missing `levelCode` as `null`: an API before `asset.level_code` never sends it.
+   */
+  levelCode?: string | null;
   /** The class's headline points, ordered by `headline` rank: at most two. */
   headline: TelemetryPoint[];
 }
@@ -378,6 +403,12 @@ export interface Incident {
    * sends it.
    */
   assetId?: string | null;
+  /**
+   * The level of the zone it is on (ADR-0023); `null` when none was stated. It is a coarse field,
+   * not a height: `position` stays [lng, lat]. A client reads a missing `levelCode` as `null`: an API
+   * before `incident.level_code` never sends it.
+   */
+  levelCode?: string | null;
   reportedAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;

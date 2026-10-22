@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Campus scene</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.scene .rd.h{background:linear-gradient(90deg,#8aa0b5 0 5px,transparent 5px 11px) 0 50% / 11px 1px repeat-x,#17242f}
+.scene .rd.v{background:linear-gradient(0deg,#8aa0b5 0 5px,transparent 5px 11px) 50% 0 / 1px 11px repeat-y,#17242f}
+.scene .park{background:linear-gradient(0deg,transparent 0 41%,#13202b 41% 59%,transparent 59%),repeating-linear-gradient(90deg,rgb(200 220 240 / .34) 0 .7px,transparent .7px 4px),#17232f;border-radius:2px}
+.scene .car{width:2.2px;height:4.6px;border-radius:1px}
+.scene .tr.lg u{left:-8px;top:-20px;width:16px;height:20px}
+.scene .tr.lg::before{left:-7px;width:20px;height:10px}
+.scene .lawn{background:radial-gradient(ellipse at 40% 35%,rgb(96 160 100 / .30),rgb(60 120 70 / .16) 70%);box-shadow:inset 0 0 0 1px rgb(120 190 130 / .12);border-radius:8px}
+.scene .field{background:repeating-linear-gradient(90deg,#2b6a3f 0 12.5px,#276137 12.5px 25px);box-shadow:inset 0 0 0 1px rgb(220 240 225 / .65);border-radius:2px}
+.scene .field::after{width:1px;background:rgb(220 240 225 / .65)}
+.scene .field::before{width:18px;height:18px;margin:-9px 0 0 -9px;border:1px solid rgb(220 240 225 / .65)}
+.scene .lake{background:radial-gradient(ellipse at 38% 32%,#2f7da3 0,#1b5679 40%,#0f3550 100%);box-shadow:0 0 0 3px #24442f,0 0 0 6px #1b3a28,inset 0 0 16px rgb(0 0 0 / .45)}
+</style>
+</helmet>
+<div class="scene" data-tier="{{tier}}" data-sel="{{sel}}" data-spot="{{spot}}" data-focus="{{focus}}" data-heat="{{heat}}" data-stale="{{stale}}" data-calm="{{calm}}" data-night="{{night}}" role="img" aria-label="3D campus: Science Lab has a critical incident, Innovation Hub a high one">
+<div class="plane" style="width:510px;height:524px;margin:-262px 0 0 -255px;transform: translate({{px}}px, {{py}}px) scale({{zoom}}) rotateX(60deg) rotateZ(45deg); --iz: {{iz}}">
+
+<svg class="grass flat" width="510" height="524" viewBox="0 0 510 524" aria-hidden="true">
+<defs>
+<filter id="grassTex" x="0" y="0" width="510" height="524" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="3" seed="11" result="big"/>
+<feColorMatrix in="big" type="matrix" values="0.10 0 0 0 0.06  0.17 0 0 0 0.16  0.07 0 0 0 0.085  0 0 0 0 1" result="base"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="5" result="mid"/>
+<feColorMatrix in="mid" type="matrix" values="0 0 0 0 0.07  0 0 0 0 0.14  0 0 0 0 0.07  -0.9 0 0 0 0.52" result="patch"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="3" result="fine"/>
+<feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.68  0 0 0 0 0.40  0.45 0 0 0 -0.16" result="speck"/>
+<feMerge><feMergeNode in="base"/><feMergeNode in="patch"/><feMergeNode in="speck"/></feMerge>
+</filter>
+</defs>
+<rect width="510" height="524" rx="18" filter="url(#grassTex)"/>
+<rect x="1.5" y="1.5" width="507" height="521" rx="17" fill="none" stroke="#35506a" stroke-width="1.5"/>
+<rect x="6" y="6" width="498" height="512" rx="14" fill="none" stroke="#35506a" stroke-width=".7" stroke-dasharray="3 3" opacity=".6"/>
+</svg>
+
+<div class="lawn" style="left:247px;top:212px;width:110px;height:70px"></div>
+<div class="lawn" style="left:72px;top:22px;width:120px;height:70px;border-radius:4px"></div>
+<div class="field" style="left:82px;top:32px;width:100px;height:50px"></div>
+<div class="lake" style="left:132px;top:412px;width:110px;height:63px"></div>
+
+<div class="rd v" style="left:276px;top:282px;width:12px;height:242px"></div>
+<div class="rd v" style="left:62.5px;top:302px;width:9px;height:85px"></div>
+<div class="rd h" style="left:62.5px;top:297.5px;width:439px;height:9px"></div>
+<div class="rd h" style="left:222.5px;top:82.5px;width:184px;height:9px"></div>
+<div class="rd v" style="left:222.5px;top:82.5px;width:9px;height:224px"></div>
+<div class="rd v" style="left:397.5px;top:82.5px;width:9px;height:224px"></div>
+
+<div class="pz" style="left:260px;top:486px;width:44px;height:22px;background:#202f3d"></div>
+<div class="pz" style="left:487px;top:285px;width:23px;height:34px;background:#202f3d"></div>
+<div class="yard" style="left:292px;top:3px;width:110px;height:74px"></div>
+<div class="park" style="left:22px;top:387px;width:90px;height:70px"></div>
+<div class="park" style="left:437px;top:339px;width:60px;height:48px"></div>
+
+<div class="pz" style="left:112px;top:152px;width:100px;height:70px"></div>
+<div class="pz" style="left:282px;top:97px;width:80px;height:60px"></div>
+<div class="pz" style="left:422px;top:179px;width:70px;height:56px"></div>
+<div class="pz" style="left:177px;top:332px;width:90px;height:50px"></div>
+<div class="pz" style="left:351px;top:312px;width:82px;height:60px"></div>
+<div class="pz" style="left:402px;top:-2px;width:100px;height:74px"></div>
+<div class="pz" style="left:312px;top:400px;width:100px;height:57px"></div>
+<div class="pz" style="left:412px;top:400px;width:97px;height:57px"></div>
+<div class="pz" style="left:422px;top:454px;width:87px;height:66px"></div>
+<div class="pz" style="left:197px;top:-2px;width:90px;height:84px"></div>
+<div class="pz" style="left:5px;top:222px;width:102px;height:78px"></div>
+<div class="pa" style="left:207px;top:184px;width:16px;height:5px"></div>
+<div class="pa" style="left:322px;top:152px;width:5px;height:20px"></div>
+<div class="pa" style="left:231px;top:354px;width:6px;height:6px"></div>
+<div class="pa" style="left:107px;top:258px;width:46px;height:4px"></div>
+<div class="pa" style="left:402px;top:204px;width:25px;height:5px"></div>
+<div class="pa" style="left:359px;top:372px;width:5px;height:26px"></div>
+<div class="pa" style="left:390px;top:262px;width:4px;height:20px"></div>
+
+<div class="car" style="left:28px;top:393px;background:#7c93ab"></div><div class="car" style="left:32px;top:393px;background:#b9c6d4"></div><div class="car" style="left:40px;top:393px;background:#4d6f94"></div><div class="car" style="left:48px;top:393px;background:#8a96a3"></div><div class="car" style="left:60px;top:393px;background:#a4b3c2"></div><div class="car" style="left:68px;top:393px;background:#5b7893"></div><div class="car" style="left:84px;top:393px;background:#c4cfda"></div><div class="car" style="left:96px;top:393px;background:#6f86a0"></div>
+<div class="car" style="left:30px;top:443px;background:#9fb0c1"></div><div class="car" style="left:42px;top:443px;background:#4d6f94"></div><div class="car" style="left:46px;top:443px;background:#8b6f78"></div><div class="car" style="left:62px;top:443px;background:#d0d8e0"></div><div class="car" style="left:74px;top:443px;background:#6f86a0"></div><div class="car" style="left:90px;top:443px;background:#b9c6d4"></div>
+<div class="car" style="left:442px;top:345px;background:#6f86a0"></div><div class="car" style="left:446px;top:345px;background:#d0d8e0"></div><div class="car" style="left:458px;top:345px;background:#8b6f78"></div><div class="car" style="left:470px;top:345px;background:#9fb0c1"></div><div class="car" style="left:482px;top:345px;background:#4d6f94"></div>
+<div class="car" style="left:444px;top:371px;background:#b9c6d4"></div><div class="car" style="left:456px;top:371px;background:#5b7893"></div><div class="car" style="left:464px;top:371px;background:#c4cfda"></div><div class="car" style="left:484px;top:371px;background:#7c93ab"></div>
+
+<div class="bx m-glass w-glass b-hub" style="left:117px;top:157px;--w:90px;--d:60px;--h:33.6px;--dx:70px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv stair" style="left:10px;top:8px;width:14px;height:9px"></b><b class="hv sky" style="left:58px;top:30px;width:12px;height:10px"></b><b class="hv fan" style="left:72px;top:6px;width:10px;height:10px"><s></s></b><b class="hv vent" style="left:30px;top:44px;width:8px;height:8px"></b></i></div>
+<div class="bx m-brick w-punch b-lib" style="left:287px;top:102px;--w:70px;--d:50px;--h:25.2px;--dx:30px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv stair" style="left:8px;top:8px;width:10px;height:7px"></b><b class="hv fan" style="left:40px;top:28px;width:10px;height:10px"><s></s></b><b class="hv ahu" style="left:52px;top:10px;width:8px;height:8px"></b></i></div>
+<div class="bx m-conc w-blank b-dc" style="left:427px;top:184px;--w:60px;--d:46px;--h:19.6px;--dx:22px;--dw:11px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:42px;top:6px;width:12px;height:12px"><s></s></b><b class="hv ahu" style="left:6px;top:28px;width:12px;height:9px"></b><b class="hv ahu" style="left:22px;top:28px;width:12px;height:9px"></b><b class="hv ahu" style="left:42px;top:26px;width:12px;height:9px"></b></i></div>
+<div class="bx m-glass w-glass b-lha" style="left:182px;top:337px;--w:80px;--d:40px;--h:22.4px;--dx:40px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv solar" style="left:6px;top:5px;width:22px;height:11px"></b><b class="hv solar" style="left:32px;top:5px;width:22px;height:11px"></b><b class="hv solar" style="left:6px;top:22px;width:22px;height:11px"></b><b class="hv solar" style="left:32px;top:22px;width:22px;height:11px"></b><b class="hv ahu" style="left:60px;top:24px;width:8px;height:8px"></b></i></div>
+<div class="bx m-brick w-punch b-stc" style="left:356px;top:317px;--w:72px;--d:50px;--h:16.8px;--dx:36px;--dw:8px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv sky" style="left:36px;top:12px;width:24px;height:14px"></b><b class="hv ahu" style="left:8px;top:8px;width:10px;height:8px"></b><b class="hv vent" style="left:8px;top:30px;width:10px;height:10px"></b></i></div>
+<div class="bx m-glass w-glass b-sci" style="left:407px;top:3px;--w:90px;--d:64px;--h:22.4px;--dx:20px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv stair" style="left:10px;top:10px;width:16px;height:10px"></b><b class="hv ahu" style="left:50px;top:34px;width:14px;height:10px"></b><b class="hv fan" style="left:70px;top:12px;width:10px;height:10px"><s></s></b></i></div>
+<div class="bx m-brick w-punch b-dma" style="left:317px;top:405px;--w:90px;--d:47px;--h:28px;--dx:60px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv ahu" style="left:10px;top:8px;width:12px;height:8px"></b><b class="hv fan" style="left:34px;top:26px;width:10px;height:10px"><s></s></b><b class="hv ahu" style="left:70px;top:10px;width:10px;height:8px"></b></i></div>
+<div class="bx m-brick w-punch b-dmb" style="left:417px;top:405px;--w:87px;--d:47px;--h:28px;--dx:20px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv ahu" style="left:50px;top:24px;width:14px;height:9px"></b><b class="hv fan" style="left:12px;top:10px;width:10px;height:10px"><s></s></b><b class="hv vent" style="left:70px;top:8px;width:8px;height:8px"></b></i></div>
+<div class="bx m-conc w-ribbon b-cln" style="left:427px;top:459px;--w:77px;--d:56px;--h:14px;--dx:30px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv ahu" style="left:10px;top:10px;width:14px;height:9px"></b><b class="hv fan" style="left:50px;top:30px;width:12px;height:12px"><s></s></b><b class="hv vent" style="left:34px;top:12px;width:10px;height:10px"></b></i></div>
+<div class="bx m-conc w-clere b-spt" style="left:202px;top:3px;--w:80px;--d:74px;--h:19.6px;--dx:30px;--dw:9px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv lantern" style="left:12px;top:12px;width:56px;height:50px"></b></i></div>
+<div class="bx m-conc w-ribbon b-adm" style="left:10px;top:227px;--w:92px;--d:68px;--h:19.6px;--dx:44px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv ahu" style="left:10px;top:8px;width:16px;height:10px"></b><b class="hv fan" style="left:60px;top:40px;width:14px;height:10px"><s></s></b><b class="hv vent" style="left:34px;top:28px;width:10px;height:10px"></b><b class="hv ahu" style="left:74px;top:10px;width:10px;height:8px"></b></i></div>
+<div class="bx m-conc w-ribbon b-sec" style="left:308px;top:485px;--w:32px;--d:27px;--h:8.4px;--dx:10px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv ahu" style="left:20px;top:14px;width:7px;height:6px"></b></i></div>
+
+<div class="bx eq xf b-tr1" style="left:372px;top:28px;--w:8px;--d:7px;--h:7px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv bush" style="left:0.8px;top:0.8px;width:2.2px;height:2.2px"></b><b class="hv bush" style="left:3px;top:0.8px;width:2.2px;height:2.2px"></b><b class="hv bush" style="left:5.2px;top:0.8px;width:2.2px;height:2.2px"></b></i></div>
+<div class="bx eq xf b-tr2" style="left:386px;top:28px;--w:8px;--d:7px;--h:7px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv bush" style="left:0.8px;top:0.8px;width:2.2px;height:2.2px"></b><b class="hv bush" style="left:3px;top:0.8px;width:2.2px;height:2.2px"></b><b class="hv bush" style="left:5.2px;top:0.8px;width:2.2px;height:2.2px"></b></i></div>
+<div class="bx eq sg b-swg" style="left:320px;top:30px;--w:16px;--d:5px;--h:4.5px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"></i></div>
+<div class="bx eq ahu b-ch1" style="left:306px;top:44px;--w:13px;--d:6px;--h:4.9px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:1px;top:1px;width:5px;height:4px"><s></s></b><b class="hv fan" style="left:7px;top:1px;width:5px;height:4px"><s></s></b></i></div>
+<div class="bx eq ahu b-ch2" style="left:324px;top:44px;--w:13px;--d:6px;--h:4.9px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:1px;top:1px;width:5px;height:4px"><s></s></b><b class="hv fan" style="left:7px;top:1px;width:5px;height:4px"><s></s></b></i></div>
+
+<div class="bx eq ct b-dc b-ct1" style="left:438px;top:194px;--w:11px;--d:11px;--h:5px;transform:translateZ(19.6px)"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:0.8px;top:0.8px;width:9.4px;height:9.4px"><s></s></b></i></div>
+<div class="bx eq ct b-dc b-ct2" style="left:451px;top:194px;--w:11px;--d:11px;--h:5px;transform:translateZ(19.6px)"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:0.8px;top:0.8px;width:9.4px;height:9.4px"><s></s></b></i></div>
+<div class="bx eq gn b-dc b-gn1" style="left:490px;top:188px;--w:13px;--d:22px;--h:6.5px"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv vent" style="left:1.2px;top:2px;width:3px;height:3px"></b><b class="hv rad" style="left:2px;top:9px;width:9px;height:10px"></b></i></div>
+<div class="bx eq ahu b-hub b-ahuh1" style="left:146px;top:182px;--w:14px;--d:10px;--h:3.6px;transform:translateZ(33.6px)"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv fan" style="left:1.6px;top:1.6px;width:5.4px;height:5.4px"><s></s></b><b class="hv fan" style="left:7.6px;top:1.6px;width:5.4px;height:5.4px"><s></s></b></i></div>
+<div class="bx eq stack b-sci b-fh1" style="left:428px;top:40px;--w:7px;--d:7px;--h:6px;transform:translateZ(22.4px)"><i class="sh"></i><i class="fs"></i><i class="fe"></i><i class="ft"><b class="hv vent" style="left:1px;top:1px;width:5px;height:5px"></b></i></div>
+
+<b class="tr dk sm" style="left:74px;top:125px"><u></u></b><b class="tr sm dk" style="left:43px;top:116px"><u></u></b><b class="tr sm" style="left:267px;top:448px"><u></u></b><b class="tr sm" style="left:33px;top:345px"><u></u></b><b class="tr sm" style="left:99px;top:129px"><u></u></b><b class="tr" style="left:14px;top:89px"><u></u></b><b class="tr sm" style="left:239px;top:254px"><u></u></b><b class="tr sm" style="left:25px;top:486px"><u></u></b><b class="tr sm" style="left:405px;top:503px"><u></u></b><b class="tr dk sm" style="left:27px;top:153px"><u></u></b><b class="tr sm" style="left:139px;top:357px"><u></u></b><b class="tr sm" style="left:419px;top:252px"><u></u></b><b class="tr" style="left:207px;top:484px"><u></u></b><b class="tr sm" style="left:183px;top:286px"><u></u></b><b class="tr sm dk" style="left:295px;top:463px"><u></u></b><b class="tr sm" style="left:16px;top:410px"><u></u></b><b class="tr sm" style="left:386px;top:266px"><u></u></b><b class="tr sm" style="left:88px;top:369px"><u></u></b><b class="tr dk sm" style="left:120px;top:486px"><u></u></b><b class="tr sm dk" style="left:23px;top:178px"><u></u></b><b class="tr sm" style="left:45px;top:503px"><u></u></b><b class="tr dk sm" style="left:57px;top:43px"><u></u></b><b class="tr sm" style="left:49px;top:479px"><u></u></b><b class="tr sm" style="left:253px;top:428px"><u></u></b><b class="tr sm" style="left:40px;top:78px"><u></u></b><b class="tr sm" style="left:150px;top:291px"><u></u></b>
+
+
+
+
+
+
+
+
+<b class="lp" style="left:100px;top:293px"><u></u></b><b class="lp" style="left:150px;top:293px"><u></u></b><b class="lp" style="left:195px;top:293px"><u></u></b><b class="lp" style="left:250px;top:293px"><u></u></b><b class="lp" style="left:310px;top:293px"><u></u></b><b class="lp" style="left:360px;top:293px"><u></u></b><b class="lp" style="left:430px;top:293px"><u></u></b><b class="lp" style="left:470px;top:293px"><u></u></b><b class="lp" style="left:262px;top:330px"><u></u></b><b class="lp" style="left:262px;top:380px"><u></u></b><b class="lp" style="left:262px;top:440px"><u></u></b><b class="lp" style="left:298px;top:330px"><u></u></b><b class="lp" style="left:298px;top:380px"><u></u></b><b class="lp" style="left:298px;top:440px"><u></u></b><b class="lp" style="left:298px;top:490px"><u></u></b><b class="lp" style="left:214px;top:120px"><u></u></b><b class="lp" style="left:214px;top:180px"><u></u></b><b class="lp" style="left:214px;top:240px"><u></u></b><b class="lp" style="left:240px;top:120px"><u></u></b><b class="lp" style="left:240px;top:180px"><u></u></b><b class="lp" style="left:240px;top:240px"><u></u></b><b class="lp" style="left:414px;top:120px"><u></u></b><b class="lp" style="left:414px;top:180px"><u></u></b><b class="lp" style="left:414px;top:240px"><u></u></b><b class="lp" style="left:380px;top:78px"><u></u></b><b class="lp" style="left:300px;top:78px"><u></u></b><b class="lp" style="left:66px;top:340px"><u></u></b><b class="lp" style="left:77px;top:340px"><u></u></b>
+<b class="rfi" style="left:190px;top:163px;--h:33.6px"><u class="mast"></u></b><b class="rfi" style="left:340px;top:419px;--h:28px"><u class="tank"></u></b><b class="rfi" style="left:356px;top:425px;--h:28px"><u class="tank"></u></b>
+<div class="arm" style="left:276px;top:499px;width:12px;height:1.6px"></div><div class="arm post" style="left:274px;top:497px;width:3px;height:4px"></div>
+
+<div class="bb cmk" style="left:256px;top:503px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:308px;top:503px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:162px;top:219px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:208px;top:177px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:322px;top:154px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:425px;top:207px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:489px;top:219px;--h:0px"><div class="up"><div class="core cm off"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:222px;top:379px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:354px;top:342px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:113px;top:402px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:414px;top:61px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+<div class="bb cmk" style="left:462px;top:451px;--h:0px"><div class="up"><div class="core cm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div></div></div>
+
+<div class="bb m-adm" style="left:56px;top:261px;--h:19.6px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Admin Building</span></div></div></div>
+<div class="bb m-lib" style="left:322px;top:127px;--h:25.2px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Library</span></div></div></div>
+<div class="bb m-lha" style="left:222px;top:357px;--h:22.4px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Lecture Hall A</span></div></div></div>
+<div class="bb m-dma" style="left:362px;top:428px;--h:28px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Dormitory A</span></div></div></div>
+<div class="bb m-cln" style="left:466px;top:487px;--h:14px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Health Clinic</span></div></div></div>
+<div class="bb m-utl" style="left:347px;top:40px;--h:0px"><div class="hl ok"></div><div class="up"><div class="core ok"></div><div class="lbl t-mid" style="top:-62px"><span>Utility Plant</span></div></div></div>
+<div class="bb m-sec" style="left:324px;top:498px;--h:8.4px"><div class="up"><div class="lbl t-mid" style="top:-40px"><span>Security office</span></div></div></div>
+<div class="bb m-lake" style="left:187px;top:444px;--h:0px"><div class="up"><div class="lbl t-mid" style="top:-42px;background:rgb(13 28 45 / .7);border-color:transparent;color:#cfe0f2"><span>Lake</span></div></div></div>
+<div class="bb m-lawn" style="left:302px;top:247px;--h:0px"><div class="up"><div class="lbl t-mid" style="top:-42px;background:rgb(13 28 45 / .7);border-color:transparent;color:#cfe0f2"><span>Central Lawn</span></div></div></div>
+<div class="bb m-fld" style="left:132px;top:57px;--h:0px"><div class="up"><div class="lbl t-mid" style="top:-42px;background:rgb(13 28 45 / .7);border-color:transparent;color:#cfe0f2"><span>Sports Field</span></div></div></div>
+<div class="bb m-prkw" style="left:67px;top:422px;--h:0px"><div class="up"><div class="lbl t-mid" style="top:-42px;background:rgb(13 28 45 / .7);border-color:transparent;color:#cfe0f2"><span>West Parking</span></div></div></div>
+
+<div class="bb m-sci" style="left:452px;top:35px;--h:22.4px">
+<div class="hl crit p"></div>
+<div class="up">
+<div class="core crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+<div class="lbl t-mid"><span>Science Lab</span><b class="n crit">1</b></div>
+<div class="lbl t-far"><span>Science Lab</span><b class="n crit">1</b></div>
+<div class="lbl big t-sel"><span>Smoke detector · Critical</span></div>
+</div>
+</div>
+<div class="bb m-hub" style="left:162px;top:187px;--h:33.6px">
+<div class="hl high"></div>
+<div class="up">
+<div class="core high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+<div class="lbl t-mid"><span>Innovation Hub</span><b class="n high">1</b></div>
+<div class="lbl t-far"><span>Innovation Hub</span><b class="n high">1</b></div>
+<div class="lbl big t-sel"><span>Door forced open · High</span></div>
+</div>
+</div>
+<div class="bb m-dmb" style="left:460px;top:428px;--h:28px">
+<div class="hl med"></div>
+<div class="up">
+<div class="core med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div>
+<div class="lbl t-mid"><span>Dormitory B</span><b class="n med">1</b></div>
+<div class="lbl t-far"><span>Dormitory B</span><b class="n med">1</b></div>
+<div class="lbl big t-sel"><span>Water leak · Medium</span></div>
+</div>
+</div>
+<div class="bb m-stc" style="left:392px;top:342px;--h:16.8px">
+<div class="hl med"></div>
+<div class="up">
+<div class="core med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+<div class="lbl t-mid"><span>Student Center</span><b class="n med">1</b></div>
+<div class="lbl t-far"><span>Student Center</span><b class="n med">1</b></div>
+<div class="lbl big t-sel"><span>Unattended bag · Medium</span></div>
+</div>
+</div>
+<div class="bb m-spt" style="left:242px;top:40px;--h:19.6px">
+<div class="hl low"></div>
+<div class="up">
+<div class="core low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></div>
+<div class="lbl t-mid"><span>Sports Hall</span><b class="n low">1</b></div>
+<div class="lbl t-far"><span>Sports Hall</span><b class="n low">1</b></div>
+</div>
+</div>
+<div class="bb m-dc" style="left:457px;top:207px;--h:19.6px">
+<div class="hl low"></div>
+<div class="up">
+<div class="core low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="lbl t-mid"><span>Data Center</span><b class="n low">1</b></div>
+<div class="lbl t-far"><span>Data Center</span><b class="n low">1</b></div>
+</div>
+</div>
+<div class="bb m-ep" style="left:467px;top:363px;--h:0px">
+<div class="hl low"></div>
+<div class="up">
+<div class="core low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></div>
+<div class="lbl t-mid"><span>East Parking</span><b class="n low">1</b></div>
+<div class="lbl t-far"><span>East Parking</span><b class="n low">1</b></div>
+</div>
+</div>
+<div class="bb m-mg" style="left:282px;top:497px;--h:0px">
+<div class="hl low"></div>
+<div class="up">
+<div class="core low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div>
+<div class="lbl t-mid"><span>Main Gate</span><b class="n low">1</b></div>
+<div class="lbl t-far"><span>Main Gate</span><b class="n low">1</b></div>
+</div>
+</div>
+
+<div class="bb dv" style="left:438px;top:30px;--h:15px"><div class="up"><div class="mini" style="left:-10px;top:-70px"><b style="color:var(--crit)">SD-0043</b><span class="t2">alarm</span></div><div class="core crit" style="width:22px;height:22px;left:-11px;top:-42px"></div></div></div>
+<div class="bb dv" style="left:452px;top:35px;--h:5.6px"><div class="up"><div class="mini" style="left:-10px;top:-52px"><span style="color:var(--signal)">ICS-LAB</span><span class="t2">23.4 °C</span></div><div class="core ok" style="top:-30px"></div></div></div>
+<div class="bb dv" style="left:432px;top:42px;--h:5.6px"><div class="up"><div class="mini" style="left:-10px;top:-52px"><span style="color:var(--signal)">FH-L1</span><span class="t2">0.52 m/s</span></div><div class="core ok" style="top:-30px"></div></div></div>
+<div class="bb dv" style="left:190px;top:205px;--h:25px"><div class="up"><div class="mini" style="left:-10px;top:-52px;border-color:var(--high-bd)"><b style="color:var(--high)">DC-H-07</b><span class="t2">forced</span></div><div class="core high" style="width:22px;height:22px;left:-11px;top:-30px"></div></div></div>
+<div class="bb dv" style="left:152px;top:187px;--h:33.6px"><div class="up"><div class="mini" style="left:-10px;top:-52px"><span style="color:var(--signal)">AHU-H1</span><span class="t2">roof</span></div><div class="core ok" style="top:-30px"></div></div></div>
+<div class="bb dv" style="left:486px;top:440px;--h:11.2px"><div class="up"><div class="mini" style="left:-10px;top:-52px;border-color:var(--med-bd)"><b style="color:var(--med)">LKS-B3</b><span class="t2">wet</span></div><div class="core med" style="width:22px;height:22px;left:-11px;top:-30px"></div></div></div>
+<div class="bb dv" style="left:443px;top:199px;--h:19.6px"><div class="up"><div class="mini" style="left:-10px;top:-52px"><span style="color:var(--signal)">CT-01</span><span class="t2">1,420 rpm</span></div><div class="core ok" style="top:-30px"></div></div></div>
+<div class="bb dv" style="left:456px;top:199px;--h:19.6px"><div class="up"><div class="mini" style="left:-10px;top:-52px"><span style="color:var(--signal)">CT-02</span><span class="t2">1,380 rpm</span></div><div class="core ok" style="top:-30px"></div></div></div>
+</div>
+<div class="vig" style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%, transparent 52%, rgba(3,8,16,.72) 100%)"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tier":{"editor":"enum","default":"medium","options":["far","medium","near","plain"]},"zoom":{"editor":"range","default":1.4,"min":0.8,"max":3.2,"step":0.02},"px":{"editor":"int","default":0},"py":{"editor":"int","default":12},"sel":{"editor":"enum","default":"","options":["","sci","hub","dmb","stc"]},"spot":{"editor":"boolean","default":false},"focus":{"editor":"enum","default":"","options":["","dc"]},"heat":{"editor":"boolean","default":false},"stale":{"editor":"boolean","default":false},"calm":{"editor":"boolean","default":false},"night":{"editor":"boolean","default":true},"$preview":{"width":1056,"height":590}}'>
+class Component extends DCLogic {
+renderVals() {
+const zoom = Number(this.props.zoom ?? 1.4);
+return {
+tier: this.props.tier ?? 'medium',
+sel: this.props.sel ?? '',
+spot: this.props.spot ? '1' : '0',
+focus: this.props.focus ?? '',
+heat: this.props.heat ? '1' : '0',
+stale: this.props.stale ? '1' : '0',
+calm: this.props.calm ? '1' : '0',
+night: (this.props.night ?? true) ? '1' : '0',
+zoom: zoom,
+iz: (1 / zoom).toFixed(4),
+px: Number(this.props.px ?? 0),
+py: Number(this.props.py ?? 12)
+};
+}
+}
+</script>
+</body>
+</html>

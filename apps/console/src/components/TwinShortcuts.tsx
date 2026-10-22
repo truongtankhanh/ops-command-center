@@ -1,7 +1,6 @@
-import { useCallback, useMemo } from 'react';
-import { useAssets, useIncident } from '../api/queries';
+import { useCallback } from 'react';
 import { flyToSelection } from '../lib/twinFlight';
-import { selectionTargetOf } from '../lib/twinSelection';
+import { useSelectionTarget } from '../lib/useSelectionTarget';
 import { useShortcut } from '../lib/useShortcut';
 import { useTwinCapability } from '../lib/useTwinCapability';
 import { useConsole } from '../store';
@@ -12,9 +11,14 @@ function toggleView() {
   setView(view === '3d' ? '2d' : '3d');
 }
 
+/** `P`: the other drag tool. A function of the store at the moment of the press, so its identity never changes. */
+function togglePanTool() {
+  useConsole.getState().togglePanTool();
+}
+
 /**
- * The two single-key shortcuts of the 3D view (V2-18.2, frame 16): `V` switches between 3D and 2D, `F` flies to the
- * selection. Both are character keys, so `useShortcut` turns them off with the account menu's switch (WCAG 2.1.4) and
+ * The single-key shortcuts of the 3D view (V2-18.2, frame 16; `P` is V3-29's): `V` switches between 3D and 2D, `F` flies to
+ * the selection, `P` switches the drag between Orbit and Pan. Both are character keys, so `useShortcut` turns them off with the account menu's switch (WCAG 2.1.4) and
  * ignores them in text fields, with modifiers, on repeat, during IME composition and inside a dialog; both are
  * listed in `lib/shortcuts.ts` (V2-18.1) and read nothing about the user's role, as choosing a view and flying a
  * camera act on nothing.
@@ -34,31 +38,14 @@ function toggleView() {
  */
 export function TwinShortcuts() {
   const twinAvailable = useTwinCapability().available;
-  const selectedPart = useConsole((s) => s.selectedPart);
-  const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
-  const selectedIncidentId = useConsole((s) => s.selectedIncidentId);
-  const { data: incident } = useIncident(selectedIncidentId);
-  const { data: assets } = useAssets();
-  const assetId = incident?.assetId;
-
-  // Rebuilt only when the selection or the catalogue changes, so `useShortcut` does not re-add its listener on each
-  // render (it needs a stable handler).
-  const target = useMemo(
-    () =>
-      selectionTargetOf({
-        selectedPart,
-        selectedAssetCode,
-        selectedIncidentId,
-        incident: assetId === undefined ? undefined : { assetId },
-        assets,
-      }),
-    [selectedPart, selectedAssetCode, selectedIncidentId, assetId, assets],
-  );
+  const target = useSelectionTarget();
   const flyToTarget = useCallback(() => {
     if (target !== null) flyToSelection(target);
   }, [target]);
 
   useShortcut('v', toggleView, twinAvailable);
   useShortcut('f', flyToTarget, twinAvailable && target !== null);
+  // `P`: the drag's tool, Orbit or Pan (V3-29). Acts on the camera only, so it reads nothing about the role.
+  useShortcut('p', togglePanTool, twinAvailable);
   return null;
 }

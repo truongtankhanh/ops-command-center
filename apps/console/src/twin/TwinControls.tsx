@@ -3,7 +3,8 @@ import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from '../lib/twinCamera';
 import { twinCommands } from '../lib/twinCommands';
 import { resetView } from '../lib/twinFlight';
 import { Button } from '../ui/Button';
-import { House, Minus, Plus, RotateCcw, RotateCw } from '../ui/icons';
+import { useConsole } from '../store';
+import { Hand, House, Minus, Orbit, Plus, RotateCcw, RotateCw } from '../ui/icons';
 import styles from './TwinControls.module.css';
 
 /**
@@ -23,7 +24,7 @@ interface TwinControlsProps {
 
 /**
  * The 3D stage's camera controls (V2-12.10, frame 01), bottom-right beside the open sheet: the compass, which
- * faces north in one press, and zoom, rotate and reset. Everything goes through `twinCommands`, so this knows
+ * faces north in one press, the drag tool (Orbit or Pan, V3-29), and zoom, rotate and reset. Everything goes through `twinCommands`, so this knows
  * nothing of the canvas, and a press does nothing while no rig is registered (the chunk is still loading, or
  * the scene is empty).
  *
@@ -32,6 +33,9 @@ interface TwinControlsProps {
  * alone. The same for every role: moving the camera is not an action on the site.
  */
 export function TwinControls({ compassRef }: TwinControlsProps) {
+  const panTool = useConsole((s) => s.panTool);
+  const setPanTool = useConsole((s) => s.setPanTool);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   return (
     <div className={styles.cluster}>
       <button
@@ -52,6 +56,29 @@ export function TwinControls({ compassRef }: TwinControlsProps) {
           <path className={styles.south} d="M7 12h10l-5 10z" />
         </svg>
       </button>
+      {/*
+        The drag's tool (V3-29): Orbit, the default, or Pan. A pair of toggle buttons, one pressed. `P` switches it, and the key
+        is named only while single-key shortcuts are on (WCAG 2.1.4). A session choice: the store does not remember it.
+      */}
+      <div role="group" aria-label="Drag tool" className={styles.group}>
+        <Button
+          variant="ghost"
+          icon={Orbit}
+          aria-label="Orbit: drag rotates"
+          aria-pressed={!panTool}
+          className={styles.button}
+          onClick={() => setPanTool(false)}
+        />
+        <Button
+          variant="ghost"
+          icon={Hand}
+          aria-label="Pan: drag moves the view"
+          aria-pressed={panTool}
+          aria-keyshortcuts={keysOn ? 'P' : undefined}
+          className={styles.button}
+          onClick={() => setPanTool(true)}
+        />
+      </div>
       <div role="group" aria-label="Camera" className={styles.group}>
         <Button
           variant="ghost"

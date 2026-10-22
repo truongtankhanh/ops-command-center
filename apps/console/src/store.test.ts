@@ -1379,4 +1379,40 @@ describe('useConsole', () => {
       expect(localStorage.getItem('occ.console.criticalSound')).toBe('true');
     });
   });
+  // The 3D view's drag tool (V3-29): a session choice, Orbit by default, left alone by the level ladder.
+  describe('drag tool', () => {
+    it('starts as Orbit', () => {
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+
+    it('is set and toggled', () => {
+      useConsole.getState().setPanTool(true);
+      expect(useConsole.getState().panTool).toBe(true);
+
+      useConsole.getState().togglePanTool();
+      expect(useConsole.getState().panTool).toBe(false);
+
+      useConsole.getState().togglePanTool();
+      expect(useConsole.getState().panTool).toBe(true);
+    });
+
+    it('is not cleared by going up a level or back to the campus', () => {
+      useConsole.getState().selectAsset('CT-01', 'dc');
+      useConsole.getState().setPanTool(true);
+
+      useConsole.getState().goUp();
+      useConsole.getState().goCampus();
+
+      expect(useConsole.getState().panTool).toBe(true);
+    });
+
+    it('is not remembered: nothing is written to storage', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+      useConsole.getState().setPanTool(true);
+
+      expect(setItem).not.toHaveBeenCalled();
+      setItem.mockRestore();
+    });
+  });
 });

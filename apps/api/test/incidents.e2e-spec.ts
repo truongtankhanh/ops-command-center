@@ -30,6 +30,7 @@ import { AppModule } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
 import { configureApp } from '../src/configure-app';
+import { ASSET_CLASSES } from '../src/database/seed/asset-catalogue';
 import { ASSETS } from '../src/database/seed/assets';
 import { CAMERAS, INCIDENTS, REFERENCE_ZONE_CODES, ZONES } from '../src/database/seed/campus';
 import { SeedService } from '../src/database/seed/seed.service';
@@ -194,7 +195,9 @@ describe('Incidents (e2e)', () => {
     expect(
       await rows(`SELECT count(*)::int AS n FROM "telemetry_rule" WHERE "asset_id" IS NOT NULL`),
     ).toEqual({ n: 0 });
-    // The cooling tower: 12 points, 3 rules, and no model file yet (V2-13 sets `model_key`).
+    // The cooling tower: 12 points, 3 rules, and the model file the seed gives it (V2-13.7 sets `model_key`).
+    // Read from the catalogue, not spelled out: the file name carries a content hash that changes with the model.
+    const towerModelKey = ASSET_CLASSES.find((c) => c.code === 'cooling_tower')?.modelKey ?? null;
     expect(
       await rows(
         `SELECT c."model_key",
@@ -202,7 +205,7 @@ describe('Incidents (e2e)', () => {
                 (SELECT count(*)::int FROM "telemetry_rule" r WHERE r."asset_class_id" = c."id") AS rules
            FROM "asset_class" c WHERE c."code" = 'cooling_tower'`,
       ),
-    ).toEqual({ model_key: null, points: 12, rules: 3 });
+    ).toEqual({ model_key: towerModelKey, points: 12, rules: 3 });
     // The motor rule of frames 04 and 10, with its limits as the design gives them.
     expect(
       await rows(

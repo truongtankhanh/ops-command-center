@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.fi{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#a9bed6}
+.fi input{height:44px;border-radius:8px;border:1px solid #5a7488;background:#07111f;padding:0 12px;font:400 14px 'Inter',sans-serif;color:#e7f2ff}
+.fi input::placeholder{color:#8fa5bf}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:-88px;top:-8px;width:1056px;height:590px;transform:scale(1.55);transform-origin:0 0"><dc-import name="Scene" tier="plain" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%, rgb(7 17 31 / .62) 0, rgb(7 17 31 / .86) 100%)"></div>
+
+<div style="position:absolute;left:56px;top:48px;display:flex;align-items:center;gap:12px"><div class="logo" style="width:36px;height:36px"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div><span class="sb" style="font-size:15px">Ops Command Center</span></div>
+<div style="position:absolute;left:56px;bottom:56px;max-width:420px"><div class="sb" style="font-size:28px;line-height:34px">Campus operations,<br>in one view.</div></div>
+
+<div class="glass" style="position:absolute;left:520px;top:190px;width:400px;padding:32px;display:flex;flex-direction:column;gap:18px;background:rgb(13 28 45 / .92)" role="form" aria-label="Sign in">
+<div><div class="sb" style="font-size:22px;line-height:28px">Sign in</div><div class="t2" style="font-size:14px;line-height:20px;margin-top:4px">Use your campus account to open the console.</div></div>
+<label class="fi">Username<input type="text" placeholder="Username" autocomplete="username"></label>
+<label class="fi">Password<input type="password" placeholder="Password" autocomplete="current-password"></label>
+<label class="row" style="gap:10px;font-size:13px;color:#a9bed6"><input type="checkbox" style="width:18px;height:18px;accent-color:#3185ff">Remember me</label>
+<button class="btn p" style="height:44px;font-size:14px;width:100%">Sign in</button>
+</div>
+<div style="position:absolute;left:520px;top:700px;width:400px;text-align:center;font-size:12px;color:#8fa5bf">The sign-in page is Keycloak's own form, restyled: MFA and federation keep working.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

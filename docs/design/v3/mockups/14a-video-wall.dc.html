@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Video wall</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.wall{position:relative;width:1920px;height:1080px;overflow:hidden;background:#07111f;font-family:'Inter',system-ui,sans-serif;color:#e7f2ff;font-size:13px;line-height:18px}
+.wt{position:absolute;left:0;top:0;width:1920px;height:96px;display:flex;align-items:center;gap:24px;padding:0 24px;background:#0d1c2d;border-bottom:1px solid #1e3450}
+.wl{position:absolute;left:24px;top:112px;width:480px;height:700px;overflow:hidden;display:flex;flex-direction:column}
+.wl .irow{padding:10px}
+.ws{position:absolute;left:520px;top:112px;width:1376px;height:700px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f}
+.wc{position:absolute;left:24px;top:828px;width:1872px;height:232px;display:flex;gap:12px}
+.wc .cam{width:300px;zoom:1.35}
+.wc .cam{width:220px}
+</style>
+</helmet>
+<div class="wall">
+<div class="wt">
+<div class="row" style="gap:14px;zoom:1.35"><div class="logo"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div><div><div class="sb" style="font-size:16px;line-height:20px">Ops Command Center</div><div class="t2 s12">Langbiang Tech Campus</div></div></div>
+<div class="kpis" style="zoom:1.35;margin-left:24px">
+<div class="kpi crit hot"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span><span class="v" style="display:block">1</span><span class="l">Critical</span></span></div>
+<div class="kpi high"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg><span><span class="v" style="display:block">1</span><span class="l">High</span></span></div>
+<div class="kpi med"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span><span class="v" style="display:block">2</span><span class="l">Medium</span></span></div>
+<div class="kpi low"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span><span class="v" style="display:block">4</span><span class="l">Low</span></span></div>
+</div>
+<div style="flex:1"></div>
+<div class="row" style="gap:8px;zoom:1.35"><span class="pill live">Live</span><span class="pill live">Telemetry</span></div>
+<div class="clock" style="text-align:right;zoom:1.35"><div class="t">15:42</div><div class="t2 xs">Wed 21 Oct · GMT+7</div></div>
+</div>
+
+<div class="wl panel">
+<div style="zoom:1.35">
+<div class="row sb" style="gap:8px;padding:12px 14px;font-size:14px">Active incidents <span class="tab" style="height:auto;padding:0"><span class="n" style="background:#1c3552">8</span></span></div>
+<div class="rows" style="padding:0 8px">
+<div class="irow hotrow"><div class="tile crit"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div class="body"><div class="ttl">Smoke detector — Science Lab</div><div class="meta"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span>Open</span></div></div><div class="age">3m</div></div>
+<div class="irow"><div class="tile high"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="body"><div class="ttl">Door forced open — service corridor</div><div class="meta"><span class="sev high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>High</span><span>Open</span></div></div><div class="age">14m</div></div>
+<div class="irow"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div><div class="body"><div class="ttl">Water leak — Dormitory B</div><div class="meta"><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span><span>Acknowledged</span></div></div><div class="age">25m</div></div>
+<div class="irow"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div><div class="body"><div class="ttl">Unattended bag — Student Center</div><div class="meta"><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span><span>Acknowledged</span></div></div><div class="age">22m</div></div>
+<div class="irow"><div class="tile low"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></div><div class="body"><div class="ttl">Student fell — Sports Hall</div><div class="meta"><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span><span>Open</span></div></div><div class="age">9m</div></div>
+</div>
+</div>
+</div>
+
+<div class="ws">
+<div style="position:absolute;left:0;top:-48px;width:1056px;height:590px;transform:scale(1.3);transform-origin:0 0"><dc-import name="Scene" tier="medium" sel="sci" zoom="{{ 1.5 }}" px="{{ -458 }}" py="{{ 110 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="glass" style="position:absolute;left:24px;top:20px;width:640px;padding:16px 20px;display:flex;gap:16px;align-items:center;border-color:#ff426d;background:rgb(13 28 45 / .94)">
+<svg class="ic" style="color:#ff426d;width:34px;height:34px" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+<div style="flex:1"><div class="sb" style="font-size:22px;line-height:28px">Critical · Smoke detector — Science Lab, level 2</div><div class="t2" style="font-size:16px;line-height:22px">Returning to the campus view in <span class="num sb">48 s</span> or when acknowledged</div><div style="height:6px;border-radius:3px;background:#1c3552;margin-top:10px;overflow:hidden"><div style="width:80%;height:100%;background:#ff426d"></div></div></div>
+</div>
+</div>
+
+<div class="wc">
+<div class="cam first" style="zoom:1.35"><div class="th feed-a"><span class="live"><i></i>LIVE</span><span class="cd">CAM-L03</span><span class="tm">15:42:07</span></div><div class="nm">Science Lab, level 2</div></div>
+<div class="cam" style="zoom:1.35"><div class="th feed-b"><span class="live"><i></i>LIVE</span><span class="cd">CAM-L05</span><span class="tm">15:42:07</span></div><div class="nm">Level 2 stairwell</div></div>
+<div class="cam" style="zoom:1.35"><div class="th feed-c"><span class="live"><i></i>LIVE</span><span class="cd">CAM-H01</span><span class="tm">15:42:07</span></div><div class="nm">Service corridor</div></div>
+<div class="cam" style="zoom:1.35"><div class="th feed-d"><span class="live"><i></i>LIVE</span><span class="cd">CAM-S01</span><span class="tm">15:42:07</span></div><div class="nm">Main gate inbound</div></div>
+<div class="cam" style="zoom:1.35"><div class="th feed-c"><span class="live"><i></i>LIVE</span><span class="cd">CAM-R02</span><span class="tm">15:42:07</span></div><div class="nm">Dormitory B lobby</div></div>
+<div class="cam" style="zoom:1.35"><div class="th feed-off"><span class="live" style="color:#a9bed6"><i style="background:#5a7488"></i>OFFLINE</span><span class="cd">CAM-D03</span><div style="position:absolute;left:0;right:0;top:34px;text-align:center;color:#a9bed6;font-size:12px">No signal</div></div><div class="nm">Camera offline · CAM-D03</div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

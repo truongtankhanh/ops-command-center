@@ -696,6 +696,9 @@ describe('IncidentEvidence', () => {
         tiltBy: vi.fn(),
         panBy: vi.fn(),
         faceNorth: vi.fn(),
+        panStep: vi.fn(),
+        panHold: vi.fn(),
+        centreOn: vi.fn(),
         current: vi.fn(() => null),
       }) satisfies TwinCommands;
     const fakeRig = () => {

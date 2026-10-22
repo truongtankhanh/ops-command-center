@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Semantic zoom</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.zw{position:absolute;width:697px;height:389px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f}
+.zw .in{position:absolute;left:0;top:0;width:1056px;height:590px;transform:scale(.66);transform-origin:0 0}
+.zl{position:absolute;font-size:12px;line-height:16px;color:#8fa5bf;width:697px}
+.zl b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.zt{border-collapse:collapse;font-size:12px;width:100%}
+.zt th,.zt td{padding:8px 10px;border-bottom:1px solid #1e3450;text-align:left;vertical-align:top}
+.zt th{color:#8fa5bf;font-weight:500}
+</style>
+</helmet>
+<div class="root" style="height:1000px;font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="zl" style="left:24px;top:22px"><b>06a Far — campus</b>One chip per zone with open incidents: worst severity colour, icon core and the count. Quiet zones and individual devices are not drawn.</div>
+<div class="zw" style="left:24px;top:76px"><div class="in"><dc-import name="Scene" tier="far" zoom="{{ 1.1 }}" py="{{ 10 }}" hint-size="1056px,590px"></dc-import></div></div>
+
+<div class="zl" style="left:719px;top:22px"><b>06b Medium — buildings</b>Building labels and incident beacons. Healthy devices are not drawn until hover or selection (hover a building's roof in Play); fault and stale devices always are.</div>
+<div class="zw" style="left:719px;top:76px"><div class="in"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div></div>
+
+<div class="zl" style="left:24px;top:494px"><b>06c Near — single devices</b>Individual device markers with code and reading, around the zone in focus. A lit ring means live, a severity ring means an incident.</div>
+<div class="zw" style="left:24px;top:548px"><div class="in"><dc-import name="Scene" tier="near" sel="sci" zoom="{{ 2.6 }}" px="{{ -780 }}" py="{{ 78 }}" hint-size="1056px,590px"></dc-import></div></div>
+
+<div style="position:absolute;left:719px;top:494px;width:697px">
+<div class="zl" style="position:static;margin-bottom:10px"><b>How the tiers behave</b>Thresholds are unverified starting values; V3-16 tunes them on the reference machines.</div>
+<table class="zt">
+<tr><th style="width:90px">Tier</th><th style="width:120px">Camera distance</th><th>Shows</th></tr>
+<tr><td class="sb">Far</td><td class="num">&gt; ~450 m</td><td>Zone chips with open count and worst severity</td></tr>
+<tr><td class="sb">Medium</td><td class="num">~150–450 m</td><td>Building labels, beacons, clusters per building with a count; healthy devices only on hover or selection</td></tr>
+<tr><td class="sb">Near</td><td class="num">&lt; ~150 m</td><td>Single device markers with labels; building level shows its equipment</td></tr>
+</table>
+<ul style="margin:14px 0 0;padding-left:18px;color:#a9bed6;font-size:12px;line-height:18px;display:flex;flex-direction:column;gap:4px">
+<li>Tiers never change the level the operator chose (Campus, Building, Asset, Part).</li>
+<li>Every count is also in the Assets tab: the twin is a view, not a second source of truth.</li>
+<li>One label per zone; when labels collide the worse severity wins, then the nearer one.</li>
+<li>Reduced motion: tier changes cross-fade in 0 ms.</li>
+</ul>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

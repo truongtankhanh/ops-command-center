@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Critical arrives</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" hot="{{ true }}" crit="{{ 2 }}" hint-size="1440px,72px"></dc-import></div>
+<div style="position:absolute;left:0;top:84px"><dc-import name="Sidebar" newrow="{{ true }}" hint-size="360px,772px"></dc-import></div>
+
+<div class="stage">
+<div style="position:absolute;left:0;top:0"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="row" style="position:absolute;left:12px;top:12px;gap:8px">
+<div class="seg"><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>3D</span><span class="o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>2D</span></div>
+<div class="layers"><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Incidents</span><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cameras</span><span class="o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>Heat</span></div>
+</div>
+<div class="toast" style="left:640px;top:12px" role="alert">
+<div class="tile crit" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid;flex:none"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+<div class="row" style="gap:8px"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span class="t2 s12">just now</span><div style="flex:1"></div><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+<div><div class="sb" style="font-size:14px;line-height:19px">Smoke detector — Science Lab, level 2</div><div class="t2 s12">Science Lab · level 2 · 12.8 ppm for 60 s, limit 10 ppm</div></div>
+<div class="row" style="gap:8px"><button class="btn p s">Fly to <span class="kbd">F</span></button><button class="btn s">Open incident</button></div>
+<div class="t3 xs">Critical alerts stay until dismissed. The camera has not moved.</div>
+</div>
+</div>
+<div class="legend glass" style="background:rgb(13 28 45 / .88)">
+<div class="i"><span class="dot" style="background:#ff426d"></span>New critical — beacon pulses</div>
+<div class="s12 t3">Fly to is offered, never forced.</div>
+</div>
+</div>
+
+<div style="position:absolute;left:372px;top:686px"><dc-import name="Strip" hint-size="1056px,170px"></dc-import></div>
+<div style="position:absolute;left:0;top:868px"><dc-import name="StatusBar" hint-size="1440px,32px"></dc-import></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

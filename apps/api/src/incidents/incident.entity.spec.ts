@@ -142,6 +142,22 @@ describe('IncidentEntity.report with a telemetry link', () => {
     expect(incident.toContract()).toMatchObject({ source: 'telemetry', assetId: 'asset-1' });
   });
 
+  it('keeps the level it was reported on and exposes it', () => {
+    const incident = IncidentEntity.report({ ...props, levelCode: 'L2' }, SystemActors.telemetry);
+    incident.id = 'id-3';
+
+    expect(incident.levelCode).toBe('L2');
+    expect(incident.toContract().levelCode).toBe('L2');
+  });
+
+  it('has no level unless one was given', () => {
+    const incident = IncidentEntity.report(props, SystemActors.telemetry);
+    incident.id = 'id-4';
+
+    expect(incident.levelCode).toBeNull();
+    expect(incident.toContract().levelCode).toBeNull();
+  });
+
   it('has no asset, rule or note for an incident that is not from a rule', () => {
     const incident = newIncident();
     incident.id = 'id-1';
