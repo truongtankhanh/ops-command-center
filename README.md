@@ -18,7 +18,7 @@ pnpm docker:stack        # docker compose up --build
 # API + docs   http://localhost:18080/api/docs   (read-only; off by default in production — ADR-0005)
 ```
 
-Sign in as `operator`, `supervisor`, `technician` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`ops/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). `operator` and `supervisor` may report, acknowledge and resolve incidents; `technician` may report anything and acknowledge or resolve Facilities and Environment incidents ([ADR-0021](docs/adr/0021-incident-categories-zone-uses-and-technician-role.md)); `viewer` is read-only, and every timeline entry shows who made it ([ADR-0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md)). The realm also has a confidential client `telemetry-pipeline` (client credentials only, demo secret `occ-demo-telemetry-pipeline`) for [iot-telemetry-pipeline](https://github.com/truongtankhanh/iot-telemetry-pipeline), whose alerts become incidents reported by its `technician` service account ([ADR-0010](docs/adr/0010-oidc-authentication.md), amendment OCC-29).
+Sign in as `operator`, `supervisor`, `technician` or `viewer`; each password is the username. They are demo users of the bundled Keycloak realm (`docker/keycloak/occ-realm.json`), which is for the demo only: a real deployment uses its own identity provider ([ADR-0010](docs/adr/0010-oidc-authentication.md)). `operator` and `supervisor` may report, acknowledge and resolve incidents; `technician` may report anything and acknowledge or resolve Facilities and Environment incidents ([ADR-0021](docs/adr/0021-incident-categories-zone-uses-and-technician-role.md)); `viewer` is read-only, and every timeline entry shows who made it ([ADR-0011](docs/adr/0011-role-based-authorization-and-timeline-actor.md)). The realm also has a confidential client `telemetry-pipeline` (client credentials only, demo secret `occ-demo-telemetry-pipeline`) for [iot-telemetry-pipeline](https://github.com/truongtankhanh/iot-telemetry-pipeline), whose alerts become incidents reported by its `technician` service account ([ADR-0010](docs/adr/0010-oidc-authentication.md), amendment OCC-29).
 
 The API can run as several replicas behind the console's nginx. Every console sees every change, whichever replica made it, and only one replica runs the simulator:
 
@@ -26,14 +26,14 @@ The API can run as several replicas behind the console's nginx. Every console se
 pnpm docker:stack:replicas   # docker compose up --build --scale api=2
 ```
 
-To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`docker compose logs api` shows which replica each console connected to, from the gateway's debug-level connection log).
+To check it, open the console in two browser windows and acknowledge an incident in one: it updates in the other within a second. With round-robin, the two windows are usually on different replicas (`pnpm docker:compose logs api` shows which replica each console connected to, from the gateway's debug-level connection log).
 
 The demo is sized for two replicas. Each holds a pool of 10 database connections, so beyond about eight replicas the default PostgreSQL `max_connections` of 100 runs out.
 
 Metrics and a Grafana dashboard come with an opt-in profile ([ADR-0015](docs/adr/0015-metrics-and-tracing.md)):
 
 ```bash
-docker compose --profile observability up --build --scale api=2
+pnpm docker:compose --profile observability up --build --scale api=2
 # Grafana      http://localhost:13001   (read-only without signing in; dashboard "OCC API")
 ```
 
@@ -42,7 +42,7 @@ The dashboard shows commit-to-broadcast delivery latency against the one-second 
 Telemetry over real MQTT, with a broker and simulated devices, comes with another opt-in profile ([ADR-0019](docs/adr/0019-telemetry-transport.md)):
 
 ```bash
-TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up --build --scale api=2
+pnpm docker:stack:telemetry   # TELEMETRY_SOURCE=mqtt, --profile telemetry, two API replicas
 ```
 
 It adds `mosquitto` and `telemetry-sim` (see **Telemetry** under Operations). Without the profile the stack is unchanged and `TELEMETRY_SOURCE` stays `mock`.
@@ -86,10 +86,16 @@ apps/
 packages/
   contracts/        Shared types + event names: the API ↔ console contract
   camera-adapter/   CameraSource port with mock and MediaMTX implementations
-ops/
+docker/
+  docker-compose.yml  The demo stack; run it through the `pnpm docker:*` scripts
+  api/ console/ telemetry-sim/   One Dockerfile per image (the console's nginx.conf sits with its Dockerfile)
   keycloak/         Demo realm, re-imported on every start, and the `occ` login theme
   prometheus/       Scrape config: every API replica on its metrics port
   grafana/          Provisioned datasource and the "OCC API" dashboard
+  mosquitto/        Demo MQTT broker config (telemetry profile)
+ops/
+  telemetry-sim/    Demo device simulator (a workspace; its Dockerfile is in docker/)
+  models/ model-tools/ sign-in-backdrop/   3D models, their checks, the sign-in picture's renderer
 docs/
   api/              API reference + OpenAPI 3.0, generated from code and drift-checked
   architecture.md   System design, domain model, real-time flow
@@ -139,7 +145,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 
 ## Running locally
 
-Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service from Compose).
+Requirements: Node 24, pnpm 10, PostgreSQL 17 (or use the `postgres` service from Compose). A step-by-step guide to the Docker setup and to running the API and console tests is in [docs/local-development.md](docs/local-development.md).
 
 ```bash
 pnpm install
@@ -149,18 +155,20 @@ pnpm docker:up                               # postgres on 127.0.0.1:15432, keyc
 pnpm dev                                     # API on :13000 (metrics on :9464), console on :15173
 ```
 
-`pnpm docker:up` is `docker compose up -d postgres keycloak`, the two Compose services `pnpm dev` needs. Two more scripts stop and rebuild them:
+Everything Docker lives in [`docker/`](docker/): the Compose file, one `Dockerfile` per image, the nginx config and the configs Compose mounts (Keycloak, Prometheus, Grafana, Mosquitto). The Compose file is not at the repository root, so a bare `docker compose` finds nothing there: the `docker:*` scripts pass `-f docker/docker-compose.yml`, and `pnpm docker:compose <args>` runs any other Compose command the same way (`pnpm docker:compose logs api`, `pnpm docker:compose --profile telemetry up --build`).
+
+`pnpm docker:up` is `docker compose -f docker/docker-compose.yml up -d postgres keycloak`, the two Compose services `pnpm dev` needs. Two more scripts stop and rebuild them:
 
 ```bash
 pnpm docker:down      # docker compose down: stops and removes the containers and the network
 pnpm docker:restart   # recreates postgres and keycloak (also starts them when they are down)
 ```
 
-None of the three touches the `pgdata` volume, so the database survives `docker:down` and `docker:restart`; deleting it takes an explicit `docker compose down -v`. `docker:restart` recreates the containers rather than restarting them, so Keycloak imports `ops/keycloak` again (an edited realm takes effect) and the command works whether or not they were running. `docker:down` stops everything in the project, including `api` and `console` if you ran the whole stack, but not the services of an opt-in profile (see the `telemetry` note below). `pnpm docker:stack` and `pnpm docker:stack:replicas`, at the top of this file, start the whole stack in the foreground (Ctrl+C stops it; `pnpm docker:down` removes it). The two `--profile` commands there stay as plain Compose, because they set an environment variable or need the profile on `down` too.
+None of the three touches the `pgdata` volume, so the database survives `docker:down` and `docker:restart`; deleting it takes an explicit `pnpm docker:compose down -v`. `docker:restart` recreates the containers rather than restarting them, so Keycloak imports `docker/keycloak` again (an edited realm takes effect) and the command works whether or not they were running. `docker:down` stops everything in the project, including `api` and `console` if you ran the whole stack, but not the services of an opt-in profile (see the `telemetry` note below). `pnpm docker:stack` and `pnpm docker:stack:replicas`, at the top of this file, start the whole stack in the foreground (Ctrl+C stops it; `pnpm docker:down` removes it). The two `--profile` commands there stay as plain Compose, because they set an environment variable or need the profile on `down` too.
 
 The Compose `postgres` and `keycloak` services listen on `127.0.0.1` only. If port 15432 is taken, start them with `POSTGRES_PORT=15433` and use the same port in `DB_PORT`; if 18081 is taken, use `KEYCLOAK_PORT`, change the port in `OIDC_JWKS_URL`, and start the console with `KEYCLOAK_URL` pointing at it. The API refuses to start without the `OIDC_*` variables, so copy them from `.env.example` into an existing `.env`.
 
-Sign-in is Keycloak's own page in the console's `occ` login theme ([ADR-0010](docs/adr/0010-oidc-authentication.md)): the theme lives in `ops/keycloak/themes/occ/login/`, Compose mounts that one directory read-only into the `keycloak` container, and the realm file sets it as `loginTheme`. `start-dev` does not cache themes, so an edit shows on reload; a change to the mount or to `occ-realm.json` needs `pnpm docker:restart`. A real deployment mounts the directory or packages it (Keycloak's own `README` for custom themes says a jar goes in `providers/` and needs `build`; the jar layout is not built here), with its own identity provider. The picture behind the card is a loop and a poster made by `ops/sign-in-backdrop/render.ts` (how, and what it must never contain: `ops/keycloak/themes/occ/BACKDROP.md`); `pnpm lint` fails when the theme's copies of the console's tokens or of the poster drift or the text on the picture falls below its contrast, and `pnpm keycloak:test` holds the loop and the poster to their size budget and checks the realm and the theme's files (it is not part of `pnpm test`). The demo realm also turns on "Keep me signed in on this device" and Keycloak's login events (sign-ins, failed sign-ins and sign-outs, kept 90 days): they are the identity provider's own record, read in its admin console, which the demo does not expose, and not the API's incident timeline; the demo's embedded store has no volume, so they do not outlive a restart. Password recovery stays off (no mail server), so the sign-in page has no "Forgot password?" link.
+Sign-in is Keycloak's own page in the console's `occ` login theme ([ADR-0010](docs/adr/0010-oidc-authentication.md)): the theme lives in `docker/keycloak/themes/occ/login/`, Compose mounts that one directory read-only into the `keycloak` container, and the realm file sets it as `loginTheme`. `start-dev` does not cache themes, so an edit shows on reload; a change to the mount or to `occ-realm.json` needs `pnpm docker:restart`. A real deployment mounts the directory or packages it (Keycloak's own `README` for custom themes says a jar goes in `providers/` and needs `build`; the jar layout is not built here), with its own identity provider. The picture behind the card is a loop and a poster made by `ops/sign-in-backdrop/render.ts` (how, and what it must never contain: `ops/keycloak/themes/occ/BACKDROP.md`); `pnpm lint` fails when the theme's copies of the console's tokens or of the poster drift or the text on the picture falls below its contrast, and `pnpm keycloak:test` holds the loop and the poster to their size budget and checks the realm and the theme's files (it is not part of `pnpm test`). The demo realm also turns on "Keep me signed in on this device" and Keycloak's login events (sign-ins, failed sign-ins and sign-outs, kept 90 days): they are the identity provider's own record, read in its admin console, which the demo does not expose, and not the API's incident timeline; the demo's embedded store has no volume, so they do not outlive a restart. Password recovery stays off (no mail server), so the sign-in page has no "Forgot password?" link.
 
 The console's dev server proxies `/api` and `/socket.io` to the API and `/auth` to Keycloak, exactly as nginx does in the container — no CORS configuration anywhere. It finds the API through `API_URL` (default `http://localhost:13000`) and Keycloak through `KEYCLOAK_URL` (default `http://localhost:18081`). Sign-in therefore happens on `:15173`, the issuer `apps/api/.env.example` expects.
 
@@ -219,7 +227,7 @@ The console's nginx also serves the 3D view's models at `/models/` ([ADR-0020](d
 
 ```bash
 pnpm --filter @occ/api log-level set debug --ttl 30 --by "jane / INC-123"     # development
-docker compose exec api node dist/logging/log-level.cli.js set debug --ttl 30 --by "jane / INC-123"
+pnpm docker:compose exec api node dist/logging/log-level.cli.js set debug --ttl 30 --by "jane / INC-123"
 pnpm --filter @occ/api log-level show                                          # or: clear
 ```
 
@@ -227,7 +235,7 @@ pnpm --filter @occ/api log-level show                                          #
 
 **Metrics.** Each replica serves Prometheus metrics at `GET /metrics` on `METRICS_PORT` (9464), a listener apart from the API: nginx never proxies it, so keep it on an internal network. It exposes HTTP request rate, status codes and latency per route template, commit-to-broadcast delivery latency (`incident_event_delivery_seconds`), connected consoles per replica, and Node.js process metrics, each labelled `service` and `env`. `docker compose --profile observability up` adds Prometheus and the Grafana dashboard ([ADR-0015](docs/adr/0015-metrics-and-tracing.md)). There is no tracing yet; its design and sampling per environment are recorded in the same ADR.
 
-**Telemetry.** `TELEMETRY_SOURCE=mock` (the default) generates readings inside each replica, so `docker compose up` needs no broker. The `telemetry` profile exercises the real path: `mosquitto` (Eclipse Mosquitto 2.1) and `telemetry-sim`, which plays every seeded asset as its own MQTT device with its own account and last will, using the mock source's healthy waveforms; it does not play the demo scenario below. Start it with `TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up --build`; the `/telemetry` overview then shows the assets live. Stop `telemetry-sim` and the console marks every asset stale; stop `mosquitto` and `telemetry.status` turns `paused` while the API stays ready. The broker publishes no host port and nginx never routes it, so `pnpm dev` on the host does not reach it, and an `api` replica that starts before the broker shows `paused` until it reconnects. The accounts and the ACL are generated at start from the simulator's catalogue: the API's account may subscribe to `occ/+/asset/+/#` and publish nothing, and each device account may publish only under `occ/{site}/asset/{code}/`. All of it is demo credentials ([ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md)). To check the ACL: `docker compose exec mosquitto mosquitto_pub -V mqttv5 -h 127.0.0.1 -u CT-01 -P occ-demo-device -t occ/LANGBIANG/asset/CT-02/telemetry -m x -q 1` answers `Not authorized`. To remove the stack, pass the profile to `down` as well (`docker compose --profile telemetry down -v`): a `down` without it leaves `mosquitto` and `telemetry-sim` behind, still attached to the network it just deleted, and the next `up` fails with `network … not found`. Topics and payloads for a real gateway are in [docs/api/telemetry.md](docs/api/telemetry.md#topics-and-payload-for-a-gateway).
+**Telemetry.** `TELEMETRY_SOURCE=mock` (the default) generates readings inside each replica, so `pnpm docker:stack` needs no broker. The `telemetry` profile exercises the real path: `mosquitto` (Eclipse Mosquitto 2.1) and `telemetry-sim`, which plays every seeded asset as its own MQTT device with its own account and last will, using the mock source's healthy waveforms; it does not play the demo scenario below. Start it with `TELEMETRY_SOURCE=mqtt pnpm docker:compose --profile telemetry up --build`; the `/telemetry` overview then shows the assets live. Stop `telemetry-sim` and the console marks every asset stale; stop `mosquitto` and `telemetry.status` turns `paused` while the API stays ready. The broker publishes no host port and nginx never routes it, so `pnpm dev` on the host does not reach it, and an `api` replica that starts before the broker shows `paused` until it reconnects. The accounts and the ACL are generated at start from the simulator's catalogue: the API's account may subscribe to `occ/+/asset/+/#` and publish nothing, and each device account may publish only under `occ/{site}/asset/{code}/`. All of it is demo credentials ([ADR-0006](docs/adr/0006-config-and-secrets-per-environment.md)). To check the ACL: `docker compose exec mosquitto mosquitto_pub -V mqttv5 -h 127.0.0.1 -u CT-01 -P occ-demo-device -t occ/LANGBIANG/asset/CT-02/telemetry -m x -q 1` answers `Not authorized`. To remove the stack, pass the profile to `down` as well (`docker compose --profile telemetry down -v`): a `down` without it leaves `mosquitto` and `telemetry-sim` behind, still attached to the network it just deleted, and the next `up` fails with `network … not found`. Topics and payloads for a real gateway are in [docs/api/telemetry.md](docs/api/telemetry.md#topics-and-payload-for-a-gateway).
 
 **Telemetry demo.** The mock source's waveforms are "normal operation" and never breach a rule, so with `TELEMETRY_MOCK_SCENARIO=true` (the Compose default) it scripts two breaches, the same on every replica because they are a function of the clock: the motor temperature of `CT-01` goes to 92 °C for about 80 s at minute 1 of every 10, and the leak sensor `LKS-B3` reads `true` for about 10 minutes at minute 20 of every hour. Each raises one `telemetry` incident (reporter "System") once the rule's `for_s` has passed: about a minute after the window opens for the cooling tower, and about five minutes for the leak sensor, whose point reports every 5 minutes. The incident stays open until someone resolves it, so later cycles are skipped, not repeated; resolve it and the next breach raises a new one. A replica that starts in the middle of a window judges only what it sees from then on, so the first alarm can take up to a cycle longer. Set `TELEMETRY_MOCK_SCENARIO=false` for a quiet demo. It does nothing under `TELEMETRY_SOURCE=mqtt` or `off`.
 
@@ -249,7 +257,7 @@ pnpm build
 ```bash
 cp apps/api/.env.test.example apps/api/.env.test
 pnpm docker:up                               # the postgres service has to be running
-docker compose exec postgres createdb -U postgres ops_test
+pnpm docker:compose exec postgres createdb -U postgres ops_test
 ```
 
 CI runs all of the above on every push and pull request, then builds both Docker images, boots the stack with two API replicas and checks that both are healthy behind nginx, that each serves metrics on a port the edge cannot reach, that nginx rate-limits the edge, and that each replica stays live but reports not ready while the database is stopped.
@@ -291,7 +299,7 @@ pnpm ci:local                 # the whole workflow: verify job, then the images 
 It ends with a table of every step, its time, the commit tested and whether the working tree was clean. Two things differ from GitHub on purpose:
 
 - **e2e** runs against a throwaway Postgres container (`occ-ci-local-pg`, port 55432, database `ops_test`) through environment variables, so it never reads or changes `apps/api/.env.test`. Set `CI_LOCAL_PG_PORT` if that port is taken.
-- **The images job** runs under its own Compose project, `occ-ci-local`, with its own ports (`CI_LOCAL_COMPOSE_PG_PORT`, default 15433; `CI_LOCAL_COMPOSE_KC_PORT`, default 18082), so its `docker compose down -v` cannot touch the volumes of `pnpm docker:up`. The console's port 18080 is fixed by `docker-compose.yml`: stop `pnpm docker:stack` first, or the job stops at its first step and says so.
+- **The images job** runs under its own Compose project, `occ-ci-local`, with its own ports (`CI_LOCAL_COMPOSE_PG_PORT`, default 15433; `CI_LOCAL_COMPOSE_KC_PORT`, default 18082), so its `docker compose down -v` cannot touch the volumes of `pnpm docker:up`. The console's port 18080 is fixed by `docker/docker-compose.yml`: stop `pnpm docker:stack` first, or the job stops at its first step and says so.
 
 #### Switching GitHub's CI off and on
 

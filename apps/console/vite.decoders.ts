@@ -65,7 +65,7 @@ export function resolveDecoderSources(resolve: (specifier: string) => string): D
 
 /**
  * A model's file name: `<class>.<12 hex>.glb` (ADR-0020 § Serving). The same rule as the regex in
- * `nginx.conf` and `FILE_NAME` in `ops/model-tools/rules.ts`; `vite.decoders.test.ts` runs one list of names
+ * `docker/console/nginx.conf` and `FILE_NAME` in `ops/model-tools/rules.ts`; `vite.decoders.test.ts` runs one list of names
  * through this and through nginx's, so a difference shows there.
  */
 export const MODEL_NAME = /^[a-z][a-z0-9_]*\.[0-9a-f]{12}\.glb$/;

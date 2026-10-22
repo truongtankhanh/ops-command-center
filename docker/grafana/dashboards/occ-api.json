@@ -1,7 +1,7 @@
 {
   "uid": "occ-api",
   "title": "OCC API",
-  "description": "Ops Command Center API: real-time delivery, HTTP RED and process metrics (ADR-0015). Provisioned from ops/grafana/dashboards; edit the file, not the UI.",
+  "description": "Ops Command Center API: real-time delivery, HTTP RED and process metrics (ADR-0015). Provisioned from docker/grafana/dashboards; edit the file, not the UI.",
   "tags": ["occ", "api"],
   "editable": false,
   "schemaVersion": 41,

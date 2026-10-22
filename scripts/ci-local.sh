@@ -31,7 +31,7 @@
 # container, the Compose containers/volumes and the temporary log folder are always removed.
 #
 # Environment: CI_LOCAL_PG_PORT (e2e Postgres, default 55432), CI_LOCAL_COMPOSE_PG_PORT (15433),
-# CI_LOCAL_COMPOSE_KC_PORT (18082). The console's port 18080 is fixed by docker-compose.yml, so stop
+# CI_LOCAL_COMPOSE_KC_PORT (18082). The console's port 18080 is fixed by docker/docker-compose.yml, so stop
 # `pnpm docker:stack` before the images job.
 
 set -uo pipefail
@@ -77,10 +77,12 @@ STACK_STARTED=0
 FAILED=0
 LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/occ-ci-local.XXXXXX")"
 
-# Same project name for every `docker compose` call below: its own containers, network and volumes.
+# Same project name for every `dc` call below: its own containers, network and volumes.
 export COMPOSE_PROJECT_NAME=occ-ci-local
 export POSTGRES_PORT="${CI_LOCAL_COMPOSE_PG_PORT:-15433}"
 export KEYCLOAK_PORT="${CI_LOCAL_COMPOSE_KC_PORT:-18082}"
+# The Compose file lives in docker/; `dc` is `docker compose` pointed at it (as in ci.yml and the pnpm scripts).
+dc() { docker compose -f docker/docker-compose.yml "$@"; }
 
 say() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 fail() { printf '\033[31mFAIL:\033[0m %s\n' "$*" >&2; return 1; }
@@ -102,15 +104,15 @@ summary() {
 cleanup() {
   if [ "$KEEP" -eq 1 ]; then
     [ "$PG_STARTED" -eq 1 ] && echo "Kept container $PG_NAME on port $PG_PORT."
-    [ "$STACK_STARTED" -eq 1 ] && echo "Kept Compose project $COMPOSE_PROJECT_NAME (docker compose -p $COMPOSE_PROJECT_NAME down -v to remove)."
+    [ "$STACK_STARTED" -eq 1 ] && echo "Kept Compose project $COMPOSE_PROJECT_NAME (docker compose -f docker/docker-compose.yml -p $COMPOSE_PROJECT_NAME down -v to remove)."
     return
   fi
   [ "$PG_STARTED" -eq 1 ] && docker rm -f "$PG_NAME" >/dev/null 2>&1
   # `-v` is safe here: the project name above is not the one `pnpm docker:up` uses.
   if [ "$CLEAN" -eq 1 ] && [ "$RUN_IMAGES" -eq 1 ]; then
-    docker compose down -v --rmi local >/dev/null 2>&1   # also the images this project built
+    dc down -v --rmi local >/dev/null 2>&1   # also the images this project built
   elif [ "$STACK_STARTED" -eq 1 ]; then
-    docker compose down -v >/dev/null 2>&1
+    dc down -v >/dev/null 2>&1
   fi
   [ "$CLEAN" -eq 1 ] && rm -rf .turbo/cache
   # The logs are only worth keeping after a failure (the path was printed with the stack logs).
@@ -187,16 +189,16 @@ images_preflight() {
   done
 }
 
-images_build() { docker compose build; }
+images_build() { dc build; }
 
 images_up() {
   STACK_STARTED=1
-  docker compose up -d --wait --wait-timeout 180 --scale api=2
+  dc up -d --wait --wait-timeout 180 --scale api=2
 }
 
 images_replicas() {
   local healthy
-  healthy=$(docker compose ps api --format '{{.Health}}' | grep -c '^healthy$')
+  healthy=$(dc ps api --format '{{.Health}}' | grep -c '^healthy$')
   [ "$healthy" -eq 2 ] || { fail "expected 2 healthy api replicas, got $healthy"; return 1; }
   curl -fsS --retry 5 --retry-connrefused http://localhost:18080/api/health/ready
 }
@@ -205,12 +207,12 @@ images_metrics() {
   local code id binding replica body
   code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:18080/api/metrics || true)
   [ "$code" = 404 ] || { fail "/api/metrics through nginx returned $code, want 404"; return 1; }
-  for id in $(docker compose ps -q api); do
+  for id in $(dc ps -q api); do
     binding=$(docker port "$id" 9464 2>/dev/null || true)
     [ -z "$binding" ] || { fail "api container $id publishes 9464 on the host: $binding"; return 1; }
   done
   for replica in 1 2; do
-    body=$(docker compose exec -T --index "$replica" api wget -qO- http://127.0.0.1:9464/metrics) ||
+    body=$(dc exec -T --index "$replica" api wget -qO- http://127.0.0.1:9464/metrics) ||
       { fail "api replica $replica does not serve /metrics on 9464"; return 1; }
     grep -q '^process_start_time_seconds{.*env="demo"' <<< "$body" ||
       { fail "api replica $replica metrics lack process_start_time_seconds with env=\"demo\""; return 1; }
@@ -263,9 +265,9 @@ images_models() {
 
 images_liveness() {
   # Last: it stops the database. Each replica must stay live and report not ready (ADR-0013).
-  docker compose stop postgres || return 1
+  dc stop postgres || return 1
   local replica
-  probe() { docker compose exec -T --index "$1" api wget -qO /dev/null "http://127.0.0.1:3000/api/health/$2"; }
+  probe() { dc exec -T --index "$1" api wget -qO /dev/null "http://127.0.0.1:3000/api/health/$2"; }
   for replica in 1 2; do
     probe "$replica" live || { fail "api replica $replica is not live with the database stopped"; return 1; }
     if probe "$replica" ready; then fail "api replica $replica reports ready with the database stopped"; return 1; fi
@@ -290,7 +292,7 @@ if [ "$RUN_IMAGES" -eq 1 ]; then
   images_job
   # CI prints the stack's logs on failure; here they go to a file, the tail is shown.
   if printf '%s\n' "${STEP_RESULTS[@]}" | grep -qx FAIL && [ "$STACK_STARTED" -eq 1 ]; then
-    docker compose logs --no-color > "$LOG_DIR/stack.log" 2>&1
+    dc logs --no-color > "$LOG_DIR/stack.log" 2>&1
     echo "Stack logs: $LOG_DIR/stack.log"; tail -n 40 "$LOG_DIR/stack.log"
   fi
 fi

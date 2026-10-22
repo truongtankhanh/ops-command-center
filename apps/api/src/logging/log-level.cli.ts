@@ -13,7 +13,7 @@ import { LOG_LEVEL_OVERRIDE_ID } from './log-level-override.entity';
  *   pnpm --filter @occ/api log-level show
  *   pnpm --filter @occ/api log-level set debug --ttl 30 --by "jane / INC-123"
  *   pnpm --filter @occ/api log-level clear
- *   docker compose exec api node dist/logging/log-level.cli.js set debug --ttl 30 --by "…"
+ *   pnpm docker:compose exec api node dist/logging/log-level.cli.js set debug --ttl 30 --by "…"
  */
 
 const MAX_TTL_MINUTES = 240;

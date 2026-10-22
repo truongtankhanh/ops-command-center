@@ -76,7 +76,7 @@ An Express middleware, mounted in `configureApp` right after the correlation ID 
 `docker compose --profile observability up --build` adds:
 
 - **Prometheus.** It discovers every `api` replica through Docker's DNS. There is no host port and no volume.
-- **Grafana.** It runs on `127.0.0.1:13001` (`GRAFANA_PORT`), with anonymous read-only access and a demo admin password. It has a provisioned "OCC API" dashboard: delivery latency against the 1 s goal, connected consoles, HTTP RED and process metrics. Its `env` variable takes one value at a time, so staging and production never share a panel. The dashboard is a file in `ops/grafana/dashboards`, and the UI cannot change it.
+- **Grafana.** It runs on `127.0.0.1:13001` (`GRAFANA_PORT`), with anonymous read-only access and a demo admin password. It has a provisioned "OCC API" dashboard: delivery latency against the 1 s goal, connected consoles, HTTP RED and process metrics. Its `env` variable takes one value at a time, so staging and production never share a panel. The dashboard is a file in `docker/grafana/dashboards`, and the UI cannot change it.
 
 ### 8. Tracing: not now
 

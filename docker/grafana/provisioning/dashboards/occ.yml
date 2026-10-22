@@ -1,4 +1,4 @@
-# Dashboards are files in ops/grafana/dashboards (ADR-0015): change them there, not in the UI.
+# Dashboards are files in docker/grafana/dashboards (ADR-0015): change them there, not in the UI.
 apiVersion: 1
 
 providers:

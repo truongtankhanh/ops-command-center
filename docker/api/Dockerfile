@@ -1,4 +1,4 @@
-# Build context: repository root (see docker-compose.yml).
+# Build context: repository root (see docker/docker-compose.yml).
 FROM node:24-alpine AS build
 # The pnpm store lives on a BuildKit cache mount (/pnpm/store), reused across builds.
 ENV PNPM_HOME=/pnpm

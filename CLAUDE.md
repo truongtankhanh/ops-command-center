@@ -17,15 +17,15 @@ V2 direction: asset catalogue + MQTT telemetry + three.js twin — ADR-0018 … 
 
 ## Tech Stack
 
-| Surface  | Stack                                                                                              |
-| -------- | -------------------------------------------------------------------------------------------------- |
-| Repo     | pnpm 10 workspaces + Turborepo, Node 24 (`.nvmrc`), TypeScript ~5.9 strict                         |
-| API      | NestJS 12, TypeORM on PostgreSQL 17, Socket.IO, `mqtt`, `jose` (OIDC), pino, Prometheus client     |
-| Console  | React 19, Vite 8, TanStack Query 5, Zustand 5, MapLibre GL, `oidc-client-ts`, CSS Modules          |
-| Packages | `@occ/contracts` and `@occ/camera-adapter`, built with `tsup` to ESM + CJS                         |
-| Identity | Keycloak 26 (demo realm in `ops/keycloak`); roles `operator`, `supervisor`, `technician`, `viewer` |
-| Tests    | Jest 30 + ts-jest (API), Vitest 4 + Testing Library + axe (console, camera-adapter)                |
-| Delivery | Docker Compose (api, postgres, keycloak, console + nginx), GitHub Actions                          |
+| Surface  | Stack                                                                                                 |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| Repo     | pnpm 10 workspaces + Turborepo, Node 24 (`.nvmrc`), TypeScript ~5.9 strict                            |
+| API      | NestJS 12, TypeORM on PostgreSQL 17, Socket.IO, `mqtt`, `jose` (OIDC), pino, Prometheus client        |
+| Console  | React 19, Vite 8, TanStack Query 5, Zustand 5, MapLibre GL, `oidc-client-ts`, CSS Modules             |
+| Packages | `@occ/contracts` and `@occ/camera-adapter`, built with `tsup` to ESM + CJS                            |
+| Identity | Keycloak 26 (demo realm in `docker/keycloak`); roles `operator`, `supervisor`, `technician`, `viewer` |
+| Tests    | Jest 30 + ts-jest (API), Vitest 4 + Testing Library + axe (console, camera-adapter)                   |
+| Delivery | Docker Compose (api, postgres, keycloak, console + nginx), GitHub Actions                             |
 
 <!-- INIT-CONTEXT:END:tech-stack -->
 
@@ -55,23 +55,24 @@ Design in full: `docs/architecture.md`; decisions: the ADR table in `README.md`.
 
 ## Directory Map
 
-| Path                                           | Purpose                                                                                                                                                                                 |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api/src/<feature>/`                      | One NestJS module per feature: `assets`, `auth`, `cameras`, `incidents`, `sites`, `telemetry`, `zones`, `realtime`, `outbox`, `simulator`, `health`, `metrics`, `logging`, `rate-limit` |
-| `apps/api/src/common/`                         | Domain errors, the exception filter, geo helpers                                                                                                                                        |
-| `apps/api/src/config/`                         | Env validation (`env.validation.ts`) and env-file lookup                                                                                                                                |
-| `apps/api/src/database/`                       | Data source, `migrations/`, `seed/`, advisory locks, migrate-on-boot                                                                                                                    |
-| `apps/api/test/`                               | e2e specs (`*.e2e-spec.ts`), global setup, `support/` (test issuer, MQTT broker, tokens)                                                                                                |
-| `apps/console/src/components/`                 | Feature components, each with its `.module.css`                                                                                                                                         |
-| `apps/console/src/ui/`                         | Primitives (Button, Dialog, Sheet, Toast …) and the icon map `icons.ts`                                                                                                                 |
-| `apps/console/src/lib/`                        | Pure logic and small hooks (map, incidents, shortcuts, density …)                                                                                                                       |
-| `apps/console/src/twin/`                       | The 3D twin (three.js, R3F): the only code that imports them, loaded lazily (ADR-0020)                                                                                                  |
-| `apps/console/src/{api,realtime,auth,styles}/` | REST client + query keys, socket hooks, OIDC, tokens and global CSS                                                                                                                     |
-| `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                    |
-| `packages/contracts/src/`                      | `domain.ts`, `api.ts`, `events.ts`, `auth.ts`                                                                                                                                           |
-| `packages/camera-adapter/src/`                 | `CameraSource` port, mock and MediaMTX implementations                                                                                                                                  |
-| `ops/`                                         | Keycloak realm, Prometheus config, Grafana dashboard, `model-tools/` (the `models:check` CLI and its specs), `sign-in-backdrop/` (the sign-in picture's renderer)                       |
-| `docs/`                                        | `adr/`, `api/` (reference + `openapi.json`), `design/`, `architecture.md`, `roadmap.md`                                                                                                 |
+| Path                                           | Purpose                                                                                                                                                                                                                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/<feature>/`                      | One NestJS module per feature: `assets`, `auth`, `cameras`, `incidents`, `sites`, `telemetry`, `zones`, `realtime`, `outbox`, `simulator`, `health`, `metrics`, `logging`, `rate-limit`                                                  |
+| `apps/api/src/common/`                         | Domain errors, the exception filter, geo helpers                                                                                                                                                                                         |
+| `apps/api/src/config/`                         | Env validation (`env.validation.ts`) and env-file lookup                                                                                                                                                                                 |
+| `apps/api/src/database/`                       | Data source, `migrations/`, `seed/`, advisory locks, migrate-on-boot                                                                                                                                                                     |
+| `apps/api/test/`                               | e2e specs (`*.e2e-spec.ts`), global setup, `support/` (test issuer, MQTT broker, tokens)                                                                                                                                                 |
+| `apps/console/src/components/`                 | Feature components, each with its `.module.css`                                                                                                                                                                                          |
+| `apps/console/src/ui/`                         | Primitives (Button, Dialog, Sheet, Toast …) and the icon map `icons.ts`                                                                                                                                                                  |
+| `apps/console/src/lib/`                        | Pure logic and small hooks (map, incidents, shortcuts, density …)                                                                                                                                                                        |
+| `apps/console/src/twin/`                       | The 3D twin (three.js, R3F): the only code that imports them, loaded lazily (ADR-0020)                                                                                                                                                   |
+| `apps/console/src/{api,realtime,auth,styles}/` | REST client + query keys, socket hooks, OIDC, tokens and global CSS                                                                                                                                                                      |
+| `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                                                                     |
+| `packages/contracts/src/`                      | `domain.ts`, `api.ts`, `events.ts`, `auth.ts`                                                                                                                                                                                            |
+| `packages/camera-adapter/src/`                 | `CameraSource` port, mock and MediaMTX implementations                                                                                                                                                                                   |
+| `docker/`                                      | Everything Docker: `docker-compose.yml`, one `Dockerfile` per image (`api/`, `console/` + `nginx.conf`, `telemetry-sim/`), and the mounted configs `keycloak/` (realm, `occ` theme, its checks), `prometheus/`, `grafana/`, `mosquitto/` |
+| `ops/`                                         | `telemetry-sim/` (the device simulator workspace), `models/`, `model-tools/` (the `models:check` CLI and its specs), `sign-in-backdrop/` (the sign-in picture's renderer)                                                                |
+| `docs/`                                        | `adr/`, `api/` (reference + `openapi.json`), `design/`, `architecture.md`, `roadmap.md`                                                                                                                                                  |
 
 Specs sit next to the code they test (`*.spec.ts` in the API, `*.test.ts(x)` elsewhere).
 
@@ -117,6 +118,8 @@ pnpm keycloak:test                          # the sign-in theme: size budget, re
 pnpm --filter @occ/api migration:generate src/database/migrations/<name>
 pnpm --filter @occ/api log-level show       # runtime log level (ADR-0014)
 pnpm docker:stack                           # whole stack on :18080 (docker compose up --build)
+pnpm docker:stack:telemetry                 # same, over real MQTT: adds mosquitto + telemetry-sim (profile `telemetry`)
+pnpm docker:compose <args>                  # any other Compose command; the file is docker/docker-compose.yml, not at the root
 pnpm ci:local [--fast|--skip-e2e|...]       # ci.yml's steps on this machine (own Compose project, throttled)
 pnpm ci:off | ci:on | ci:status              # switch GitHub Actions CI with the CI_ENABLED variable (needs gh or a token)
 ```
@@ -173,7 +176,7 @@ pnpm ci:off | ci:on | ci:status              # switch GitHub Actions CI with the
 
 | Need                                   | Where                                                                                           |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Run it, env variables, operations      | `README.md`                                                                                     |
+| Run it, env variables, operations      | `README.md`; Docker and local tests: `docs/local-development.md`                                |
 | System design, domain model, real-time | `docs/architecture.md`                                                                          |
 | Why a decision was made                | `docs/adr/` (index table in `README.md`)                                                        |
 | Endpoints, events, error shapes        | `docs/api/README.md`, `docs/api/openapi.json`                                                   |

@@ -5,7 +5,7 @@
  * The scene is invented here. It is not exported from a site plan or from the demo seed: the page is public
  * and carries no label, camera, incident, asset or reading (ADR-0010, "Settled in V2-20.1"). The palette is a
  * copy of the twin's neutrals in `apps/console/src/styles/tokens.css` (`--tw-*`), so the backdrop reads as the
- * same campus the console draws. How to run it, and the camera path, are in `ops/keycloak/themes/occ/BACKDROP.md`.
+ * same campus the console draws. How to run it, and the camera path, are in `docker/keycloak/themes/occ/BACKDROP.md`.
  *
  *   node ops/sign-in-backdrop/render.ts            video and poster into the theme's img folder
  *   node ops/sign-in-backdrop/render.ts --poster   the poster only (a second, for looking at the scene)
@@ -552,7 +552,7 @@ function writePoster(scene: ReturnType<typeof buildScene>, file: string): void {
 
 const img = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  '../keycloak/themes/occ/login/resources/img',
+  '../../docker/keycloak/themes/occ/login/resources/img',
 );
 mkdirSync(img, { recursive: true });
 const scene = buildScene();

@@ -2,7 +2,7 @@
  * Checks on the `occ` Keycloak sign-in theme (V2-20.7, ADR-0010 "Settled in V2-20.1"): the things the page
  * promises that no browser test covers (there is none for a theme, Playwright being OCC-25).
  *
- *   pnpm keycloak:test        node --test "ops/keycloak/*.test.ts"
+ *   pnpm keycloak:test        node --test "docker/keycloak/*.test.ts"
  *
  * Not part of `pnpm test`, like `models:test`. The colours are checked elsewhere, by `pnpm lint`
  * (apps/console/scripts/contrast.ts): every copy of a token, the two posters and the contrast over the picture.
@@ -15,7 +15,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const THEME = join(ROOT, 'ops/keycloak/themes/occ/login');
+const THEME = join(ROOT, 'docker/keycloak/themes/occ/login');
 const IMG = join(THEME, 'resources/img');
 
 /** The size budgets of V2-20.1: a page this public is loaded cold, over any link. */
@@ -68,7 +68,7 @@ test('the theme asks for nothing outside this host', () => {
 });
 
 test('the realm sets the theme, and turns on what the page says', () => {
-  const realm = JSON.parse(read(join(ROOT, 'ops/keycloak/occ-realm.json'))) as Record<
+  const realm = JSON.parse(read(join(ROOT, 'docker/keycloak/occ-realm.json'))) as Record<
     string,
     unknown
   >;
@@ -146,7 +146,7 @@ test('the copied template names the Keycloak that Compose runs', () => {
   const header = read(join(THEME, 'template.ftl')).slice(0, 600);
   const copiedFrom = /Keycloak (\d+\.\d+)/.exec(header)?.[1];
   const running = /image:\s*quay\.io\/keycloak\/keycloak:(\d+\.\d+)/.exec(
-    read(join(ROOT, 'docker-compose.yml')),
+    read(join(ROOT, 'docker/docker-compose.yml')),
   )?.[1];
 
   assert.ok(copiedFrom, 'template.ftl does not say which Keycloak it was copied from');

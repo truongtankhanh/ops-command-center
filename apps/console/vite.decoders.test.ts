@@ -1,4 +1,4 @@
-import nginxConf from './nginx.conf?raw';
+import nginxConf from '../../docker/console/nginx.conf?raw';
 import {
   contentTypeOf,
   DECODER_BASE_PATH,
@@ -96,7 +96,7 @@ describe('the model name rule', () => {
     expect(isModelName(name)).toBe(false);
   });
 
-  // `apps/console/nginx.conf` serves `/models/` with a quoted regex (V2-13.4): the same names must pass
+  // `docker/console/nginx.conf` serves `/models/` with a quoted regex (V2-13.4): the same names must pass
   // and fail there, or `pnpm dev` would serve what the image refuses.
   describe('against the regex in nginx.conf', () => {
     const line = /location\s+~\s+"([^"]*\/models\/[^"]*)"/.exec(nginxConf);

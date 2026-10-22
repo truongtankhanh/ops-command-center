@@ -6,7 +6,7 @@ import styles from './AuthBackdrop.module.css';
  * last a moment.
  *
  * Decoration only. It is hidden from assistive technology, holds no text and takes no pointer, and carries no
- * site data (the picture is invented; see `ops/keycloak/themes/occ/BACKDROP.md`). `public/sign-in-backdrop.webp`
+ * site data (the picture is invented; see `docker/keycloak/themes/occ/BACKDROP.md`). `public/sign-in-backdrop.webp`
  * is a copy of the theme's poster, checked for drift by `scripts/contrast.ts` (V2-20.7). The file is not named
  * `auth-…`: the dev server proxies every path that starts with `/auth` to Keycloak.
  *

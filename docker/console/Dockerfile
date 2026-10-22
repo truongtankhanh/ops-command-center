@@ -1,4 +1,4 @@
-# Build context: repository root (see docker-compose.yml).
+# Build context: repository root (see docker/docker-compose.yml).
 FROM node:24-alpine AS build
 # The pnpm store lives on a BuildKit cache mount (/pnpm/store), reused across builds.
 ENV PNPM_HOME=/pnpm
@@ -18,6 +18,6 @@ RUN --mount=type=cache,id=occ-pnpm-store,target=/pnpm/store pnpm install --froze
 RUN pnpm turbo run build --filter "@occ/console..."
 
 FROM nginx:1.29-alpine
-COPY apps/console/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/console/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /repo/apps/console/dist /usr/share/nginx/html
 EXPOSE 80

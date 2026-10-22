@@ -32,7 +32,7 @@ expensive to reverse, because they contradict a decision that is written down:
   mode toggle, a frame rate in the status bar and a site selector.
 - **A colour change is a multi-file change.** `pnpm lint` runs `scripts/contrast.ts --check`, which compares copies of
   the accent and the severity colours in `tokens.css`, `styles/tokens.ts`, `public/favicon.svg`, the Keycloak theme
-  (`ops/keycloak/themes/occ/…`) and `docs/design/tokens.md`; changing one without the others fails lint.
+  (`docker/keycloak/themes/occ/…`) and `docs/design/tokens.md`; changing one without the others fails lint.
 - **Who uses it:** operators on 12-hour shifts in a dark room, reading from 1–2 m, whose attention is split between the
   console, the radio and the phone (V1 brief, "Viewing conditions"). A survey of other monitoring consoles found the
   same posture in ISA-101 high-performance displays: a calm grey normal, colour and motion for the abnormal.

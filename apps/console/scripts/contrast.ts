@@ -8,7 +8,7 @@
  * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
  * longer matches it, when the copy of favicon.svg the title badge draws over has drifted, or when
  * the wall breakpoints in tokens.ts no longer match the media queries of tokens.css, or when the
- * sign-in theme in ops/keycloak/themes/occ (V2-20.7), which is served before anyone is signed in and
+ * sign-in theme in docker/keycloak/themes/occ (V2-20.7), which is served before anyone is signed in and
  * so cannot read tokens.css, no longer matches it or the console's copy of its backdrop. Plain
  * Node 24 with type stripping and no dependency, so it stays cheap to run in lint. Ratios use the
  * WCAG 2.x relative-luminance formula.
@@ -45,7 +45,7 @@ const INDEX_HTML = new URL('../index.html', import.meta.url);
 const FAVICON_SVG = new URL('../public/favicon.svg', import.meta.url);
 const TOKENS_MD = new URL('../../../docs/design/tokens.md', import.meta.url);
 // The Keycloak sign-in theme (V2-20) holds copies of tokens.css values and of the backdrop's poster.
-const THEME = new URL('../../../ops/keycloak/themes/occ/login/', import.meta.url);
+const THEME = new URL('../../../docker/keycloak/themes/occ/login/', import.meta.url);
 const THEME_CSS = new URL('resources/css/occ.css', THEME);
 const THEME_TEMPLATE = new URL('template.ftl', THEME);
 const THEME_POSTER = new URL('resources/img/campus-poster.webp', THEME);

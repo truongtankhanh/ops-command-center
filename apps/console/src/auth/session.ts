@@ -7,7 +7,7 @@ import {
 } from 'oidc-client-ts';
 import { useSession } from './store';
 
-/** Realm and public client from `ops/keycloak/occ-realm.json`, served on the console's own origin. */
+/** Realm and public client from `docker/keycloak/occ-realm.json`, served on the console's own origin. */
 const REALM_PATH = '/auth/realms/occ';
 const CLIENT_ID = 'occ-console';
 

@@ -2,8 +2,7 @@
 paths:
   - 'apps/api/src/config/**'
   - 'apps/api/.env*.example'
-  - 'docker-compose.yml'
-  - '**/Dockerfile'
+  - 'docker/**'
   - 'ops/**'
   - '.github/**'
 ---
@@ -19,7 +18,7 @@ One validated path (ADR-0006): `config/env.validation.ts`. Touch these together,
    (lifted by `DEMO_MODE`); limits that `DEMO_MODE` must not lift go in their own check, like the rate-limit one.
 2. `env.validation.spec.ts`: valid, invalid and production cases.
 3. `apps/api/.env.example` (commented, with the default) and `.env.test.example` if tests are affected.
-4. `docker-compose.yml`: pass it through only if the demo stack needs it, and say why in a comment.
+4. `docker/docker-compose.yml`: pass it through only if the demo stack needs it, and say why in a comment.
 5. `README.md`: the variable table under "Running locally" and, if relevant, the Compose paragraph.
 6. The ADR that owns it (ADR-0006 for config and secrets, ADR-0019 for telemetry).
 7. If it holds a secret: add its name to `logging/redaction.ts` and `redaction.spec.ts`.
@@ -34,6 +33,9 @@ One validated path (ADR-0006): `config/env.validation.ts`. Touch these together,
 
 ## Compose, images, CI
 
+- Everything Docker is under `docker/`; the Compose file is `docker/docker-compose.yml` and every `docker compose` call
+  in scripts and CI passes `-f docker/docker-compose.yml` (`pnpm docker:compose <args>` locally). Relative paths in it
+  resolve against `docker/`, and `context: ..` is the repository root.
 - Compose is the demo stack: it sets `DEMO_MODE`, `DEPLOYMENT_ENV=demo` and demo credentials. Host ports bind to
   loopback; the API publishes none and is reached through the console's nginx, which is what lets `--scale api=2`
   work (ADR-0008).
@@ -48,4 +50,4 @@ One validated path (ADR-0006): `config/env.validation.ts`. Touch these together,
 - CI order: format, lint, typecheck, the model checks (`models:typecheck`, `models:check`, `models:test`), test,
   test:e2e, build, then the `images` job. Keep new checks in the right job
   and make each failure name itself in the log.
-- `ops/keycloak/occ-realm.json` is re-imported on every start; roles and demo users change there, not at runtime.
+- `docker/keycloak/occ-realm.json` is re-imported on every start; roles and demo users change there, not at runtime.

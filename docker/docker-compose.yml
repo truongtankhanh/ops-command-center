@@ -1,4 +1,5 @@
-# One command, whole stack:  docker compose up --build   →  http://localhost:18080
+# One command, whole stack:  pnpm docker:stack   →  http://localhost:18080
+# Relative paths below resolve against this folder (docker/); `context: ..` is the repository root.
 name: ops-command-center
 
 services:
@@ -24,8 +25,8 @@ services:
 
   api:
     build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+      context: ..
+      dockerfile: docker/api/Dockerfile
     environment:
       # Demo credentials, same as the postgres service (ADR-0006).
       DB_HOST: postgres
@@ -76,7 +77,7 @@ services:
 
   # Demo identity provider (ADR-0010): dev mode, plain HTTP, demo users whose password is their
   # username. Not a production setup: a real deployment brings its own IdP and sets OIDC_*.
-  # No volume: the realm is re-imported from ops/keycloak on every start, so it never drifts.
+  # No volume: the realm is re-imported from docker/keycloak on every start, so it never drifts.
   keycloak:
     image: quay.io/keycloak/keycloak:26.8
     command: start-dev --import-realm
@@ -88,12 +89,12 @@ services:
       KC_PROXY_HEADERS: xforwarded
       KC_HEALTH_ENABLED: 'true'
     volumes:
-      - ./ops/keycloak:/opt/keycloak/data/import:ro
+      - ./keycloak:/opt/keycloak/data/import:ro
       # The `occ` login theme (V2-20.2), mounted as that one directory: `/opt/keycloak/themes` takes custom
       # themes without a build step and the built-in ones stay in Keycloak's own jar, so `keycloak.v2`
       # (its parent) still resolves. `start-dev` does not cache themes, so an edit shows on reload. A real
       # site mounts or packages its own theme with its own identity provider.
-      - ./ops/keycloak/themes/occ:/opt/keycloak/themes/occ:ro
+      - ./keycloak/themes/occ:/opt/keycloak/themes/occ:ro
     # Loopback only, for `pnpm dev`; remap with KEYCLOAK_PORT if 18081 is taken.
     ports:
       - '127.0.0.1:${KEYCLOAK_PORT:-18081}:8080'
@@ -114,8 +115,8 @@ services:
 
   console:
     build:
-      context: .
-      dockerfile: apps/console/Dockerfile
+      context: ..
+      dockerfile: docker/console/Dockerfile
     depends_on:
       api:
         condition: service_healthy
@@ -123,14 +124,14 @@ services:
     # read-only and not part of the image. A real deployment mounts its own directory here and sets
     # asset_class.model_key to the file names in it.
     volumes:
-      - ./ops/models:/usr/share/nginx/models:ro
+      - ../ops/models:/usr/share/nginx/models:ro
     # Loopback only by default, like postgres and keycloak: the demo users' passwords are their
     # usernames, so a LAN-reachable console lets anyone on the network sign in. To open it from
     # another machine, set CONSOLE_BIND=0.0.0.0 together with OCC_PUBLIC_URL.
     ports:
       - '${CONSOLE_BIND:-127.0.0.1}:18080:80'
 
-  # Metrics (ADR-0015), opt-in: docker compose --profile observability up --build
+  # Metrics (ADR-0015), opt-in: docker compose -f docker/docker-compose.yml --profile observability up --build
   # Scrapes every api replica on its metrics port, which only this network reaches: the api
   # publishes no host port and nginx never proxies it. No volume: history lasts as long as the
   # container, which is enough for a demo.
@@ -138,7 +139,7 @@ services:
     image: prom/prometheus:v3.15.0
     profiles: [observability]
     volumes:
-      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
       - api
 
@@ -155,15 +156,15 @@ services:
       GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/occ-api.json
     volumes:
-      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - '127.0.0.1:${GRAFANA_PORT:-13001}:3000'
     depends_on:
       - prometheus
 
   # Demo MQTT broker (ADR-0019), opt-in:
-  #   TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up --build
+  #   TELEMETRY_SOURCE=mqtt docker compose -f docker/docker-compose.yml --profile telemetry up --build
   # A profile cannot change the `api` environment, hence the variable on the command line. No host
   # port: the broker is never public and no nginx route reaches it, so `pnpm dev` on the host does
   # not reach it either. The accounts and the ACL are generated at start from the simulator's
@@ -178,9 +179,9 @@ services:
       MQTT_PASSWORD: ${MQTT_PASSWORD:-occ-demo-api}
       MQTT_DEVICE_PASSWORD: ${MQTT_DEVICE_PASSWORD:-occ-demo-device}
     volumes:
-      - ./ops/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./ops/mosquitto/entrypoint.sh:/mosquitto/entrypoint.sh:ro
-      - ./ops/telemetry-sim/catalogue.json:/mosquitto/catalogue.json:ro
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/entrypoint.sh:/mosquitto/entrypoint.sh:ro
+      - ../ops/telemetry-sim/catalogue.json:/mosquitto/catalogue.json:ro
     # A TCP probe: a credential in a healthcheck command would show in `docker inspect`, and an
     # authentication or ACL fault shows in the simulator's and the api's logs.
     healthcheck:
@@ -193,8 +194,8 @@ services:
   # per asset with its own account and last will. Stop it and the console marks every asset stale.
   telemetry-sim:
     build:
-      context: .
-      dockerfile: ops/telemetry-sim/Dockerfile
+      context: ..
+      dockerfile: docker/telemetry-sim/Dockerfile
     profiles: [telemetry]
     environment:
       MQTT_URL: mqtt://mosquitto:1883

@@ -14,7 +14,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-const IMG = new URL('../keycloak/themes/occ/login/resources/img/', import.meta.url);
+const IMG = new URL('../../docker/keycloak/themes/occ/login/resources/img/', import.meta.url);
 const LOOP = new URL('campus-loop.webm', IMG);
 const POSTER = new URL('campus-poster.webp', IMG);
 

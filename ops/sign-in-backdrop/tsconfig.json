@@ -9,5 +9,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["*.ts", "../keycloak/*.ts"]
+  "include": ["*.ts", "../../docker/keycloak/*.ts"]
 }

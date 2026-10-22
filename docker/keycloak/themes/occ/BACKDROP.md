@@ -2,7 +2,7 @@
 
 The `occ` login theme stands on a short looping video of a stylised campus and a poster image
 (`login/resources/img/campus-loop.webm`, `campus-poster.webp`). Both are made by one script, so they can be
-remade: [`ops/sign-in-backdrop/render.ts`](../../../sign-in-backdrop/render.ts). Why it is built this way is in ADR-0010
+remade: [`ops/sign-in-backdrop/render.ts`](../../../../ops/sign-in-backdrop/render.ts). Why it is built this way is in ADR-0010
 ("Settled in V2-20.1") and the brief's § Sign-in.
 
 ## What it must never contain
@@ -32,7 +32,7 @@ budget. The reversal happens twice in 40 s, at 2° a second, under the shade.
 
 ## Remaking it
 
-The script lives beside `ops/model-tools`, not under `ops/keycloak`: Compose mounts that whole folder as Keycloak's realm
+The script lives beside `ops/model-tools`, not under `docker/keycloak`: Compose mounts that whole folder as Keycloak's realm
 import directory, and a `package.json` there is not something Keycloak should meet.
 
 Needs Node 24, `ffmpeg` (with `libvpx-vp9`) and `cwebp` on the PATH; nothing is installed from npm.

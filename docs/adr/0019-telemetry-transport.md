@@ -152,7 +152,7 @@ rules; consoles get a 1 Hz overview of everything and up to 10 Hz for the assets
 - **Compose.**
   - Default: `TELEMETRY_SOURCE=mock`, so `docker compose up` shows a live twin with no broker.
   - Profile `telemetry` (beside the existing `observability`): `eclipse-mosquitto:2` (pinned minor) on the Compose
-    network, no host port, with a password file and ACL from `ops/mosquitto/`, plus a small publisher
+    network, no host port, with a password file and ACL from `docker/mosquitto/`, plus a small publisher
     (`ops/telemetry-sim`) that plays the demo devices over real MQTT. A profile cannot change the `api` service's
     environment, so it is run as `TELEMETRY_SOURCE=mqtt docker compose --profile telemetry up`.
 - **Broker access.** Anonymous access off. Each device has its own credentials and may publish only under its own

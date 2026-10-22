@@ -70,7 +70,7 @@ Considered: environment-aware defaults without the opt-in (`CAMERA_SOURCE=mock` 
 | Local development | `development` | `local` (default)           | `apps/api/.env`, copied from `.env.example` (placeholders)           |
 | Tests (local)     | `test`        | `test` (default)            | `apps/api/.env.test`, copied from `.env.test.example`; shell wins    |
 | CI                | `test`        | `test` (default)            | Job-level `env:` with a throwaway Postgres container; no `secrets.*` |
-| Compose demo      | `production`  | `demo`                      | Inline values in `docker-compose.yml`, plus `DEMO_MODE=true`         |
+| Compose demo      | `production`  | `demo`                      | Inline values in `docker/docker-compose.yml`, plus `DEMO_MODE=true`  |
 | Staging           | `production`  | `staging` (required)        | Platform secret injection; no `.env` file in the container           |
 | Production        | `production`  | `production` (required)     | Platform secret injection, scoped to this service; no `.env` file    |
 
