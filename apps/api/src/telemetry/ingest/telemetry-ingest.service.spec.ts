@@ -1,7 +1,7 @@
 import { Registry } from '@prometheus-io/client';
 import type { TelemetryPoint } from '@occ/contracts';
-import type { AssetsService, CatalogueAsset } from '../assets/assets.service';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
+import type { AssetsService, CatalogueAsset } from '../../assets/assets.service';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
 import { TelemetryIngestService } from './telemetry-ingest.service';
 import type {
   AssetStatusReport,
@@ -9,7 +9,7 @@ import type {
   TelemetrySource,
   Unsubscribe,
   UpstreamState,
-} from './sources/telemetry-source';
+} from '../sources/telemetry-source';
 
 /** On a minute boundary, so timers and ISO strings in the cases below read plainly. */
 const NOW = Date.parse('2026-10-13T08:00:00.000Z');

@@ -10,16 +10,16 @@ import type {
   TelemetryAssetSnapshot,
   TelemetryValue,
 } from '@occ/contracts';
-import { AssetsService, type CatalogueAsset } from '../assets/assets.service';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
-import { ListenerSet } from './sources/listener-set';
-import { TELEMETRY_SOURCE } from './sources/telemetry-source.provider';
+import { AssetsService, type CatalogueAsset } from '../../assets/assets.service';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
+import { ListenerSet } from '../sources/listener-set';
+import { TELEMETRY_SOURCE } from '../sources/telemetry-source.provider';
 import type {
   RawReading,
   TelemetrySource,
   Unsubscribe,
   UpstreamState,
-} from './sources/telemetry-source';
+} from '../sources/telemetry-source';
 import {
   type CatalogueIndex,
   indexCatalogue,

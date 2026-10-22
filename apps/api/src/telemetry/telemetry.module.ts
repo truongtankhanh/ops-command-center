@@ -3,12 +3,12 @@ import { AssetsModule } from '../assets/assets.module';
 import { IncidentsModule } from '../incidents/incidents.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { SitesModule } from '../sites/sites.module';
-import { RuleEvaluator } from './rule-evaluator.service';
-import { TelemetryGateway } from './telemetry.gateway';
-import { TelemetryIngestService } from './telemetry-ingest.service';
-import { TelemetryLeader } from './telemetry-leader.service';
-import { TelemetrySamplePartitions } from './telemetry-sample-partitions.service';
-import { TelemetrySampleWriter } from './telemetry-sample-writer.service';
+import { RuleEvaluator } from './rules/rule-evaluator.service';
+import { TelemetryGateway } from './gateway/telemetry.gateway';
+import { TelemetryIngestService } from './ingest/telemetry-ingest.service';
+import { TelemetryLeader } from './ingest/telemetry-leader.service';
+import { TelemetrySamplePartitions } from './samples/telemetry-sample-partitions.service';
+import { TelemetrySampleWriter } from './samples/telemetry-sample-writer.service';
 import { telemetrySourceProvider } from './sources/telemetry-source.provider';
 
 /**

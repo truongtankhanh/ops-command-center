@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
-import { runJob } from '../logging/request-context';
+import type { Env } from '../../config/env.validation';
+import { runJob } from '../../logging/request-context';
 import {
   dayOfPartition,
   isExpired,
@@ -17,7 +17,7 @@ import {
   partitionsToEnsure,
   SAMPLE_TABLE,
 } from './sample-partitions';
-import { TelemetryLeader } from './telemetry-leader.service';
+import { TelemetryLeader } from '../ingest/telemetry-leader.service';
 
 /** How often the leader re-checks its partitions; also run when a replica gains the lead. */
 export const MAINTAIN_MS = 24 * 60 * 60_000;

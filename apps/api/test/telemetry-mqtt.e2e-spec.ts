@@ -8,7 +8,7 @@ import { validateEnv } from '../src/config/env.validation';
 import type { AppModule as AppModuleClass } from '../src/app.module';
 import { configureApp } from '../src/configure-app';
 import { SITE } from '../src/database/seed/campus';
-import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
+import { TelemetryIngestService } from '../src/telemetry/ingest/telemetry-ingest.service';
 import { startBroker, type TestBroker } from './support/mqtt-broker';
 
 const API = { username: 'occ-api', password: 'e2e-broker-password-not-a-secret' };

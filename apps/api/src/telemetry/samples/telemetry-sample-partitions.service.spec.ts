@@ -1,9 +1,9 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
+import type { Env } from '../../config/env.validation';
 import { MAINTAIN_MS, TelemetrySamplePartitions } from './telemetry-sample-partitions.service';
-import type { TelemetryLeader } from './telemetry-leader.service';
+import type { TelemetryLeader } from '../ingest/telemetry-leader.service';
 
 const NOW = new Date('2026-10-14T10:00:00.000Z');
 

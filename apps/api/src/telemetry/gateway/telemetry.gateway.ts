@@ -19,14 +19,14 @@ import {
   type TelemetryWatchAck,
 } from '@occ/contracts';
 import type { DefaultEventsMap, Namespace, Socket } from 'socket.io';
-import { Public } from '../auth/auth.decorators';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
-import { TELEMETRY_WATCH_RATE_LIMIT } from '../rate-limit/rate-limits';
-import { type RealtimeSocketData, SocketAuth } from '../realtime/socket-auth';
+import { Public } from '../../auth/auth.decorators';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
+import { TELEMETRY_WATCH_RATE_LIMIT } from '../../rate-limit/rate-limits';
+import { type RealtimeSocketData, SocketAuth } from '../../realtime/socket-auth';
 import { FrameBaselines } from './frame-baselines';
 import { SlidingWindowLimiter } from './sliding-window-limiter';
-import { TelemetryIngestService } from './telemetry-ingest.service';
-import type { Unsubscribe } from './sources/telemetry-source';
+import { TelemetryIngestService } from '../ingest/telemetry-ingest.service';
+import type { Unsubscribe } from '../sources/telemetry-source';
 import { readWatchCodes } from './watch-request';
 
 type TelemetryNamespace = Namespace<

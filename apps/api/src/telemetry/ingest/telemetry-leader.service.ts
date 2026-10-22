@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
-import { AdvisoryLockLeader } from '../database/advisory-lock-leader';
-import { runJob } from '../logging/request-context';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
+import type { Env } from '../../config/env.validation';
+import { AdvisoryLockLeader } from '../../database/advisory-lock-leader';
+import { runJob } from '../../logging/request-context';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
 
 /**
  * How often a replica checks the lead: it takes it within one interval of the leader's process

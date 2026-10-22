@@ -1,4 +1,4 @@
-import { SAMPLE_BUCKET_MS } from '../telemetry/sample-partitions';
+import { SAMPLE_BUCKET_MS } from '../telemetry/samples/sample-partitions';
 
 /**
  * The range rules of `GET /assets/:code/telemetry` (ADR-0018, "Read API"): pure and in one place,

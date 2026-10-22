@@ -1,4 +1,4 @@
-import type { RateLimit } from '../rate-limit/rate-limits';
+import type { RateLimit } from '../../rate-limit/rate-limits';
 
 /**
  * Admits at most `limit` calls in any rolling `ttl`, for one caller (ADR-0019: "5 per second per

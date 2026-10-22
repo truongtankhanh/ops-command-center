@@ -10,10 +10,10 @@ import {
 } from '@occ/contracts';
 import { Server } from 'socket.io';
 import { io, type Socket as ClientSocket } from 'socket.io-client';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
-import type { SocketAuth } from '../realtime/socket-auth';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
+import type { SocketAuth } from '../../realtime/socket-auth';
 import { TelemetryGateway } from './telemetry.gateway';
-import type { TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
+import type { TelemetryChange, TelemetryIngestService } from '../ingest/telemetry-ingest.service';
 
 /**
  * The gateway over a real Socket.IO server and a real WebSocket client, with no database: the one

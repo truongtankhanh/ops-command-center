@@ -2,9 +2,9 @@ import { EventEmitter } from 'node:events';
 import type { ConfigService } from '@nestjs/config';
 import { Registry } from '@prometheus-io/client';
 import type { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
-import { AdvisoryLocks } from '../database/advisory-locks';
-import { TelemetryMetrics } from '../metrics/telemetry.metrics';
+import type { Env } from '../../config/env.validation';
+import { AdvisoryLocks } from '../../database/advisory-locks';
+import { TelemetryMetrics } from '../../metrics/telemetry.metrics';
 import { LEADER_CHECK_MS, TelemetryLeader } from './telemetry-leader.service';
 
 type Source = Env['TELEMETRY_SOURCE'];

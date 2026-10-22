@@ -26,11 +26,11 @@ import {
   partitionName,
   partitionRange,
   partitionsToEnsure,
-} from '../src/telemetry/sample-partitions';
-import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
-import { LEADER_CHECK_MS, TelemetryLeader } from '../src/telemetry/telemetry-leader.service';
-import { TelemetrySamplePartitions } from '../src/telemetry/telemetry-sample-partitions.service';
-import { TelemetrySampleWriter } from '../src/telemetry/telemetry-sample-writer.service';
+} from '../src/telemetry/samples/sample-partitions';
+import { TelemetryIngestService } from '../src/telemetry/ingest/telemetry-ingest.service';
+import { LEADER_CHECK_MS, TelemetryLeader } from '../src/telemetry/ingest/telemetry-leader.service';
+import { TelemetrySamplePartitions } from '../src/telemetry/samples/telemetry-sample-partitions.service';
+import { TelemetrySampleWriter } from '../src/telemetry/samples/telemetry-sample-writer.service';
 import type {
   AssetStatusReport,
   RawReading,

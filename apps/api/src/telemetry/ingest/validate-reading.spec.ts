@@ -1,6 +1,6 @@
 import type { TelemetryPoint } from '@occ/contracts';
-import type { CatalogueAsset } from '../assets/assets.service';
-import type { RawReading } from './sources/telemetry-source';
+import type { CatalogueAsset } from '../../assets/assets.service';
+import type { RawReading } from '../sources/telemetry-source';
 import {
   indexCatalogue,
   MAX_CLOCK_SKEW_MS,

@@ -74,7 +74,7 @@ Payload: `TelemetrySnapshot`.
   empty when nothing is held, for instance with `TELEMETRY_SOURCE=off`; the snapshot is still sent.
 - A snapshot is an upsert per asset: replace the `values` of each asset listed and leave the others alone.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:164` (on connect) and `:231` (after a watch)
+Source: `apps/api/src/telemetry/gateway/telemetry.gateway.ts:164` (on connect) and `:231` (after a watch)
 
 ### Overview
 
@@ -109,7 +109,7 @@ sends it, and a console then draws no state word.
 The overview keeps coming while the upstream is `paused`: what is held is still the latest known, and `receivedAt`
 says how old it is.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:270`
+Source: `apps/api/src/telemetry/gateway/telemetry.gateway.ts:270`
 
 ### Status
 
@@ -135,7 +135,7 @@ Payload: `TelemetryStatus`.
 - A paused upstream does not make the API unready: `/api/health/ready` is unchanged
   ([ADR-0013](../adr/0013-liveness-and-readiness-probes.md)).
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:149` (on a change) and `:168` (on connect)
+Source: `apps/api/src/telemetry/gateway/telemetry.gateway.ts:149` (on a change) and `:168` (on connect)
 
 ### Frames
 
@@ -174,7 +174,7 @@ at most 4, in the server's order. A socket sees only the assets it watches, and 
   follows has the latest of every key.
 - Frames are built from what this replica holds, so two consoles on two replicas can differ by one reading.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:342`
+Source: `apps/api/src/telemetry/gateway/telemetry.gateway.ts:342`
 
 ## Freshness
 
@@ -230,7 +230,7 @@ Acknowledgement: `TelemetryWatchAck`, `{ accepted: string[] }`.
 - A code the catalogue does not hold yet is ignored: on a database that was just seeded this lasts until the
   replica re-reads the catalogue, up to a minute.
 
-Source: `apps/api/src/telemetry/telemetry.gateway.ts:194`
+Source: `apps/api/src/telemetry/gateway/telemetry.gateway.ts:194`
 
 ## Topics and payload for a gateway
 

@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
-import { runJob } from '../logging/request-context';
+import type { Env } from '../../config/env.validation';
+import { runJob } from '../../logging/request-context';
 import { bucketOf, SAMPLE_TABLE } from './sample-partitions';
-import { type TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
-import { TelemetryLeader } from './telemetry-leader.service';
+import { type TelemetryChange, TelemetryIngestService } from '../ingest/telemetry-ingest.service';
+import { TelemetryLeader } from '../ingest/telemetry-leader.service';
 import { TelemetrySamplePartitions } from './telemetry-sample-partitions.service';
 
 /**

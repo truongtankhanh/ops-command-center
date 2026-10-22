@@ -9,7 +9,7 @@ import type {
 } from '@occ/contracts';
 import { DataSource, type FindOptionsRelations, IsNull, Repository } from 'typeorm';
 import { EntityNotFoundError } from '../common/domain-errors';
-import { SAMPLE_BUCKET_MS, SAMPLE_TABLE } from '../telemetry/sample-partitions';
+import { SAMPLE_BUCKET_MS, SAMPLE_TABLE } from '../telemetry/samples/sample-partitions';
 import { AssetEntity } from './asset.entity';
 import { orderPoints, type ResolvableRule, resolveAssetRules } from './asset-resolution';
 import { TelemetryRuleEntity } from './telemetry-rule.entity';

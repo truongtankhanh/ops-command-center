@@ -5,16 +5,16 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AssetsService, type CatalogueAsset } from '../assets/assets.service';
-import type { Env } from '../config/env.validation';
-import { IncidentsService } from '../incidents/incidents.service';
-import { runJob } from '../logging/request-context';
-import { type TelemetryIncidentOutcome, TelemetryMetrics } from '../metrics/telemetry.metrics';
-import { formatRuleEvidence, type RuleEvidence } from './rules/rule-evidence';
-import { type EvaluableRule, selectEvaluableRules } from './rules/rule-selection';
-import { ARMED, evaluateRule, type RuleInput, type RuleState } from './rules/rule-state';
-import { type TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
-import { TelemetryLeader } from './telemetry-leader.service';
+import { AssetsService, type CatalogueAsset } from '../../assets/assets.service';
+import type { Env } from '../../config/env.validation';
+import { IncidentsService } from '../../incidents/incidents.service';
+import { runJob } from '../../logging/request-context';
+import { type TelemetryIncidentOutcome, TelemetryMetrics } from '../../metrics/telemetry.metrics';
+import { formatRuleEvidence, type RuleEvidence } from './rule-evidence';
+import { type EvaluableRule, selectEvaluableRules } from './rule-selection';
+import { ARMED, evaluateRule, type RuleInput, type RuleState } from './rule-state';
+import { type TelemetryChange, TelemetryIngestService } from '../ingest/telemetry-ingest.service';
+import { TelemetryLeader } from '../ingest/telemetry-leader.service';
 
 /**
  * How often the leader looks at what arrived: an alarm is decided at most this much after the

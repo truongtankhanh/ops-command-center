@@ -1,18 +1,18 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { IncidentDetail, TelemetryPoint, TelemetryValue } from '@occ/contracts';
-import type { ResolvableRule } from '../assets/asset-resolution';
-import type { AssetsService, CatalogueAsset } from '../assets/assets.service';
-import type { Env } from '../config/env.validation';
-import type { IncidentsService, TelemetryIncidentResult } from '../incidents/incidents.service';
-import type { TelemetryMetrics } from '../metrics/telemetry.metrics';
+import type { ResolvableRule } from '../../assets/asset-resolution';
+import type { AssetsService, CatalogueAsset } from '../../assets/assets.service';
+import type { Env } from '../../config/env.validation';
+import type { IncidentsService, TelemetryIncidentResult } from '../../incidents/incidents.service';
+import type { TelemetryMetrics } from '../../metrics/telemetry.metrics';
 import {
   RULE_CATALOGUE_REFRESH_MS,
   RULE_EVALUATION_MS,
   RuleEvaluator,
 } from './rule-evaluator.service';
-import type { TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
-import type { TelemetryLeader } from './telemetry-leader.service';
+import type { TelemetryChange, TelemetryIngestService } from '../ingest/telemetry-ingest.service';
+import type { TelemetryLeader } from '../ingest/telemetry-leader.service';
 
 const T0 = Date.parse('2026-10-14T10:00:00.000Z');
 const at = (seconds: number) => new Date(T0 + seconds * 1000);

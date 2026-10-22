@@ -13,7 +13,7 @@ import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
-import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
+import { TelemetryIngestService } from '../src/telemetry/ingest/telemetry-ingest.service';
 import { assertTestDatabase, eventually, startApp } from './support/app';
 import { signToken } from './support/tokens';
 

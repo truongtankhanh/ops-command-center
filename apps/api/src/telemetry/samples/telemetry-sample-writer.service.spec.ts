@@ -2,9 +2,9 @@ import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { TelemetryValue } from '@occ/contracts';
 import type { DataSource } from 'typeorm';
-import type { Env } from '../config/env.validation';
-import type { TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
-import type { TelemetryLeader } from './telemetry-leader.service';
+import type { Env } from '../../config/env.validation';
+import type { TelemetryChange, TelemetryIngestService } from '../ingest/telemetry-ingest.service';
+import type { TelemetryLeader } from '../ingest/telemetry-leader.service';
 import type { TelemetrySamplePartitions } from './telemetry-sample-partitions.service';
 import { SAMPLE_FLUSH_MS, TelemetrySampleWriter } from './telemetry-sample-writer.service';
 
