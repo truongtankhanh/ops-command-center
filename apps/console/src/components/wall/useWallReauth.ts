@@ -7,7 +7,7 @@ import {
   reauthDelay,
   recordAttempt,
   writeReauth,
-} from '../../lib/wallReauth';
+} from '../../lib/wall/wallReauth';
 
 /**
  * Signs an unattended video wall in again (V2-21.10). Mounted by `AuthGate` while a wall's session has failed (a renewal

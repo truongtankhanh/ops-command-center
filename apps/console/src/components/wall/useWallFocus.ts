@@ -8,7 +8,7 @@ import {
   WALL_CAMPUS,
   type WallFocusState,
   wallFocusEvents,
-} from '../../lib/wallFocus';
+} from '../../lib/wall/wallFocus';
 import { useConsole } from '../../store';
 
 /** The countdown's step, and the clock the hold is checked on: one tick a second, and only while a focus is held. */
@@ -25,7 +25,7 @@ export interface WallFocus {
 
 /**
  * What moves the video wall's camera (V2-21.8, ADR-0020 "Settled in V2-21.1"): it feeds the difference between two
- * reads of the incident list into the pure rules (`lib/wallFocus.ts`), runs the clock, and turns the result into the
+ * reads of the incident list into the pure rules (`lib/wall/wallFocus.ts`), runs the clock, and turns the result into the
  * camera's commands and the store's `wallFocusId`.
  *
  * - **The clock** is `performance.now()`, which does not go backwards, and the rules never read one. One interval of a

@@ -7,7 +7,7 @@ import {
   REAUTH_BASE_MS,
   REAUTH_STALE_MS,
   writeReauth,
-} from '../../lib/wallReauth';
+} from '../../lib/wall/wallReauth';
 import { resetStore } from '../../test-utils';
 import { useWallReauth } from './useWallReauth';
 

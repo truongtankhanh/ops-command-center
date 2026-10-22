@@ -1349,7 +1349,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       during the flight or the hold replaces it and restarts the 60 s. Acknowledging or resolving the focused incident, its
       removal, or 60 s returns to the fixed campus view; if another critical is still open, the wall does **not** fly to it
       (only a new one does). Reduced motion: the jump is instant and the countdown still shows. It never moves otherwise.
-      Built in V2-21.7 as `lib/wallFocus.ts`, pure and with no clock of its own (the caller passes `now`, from a clock that
+      Built in V2-21.7 as `lib/wall/wallFocus.ts`, pure and with no clock of its own (the caller passes `now`, from a clock that
       does not go backwards). Its input is the **difference between two reads of the incident list the cache holds**
       (`wallFocusEvents`), not `useLiveIncidents`: that hook makes the toast and the sound, which a wall must not, and it
       sees live events only, while the cache is also what a refetch after a lost link writes, through the same version rule.
@@ -1367,7 +1367,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       Built in V2-21.8: `TelemetryWatchSet` reads `wallFocusId` in place of `selectedIncidentId` when `wall` is set, so the
       only slot is the incident the camera is on.
     - **The flight (V2-21.8).** `useWallFocus`, mounted by `WallApp` only, feeds `wallFocusEvents` into the rules of
-      `lib/wallFocus.ts` on the clock `performance.now()`, runs one interval of a second **only while a focus is held**,
+      `lib/wall/wallFocus.ts` on the clock `performance.now()`, runs one interval of a second **only while a focus is held**,
       and turns the result into `twinCommands.flyToIncident` / `home()` and the store's `wallFocusId`. It never writes
       `selectedIncidentId` (that opens the sheet): the beacon's ring (`useTwinBeacons`), the camera grid, the list's row and
       the telemetry watch follow `wallFocusId`. A locked `Rig` keeps a `flyToIncident` whose beacon has not reached the canvas
@@ -1414,7 +1414,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       keeps the wall on screen with "Session reconnecting…" in the header (`WallSessionNotice`) and mounts `useWallReauth`, which
       runs `reauthenticate` (`auth/session.ts`: renew again; only if that fails and the realm's discovery document answers,
       `signInAgain`; the probe is there because a redirect to a Keycloak that is restarting would leave the window on the
-      browser's error page). `lib/wallReauth.ts` is the throttle: the first attempt of a run at once, then 1, 2, 4 … min up to 15
+      browser's error page). `lib/wall/wallReauth.ts` is the throttle: the first attempt of a run at once, then 1, 2, 4 … min up to 15
       min, counted from the start of the last one, the record in the tab's `sessionStorage` and written **before** leaving so
       that a redirect loop through page loads keeps backing off; a record older than 30 min is a finished run. A sign-in that did
       not complete (`failed`) is "Signing in again…" and retried the same way, with no "Try again". The demo realm sets the

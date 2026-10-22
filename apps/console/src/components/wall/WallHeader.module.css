@@ -1,4 +1,4 @@
-/* Frame 18's `.wall-hdr`: the sizes are the console's, times the wall's own `--ui-scale` (`lib/wallScale.ts`). */
+/* Frame 18's `.wall-hdr`: the sizes are the console's, times the wall's own `--ui-scale` (`lib/wall/wallScale.ts`). */
 .header {
   display: flex;
   align-items: center;

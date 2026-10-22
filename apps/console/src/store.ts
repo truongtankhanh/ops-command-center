@@ -11,7 +11,7 @@ import { type TwinFault, twinCapability } from './lib/twinCapability';
 import type { SceneLayerKey, SceneLayers } from './lib/twinLayers';
 import { levelOf } from './lib/twinLevel';
 import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
-import { wallScreen } from './lib/wallMode';
+import { wallScreen } from './lib/wall/wallMode';
 
 /**
  * At most this many incidents are held as fresh. A row stays highlighted until it is looked at or

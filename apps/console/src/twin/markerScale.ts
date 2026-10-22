@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { wallScale } from '../lib/wallScale';
+import { wallScale } from '../lib/wall/wallScale';
 
 /**
  * How much bigger than the console's own the screen-sized markers are drawn (V2-21.6): `1` everywhere but on the video
- * wall, where the camera markers and the beacons follow the wall's `--ui-scale` (`lib/wallScale.ts`, 1.35 at 1920 px) as
+ * wall, where the camera markers and the beacons follow the wall's `--ui-scale` (`lib/wall/wallScale.ts`, 1.35 at 1920 px) as
  * the zone labels do through CSS. A context, not a prop, because the markers sit several layers below `TwinCanvas` and
  * `Markers` is the one place that turns it into pixels. Beside the provider's file, as `PickContext.ts` is, so React Fast
  * Refresh keeps its components.

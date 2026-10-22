@@ -7,7 +7,7 @@
  *
  * Pure apart from the storage helpers at the end, and the clock is the caller's: the record has to survive the redirect
  * (the page is gone and a new one starts), so it is kept in `sessionStorage`, the tab's, with the wall's number
- * (`lib/wallMode.ts`), and its time is the wall clock (`Date.now()`); a monotonic clock does not outlive a page.
+ * (`lib/wall/wallMode.ts`), and its time is the wall clock (`Date.now()`); a monotonic clock does not outlive a page.
  */
 
 /** The shortest gap between two automatic attempts: never more than one a minute. */

@@ -26,7 +26,7 @@ interface WallFocusBannerProps {
  * - **The reading** comes from the incident's evidence (the first `reported` note, as the sheet's "Why it was raised"
  *   reads it) and the asset's point for its unit. An incident without it (an operator's, or one whose asset detail has
  *   not arrived) has a shorter line; nothing is invented.
- * - Only an open, not yet acknowledged incident is ever held (`lib/wallFocus.ts`), so the status is a fixed phrase.
+ * - Only an open, not yet acknowledged incident is ever held (`lib/wall/wallFocus.ts`), so the status is a fixed phrase.
  */
 export function WallFocusBanner({ incidentId, secondsLeft, returned }: WallFocusBannerProps) {
   const { data: incidents } = useIncidents();

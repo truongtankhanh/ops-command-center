@@ -12,7 +12,7 @@ import appStyles from './App.module.css';
 import { startSession } from './auth/session';
 import { AuthGate } from './components/AuthGate';
 import { RegionFallback } from './components/LoadStates';
-import { rememberWall, wallScreen } from './lib/wallMode';
+import { rememberWall, wallScreen } from './lib/wall/wallMode';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
 const queryClient = new QueryClient({

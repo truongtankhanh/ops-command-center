@@ -2,7 +2,7 @@ import type { Incident } from '@occ/contracts';
 import { act, renderHook } from '@testing-library/react';
 import { queryKeys } from '../../api/queries';
 import { twinCommands } from '../../lib/twinCommands';
-import { WALL_HOLD_MS } from '../../lib/wallFocus';
+import { WALL_HOLD_MS } from '../../lib/wall/wallFocus';
 import { useConsole } from '../../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../../test-utils';
 import { useWallFocus } from './useWallFocus';

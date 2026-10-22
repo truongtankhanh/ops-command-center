@@ -1,5 +1,5 @@
 import { useLayoutEffect } from 'react';
-import { wallScale } from '../../lib/wallScale';
+import { wallScale } from '../../lib/wall/wallScale';
 
 /**
  * Sets `--ui-scale` on `<html>` from the window's width while the video wall is mounted (V2-21.3), over the console's
