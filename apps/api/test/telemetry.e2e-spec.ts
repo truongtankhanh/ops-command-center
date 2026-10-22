@@ -20,7 +20,7 @@ import { DataSource } from 'typeorm';
 import type { AppModule as AppModuleClass } from '../src/app.module';
 import { TokenVerifier } from '../src/auth/token-verifier';
 import { type Env, validateEnv } from '../src/config/env.validation';
-import { OffTelemetrySource } from '../src/telemetry/off-telemetry-source';
+import { OffTelemetrySource } from '../src/telemetry/sources/off-telemetry-source';
 import {
   bucketOf,
   partitionName,
@@ -37,8 +37,8 @@ import type {
   TelemetrySource,
   Unsubscribe,
   UpstreamState,
-} from '../src/telemetry/telemetry-source';
-import { TELEMETRY_SOURCE } from '../src/telemetry/telemetry-source.provider';
+} from '../src/telemetry/sources/telemetry-source';
+import { TELEMETRY_SOURCE } from '../src/telemetry/sources/telemetry-source.provider';
 import { assertTestDatabase, eventually, startApp, unusedPort } from './support/app';
 import { signToken, unsignedToken } from './support/tokens';
 

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { TelemetryValue } from '@occ/contracts';
-import type { CatalogueAsset } from '../assets/assets.service';
+import type { CatalogueAsset } from '../../assets/assets.service';
 import { ListenerSet } from './listener-set';
 import { type DemoScenarioEntry, scenarioSummary, scenarioValueAt } from './mock-scenario';
 import { valueAt } from './mock-waveform';

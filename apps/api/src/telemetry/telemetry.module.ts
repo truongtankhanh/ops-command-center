@@ -9,7 +9,7 @@ import { TelemetryIngestService } from './telemetry-ingest.service';
 import { TelemetryLeader } from './telemetry-leader.service';
 import { TelemetrySamplePartitions } from './telemetry-sample-partitions.service';
 import { TelemetrySampleWriter } from './telemetry-sample-writer.service';
-import { telemetrySourceProvider } from './telemetry-source.provider';
+import { telemetrySourceProvider } from './sources/telemetry-source.provider';
 
 /**
  * Telemetry transport (ADR-0019): the source chosen by `TELEMETRY_SOURCE` (`mock`, `mqtt` or

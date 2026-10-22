@@ -1,5 +1,5 @@
 import type { TelemetryValue } from '@occ/contracts';
-import { ASSET_CLASSES } from '../database/seed/asset-catalogue';
+import { ASSET_CLASSES } from '../../database/seed/asset-catalogue';
 import { safeBand, valueAt, type WaveformPoint, type WaveformRule } from './mock-waveform';
 
 /** A multiple of every interval and window the waveform uses, so cases start on a boundary. */

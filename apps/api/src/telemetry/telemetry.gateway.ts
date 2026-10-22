@@ -26,7 +26,7 @@ import { type RealtimeSocketData, SocketAuth } from '../realtime/socket-auth';
 import { FrameBaselines } from './frame-baselines';
 import { SlidingWindowLimiter } from './sliding-window-limiter';
 import { TelemetryIngestService } from './telemetry-ingest.service';
-import type { Unsubscribe } from './telemetry-source';
+import type { Unsubscribe } from './sources/telemetry-source';
 import { readWatchCodes } from './watch-request';
 
 type TelemetryNamespace = Namespace<

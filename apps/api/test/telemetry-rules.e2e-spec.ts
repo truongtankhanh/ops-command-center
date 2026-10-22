@@ -14,12 +14,12 @@ import type { AppModule as AppModuleClass } from '../src/app.module';
 import { validateEnv } from '../src/config/env.validation';
 import { SystemActors } from '../src/incidents/actors';
 import { IncidentsService } from '../src/incidents/incidents.service';
-import { MockTelemetrySource } from '../src/telemetry/mock-telemetry-source';
-import { OffTelemetrySource } from '../src/telemetry/off-telemetry-source';
+import { MockTelemetrySource } from '../src/telemetry/sources/mock-telemetry-source';
+import { OffTelemetrySource } from '../src/telemetry/sources/off-telemetry-source';
 import { RuleEvaluator } from '../src/telemetry/rule-evaluator.service';
 import { TelemetryIngestService } from '../src/telemetry/telemetry-ingest.service';
 import { TelemetryLeader } from '../src/telemetry/telemetry-leader.service';
-import { TELEMETRY_SOURCE } from '../src/telemetry/telemetry-source.provider';
+import { TELEMETRY_SOURCE } from '../src/telemetry/sources/telemetry-source.provider';
 import { assertTestDatabase, eventually, startApp } from './support/app';
 import { signToken } from './support/tokens';
 

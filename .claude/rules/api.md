@@ -16,8 +16,8 @@ paths:
 
 ## Ports and adapters
 
-- `TelemetrySource` (`telemetry/telemetry-source.ts`) and `CameraSource` (`@occ/camera-adapter`) are ports. The
-  implementation is chosen once in a provider (`telemetry-source.provider.ts`) from an env value.
+- `TelemetrySource` (`telemetry/sources/telemetry-source.ts`) and `CameraSource` (`@occ/camera-adapter`) are ports. The
+  implementation is chosen once in a provider (`telemetry/sources/telemetry-source.provider.ts`) from an env value.
 - The provider's `switch` ends in a `never` check: adding a kind to `Env` without a case must fail to compile.
 - Listeners register before `start()`; a source emits only between `start()` and `stop()`; it does not validate. The
   ingest service validates and counts.

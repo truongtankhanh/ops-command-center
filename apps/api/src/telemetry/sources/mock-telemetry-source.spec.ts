@@ -1,5 +1,5 @@
 import type { TelemetryPoint } from '@occ/contracts';
-import type { CatalogueAsset } from '../assets/assets.service';
+import type { CatalogueAsset } from '../../assets/assets.service';
 import type { DemoScenarioEntry } from './mock-scenario';
 import { MockTelemetrySource, type MockTelemetryOptions } from './mock-telemetry-source';
 import type { RawReading, UpstreamState } from './telemetry-source';

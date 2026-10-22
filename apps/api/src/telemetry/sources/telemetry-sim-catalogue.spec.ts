@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ASSET_CLASSES } from '../database/seed/asset-catalogue';
-import { ASSETS } from '../database/seed/assets';
-import { SITE } from '../database/seed/campus';
+import { ASSET_CLASSES } from '../../database/seed/asset-catalogue';
+import { ASSETS } from '../../database/seed/assets';
+import { SITE } from '../../database/seed/campus';
 
 /**
  * The device simulator of the `telemetry` Compose profile (V2-06.11, ADR-0019) lives outside this
@@ -18,7 +18,7 @@ import { SITE } from '../database/seed/campus';
  * The broker's entrypoint lists the device accounts with `sed` over the catalogue file, so its
  * line layout is part of the contract too.
  */
-const SIM_DIR = join(__dirname, '../../../../ops/telemetry-sim');
+const SIM_DIR = join(__dirname, '../../../../../ops/telemetry-sim');
 const read = (path: string): string => readFileSync(join(SIM_DIR, path), 'utf8');
 
 function expectedCatalogue() {

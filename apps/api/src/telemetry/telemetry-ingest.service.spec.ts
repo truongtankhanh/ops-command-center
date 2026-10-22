@@ -9,7 +9,7 @@ import type {
   TelemetrySource,
   Unsubscribe,
   UpstreamState,
-} from './telemetry-source';
+} from './sources/telemetry-source';
 
 /** On a minute boundary, so timers and ISO strings in the cases below read plainly. */
 const NOW = Date.parse('2026-10-13T08:00:00.000Z');

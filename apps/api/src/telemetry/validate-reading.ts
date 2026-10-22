@@ -1,7 +1,7 @@
 import { ASSET_STATE_POINT_KEYS, type TelemetryPoint, type TelemetryValue } from '@occ/contracts';
 import type { CatalogueAsset } from '../assets/assets.service';
 import type { TelemetryMessageResult } from '../metrics/telemetry.metrics';
-import type { RawReading } from './telemetry-source';
+import type { RawReading } from './sources/telemetry-source';
 
 /** An `at` further than this from the API's clock is replaced by the receive time (ADR-0019). */
 export const MAX_CLOCK_SKEW_MS = 5 * 60_000;

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import type { Provider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AssetsService } from '../assets/assets.service';
-import type { Env } from '../config/env.validation';
-import { SitesService } from '../sites/sites.service';
+import { AssetsService } from '../../assets/assets.service';
+import type { Env } from '../../config/env.validation';
+import { SitesService } from '../../sites/sites.service';
 import { DEMO_SCENARIO } from './mock-scenario';
 import { MockTelemetrySource } from './mock-telemetry-source';
 import { MqttTelemetrySource } from './mqtt-telemetry-source';

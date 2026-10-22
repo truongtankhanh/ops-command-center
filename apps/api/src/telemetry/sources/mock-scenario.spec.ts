@@ -1,6 +1,6 @@
 import type { TelemetryValue } from '@occ/contracts';
-import { ASSET_CLASSES } from '../database/seed/asset-catalogue';
-import { ASSETS } from '../database/seed/assets';
+import { ASSET_CLASSES } from '../../database/seed/asset-catalogue';
+import { ASSETS } from '../../database/seed/assets';
 import {
   DEFAULT_MARGIN_S,
   DEMO_SCENARIO,
@@ -11,7 +11,7 @@ import {
   scenarioValueAt,
 } from './mock-scenario';
 import { valueAt } from './mock-waveform';
-import { ARMED, evaluateRule, type RuleState } from './rules/rule-state';
+import { ARMED, evaluateRule, type RuleState } from '../rules/rule-state';
 
 /** A multiple of an hour, so a cycle of 10 or 60 minutes opens exactly at `T0 + offset`. */
 const T0 = Date.parse('2026-10-13T08:00:00.000Z');

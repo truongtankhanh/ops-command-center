@@ -8,7 +8,7 @@ import { TelemetryMetrics } from '../metrics/telemetry.metrics';
 import type { SocketAuth } from '../realtime/socket-auth';
 import { TelemetryGateway } from './telemetry.gateway';
 import type { TelemetryChange, TelemetryIngestService } from './telemetry-ingest.service';
-import type { UpstreamState } from './telemetry-source';
+import type { UpstreamState } from './sources/telemetry-source';
 
 const NOW = Date.parse('2026-10-13T08:00:00.000Z');
 const iso = (ms: number) => new Date(ms).toISOString();
