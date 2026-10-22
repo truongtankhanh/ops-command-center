@@ -8,6 +8,17 @@ const LUCIDE = {
   name: 'lucide-react',
   message: 'Import glyphs from src/ui/icons.ts so the icon set stays swappable.',
 };
+const THREE = {
+  group: ['three', 'three/*', '@react-three/*', 'three-mesh-bvh'],
+  message:
+    'The 3D toolchain lives in src/twin/ only: it is a lazy chunk that the 2D view, the fallback and the sign-in screens must never download (ADR-0020).',
+};
+const TWIN = {
+  group: ['**/twin/*', '**/twin'],
+  allowTypeImports: true,
+  message:
+    'Import src/twin/ only with a dynamic import() from StageView (the one lazy crossing, ADR-0020).',
+};
 
 export default [
   ...root,
@@ -22,19 +33,7 @@ export default [
         'error',
         {
           paths: [LUCIDE],
-          patterns: [
-            {
-              group: ['three', 'three/*', '@react-three/*', 'three-mesh-bvh'],
-              message:
-                'The 3D toolchain lives in src/twin/ only: it is a lazy chunk that the 2D view, the fallback and the sign-in screens must never download (ADR-0020).',
-            },
-            {
-              group: ['**/twin/*', '**/twin'],
-              allowTypeImports: true,
-              message:
-                'Import src/twin/ only with a dynamic import() from StageView (the one lazy crossing, ADR-0020).',
-            },
-          ],
+          patterns: [THREE, TWIN],
         },
       ],
     },
@@ -44,6 +43,29 @@ export default [
     // block replaces the whole option object of the rule, so the icon restriction is restated.
     files: ['src/twin/**/*.{ts,tsx}'],
     rules: { 'no-restricted-imports': ['error', { paths: [LUCIDE] }] },
+  },
+  {
+    // `lib/` is pure logic and small hooks: it sits below `components/`, never above it (RS-00 D4). Nothing in
+    // `lib/` imported `components/` when this rule was added. The block replaces the whole option object of the
+    // rule, so the icon and 3D restrictions are restated.
+    files: ['src/lib/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [LUCIDE],
+          patterns: [
+            THREE,
+            TWIN,
+            {
+              group: ['**/components/*', '**/components'],
+              message:
+                'src/lib/ must not import src/components/: logic sits below the components that use it.',
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     // The one module that wraps the icon set.

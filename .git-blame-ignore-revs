@@ -1,0 +1,7 @@
+# Commits that only move or rename files, or rewrite import paths after a move. `git blame` skips them when
+# git is told to read this file (once per clone):
+#
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# One full SHA per line, with a comment naming the PR. Add the squash-commit SHA in the PR that follows the merge
+# (the SHA is not known before). Only purely mechanical commits belong here: never one that also changes behaviour.

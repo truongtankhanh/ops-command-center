@@ -245,3 +245,4 @@ A production deployment guide is not published yet.
 | [0023](adr/0023-building-levels-as-data.md)                     | Building levels as data                                  |
 | [0024](adr/0024-shift-handover.md)                              | Shift handover as its own record                         |
 | [0031](adr/0031-place-plans.md)                                 | Place plans: rooms and positions                         |
+| [0032](adr/0032-source-layout-by-feature.md)                    | Source layout: feature folders, relative imports         |

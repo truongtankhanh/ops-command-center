@@ -184,6 +184,16 @@ The images job runs under its own Compose project (`occ-ci-local`) and ports, so
 `pnpm docker:up`. It does need port 18080: stop `pnpm docker:stack` first. Details and options are in the
 [README](../README.md#running-ci-on-your-machine-and-switching-githubs-ci-off).
 
+## Reading history across file moves
+
+Source files are sometimes moved without any other change (for example the source-layout refactor). Follow a file past
+its move with `git log --follow -- <path>`. To keep `git blame` pointing at the real author rather than the move, tell git
+about the repository's list of mechanical commits once per clone:
+
+```bash
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
 ## Troubleshooting
 
 | Symptom                                                     | Cause and fix                                                                                      |

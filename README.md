@@ -132,6 +132,7 @@ The full design is in [docs/architecture.md](docs/architecture.md); every endpoi
 | [0023](docs/adr/0023-building-levels-as-data.md)                           | Building levels are data: a `building_level` table, and a nullable level on assets and incidents                                                                 |
 | [0024](docs/adr/0024-shift-handover.md)                                    | A shift handover is its own record, accepted by the incoming operator, and the console polls for it                                                              |
 | [0031](docs/adr/0031-place-plans.md)                                       | A place's plan is data: rooms on a level (a `building_room` table) and an optional position on an asset inside it                                                |
+| [0032](docs/adr/0032-source-layout-by-feature.md)                          | Source grouped by feature inside the existing layers; relative imports; `lib/` may not import `components/` (lint)                                               |
 
 ### Design details worth a look
 
