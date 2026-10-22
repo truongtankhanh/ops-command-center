@@ -112,10 +112,13 @@ or run through Turborepo, which builds dependencies for you: `pnpm turbo run tes
 Specs are `*.spec.ts`, beside the code in `apps/api/src/`. They need no database.
 
 ```bash
-pnpm --filter @occ/api test -- --maxWorkers=2                       # all API unit specs, two workers
-pnpm --filter @occ/api test -- src/incidents/incidents.service.spec.ts   # one file
-pnpm --filter @occ/api test -- -t "acknowledge"                     # by test name
+pnpm --filter @occ/api test --maxWorkers=2                       # all API unit specs, two workers
+pnpm --filter @occ/api test src/incidents/incidents.service.spec.ts   # one file
+pnpm --filter @occ/api test -t "acknowledge"                     # by test name
 ```
+
+Do not put `--` between the script and Jest's flags (`test -- --maxWorkers=2`): pnpm forwards the `--` to Jest, which then reads
+everything after it as file patterns and finds no test ("No tests found"). Write the flags straight after the script name.
 
 ### API e2e tests (Jest, real PostgreSQL)
 
@@ -134,7 +137,7 @@ pnpm docker:compose exec postgres createdb -U postgres ops_test
 Run (the script already passes `--runInBand`):
 
 ```bash
-pnpm --filter @occ/api test:e2e -- test/incidents.e2e-spec.ts       # one file: the default
+pnpm --filter @occ/api test:e2e test/incidents.e2e-spec.ts       # one file: the default
 pnpm --filter @occ/api test:e2e                                      # the whole suite: slow, run it deliberately
 ```
 
