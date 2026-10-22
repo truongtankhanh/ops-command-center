@@ -261,6 +261,8 @@ export interface FrameDemand {
   bound: boolean;
   flying: boolean;
   pulsing: boolean;
+  /** A pad button is held (V3-29): the rig moves the view each frame until it is let go. */
+  panning: boolean;
 }
 
 /**
@@ -275,6 +277,7 @@ export const createFrameDemand = (): FrameDemand => ({
   bound: false,
   flying: false,
   pulsing: false,
+  panning: false,
 });
 
 /**
@@ -284,7 +287,7 @@ export const createFrameDemand = (): FrameDemand => ({
 export const needsFrame = (
   demand: Readonly<FrameDemand>,
   { hidden = false }: { hidden?: boolean } = {},
-): boolean => !hidden && (demand.bound || demand.flying || demand.pulsing);
+): boolean => !hidden && (demand.bound || demand.flying || demand.pulsing || demand.panning);
 
 /**
  * The pixel-ratio steps (brief § Performance: "Pixel ratio ≤ 1.5; video wall 1.0"), from the sharpest down. The canvas

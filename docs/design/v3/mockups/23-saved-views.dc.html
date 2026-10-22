@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Saved views</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.zw{position:absolute;width:676px;height:500px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f;top:84px}
+.zw .in{position:absolute;left:-190px;top:-45px;width:1056px;height:590px}
+.zl{position:absolute;top:22px;width:676px;font-size:12px;line-height:16px;color:#8fa5bf}
+.zl b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.vi{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13px}
+.vi .ic{color:#a9bed6}
+.vi.on{background:rgb(49 133 255 / .16);box-shadow:inset 0 0 0 1px #3185ff}
+.vi .sub{margin-left:auto;font-size:11px;color:#8fa5bf}
+.vi .x{color:#8fa5bf}
+.fld{height:40px;border-radius:8px;border:1px solid #3185ff;background:#07111f;padding:0 12px;display:flex;align-items:center;font-size:13px;box-shadow:0 0 0 3px rgb(49 133 255 / .2)}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="zl" style="left:24px"><b>23a The Views list</b>On the camera rail. Campus is built in; the others are this person's, stored in this browser.</div>
+<div class="zw" style="left:24px"><div class="in"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="rail" style="top:16px"><div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg></div><div class="b on" aria-label="Views"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div><div class="b tool on" aria-label="Orbit tool: drag rotates"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.466 7.5C15.643 4.237 13.952 2 12 2 9.239 2 7 6.477 7 12s2.239 10 5 10c.342 0 .677-.069 1-.2"/><path d="m15.194 13.707 3.814 1.86-1.86 3.814"/><path d="M19 15.57c-1.804.885-4.274 1.43-7 1.43-5.523 0-10-2.239-10-5s4.477-5 10-5c4.838 0 8.873 1.718 9.8 4"/></svg></div><div class="b tool" aria-label="Pan tool: drag moves, P"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></div><div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></div></div>
+<div class="glass" style="position:absolute;left:66px;top:56px;width:300px;padding:8px" role="menu" aria-label="Views">
+<div class="vi on" role="menuitem"><svg class="ic" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Campus<span class="sub">built in · Home</span></div>
+<div class="vi" role="menuitem"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>Main Gate<svg class="ic s x" style="margin-left:auto" viewBox="0 0 24 24" aria-label="Delete view Main Gate"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+<div class="vi" role="menuitem"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>Data Center roof<svg class="ic s x" style="margin-left:auto" viewBox="0 0 24 24" aria-label="Delete view Data Center roof"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+<div class="vi" role="menuitem"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>Science Lab · Level 2<span class="sub">V3.5</span><svg class="ic s x" viewBox="0 0 24 24" aria-label="Delete view Science Lab level 2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></div>
+<div style="height:1px;background:#1e3450;margin:6px 0"></div>
+<div class="vi" role="menuitem"><svg class="ic" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Save current view…</div>
+</div>
+</div>
+
+<div class="zl" style="left:740px"><b>23b Save current view</b>A name, nothing else. The pose is captured at the moment of saving; Enter saves, Esc cancels.</div>
+<div class="zw" style="left:740px"><div class="in"><dc-import name="Scene" tier="medium" zoom="{{ 2.0 }}" px="{{ -55 }}" py="{{ -214 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="rail" style="top:16px"><div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg></div><div class="b on" aria-label="Views"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></div></div>
+<div class="glass" style="position:absolute;left:66px;top:56px;width:320px;padding:14px;display:flex;flex-direction:column;gap:10px" role="dialog" aria-label="Save current view">
+<div class="sb" style="font-size:14px">Save current view</div>
+<label style="display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:600;color:#a9bed6">Name<span class="fld" style="font-weight:400;color:#e7f2ff">Dormitory B side<span style="width:1px;height:18px;background:#6aa6ff;margin-left:2px"></span></span></label>
+<div class="t3 xs">Saves the camera position and, in V3.5, the level. It does not save selections or filters.</div>
+<div class="row" style="gap:8px;justify-content:flex-end"><button class="btn s">Cancel</button><button class="btn p s">Save</button></div>
+</div>
+</div>
+
+<div class="panel" style="position:absolute;left:24px;top:612px;width:1392px;padding:16px;display:flex;gap:28px;font-size:12px;line-height:18px;color:#a9bed6">
+<div style="flex:1"><div class="sb" style="color:#e7f2ff;font-size:13px;margin-bottom:4px">Storage</div>Per browser, in local storage wrapped in try/catch; blocked storage still shows the built-in Campus view. Server sync, so a view follows a person, is later.</div>
+<div style="flex:1"><div class="sb" style="color:#e7f2ff;font-size:13px;margin-bottom:4px">Camera</div>Flying to a view is a move the operator asked for, so the "view moves only because the operator asked" principle holds. 600 ms ease-out; instant under reduced motion.</div>
+<div style="flex:1"><div class="sb" style="color:#e7f2ff;font-size:13px;margin-bottom:4px">Scope</div>3D only (the 2D map keeps its own Reset). Every role may save views: it changes nothing but this person's camera. The wall has none.</div>
+<div style="flex:1"><div class="sb" style="color:#e7f2ff;font-size:13px;margin-bottom:4px">Limits</div>Up to 20 views, names up to 40 characters, unique; deleting asks nothing and can be undone from the toast for a few seconds.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -281,7 +281,7 @@ describe('ShortcutHelp and the 3D view', () => {
 
     openFromMenu();
 
-    for (const key of ['V', 'F', 'Drag']) expect(has(key)).toBe(true);
+    for (const key of ['V', 'F', 'P', 'Drag']) expect(has(key)).toBe(true);
     for (const key of ['N', 'A', 'R']) expect(has(key)).toBe(false);
   });
 
@@ -299,7 +299,7 @@ describe('ShortcutHelp and the 3D view', () => {
     expect(dialog.getByText('Resolve — Facilities and Environment incidents')).toBeInTheDocument();
   });
 
-  it('keeps the 3D keys, and drops V and F, when single-key shortcuts go off', () => {
+  it('keeps the 3D keys, and drops V, F and P, when single-key shortcuts go off', () => {
     stubTwinAvailable();
     act(() => useConsole.setState({ keyboardShortcuts: false }));
     renderHelp();
@@ -307,7 +307,7 @@ describe('ShortcutHelp and the 3D view', () => {
     openFromMenu();
 
     expect(help()).toHaveAccessibleDescription(OFF_INTRO);
-    for (const key of ['V', 'F']) expect(has(key)).toBe(false);
+    for (const key of ['V', 'F', 'P']) expect(has(key)).toBe(false);
     for (const key of ['Home', 'Wheel', 'arrows']) expect(has(key)).toBe(true);
   });
 
@@ -321,7 +321,9 @@ describe('ShortcutHelp and the 3D view', () => {
     const pan = dialog.getByText('Pan').parentElement!;
     expect(within(pan).getAllByText(/^(Shift|arrows)$/, { selector: 'kbd' })).toHaveLength(2);
     expect(pan).toHaveTextContent('Shift+arrows');
-    const dragPan = dialog.getByText('Pan (also right-drag, two-finger drag)').parentElement!;
+    const dragPan = dialog.getByText(
+      'Pan (Pan tool: rotate; also right-drag, two-finger drag pan)',
+    ).parentElement!;
     expect(dragPan).toHaveTextContent('Shift+Drag');
     const orbit = dialog.getByText('Orbit around the target').parentElement!;
     expect(within(orbit).queryByText('+')).toBeNull();

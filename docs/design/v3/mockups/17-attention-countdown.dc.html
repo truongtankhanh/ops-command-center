@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Attention countdown</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.lab{position:absolute;font-size:12px;line-height:16px;color:#8fa5bf}
+.lab b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.ag{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.irow{align-items:center}
+.state{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid #1e3450;background:#0d1c2d;font-size:12px}
+.state .t{width:116px;font-weight:600;font-size:13px}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="lab" style="left:40px;top:26px;width:400px"><b>17a Feed rows</b>Time left before an open incident passes its attention threshold. Acknowledged rows show none.</div>
+<div class="panel" style="position:absolute;left:40px;top:84px;width:400px;padding:8px;display:flex;flex-direction:column;gap:2px">
+<div class="irow"><div class="tile crit"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div class="body"><div class="ttl">Smoke detector — Science Lab, level 2</div><div class="meta"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span>Open</span></div></div>
+<div class="ag"><span class="age">3m</span><span class="cdn soon"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#e8c070" stroke-width="3" stroke-linecap="round" stroke-dasharray="11 56.5"/></svg></span>0:24 left</span></div></div>
+<div class="irow"><div class="tile high"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="body"><div class="ttl">Door forced open — service corridor</div><div class="meta"><span class="sev high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>High</span><span>Open</span></div></div>
+<div class="ag"><span class="age">1m</span><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="45 56.5"/></svg></span>4:02 left</span></div></div>
+<div class="irow"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div><div class="body"><div class="ttl">Unattended bag — Student Center</div><div class="meta"><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span><span>Open</span></div></div>
+<div class="ag"><span class="age">17m</span><span class="cdn over"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#ff8da1" stroke-width="3"/><path d="M11 6v6l3 2" fill="none" stroke="#ff8da1" stroke-width="1.8" stroke-linecap="round" style="transform:rotate(90deg);transform-origin:11px 11px"/></svg></span>+2:10 over</span></div></div>
+<div class="irow"><div class="tile med"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div><div class="body"><div class="ttl">Water leak — Dormitory B, level 3</div><div class="meta"><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span><span>Acknowledged</span></div></div>
+<div class="ag"><span class="age">25m</span><span class="xs t3">no countdown</span></div></div>
+</div>
+
+<div class="lab" style="left:500px;top:26px;width:420px"><b>17b States</b>Neutral, then warning, then danger. Icon, words and number always; colour never alone.</div>
+<div style="position:absolute;left:500px;top:84px;width:420px;display:flex;flex-direction:column;gap:8px">
+<div class="state"><span class="t">Normal</span><span class="cdn"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a9bed6" stroke-width="3" stroke-linecap="round" stroke-dasharray="45 56.5"/></svg></span>4:02 left</span><span class="t3">more than 25 % left</span></div>
+<div class="state"><span class="t">Soon</span><span class="cdn soon"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#e8c070" stroke-width="3" stroke-linecap="round" stroke-dasharray="11 56.5"/></svg></span>0:24 left</span><span class="t3">25 % or less left</span></div>
+<div class="state"><span class="t">Overdue</span><span class="cdn over"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" stroke="#ff8da1" stroke-width="3"/></svg></span>+2:10 over</span><span class="t3">past the threshold</span></div>
+<div class="state"><span class="t">Acknowledged</span><span class="t3">no countdown, as in V1</span></div>
+</div>
+<div class="panel" style="position:absolute;left:500px;top:340px;width:420px;padding:14px;font-size:12px;line-height:18px;color:#a9bed6;display:flex;flex-direction:column;gap:8px">
+<div class="sb" style="color:#e7f2ff;font-size:13px">Thresholds (V1, attention not SLA)</div>
+<div class="row" style="justify-content:space-between"><span>Critical</span><span class="num">2 min</span></div>
+<div class="row" style="justify-content:space-between"><span>High</span><span class="num">5 min</span></div>
+<div class="row" style="justify-content:space-between"><span>Medium</span><span class="num">15 min</span></div>
+<div class="row" style="justify-content:space-between"><span>Low</span><span class="num">30 min</span></div>
+<div class="t3 xs">Display only; nothing is enforced on the server. OCC-26 replaces the constants with the server's SLA; the component already takes a deadline.</div>
+</div>
+
+<div class="lab" style="left:960px;top:26px;width:420px"><b>17c Inspector header</b>The same chip beside the status; the critical KPI tile is unchanged.</div>
+<div class="glass" style="position:absolute;left:960px;top:84px;width:420px;overflow:hidden">
+<div class="ph" style="display:flex;gap:12px;padding:14px 14px 10px"><div class="tile crit" style="width:44px;height:44px;border-radius:8px;display:grid;place-items:center;border:1px solid"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div><div style="flex:1"><div class="sb" style="font-size:15px;line-height:20px">Smoke detector — Science Lab, level 2</div><div class="t2 s12 num">INC-000110 · Science Lab</div></div></div>
+<div class="pm" style="display:flex;align-items:center;gap:8px;padding:0 14px 14px;font-size:12px;color:#a9bed6"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span>3m ago</span><span class="t3">·</span><span>Open</span><span class="cdn soon" style="margin-left:auto"><span class="ring"><svg viewBox="0 0 22 22" aria-hidden="true"><circle class="tr0" cx="11" cy="11" r="9" fill="none" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#e8c070" stroke-width="3" stroke-linecap="round" stroke-dasharray="11 56.5"/></svg></span>0:24 left</span></div>
+</div>
+<div class="panel" style="position:absolute;left:960px;top:300px;width:420px;padding:14px;font-size:12px;line-height:18px;color:#a9bed6;display:flex;flex-direction:column;gap:8px">
+<div class="sb" style="color:#e7f2ff;font-size:13px">Behaviour</div>
+<div>Ticks once a second while the tab is visible; stops when the tab is hidden and resumes from the clock, so it never drifts.</div>
+<div>Reduced motion: the ring jumps, it does not animate; the number is the signal.</div>
+<div>Screen readers: the row's accessible name carries "0 minutes 24 seconds left" and updates at 30 s, 10 s and overdue only, not every second.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

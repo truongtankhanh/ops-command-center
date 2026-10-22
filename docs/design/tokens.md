@@ -2,6 +2,7 @@
 
 The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, focus and layers. Approved in the
 [design brief](brief.md) (UI-01), implemented in UI-03.
+V3 revises the palette, the type and the radii ([ADR-0022](../adr/0022-console-visual-language.md)); the generated tables below follow from V3-02.
 
 ## Where they live
 

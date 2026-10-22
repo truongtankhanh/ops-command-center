@@ -15,3 +15,16 @@
 .view:focus-visible {
   outline-offset: calc(var(--focus-offset) * -1);
 }
+
+/*
+ * The Pan tool (V3-29, `data-tool` from `TwinView.tsx`): a hand over the picture, closed while a button is down. The
+ * canvas sets no cursor of its own, so this wins; a `Shift` held to flip the tool is not visible to CSS, so the cursor
+ * follows the tool alone.
+ */
+.view[data-tool='pan'] canvas {
+  cursor: grab;
+}
+
+.view[data-tool='pan'] canvas:active {
+  cursor: grabbing;
+}

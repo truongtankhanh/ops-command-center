@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2D site plan</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.m2f{position:absolute;font-family:'Inter',system-ui,sans-serif}
+.m2f .rd{position:absolute;background:#1a2733;box-shadow:inset 0 0 0 1px rgb(150 180 210 / .12)}
+.m2f .rd.h{background:linear-gradient(90deg,#8aa0b5 0 5px,transparent 5px 11px) 0 50% / 11px 1px repeat-x,#1a2733}
+.m2f .rd.v{background:linear-gradient(0deg,#8aa0b5 0 5px,transparent 5px 11px) 50% 0 / 1px 11px repeat-y,#1a2733}
+.m2f .park{position:absolute;background:linear-gradient(0deg,transparent 0 41%,#15222d 41% 59%,transparent 59%),repeating-linear-gradient(90deg,rgb(200 220 240 / .34) 0 .7px,transparent .7px 4px),#192631;border-radius:2px}
+.m2f .lawn{position:absolute;background:radial-gradient(ellipse at 40% 35%,rgb(96 160 100 / .30),rgb(60 120 70 / .16) 70%);box-shadow:inset 0 0 0 1px rgb(120 190 130 / .14);border-radius:8px}
+.m2f .field{position:absolute;background:repeating-linear-gradient(90deg,#2b6a3f 0 12.5px,#276137 12.5px 25px);box-shadow:inset 0 0 0 1px rgb(220 240 225 / .7);border-radius:2px}
+.m2f .field::after{content:'';position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgb(220 240 225 / .7)}
+.m2f .field::before{content:'';position:absolute;left:50%;top:50%;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:1px solid rgb(220 240 225 / .7)}
+.m2f .lake{position:absolute;border-radius:50%;background:radial-gradient(ellipse at 38% 32%,#2f7da3 0,#1b5679 40%,#0f3550 100%);box-shadow:0 0 0 3px #24442f,0 0 0 6px #1b3a28,inset 0 0 16px rgb(0 0 0 / .45)}
+.m2f .b2{position:absolute;border-radius:3px;background:#2a4560;border:1.5px solid #5381ab;display:grid;place-items:center;font-size:10px;font-weight:500;color:#d4e3f3;text-align:center;line-height:12px}
+.m2f .b2.g{background:#2c5878;border-color:#5f9bc9}
+.m2f .b2.k{background:#3d3039;border-color:#7a6470}
+.m2f .b2.c{background:#2e3f50;border-color:#5a7894}
+.m2f .zn{position:absolute;font-size:10px;font-weight:500;color:#cfe0f2;opacity:.85;text-align:center;line-height:12px}
+.m2f .pad{position:absolute;background:#202f3d;box-shadow:inset 0 0 0 1px rgb(150 180 210 / .14)}
+.m2f .yard{position:absolute;background:#1c2935;outline:1px dashed rgb(150 180 210 / .3);outline-offset:-3px}
+.m2f .car{position:absolute;width:2.2px;height:4.6px;border-radius:1px}
+.m2f .tr{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#3b7a47,#1d4a2b 70%,#103420);box-shadow:0 0 0 .5px rgb(2 12 6 / .5)}
+.m2f .m2{position:absolute;width:28px;height:28px;margin:-14px 0 0 -14px;border-radius:50%;display:grid;place-items:center;background:#0d1c2d;border:2.5px solid}
+.m2f .m2 .ic{width:15px;height:15px}
+.m2f .m2.c{color:#ff426d;border-color:#ff426d;box-shadow:0 0 0 5px rgb(255 66 109 / .18),0 0 16px rgb(255 66 109 / .5)}
+.m2f .m2.h{color:#ffad42;border-color:#ffad42;box-shadow:0 0 0 5px rgb(255 173 66 / .16)}
+.m2f .m2.m{color:#f2d04b;border-color:#f2d04b;box-shadow:0 0 0 5px rgb(242 208 75 / .14)}
+.m2f .m2.l{color:#8fa3b8;border-color:#8fa3b8;box-shadow:0 0 0 5px rgb(143 163 184 / .16)}
+.m2f .cmk{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:3px;background:#0d1c2d;border:1.2px solid #8fa5bf;display:grid;place-items:center;color:#cfe0f2}
+.m2f .cmk .ic{width:7px;height:7px;stroke-width:2.4}
+.m2f .cmk.off{border-style:dashed;color:#8fa5bf}
+.m2f .a2{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#07111f;border:2.2px solid #35e7ff;box-shadow:0 0 8px rgb(53 231 255 / .5)}
+.m2f .a2.f{border-color:#f2d04b;box-shadow:0 0 0 4px rgb(242 208 75 / .16)}
+.m2f .a2.al{border-color:#ff426d;box-shadow:0 0 0 4px rgb(255 66 109 / .2)}
+.m2f .a2.s{border:2.2px dashed #5a7488;box-shadow:none}
+</style>
+</helmet>
+<div style="position:relative;width:1056px;height:590px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#0f2238 0,#08162a 60%,#060f1b 100%);font-family:'Inter',system-ui,sans-serif" role="img" aria-label="2D site plan with incidents, cameras and assets">
+<div class="m2f" style="left:247px;top:7px;width:510px;height:524px;transform:scale(1.1);transform-origin:0 0;opacity:{{opacity}}">
+<svg width="510" height="524" viewBox="0 0 510 524" style="position:absolute;left:0;top:0" aria-hidden="true">
+<defs>
+<filter id="grassTex2" x="0" y="0" width="510" height="524" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.013" numOctaves="3" seed="11" result="big"/>
+<feColorMatrix in="big" type="matrix" values="0.10 0 0 0 0.06  0.17 0 0 0 0.16  0.07 0 0 0 0.085  0 0 0 0 1" result="base"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="5" result="mid"/>
+<feColorMatrix in="mid" type="matrix" values="0 0 0 0 0.07  0 0 0 0 0.14  0 0 0 0 0.07  -0.9 0 0 0 0.52" result="patch"/>
+<feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" seed="3" result="fine"/>
+<feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.68  0 0 0 0 0.40  0.45 0 0 0 -0.16" result="speck"/>
+<feMerge><feMergeNode in="base"/><feMergeNode in="patch"/><feMergeNode in="speck"/></feMerge>
+</filter>
+</defs>
+<rect width="510" height="524" rx="18" filter="url(#grassTex2)"/>
+<rect x="1.5" y="1.5" width="507" height="521" rx="17" fill="none" stroke="#4a6a8a" stroke-width="1.5"/>
+</svg>
+
+<div class="lawn" style="left:247px;top:212px;width:110px;height:70px"></div>
+<div class="lawn" style="left:72px;top:22px;width:120px;height:70px;border-radius:4px"></div>
+<div class="field" style="left:82px;top:32px;width:100px;height:50px"></div>
+<div class="lake" style="left:132px;top:412px;width:110px;height:63px"></div>
+
+<div class="rd v" style="left:276px;top:282px;width:12px;height:242px"></div>
+<div class="rd v" style="left:62.5px;top:302px;width:9px;height:85px"></div>
+<div class="rd h" style="left:62.5px;top:297.5px;width:439px;height:9px"></div>
+<div class="rd h" style="left:222.5px;top:82.5px;width:184px;height:9px"></div>
+<div class="rd v" style="left:222.5px;top:82.5px;width:9px;height:224px"></div>
+<div class="rd v" style="left:397.5px;top:82.5px;width:9px;height:224px"></div>
+
+<div class="pad" style="left:260px;top:486px;width:44px;height:22px"></div>
+<div class="pad" style="left:487px;top:285px;width:23px;height:34px"></div>
+<div class="yard" style="left:292px;top:3px;width:110px;height:74px"></div>
+<div class="park" style="left:22px;top:387px;width:90px;height:70px"></div>
+<div class="park" style="left:437px;top:339px;width:60px;height:48px"></div>
+<div class="car" style="left:28px;top:393px;background:#7c93ab"></div><div class="car" style="left:40px;top:393px;background:#4d6f94"></div><div class="car" style="left:60px;top:393px;background:#a4b3c2"></div><div class="car" style="left:84px;top:393px;background:#c4cfda"></div><div class="car" style="left:30px;top:443px;background:#9fb0c1"></div><div class="car" style="left:46px;top:443px;background:#8b6f78"></div><div class="car" style="left:74px;top:443px;background:#6f86a0"></div>
+<div class="car" style="left:442px;top:345px;background:#6f86a0"></div><div class="car" style="left:458px;top:345px;background:#8b6f78"></div><div class="car" style="left:482px;top:345px;background:#4d6f94"></div><div class="car" style="left:456px;top:371px;background:#5b7893"></div>
+
+<div class="b2 c" style="left:10px;top:227px;width:92px;height:68px">Admin Building</div>
+<div class="b2 g" style="left:117px;top:157px;width:90px;height:60px">Innovation Hub</div>
+<div class="b2 k" style="left:287px;top:102px;width:70px;height:50px">Library</div>
+<div class="b2 c" style="left:427px;top:184px;width:60px;height:46px">Data Center</div>
+<div class="b2 g" style="left:182px;top:337px;width:80px;height:40px">Lecture Hall A</div>
+<div class="b2 k" style="left:356px;top:317px;width:72px;height:50px">Student Center</div>
+<div class="b2 g" style="left:407px;top:3px;width:90px;height:64px">Science Lab</div>
+<div class="b2 k" style="left:317px;top:405px;width:90px;height:47px">Dormitory A</div>
+<div class="b2 k" style="left:417px;top:405px;width:87px;height:47px">Dormitory B</div>
+<div class="b2 c" style="left:427px;top:459px;width:77px;height:56px">Health Clinic</div>
+<div class="b2 c" style="left:202px;top:3px;width:80px;height:74px">Sports Hall</div>
+<div class="b2 c" style="left:308px;top:485px;width:32px;height:27px;font-size:8px;line-height:9px">Security office</div>
+<div class="zn" style="left:312px;top:34px;width:80px">Utility Plant</div>
+<div class="zn" style="left:92px;top:2px;width:80px">Sports Field</div>
+<div class="zn" style="left:157px;top:439px;width:60px">Lake</div>
+<div class="zn" style="left:22px;top:418px;width:90px">West Parking</div>
+<div class="zn" style="left:437px;top:360px;width:60px;display:none">East Parking</div>
+<div class="zn" style="left:262px;top:240px;width:80px">Central Lawn</div>
+<div class="zn" style="left:240px;top:466px;width:40px;display:none">Main Gate</div>
+
+<b class="tr" style="left:272px;top:195px"></b><b class="tr" style="left:48px;top:59px"></b><b class="tr" style="left:74px;top:125px"></b><b class="tr" style="left:428px;top:158px"></b><b class="tr" style="left:322px;top:199px"></b><b class="tr" style="left:43px;top:116px"></b><b class="tr" style="left:267px;top:448px"></b><b class="tr" style="left:366px;top:157px"></b><b class="tr" style="left:216px;top:390px"></b><b class="tr" style="left:33px;top:345px"></b><b class="tr" style="left:419px;top:483px"></b><b class="tr" style="left:476px;top:89px"></b><b class="tr" style="left:99px;top:129px"></b><b class="tr" style="left:126px;top:255px"></b><b class="tr" style="left:262px;top:320px"></b><b class="tr" style="left:14px;top:89px"></b><b class="tr" style="left:63px;top:194px"></b><b class="tr" style="left:239px;top:254px"></b><b class="tr" style="left:179px;top:145px"></b><b class="tr" style="left:414px;top:94px"></b><b class="tr" style="left:25px;top:486px"></b><b class="tr" style="left:271px;top:400px"></b><b class="tr" style="left:173px;top:125px"></b><b class="tr" style="left:405px;top:503px"></b><b class="tr" style="left:408px;top:381px"></b><b class="tr" style="left:27px;top:153px"></b><b class="tr" style="left:139px;top:357px"></b><b class="tr" style="left:120px;top:127px"></b><b class="tr" style="left:315px;top:461px"></b><b class="tr" style="left:419px;top:252px"></b><b class="tr" style="left:55px;top:342px"></b><b class="tr" style="left:376px;top:251px"></b><b class="tr" style="left:207px;top:484px"></b><b class="tr" style="left:363px;top:98px"></b><b class="tr" style="left:183px;top:286px"></b><b class="tr" style="left:268px;top:477px"></b><b class="tr" style="left:412px;top:119px"></b><b class="tr" style="left:77px;top:465px"></b><b class="tr" style="left:185px;top:241px"></b><b class="tr" style="left:295px;top:463px"></b><b class="tr" style="left:16px;top:410px"></b><b class="tr" style="left:364px;top:290px"></b><b class="tr" style="left:171px;top:271px"></b><b class="tr" style="left:386px;top:266px"></b><b class="tr" style="left:468px;top:143px"></b><b class="tr" style="left:49px;top:133px"></b><b class="tr" style="left:392px;top:459px"></b><b class="tr" style="left:88px;top:369px"></b><b class="tr" style="left:120px;top:486px"></b><b class="tr" style="left:206px;top:256px"></b><b class="tr" style="left:108px;top:172px"></b><b class="tr" style="left:23px;top:178px"></b><b class="tr" style="left:45px;top:503px"></b><b class="tr" style="left:65px;top:146px"></b><b class="tr" style="left:57px;top:43px"></b><b class="tr" style="left:49px;top:479px"></b><b class="tr" style="left:268px;top:132px"></b><b class="tr" style="left:255px;top:102px"></b><b class="tr" style="left:253px;top:428px"></b><b class="tr" style="left:40px;top:78px"></b><b class="tr" style="left:150px;top:134px"></b><b class="tr" style="left:155px;top:242px"></b>
+<b class="tr" style="left:270px;top:330px"></b><b class="tr" style="left:294px;top:330px"></b><b class="tr" style="left:270px;top:360px"></b><b class="tr" style="left:294px;top:360px"></b><b class="tr" style="left:270px;top:390px"></b><b class="tr" style="left:294px;top:390px"></b><b class="tr" style="left:270px;top:420px"></b><b class="tr" style="left:294px;top:420px"></b><b class="tr" style="left:270px;top:450px"></b><b class="tr" style="left:294px;top:450px"></b><b class="tr" style="left:120px;top:312px"></b><b class="tr" style="left:150px;top:312px"></b><b class="tr" style="left:180px;top:312px"></b><b class="tr" style="left:210px;top:312px"></b><b class="tr" style="left:120px;top:291px"></b><b class="tr" style="left:150px;top:291px"></b><b class="tr" style="left:180px;top:291px"></b><b class="tr" style="left:205px;top:291px"></b>
+
+<div class="cmk" style="left:256px;top:503px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:308px;top:503px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:162px;top:219px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:208px;top:177px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:322px;top:154px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:425px;top:207px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk off" style="left:489px;top:219px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:222px;top:379px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:354px;top:342px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:113px;top:402px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:414px;top:61px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="cmk" style="left:462px;top:451px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+
+<sc-if value="{{assets}}" hint-placeholder-val="{{ true }}">
+<div class="a2 al" style="left:438px;top:30px"></div>
+<div class="a2" style="left:452px;top:35px"></div>
+<div class="a2" style="left:432px;top:42px"></div>
+<div class="a2 f" style="left:486px;top:440px"></div>
+<div class="a2" style="left:152px;top:187px"></div>
+<div class="a2 s" style="left:322px;top:127px"></div>
+<div class="a2" style="left:443px;top:199px"></div>
+<div class="a2" style="left:456px;top:199px"></div>
+<div class="a2" style="left:490px;top:200px"></div>
+<div class="a2" style="left:392px;top:342px"></div>
+<div class="a2" style="left:342px;top:419px"></div>
+<div class="a2" style="left:290px;top:499px"></div>
+<div class="a2" style="left:498px;top:302px"></div>
+<div class="a2" style="left:376px;top:31px"></div>
+<div class="a2" style="left:328px;top:32px"></div>
+<div class="a2" style="left:312px;top:47px"></div>
+</sc-if>
+
+<div class="m2 c" style="left:452px;top:35px;margin-top:-34px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+<div class="m2 h" style="left:162px;top:187px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+<div class="m2 m" style="left:460px;top:428px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div>
+<div class="m2 m" style="left:392px;top:342px;margin-top:-26px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+<div class="m2 l" style="left:242px;top:40px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></div>
+<div class="m2 l" style="left:457px;top:207px;margin-top:-26px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+<div class="m2 l" style="left:467px;top:363px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg></div>
+<div class="m2 l" style="left:282px;top:497px;margin-top:-22px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div>
+</div>
+<sc-if value="{{tip}}" hint-placeholder-val="{{ false }}">
+<div class="glass" style="position:absolute;left:590px;top:408px;width:230px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:16px;color:#e7f2ff">
+<div class="row sb" style="gap:6px"><span style="width:12px;height:12px;border-radius:50%;border:2px solid #f2d04b;background:#07111f;display:inline-block"></span>Leak sensor · LKS-B3</div>
+<div class="t2">Dormitory B · level 3 · Fault</div>
+<div class="num">Wet · 3 min old</div>
+<div class="t3 xs">Click to inspect</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"assets":{"editor":"boolean","default":true},"tip":{"editor":"boolean","default":false},"dim":{"editor":"boolean","default":false},"$preview":{"width":1056,"height":590}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+assets: this.props.assets !== false,
+tip: !!this.props.tip,
+opacity: this.props.dim ? 0.35 : 1
+};
+}
+}
+</script>
+</body>
+</html>

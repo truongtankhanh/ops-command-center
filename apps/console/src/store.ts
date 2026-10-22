@@ -146,6 +146,12 @@ interface ConsoleState extends ReportLocation {
    */
   view: ViewChoice;
   /**
+   * The 3D view's drag tool (V3-29): `false` is Orbit (a drag rotates, the default), `true` is Pan (a drag moves the view
+   * along the ground). A choice of this session only: not remembered, not cleared by `Escape` or a change of level, which
+   * climb the level ladder and never change a tool. The wall's rig takes no input, so it reads nothing from this.
+   */
+  panTool: boolean;
+  /**
    * Why the twin stopped working in this session, or `null`. Set by the 3D stage when its WebGL
    * context is lost and does not come back (V2-12.11); `useTwinCapability` reads it, so every
    * reader of the capability follows. Not remembered: a reload tries 3D again.
@@ -271,6 +277,8 @@ interface ConsoleState extends ReportLocation {
    * never holds a view the stage cannot show and never remembers a choice it could not honour.
    */
   setView(view: ViewChoice): void;
+  setPanTool(on: boolean): void;
+  togglePanTool(): void;
   /**
    * The twin failed during this session: records the fault (a lost context unless told otherwise; the wall's
    * `FrameGuard` says `too-slow`) and puts the stage on the 2D map. The operator's stored choice is left as it is, so a
@@ -319,6 +327,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   density: readDensity(),
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
+  panTool: false,
   twinFault: null,
   wall: WALL,
   wallFocusId: null,
@@ -486,6 +495,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     writeDensity(density);
     set({ density });
   },
+  setPanTool: (on) => set({ panTool: on }),
+  togglePanTool: () => set((state) => ({ panTool: !state.panTool })),
   setView: (view) => {
     if (view === '3d' && !twinCapability(get().twinFault).available) return;
     writeViewChoice(view);

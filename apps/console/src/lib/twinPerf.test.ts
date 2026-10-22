@@ -417,15 +417,16 @@ describe('needsFrame', () => {
     ['a bound value that has not settled, or a spin', 'bound'],
     ['a fly-to', 'flying'],
     ['a pulsing beacon', 'pulsing'],
+    ['a held pan button', 'panning'],
   ])('asks for a frame for %s', (_, field) => {
     expect(needsFrame(asking(field))).toBe(true);
   });
 
   it('asks while several loops ask', () => {
-    expect(needsFrame({ bound: true, flying: true, pulsing: true })).toBe(true);
+    expect(needsFrame({ bound: true, flying: true, pulsing: true, panning: true })).toBe(true);
   });
 
-  it.each<keyof FrameDemand>(['bound', 'flying', 'pulsing'])(
+  it.each<keyof FrameDemand>(['bound', 'flying', 'pulsing', 'panning'])(
     'asks for nothing in a hidden tab, even for %s',
     (field) => {
       expect(needsFrame(asking(field), { hidden: true })).toBe(false);
@@ -433,7 +434,9 @@ describe('needsFrame', () => {
   );
 
   it('asks for nothing in a hidden tab when every loop asks', () => {
-    expect(needsFrame({ bound: true, flying: true, pulsing: true }, { hidden: true })).toBe(false);
+    expect(
+      needsFrame({ bound: true, flying: true, pulsing: true, panning: true }, { hidden: true }),
+    ).toBe(false);
   });
 
   it('is not hidden by default and when told it is in view', () => {
@@ -444,7 +447,12 @@ describe('needsFrame', () => {
 
 describe('createFrameDemand', () => {
   it('starts with every loop quiet', () => {
-    expect(createFrameDemand()).toEqual({ bound: false, flying: false, pulsing: false });
+    expect(createFrameDemand()).toEqual({
+      bound: false,
+      flying: false,
+      pulsing: false,
+      panning: false,
+    });
   });
 
   it('gives a fresh object each time, so two canvases do not share a flag', () => {

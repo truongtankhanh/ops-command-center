@@ -2,6 +2,7 @@
 
 - **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
+- **Amended by:** [ADR-0022](0022-console-visual-language.md) (the camera moves when the operator opens an incident from the feed or its search, or asks for a flight; an arriving incident still never moves it); V3-29 (the console's 3D view gains a Pan tool, so the left mouse button, or one finger, can pan instead of orbit, and a pad of eight pan arrows; Shift flips the tool; the camera limits and the keys are unchanged)
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md), [ADR-0019](0019-telemetry-transport.md)
 
 ## Context
@@ -125,6 +126,7 @@ their author, checked in CI, and served by nginx as immutable files.
   - Camera: `CameraControls` with the limits in the brief (distance, tilt 20°–78° from vertical, target clamped to
     the site boundary + 40 m, zoom to cursor, damping, fly-to 600 ms or instant with reduced motion). Outside the
     video wall, the view never moves on its own.
+    _Amended 2026-10-22 by [ADR-0022](0022-console-visual-language.md): the view moves only because the operator asked (opening an incident from the feed or its search, "Fly to", `F`, `Home`, a saved view); an arriving incident still never moves it._
   - Picking: raycast against BVH-accelerated meshes, at most once per frame.
   - Settled in V2-12.1, without changing the decision (the frames and `TwinScene.dc.html` are the evidence; where a
     sentence above says otherwise, this block is the refinement):
@@ -594,6 +596,7 @@ their author, checked in CI, and served by nginx as immutable files.
       sheet is exclusive), so an incident selected while an asset is isolated leaves the asset, and the camera leaves
       with the level (the parent's fit, "Settled in V2-15.7"). At campus and building level nothing is isolated, the
       level does not change and the camera stays where it is. This closes the phase's open question 9.
+      _Amended 2026-10-22 by [ADR-0022](0022-console-visual-language.md): opening an incident from the feed or its search now flies the camera to it unless the Follow selection setting is off; a click on a beacon or marker in the scene, the toast's "Open incident" and a 2D marker still only select, and an arriving incident still moves nothing._
     - **Fly to, Open incident, Show in 3D: accepted, with the order fixed.** "Fly to" (toast) selects the incident and
       then flies to its beacon: the flight is asked for after the selection, so it replaces the leaving flight above
       (the rig holds one flight). It keeps the camera's yaw and tilt and takes the beacon as target, from the current
@@ -717,6 +720,7 @@ their author, checked in CI, and served by nginx as immutable files.
       beacon, moves no camera command, at campus or building level (a test now says so); the ring follows
       `selectedIncidentId` whatever opened it (V2-16.3). "Fly to", `F` and "Show in 3D" are the only ways the camera
       moves for an incident (V2-16.5, V2-16.6, V2-18).
+      _Amended 2026-10-22 by [ADR-0022](0022-console-visual-language.md): opening an incident from the feed or its search is a fourth way, unless Follow selection is off._
     - **The zone outline is a ribbon.** The selected incident's zone, or the report's while the form is open (the 2D
       rule: the report's wins, and with no zone chosen yet nothing), is outlined on the ground in the accent. A WebGL line
       is one pixel wide whatever is asked, so the outline is a mesh: the existing road ribbon over the zone's closed

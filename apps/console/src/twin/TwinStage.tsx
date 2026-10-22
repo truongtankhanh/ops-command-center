@@ -8,6 +8,7 @@ import type { LabelAnchor } from '../lib/twinScene';
 import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
 import { HeatLegend } from './HeatLegend';
+import { PanPad } from './PanPad';
 import { PickHint } from './PickHint';
 import { LeaderOverlay, TwinCallout } from './TwinCallout';
 import { TwinCanvas } from './TwinCanvas';
@@ -159,6 +160,8 @@ export default function TwinStage({ wall = false }: { wall?: boolean }) {
         */}
           {scene && (
             <div className={styles.legends}>
+              {/* The 8-direction pad (V3-29) sits above the legends in the same column, so none of them overlap. */}
+              <PanPad />
               <HeatLegend />
               <TwinLegend />
             </div>

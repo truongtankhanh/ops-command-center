@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trend warnings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.lab{position:absolute;font-size:12px;line-height:16px;color:#8fa5bf}
+.lab b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.trend{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px 0 5px;border-radius:4px;border:1px dashed #6aa6ff;background:rgb(49 133 255 / .12);color:#6aa6ff;font-size:11px;font-weight:600;white-space:nowrap}
+.arow{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;border:1px solid #1e3450;background:#142940}
+.arow .tile{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;border:1px solid;flex:none;color:#35e7ff;border-color:rgb(53 231 255 / .4);background:rgb(53 231 255 / .08)}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="lab" style="left:32px;top:24px;width:420px"><b>22a Tile with a Trend tag</b>Only for a point that has a limit and is rising or falling toward it. An estimate, said as one.</div>
+<div class="glass" style="position:absolute;left:32px;top:84px;width:420px;padding:14px;display:flex;flex-direction:column;gap:12px">
+<div class="row" style="gap:12px"><div class="tile" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid rgb(53 231 255 / .4);background:rgb(53 231 255 / .08);color:#35e7ff"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg></div><div><div class="sb" style="font-size:15px">Cooling tower 1</div><div class="t2 s12 num">CT-01 · Data Center · roof</div></div></div>
+<div class="tiles3">
+<div class="lt"><span class="a">Fan speed</span><span class="b" style="color:#35e7ff">1,420<small>rpm</small></span><span class="d fl">steady</span></div>
+<div class="lt" style="border-color:#6aa6ff;border-style:dashed"><span class="a">Motor temp</span><span class="b" style="color:#35e7ff">71.2<small>°C</small></span><span class="d up"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>3.1 / 15 min</span></div>
+<div class="lt"><span class="a">Motor current</span><span class="b" style="color:#35e7ff">18.6<small>A</small></span><span class="d fl">steady</span></div>
+</div>
+<span class="trend" style="align-self:flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>Trend: ~20 min to the 85 °C limit</span>
+<div class="t3 xs">Estimate from the last 10 minutes of readings. It raises no incident; only the server's rules do.</div>
+</div>
+
+<div class="lab" style="left:480px;top:24px;width:460px"><b>22b Projection on the chart</b>Dashed and lighter than a reading, ending at the limit, so it cannot be mistaken for data.</div>
+<div class="glass" style="position:absolute;left:480px;top:84px;width:460px;padding:14px;display:flex;flex-direction:column;gap:8px">
+<div class="row" style="justify-content:space-between"><span class="s12 t2 sb">Motor temperature</span><span class="sb num">71.2 °C</span></div>
+<svg viewBox="0 0 430 130" width="100%" height="130" role="img" aria-label="Motor temperature rising; a dashed projection reaches the 85 degree limit in about 20 minutes">
+<line x1="0" x2="430" y1="22" y2="22" stroke="#e8c070" stroke-dasharray="4 4"/><text x="428" y="16" fill="#e8c070" font-size="10" text-anchor="end">limit 85 °C</text>
+<rect x="190" y="0" width="110" height="130" fill="#35e7ff" opacity=".04"/>
+<text x="195" y="124" fill="#8fa5bf" font-size="10">last 10 min fitted</text>
+<polyline points="0,100 40,98 80,97 120,94 160,90 190,84 220,78 250,72 280,66" fill="none" stroke="#35e7ff" stroke-width="2"/>
+<polyline points="190,84 220,78 250,72 280,66" fill="none" stroke="#35e7ff" stroke-width="3"/>
+<line x1="280" x2="400" y1="66" y2="22" stroke="#6aa6ff" stroke-width="2" stroke-dasharray="6 5"/>
+<circle cx="280" cy="66" r="4" fill="#35e7ff"/><circle cx="400" cy="22" r="4" fill="none" stroke="#6aa6ff" stroke-width="2"/>
+<text x="400" y="42" fill="#6aa6ff" font-size="10" text-anchor="middle">~20 min</text>
+</svg>
+<div class="row xs t3" style="justify-content:space-between"><span>15:12</span><span>now 15:42</span><span>16:02</span></div>
+<div class="row" style="gap:8px;align-items:center"><span class="trend"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>Estimate</span><span class="t2 xs">Straight line through the last 10 min. Off when the reading is stale or the fit is poor.</span></div>
+</div>
+<div class="panel" style="position:absolute;left:480px;top:372px;width:460px;padding:14px;font-size:12px;line-height:18px;color:#a9bed6;display:flex;flex-direction:column;gap:6px">
+<div class="sb" style="color:#e7f2ff;font-size:13px">When a trend is shown</div>
+<div>The point has an upper or lower limit the console knows.</div>
+<div>The last 10 minutes are fresh (not stale) and fit a line well enough.</div>
+<div>The line reaches the limit within 30 minutes.</div>
+<div class="t3 xs">Window, horizon and fit quality are constants, unverified until read on real data.</div>
+</div>
+
+<div class="lab" style="left:970px;top:24px;width:440px"><b>22c Watch filter in the Assets tab</b>Assets heading for a limit, soonest first; empty when nothing is.</div>
+<div class="panel" style="position:absolute;left:970px;top:84px;width:440px;padding:12px;display:flex;flex-direction:column;gap:10px">
+<div class="row" style="gap:8px;flex-wrap:wrap"><span class="chip">All <span class="n">31</span></span><span class="chip">Faults <span class="n">1</span></span><span class="chip">No data <span class="n">0</span></span><span class="chip on"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="m22 7-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>Watch <span class="n">2</span></span></div>
+<div class="arow"><div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg></div><div style="flex:1"><div class="md" style="font-size:13px">Cooling tower 1</div><div class="t2 xs num">CT-01 · Motor temperature 71.2 °C</div></div><span class="trend">~20 min</span></div>
+<div class="arow"><div class="tile"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg></div><div style="flex:1"><div class="md" style="font-size:13px">UPS battery bank</div><div class="t2 xs num">BAT-01 · Room temperature 29.4 °C</div></div><span class="trend">~26 min</span></div>
+<div class="t3 xs">The Watch list is the accessible twin of the Trend tags: everything the tiles say is here.</div>
+</div>
+<div class="panel" style="position:absolute;left:970px;top:372px;width:440px;padding:14px;font-size:12px;line-height:18px;color:#a9bed6;display:flex;flex-direction:column;gap:6px">
+<div class="sb" style="color:#e7f2ff;font-size:13px">What it is not</div>
+<div>Not an incident: nothing is raised, notified or audited. Incidents come only from the server's rules (ADR-0018).</div>
+<div>Not a forecast model: a straight line, labelled an estimate and drawn dashed.</div>
+<div>Not shown for stale, offline or limit-less points.</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

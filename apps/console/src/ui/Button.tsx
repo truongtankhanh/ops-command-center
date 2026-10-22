@@ -24,6 +24,8 @@ const ARIA_KEY_NAME: Readonly<Record<string, string>> = { Esc: 'Escape' };
  *   key name `Escape`); the hint is hidden from assistive tech, so the accessible name stays the
  *   visible text. The caller wires the key itself (`useShortcut`, or `Sheet` for Escape) and passes
  *   `shortcut` only while that key works.
+ * - `aria-keyshortcuts` can also be passed on its own, for a control whose key has no room for a hint (the 3D drag tool's
+ *   `P`); `shortcut` wins when both are given.
  * - The button sets no outer layout (`flex`, `width`, `margin`); pass a `className` for that.
  * - `secondary` draws its boundary in `--border-strong`, which reaches 3:1 only on `--surface-0` and
  *   `--surface-1`. On a lighter surface use `primary` or `ghost`.
@@ -38,6 +40,7 @@ export function Button({
   disabled,
   className,
   children,
+  'aria-keyshortcuts': ariaKeyShortcuts,
   ...props
 }: ComponentProps<'button'> & {
   variant?: ButtonVariant;
@@ -55,7 +58,7 @@ export function Button({
       data-size={size === 'sm' ? 'sm' : undefined}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      aria-keyshortcuts={shortcut && (ARIA_KEY_NAME[shortcut] ?? shortcut)}
+      aria-keyshortcuts={shortcut ? (ARIA_KEY_NAME[shortcut] ?? shortcut) : ariaKeyShortcuts}
     >
       {icon && <Icon glyph={icon} size={size === 'sm' ? 16 : 18} />}
       {children}

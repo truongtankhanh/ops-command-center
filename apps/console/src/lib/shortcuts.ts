@@ -89,6 +89,12 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
         requires: 'twin',
       },
       { keys: ['F'], description: 'Fly to the selection', character: true, requires: 'twin' },
+      {
+        keys: ['P'],
+        description: 'Switch the drag between Orbit and Pan',
+        character: true,
+        requires: 'twin',
+      },
       { keys: ['?'], description: 'Show keyboard shortcuts', character: true },
     ],
   },
@@ -110,10 +116,10 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
   {
     title: '3D view, pointer and touch',
     rows: [
-      { keys: ['Drag'], description: 'Rotate', requires: 'twin' },
+      { keys: ['Drag'], description: 'Rotate (Pan tool: move the view)', requires: 'twin' },
       {
         keys: ['Shift', 'Drag'],
-        description: 'Pan (also right-drag, two-finger drag)',
+        description: 'Pan (Pan tool: rotate; also right-drag, two-finger drag pan)',
         chord: true,
         requires: 'twin',
       },

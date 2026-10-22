@@ -1664,6 +1664,9 @@ describe('the console', () => {
           tiltBy: vi.fn<TwinCommands['tiltBy']>(),
           panBy: vi.fn<TwinCommands['panBy']>(),
           faceNorth: vi.fn<TwinCommands['faceNorth']>(),
+          panStep: vi.fn<TwinCommands['panStep']>(),
+          panHold: vi.fn<TwinCommands['panHold']>(),
+          centreOn: vi.fn<TwinCommands['centreOn']>(),
           current: vi.fn<TwinCommands['current']>(() => null),
         };
         cleanups.push(registerTwinCommands(rig));
@@ -1752,6 +1755,7 @@ describe('the console', () => {
               'Search incidents or assets',
               'Switch between 3D and 2D',
               'Fly to the selection',
+              'Switch the drag between Orbit and Pan',
               'Show keyboard shortcuts',
             ]);
             expect(helpRows('Incident panel')).toEqual([
@@ -1861,6 +1865,16 @@ describe('the console', () => {
               expect(consoleState().view).toBe('2d');
               fireEvent.keyDown(document.body, { key: 'v' });
               expect(consoleState().view).toBe('3d');
+            },
+          },
+          {
+            group: 'Anywhere',
+            description: 'Switch the drag between Orbit and Pan',
+            run: () => {
+              fireEvent.keyDown(document.body, { key: 'p' });
+              expect(consoleState().panTool).toBe(true);
+              fireEvent.keyDown(document.body, { key: 'p' });
+              expect(consoleState().panTool).toBe(false);
             },
           },
           {

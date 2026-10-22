@@ -82,6 +82,49 @@ describe('TwinShortcuts', () => {
     vi.unstubAllGlobals();
   });
 
+  describe('P', () => {
+    it('switches the drag between Orbit and Pan, both ways, while 3D is available', async () => {
+      stubTwinAvailable();
+      act(() => useConsole.setState({ view: '3d' }));
+      renderKeys();
+
+      await userEvent.keyboard('p');
+      expect(useConsole.getState().panTool).toBe(true);
+
+      await userEvent.keyboard('p');
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+
+    it('does nothing where 3D is unavailable', async () => {
+      renderKeys();
+
+      await userEvent.keyboard('p');
+
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+
+    it('does nothing while single-key shortcuts are off', async () => {
+      stubTwinAvailable();
+      act(() => useConsole.setState({ view: '3d', keyboardShortcuts: false }));
+      renderKeys();
+
+      await userEvent.keyboard('p');
+
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+
+    it('is not typed into: a "p" in a text field only types', async () => {
+      stubTwinAvailable();
+      act(() => useConsole.setState({ view: '3d' }));
+      renderKeys();
+
+      await userEvent.type(screen.getByLabelText('Notes'), 'p');
+
+      expect(screen.getByLabelText('Notes')).toHaveValue('p');
+      expect(useConsole.getState().panTool).toBe(false);
+    });
+  });
+
   describe('V', () => {
     it('switches between 3D and 2D, both ways, while 3D is available', async () => {
       stubTwinAvailable();

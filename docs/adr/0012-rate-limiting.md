@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-05
-- **Amended by:** [ADR-0015](0015-metrics-and-tracing.md) (`429`s per route in the HTTP metrics); console task UI-15, 2026-10-08
+- **Amended by:** [ADR-0015](0015-metrics-and-tracing.md) (`429`s per route in the HTTP metrics); console task UI-15, 2026-10-08; [ADR-0024](0024-shift-handover.md) (one more limit, for creating and accepting a handover)
   (§ Clients: loads retry a `429`)
 
 ## Context

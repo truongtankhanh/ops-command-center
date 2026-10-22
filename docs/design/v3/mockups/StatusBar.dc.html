@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Status bar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="position:relative;width:1440px;height:32px;font-family:'Inter',system-ui,sans-serif;font-size:12px;line-height:16px;color:#a9bed6">
+<div class="sbar" style="position:absolute;left:0;top:0">
+<div class="g {{healthClass}}">
+<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{healthIcon}}"/></svg>
+<span class="md">{{health}}</span>
+</div>
+<span style="width:1px;height:14px;background:#1e3450"></span>
+<div class="g"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>{{engine}}</div>
+<div class="g"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>{{events}}</div>
+<div class="g"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>{{telemetry}}</div>
+<div class="g {{loadClass}}" style="cursor:pointer"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>{{load}}</div>
+<div style="flex:1"></div>
+<div class="g"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg>Settings</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"state":{"editor":"enum","default":"ok","options":["ok","telemetry","offline"]},"flood":{"editor":"boolean","default":false},"tier":{"editor":"enum","default":"High","options":["High","Standard","Low","unavailable","2D"]},"$preview":{"width":1440,"height":32}}'>
+class Component extends DCLogic {
+renderVals() {
+const state = this.props.state ?? 'ok';
+const tier = this.props.tier ?? 'High';
+const check = 'M21.801 10A10 10 0 1 1 17 3.335';
+const warn = 'm21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3';
+const ok = state === 'ok';
+return {
+health: ok ? 'System healthy' : (state === 'telemetry' ? 'Telemetry paused' : 'Live updates paused'),
+healthClass: ok ? 'ok' : '',
+healthIcon: ok ? check : warn,
+engine: tier === 'unavailable' ? '2D map · 3D unavailable' : (tier === '2D' ? '2D map' : '3D · ' + tier),
+load: this.props.flood ? 'Alarm flood · 14 / 10 min' : 'Alarms · 3 / 10 min',
+loadClass: this.props.flood ? 'warnseg' : '',
+events: state === 'offline' ? 'Events · Reconnecting' : 'Events · Connected',
+telemetry: state === 'ok' ? 'Telemetry · Live' : (state === 'telemetry' ? 'Telemetry · Paused 2 min' : 'Telemetry · Unknown')
+};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Loading, no WebGL, Standard tier</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.cw{position:absolute;width:450px;height:252px;overflow:hidden;border-radius:12px;border:1px solid #1e3450;background:#07111f;top:96px}
+.cw .in{position:absolute;left:0;top:0;width:1056px;height:590px;transform:scale(.426);transform-origin:0 0}
+.cl{position:absolute;top:28px;width:450px;font-size:12px;line-height:16px;color:#8fa5bf}
+.cl b{display:block;color:#e7f2ff;font-size:14px;font-weight:600;margin-bottom:2px}
+.cd{position:absolute;top:368px;width:450px;display:flex;flex-direction:column;gap:10px}
+.bar{height:6px;border-radius:3px;background:#1c3552;overflow:hidden}
+.bar i{display:block;height:100%;background:#3185ff}
+.ld{display:flex;align-items:center;gap:8px;font-size:12px}
+.tt{border-collapse:collapse;font-size:12px;width:100%}
+.tt th,.tt td{padding:8px 12px;border-bottom:1px solid #1e3450;text-align:left;vertical-align:top}
+.tt th{color:#8fa5bf;font-weight:500}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+
+<div class="cl" style="left:24px"><b>10a Scene loading</b>Site plan, incidents and cameras are usable at once; models and textures stream in after, nearest first.</div>
+<div class="cw" style="left:24px"><div class="in"><dc-import name="Map2D" assets="{{ false }}" hint-size="1056px,590px"></dc-import></div>
+<div class="glass" style="position:absolute;left:100px;top:56px;width:250px;padding:12px;display:flex;flex-direction:column;gap:8px;font-size:12px">
+<div class="sb" style="font-size:13px">Loading the 3D view</div>
+<div class="ld"><svg class="ic s" style="color:#35e0a1" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Site plan</div>
+<div class="ld"><svg class="ic s" style="color:#35e0a1" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>3D code</div>
+<div class="ld"><span class="t2" style="width:14px;text-align:center">…</span>Equipment models · 2 of 4</div>
+<div class="bar"><i style="width:50%"></i></div>
+<div class="ld"><span class="t2" style="width:14px;text-align:center">…</span>Environment textures</div>
+<div class="bar"><i style="width:35%"></i></div>
+</div>
+</div>
+<div class="cd" style="left:24px">
+<div class="panel" style="padding:12px;font-size:12px;color:#a9bed6">The feed, search and camera strip already work. Equipment shows as neutral boxes until its model arrives; textures fade in without moving anything.</div>
+<div class="row" style="gap:8px"><span class="pill live" style="height:28px;font-size:12px">Live</span><span class="pill" style="height:28px;font-size:12px">3D · Loading</span></div>
+</div>
+
+<div class="cl" style="left:495px"><b>10b No WebGL</b>The device cannot draw 3D: the 2D map takes the stage with one line of reason, and 3D is disabled in the switch.</div>
+<div class="cw" style="left:495px"><div class="in"><dc-import name="Map2D" hint-size="1056px,590px"></dc-import></div>
+<div class="glass" style="position:absolute;left:44px;top:12px;width:362px;padding:8px 10px;font-size:11px;line-height:14px;display:flex;gap:8px;align-items:center;border-color:rgb(232 192 112 / .5)"><svg class="ic" style="color:#e8c070" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span><b>3D is not available on this device.</b> The 2D map shows the same incidents, cameras and assets.</span></div>
+</div>
+<div class="cd" style="left:495px">
+<div class="row" style="gap:12px;align-items:center"><div class="seg"><span class="o" style="opacity:.45"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>3D</span><span class="o on">2D</span></div><span class="t2 s12">3D is disabled, not hidden: the operator sees why.</span></div>
+<div class="row" style="gap:8px"><span class="pill warn" style="height:28px;font-size:12px">2D map · 3D unavailable</span></div>
+<div class="panel" style="padding:12px;font-size:12px;color:#a9bed6">After a lost WebGL context the banner reads "3D view stopped working". Nothing else changes: the V2 console is the fallback.</div>
+</div>
+
+<div class="cl" style="left:966px"><b>10c Standard tier</b>Frames ran long for 2 s: pixel ratio stepped down first, then shadow off, trees thinned. Said once, in words.</div>
+<div class="cw" style="left:966px"><div class="in"><dc-import name="Scene" tier="medium" zoom="{{ 1.4 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="glass" style="position:absolute;left:12px;top:12px;width:380px;padding:8px 10px;font-size:11px;line-height:14px;display:flex;gap:8px;align-items:center"><svg class="ic" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span style="flex:1"><b>Display quality lowered to Standard</b> to keep the view smooth. Shadows are off.</span><span class="btn s ghost" style="height:24px;font-size:11px;padding:0 8px">Dismiss</span></div>
+</div>
+<div class="cd" style="left:966px">
+<div class="row" style="gap:8px"><span class="pill" style="height:28px;font-size:12px">3D · Standard</span></div>
+<div class="panel" style="padding:12px;font-size:12px;color:#a9bed6">The status bar names the tier, never a frame rate. The wall controller stays at pixel ratio 1.0 and falls to 2D on its own rule.</div>
+</div>
+
+<div style="position:absolute;left:24px;top:590px;width:1392px">
+<table class="tt">
+<tr><th style="width:100px">Tier</th><th style="width:300px">When</th><th>What it draws</th></tr>
+<tr><td class="sb">High</td><td>Frames hold the budget</td><td>Directional shadow, facade windows, halos, panel blur, full tree set</td></tr>
+<tr><td class="sb">Standard</td><td>p95 over budget for 2 s on the reference rule</td><td>Pixel ratio steps down, then shadow off, trees thin out, halos become flat rings, no blur</td></tr>
+<tr><td class="sb">Low</td><td>Still over after Standard, or no WebGL 2 for the kit</td><td>V2 look: neutral extruded shells, flat markers. This is today's console and the fallback</td></tr>
+</table>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

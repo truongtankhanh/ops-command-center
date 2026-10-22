@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foundations V3</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+.fd{position:relative;width:1440px;height:1560px;background:#07111f;color:#e7f2ff;font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:18px;padding:40px 48px;display:flex;flex-direction:column;gap:32px}
+.fd h2{margin:0;font-size:16px;line-height:22px;font-weight:600}
+.fd .sec{display:flex;flex-direction:column;gap:14px}
+.fd .cap{font-size:12px;line-height:16px;color:#8fa5bf}
+.sw{display:flex;flex-direction:column;gap:6px;width:150px}
+.sw i{display:block;height:56px;border-radius:8px;border:1px solid #1e3450}
+.sw b{font-size:12px;font-weight:600}
+.sw span{font-size:11px;color:#8fa5bf;font-variant-numeric:tabular-nums}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px}
+.ct{border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.ct th,.ct td{padding:6px 12px;border-bottom:1px solid #1e3450;text-align:right}
+.ct th:first-child,.ct td:first-child{text-align:left}
+.ct th{color:#8fa5bf;font-weight:500}
+.ct .no{color:#ff8da1}
+.mk{position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#0d1c2d;border:2px solid}
+.mk.c{color:#ff426d;border-color:#ff426d;box-shadow:0 0 0 4px rgb(255 66 109 / .15),0 0 18px rgb(255 66 109 / .5)}
+.mk.h{color:#ffad42;border-color:#ffad42;box-shadow:0 0 0 4px rgb(255 173 66 / .15)}
+.mk.m{color:#f2d04b;border-color:#f2d04b;box-shadow:0 0 0 4px rgb(242 208 75 / .14)}
+.mk.l{color:#8fa3b8;border-color:#8fa3b8;box-shadow:0 0 0 4px rgb(143 163 184 / .16)}
+.mk.ok{width:14px;height:14px;color:#35e7ff;border:2px solid #35e7ff;background:#07111f;box-shadow:0 0 10px rgb(53 231 255 / .55)}
+.mk.sel{border-color:#6aa6ff;color:#e7f2ff;outline:2px solid #3185ff;outline-offset:5px}
+.mk.st{color:#8fa5bf;border:2px dashed #5a7488;box-shadow:none;background:#0d1c2d}
+.mk.pu::after{content:'';position:absolute;inset:-2px;border-radius:50%;border:2px solid #ff426d;animation:pulse 1.8s ease-out infinite}
+.mkc{display:flex;flex-direction:column;align-items:center;gap:12px;width:104px;font-size:12px;text-align:center;color:#a9bed6}
+.dd{display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:12px;border:1px solid #1e3450;background:#0d1c2d}
+.dd .tag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+</style>
+</helmet>
+<div class="fd">
+<div class="row" style="justify-content:space-between;align-items:flex-end">
+<div>
+<div class="s12 t3" style="letter-spacing:.06em;text-transform:uppercase">Ops Command Center · Console V3</div>
+<h1 style="margin:6px 0 0;font-size:32px;line-height:38px;font-weight:600">Foundations</h1>
+<p style="margin:8px 0 0;max-width:760px;color:#a9bed6;font-size:14px;line-height:20px">Realistic digital twin × premium operations UI × electric neon. Midnight surfaces carry the campus; neon is edge and signal, never fill; severity keeps its own hues and always an icon and a word.</p>
+</div>
+<div class="row" style="gap:8px"><span class="chip on">Proposed values</span><span class="chip">Ratios computed with the WCAG formula</span></div>
+</div>
+
+<div class="grid2">
+<div class="sec">
+<h2>Surfaces and text</h2>
+<div class="row" style="gap:12px;flex-wrap:wrap">
+<div class="sw"><i style="background:#07111f"></i><b>surface-0</b><span>#07111F · ground, stage, inputs</span></div>
+<div class="sw"><i style="background:#0d1c2d"></i><b>surface-1</b><span>#0D1C2D · header, sidebar, bars</span></div>
+<div class="sw"><i style="background:#142940"></i><b>surface-2</b><span>#142940 · cards, selected row</span></div>
+<div class="sw"><i style="background:#1c3552"></i><b>surface-3</b><span>#1C3552 · menu, toast</span></div>
+</div>
+<div class="row" style="gap:12px;flex-wrap:wrap">
+<div class="sw"><i style="background:#e7f2ff"></i><b>text-primary</b><span>#E7F2FF</span></div>
+<div class="sw"><i style="background:#a9bed6"></i><b>text-secondary</b><span>#A9BED6</span></div>
+<div class="sw"><i style="background:#8fa5bf"></i><b>text-tertiary</b><span>#8FA5BF</span></div>
+<div class="sw"><i style="background:#5a7488"></i><b>border-strong</b><span>#5A7488 · inputs only</span></div>
+</div>
+<div class="cap">Surfaces 2–3 keep today's lightness steps on the direction's midnight and panel. Borders are 1 px, low contrast (#1E3450); depth comes from surface level and deep shadow.</div>
+</div>
+<div class="sec">
+<h2>Interaction and signal</h2>
+<div class="row" style="gap:12px;flex-wrap:wrap">
+<div class="sw"><i style="background:#3185ff"></i><b>accent</b><span>#3185FF · fill, focus, edge</span></div>
+<div class="sw"><i style="background:#6aa6ff"></i><b>accent-ink</b><span>#6AA6FF · text, icons</span></div>
+<div class="sw"><i style="background:#8b7cff"></i><b>accent-2</b><span>#8B7CFF · second series</span></div>
+<div class="sw"><i style="background:#35e7ff"></i><b>signal</b><span>#35E7FF · live data</span></div>
+</div>
+<div class="row" style="gap:12px;flex-wrap:wrap">
+<div class="sw"><i style="background:#35e0a1"></i><b>success</b><span>#35E0A1 · system only</span></div>
+<div class="sw"><i style="background:#e8c070"></i><b>warning</b><span>#E8C070 · system only</span></div>
+<div class="sw"><i style="background:#ff8da1"></i><b>danger</b><span>#FF8DA1 · form errors</span></div>
+<div class="sw"><i style="background:linear-gradient(90deg,#12315f,#1b4a8f,#2766c4,#3185ff,#6aa6ff,#b6d5ff)"></i><b>heat ramp</b><span>one hue, accent's</span></div>
+</div>
+<div class="cap">The fill accent carries dark text (5.35:1); white on it is 3.54:1 and is not used. Text and icons in the accent hue use accent-ink. Cyan means live data and is never a severity.</div>
+</div>
+</div>
+
+<div class="sec">
+<h2>Severity — hue, icon and word, always together</h2>
+<div class="row" style="gap:20px;flex-wrap:wrap;align-items:flex-start">
+<div class="dd" style="width:300px"><div class="row" style="gap:10px"><div class="tile crit" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span></div><span class="cap">#FF426D · triangle · red</span></div>
+<div class="dd" style="width:300px"><div class="row" style="gap:10px"><div class="tile high" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg></div><span class="sev high"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16h.01"/><path d="M12 8v4"/><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"/></svg>High</span></div><span class="cap">#FFAD42 · octagon · orange</span></div>
+<div class="dd" style="width:300px"><div class="row" style="gap:10px"><div class="tile med" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div><span class="sev med"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>Medium</span></div><span class="cap">#F2D04B · circle · yellow</span></div>
+<div class="dd" style="width:300px"><div class="row" style="gap:10px"><div class="tile low" style="width:40px;height:40px;border-radius:8px;display:grid;place-items:center;border:1px solid"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div><span class="sev low"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Low</span></div><span class="cap">#8FA3B8 · info · neutral steel (no longer cyan)</span></div>
+</div>
+<div class="cap">Critical text sits on surface-0 and surface-1 only (4.40 on surface-2, 3.72 on surface-3: icon only there). There is no fifth "Info" severity: the contract has four.</div>
+</div>
+
+<div class="grid2">
+<div class="sec">
+<h2>Neon, on purpose</h2>
+<div class="row" style="gap:16px;align-items:stretch">
+<div class="dd" style="flex:1;border-color:#1e6a4f"><span class="tag" style="color:#35e0a1">Do — selected, active, abnormal, incident</span>
+<div class="tabs" style="border-bottom:1px solid #1e3450"><div class="tab on" style="height:36px;padding:0 12px">Details</div><div class="tab" style="height:36px;padding:0 12px">Related <span class="n">3</span></div><div class="tab" style="height:36px;padding:0 12px">Timeline</div></div>
+<div class="irow sel" style="padding:8px"><div class="tile med" style="width:32px;height:32px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></div><div class="body"><div class="ttl">Selected row — accent edge</div><div class="meta">one lit edge, nothing else glows</div></div></div>
+<div class="row" style="gap:8px"><button class="btn p s">Resolve</button><button class="btn edge s">Active tool</button></div>
+</div>
+<div class="dd" style="flex:1;border-color:#6a2a3a"><span class="tag" style="color:#ff8da1">Don't — glow every card</span>
+<div style="display:flex;flex-direction:column;gap:8px;opacity:.85">
+<div style="height:40px;border-radius:8px;border:1px solid #3185ff;box-shadow:0 0 14px rgb(49 133 255 / .6);background:#0d1c2d"></div>
+<div style="height:40px;border-radius:8px;border:1px solid #35e7ff;box-shadow:0 0 14px rgb(53 231 255 / .6);background:#0d1c2d"></div>
+<div style="height:40px;border-radius:8px;border:1px solid #8b7cff;box-shadow:0 0 14px rgb(139 124 255 / .6);background:#0d1c2d"></div>
+</div>
+<span class="cap">Glow on every border flattens the hierarchy and competes with the model. Colour alone never carries severity.</span>
+</div>
+</div>
+<div class="cap">Neon edge: 1 px accent + 14 px soft glow, on the active tab, selected button, selected row and the open panel only. Glass panels are ~90 % opaque; blur only on small floating overlays, off under reduced transparency and in the Standard and Low tiers.</div>
+</div>
+<div class="sec">
+<h2>Marker family — core, ring, halo</h2>
+<div class="row" style="gap:6px;align-items:flex-start;flex-wrap:wrap">
+<div class="mkc"><div class="mk ok"></div>Healthy device</div>
+<div class="mkc"><div class="mk c pu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>Critical, pulse</div>
+<div class="mkc"><div class="mk h"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>High</div>
+<div class="mkc"><div class="mk m"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg></div>Medium</div>
+<div class="mkc"><div class="mk l"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>Low</div>
+<div class="mkc"><div class="mk c sel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>Selected, neon outline</div>
+<div class="mkc"><div class="mk st"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg></div>Stale, dashed grey</div>
+</div>
+<div class="cap">A marker lights the marker and its ground ring, never the building. A healthy device is a ring without a glyph, so cyan can never read as a Low incident; at Medium zoom it is drawn only on hover, on selection and at Near, while fault and stale are always drawn. Pulse is reserved for critical and for the selected incident, and stops under reduced motion.</div>
+</div>
+</div>
+
+<div class="grid2">
+<div class="sec">
+<h2>Type — Inter, tabular numerals</h2>
+<div class="dd" style="gap:6px">
+<div class="row" style="justify-content:space-between"><span style="font-size:24px;line-height:30px;font-weight:600">Page title 24 / 600</span><span class="cap">20–24</span></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:28px;line-height:32px;font-weight:600;font-variant-numeric:tabular-nums">12.8 ppm · 1,420 rpm</span><span class="cap">KPI 28</span></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:15px;line-height:20px;font-weight:600">Section title 15 / 600</span><span class="cap">14–16</span></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:14px;line-height:20px">Body 14 — Door forced open, service corridor</span><span class="cap">13–14</span></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:12px;line-height:16px;color:#a9bed6">Metadata 12 — INC-000110 · Science Lab · 3m ago</span><span class="cap">12</span></div>
+<div class="row" style="justify-content:space-between"><span style="font-size:11px;line-height:14px;color:#8fa5bf">Secondary metadata 11 — camera time, codes, never an action</span><span class="cap">11</span></div>
+</div>
+<div class="cap">Controls: button 40 (36 in dense bars, 32 in rows), input 40. Radius 4 chips · 8 controls · 12 cards and panels. Spacing stays on the 4 px grid.</div>
+</div>
+<div class="sec">
+<h2>Controls</h2>
+<div class="dd">
+<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn p">Report incident <span class="kbd">N</span></button><button class="btn">Acknowledge <span class="kbd">A</span></button><button class="btn ghost">View camera</button><button class="btn edge">Follow selection</button><button class="btn s ghost">36 px</button></div>
+<div class="row" style="gap:10px;flex-wrap:wrap"><span class="pill live"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>Live</span><span class="pill warn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg>Telemetry paused</span><span class="pill off">Telemetry unavailable</span></div>
+<div class="row" style="gap:10px"><div class="search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Search incident, device, location…</div><div class="ibtn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 3H2l8 9.46V19l4 2v-8.54z"/></svg></div></div>
+<div class="row" style="gap:8px"><span class="chip on">All <span class="n">8</span></span><span class="chip">Open <span class="n">5</span></span><span class="chip">Resolved <span class="n">2</span></span></div>
+</div>
+</div>
+</div>
+
+<div class="sec">
+<h2>Contrast of the proposed tokens (WCAG 2.x ratios)</h2>
+<table class="ct">
+<tr><th>Token</th><th>surface-0 #07111F</th><th>surface-1 #0D1C2D</th><th>surface-2 #142940</th><th>surface-3 #1C3552</th><th>Rule</th></tr>
+<tr><td>text-primary #E7F2FF</td><td>16.72</td><td>15.19</td><td>13.05</td><td>11.03</td><td style="text-align:left">Text</td></tr>
+<tr><td>text-secondary #A9BED6</td><td>9.94</td><td>9.03</td><td>7.76</td><td>6.56</td><td style="text-align:left">Text</td></tr>
+<tr><td>text-tertiary #8FA5BF</td><td>7.49</td><td>6.80</td><td>5.84</td><td>4.94</td><td style="text-align:left">Text, 11–12 px metadata</td></tr>
+<tr><td>accent-ink #6AA6FF</td><td>7.67</td><td>6.97</td><td>5.99</td><td>5.06</td><td style="text-align:left">Accent text and icons</td></tr>
+<tr><td>accent #3185FF</td><td>5.35</td><td>4.86</td><td>4.17</td><td class="no">3.53</td><td style="text-align:left">Fill, edge, focus; not text on 2–3</td></tr>
+<tr><td>signal #35E7FF</td><td>12.65</td><td>11.49</td><td>9.87</td><td>8.35</td><td style="text-align:left">Live data</td></tr>
+<tr><td>critical #FF426D</td><td>5.64</td><td>5.12</td><td class="no">4.40</td><td class="no">3.72</td><td style="text-align:left">Text on 0–1 only, icon elsewhere</td></tr>
+<tr><td>high #FFAD42</td><td>10.20</td><td>9.26</td><td>7.96</td><td>6.73</td><td style="text-align:left">Text, icon</td></tr>
+<tr><td>medium #F2D04B</td><td>12.53</td><td>11.38</td><td>9.78</td><td>8.27</td><td style="text-align:left">Text, icon</td></tr>
+<tr><td>low #8FA3B8</td><td>7.30</td><td>6.63</td><td>5.70</td><td>4.82</td><td style="text-align:left">Text, icon</td></tr>
+<tr><td>border-strong #5A7488</td><td>3.87</td><td>3.51</td><td class="no">3.02</td><td class="no">2.55</td><td style="text-align:left">Input boundary on 0–1 only</td></tr>
+</table>
+<div class="cap">Values are the mockup's proposal; V3-02 computes the final table with scripts/contrast.ts and moves a value, never the rule, where a pair fails. Red cells are the pairs the rules in the last column exclude.</div>
+</div>
+
+<div class="grid2">
+<div class="sec">
+<h2>Quality tiers — what changes</h2>
+<table class="ct">
+<tr><th>Tier</th><th style="text-align:left">When</th><th style="text-align:left">Look</th></tr>
+<tr><td>High</td><td style="text-align:left">Frames hold the budget</td><td style="text-align:left">Shadow, facade windows, halos, panel blur</td></tr>
+<tr><td>Standard</td><td style="text-align:left">p95 over budget for 2 s</td><td style="text-align:left">Pixel ratio, then shadow off, trees thin, flat rings</td></tr>
+<tr><td>Low</td><td style="text-align:left">Still over, or no WebGL 2</td><td style="text-align:left">V2 look: neutral shells, flat markers</td></tr>
+</table>
+</div>
+<div class="sec">
+<h2>Semantic zoom (distances unverified, tuned in V3-16)</h2>
+<table class="ct">
+<tr><th>Tier</th><th style="text-align:left">Distance</th><th style="text-align:left">Shows</th></tr>
+<tr><td>Far</td><td style="text-align:left">&gt; ~450 m</td><td style="text-align:left">Zone chips with open count and worst severity</td></tr>
+<tr><td>Medium</td><td style="text-align:left">~150–450 m</td><td style="text-align:left">Building labels, beacons, clusters per building</td></tr>
+<tr><td>Near</td><td style="text-align:left">&lt; ~150 m</td><td style="text-align:left">Single device markers with labels</td></tr>
+</table>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Incident selected</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./v3.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="root" style="font-family:'Inter',system-ui,sans-serif;color:#e7f2ff">
+<div style="position:absolute;left:0;top:0"><dc-import name="Header" hint-size="1440px,72px"></dc-import></div>
+<div style="position:absolute;left:0;top:84px"><dc-import name="Sidebar" sel="110" hint-size="360px,772px"></dc-import></div>
+
+<div class="stage">
+<div style="position:absolute;left:0;top:0"><dc-import name="Scene" tier="medium" sel="sci" spot="{{ true }}" zoom="{{ 1.6 }}" px="{{ -668 }}" py="{{ 103 }}" hint-size="1056px,590px"></dc-import></div>
+<div class="row" style="position:absolute;left:12px;top:12px;gap:8px">
+<div class="seg"><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>3D</span><span class="o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>2D</span></div>
+<div class="layers"><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Incidents</span><span class="o on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Cameras</span><span class="o"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>Heat</span></div>
+</div>
+<div class="rail" aria-label="Camera controls">
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg></div>
+<div class="b tool on" aria-label="Orbit tool: drag rotates"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.466 7.5C15.643 4.237 13.952 2 12 2 9.239 2 7 6.477 7 12s2.239 10 5 10c.342 0 .677-.069 1-.2"/><path d="m15.194 13.707 3.814 1.86-1.86 3.814"/><path d="M19 15.57c-1.804.885-4.274 1.43-7 1.43-5.523 0-10-2.239-10-5s4.477-5 10-5c4.838 0 8.873 1.718 9.8 4"/></svg></div><div class="b tool" aria-label="Pan tool: drag moves, P"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></div>
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></div>
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></svg></div>
+<div class="b"><svg class="ic l" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></svg></div>
+</div>
+<div class="pad8" style="left:14px;bottom:48px" role="group" aria-label="Pan the view"><button class="pd pn" style="border:0;background:transparent;cursor:pointer" aria-label="Pan north"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(0deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pne" style="border:0;background:transparent;cursor:pointer" aria-label="Pan north-east"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(45deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pe" style="border:0;background:transparent;cursor:pointer" aria-label="Pan east"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(90deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pse" style="border:0;background:transparent;cursor:pointer" aria-label="Pan south-east"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(135deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd ps" style="border:0;background:transparent;cursor:pointer" aria-label="Pan south"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(180deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd psw" style="border:0;background:transparent;cursor:pointer" aria-label="Pan south-west"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(225deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pw" style="border:0;background:transparent;cursor:pointer" aria-label="Pan west"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(270deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pnw" style="border:0;background:transparent;cursor:pointer" aria-label="Pan north-west"><svg class="ic" viewBox="0 0 24 24" style="transform:rotate(315deg)" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button><button class="pd pc" style="background:transparent;cursor:pointer" aria-label="Centre on the selection"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg></button></div>
+<div class="scalebar"><div class="bar"></div><span>0 — 50 m</span></div>
+<div class="legend glass" style="right:374px;background:rgb(13 28 45 / .88)">
+<div class="i"><span class="dot" style="background:#ff426d"></span>Selected — pulse ring and label</div>
+<div class="i"><span class="dot" style="background:#4b5d70"></span>Other zones dimmed, not hidden</div>
+<div class="s12 t3">Esc clears the selection. F flies here again.</div>
+</div>
+</div>
+
+<div style="position:absolute;left:372px;top:686px;width:696px;overflow:hidden"><dc-import name="Strip" first="{{ true }}" hint-size="1056px,170px"></dc-import></div>
+<div style="position:absolute;left:0;top:868px"><dc-import name="StatusBar" hint-size="1440px,32px"></dc-import></div>
+
+<div class="insp" role="dialog" aria-label="Incident INC-000110">
+<div class="ph">
+<div class="tile crit"><svg class="ic xl" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></div>
+<div style="flex:1;min-width:0"><div class="ttl">Smoke detector — Science Lab, level 2</div><div class="t2 s12 num">INC-000110 · Science Lab</div></div>
+<button class="ibtn" style="width:32px;height:32px;border:0;background:transparent" aria-label="Close"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+</div>
+<div class="pm"><span class="sev crit"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Critical</span><span class="row" style="gap:4px"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>3m ago</span><span class="t3">·</span><span>Open</span><span class="t3">·</span><span>Telemetry rule</span></div>
+<div class="tabs" style="padding:0 6px"><div class="tab on">Details</div><div class="tab">Related <span class="n">3</span></div><div class="tab">Telemetry</div><div class="tab">Timeline</div></div>
+<div class="pb">
+<div class="stepper" aria-label="Lifecycle: open"><div class="st cur"><i></i>Open</div><div class="ln"></div><div class="st"><i></i>Acknowledged</div><div class="ln"></div><div class="st"><i></i>Resolved</div></div>
+<div class="card" style="padding:10px 12px;display:flex;flex-direction:column;gap:2px"><div class="row sb" style="gap:8px;font-size:12px"><svg class="ic s" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>Why it was raised</div><div class="t2 s12 num">smokePpm 12.8 &gt; 10 for 60 s · rule SD-SMOKE-HIGH</div></div>
+<div class="card">
+<div class="ch"><svg class="ic" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>Device information<div style="flex:1"></div><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg></div>
+<div class="kv"><span class="k">Device name</span><span>Smoke detector</span><span class="k">Device ID</span><span class="num">SD-0043</span><span class="k">Location</span><span>Science Lab, level 2</span><span class="k">Status</span><span class="row" style="gap:6px;color:#ff426d;font-weight:600"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Alarm</span><span class="k">Battery</span><span class="row" style="gap:8px"><span style="width:88px;height:6px;border-radius:3px;background:#1c3552;overflow:hidden;display:block"><span style="display:block;width:92%;height:100%;background:#35e0a1"></span></span><span class="num">92 %</span></span></div>
+</div>
+<div class="tiles3">
+<div class="lt"><span class="a">Smoke level</span><span class="b">12.8<small>ppm</small></span><span class="d up"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>3.2 / 15 min</span></div>
+<div class="lt"><span class="a">Temperature</span><span class="b">62.4<small>°C</small></span><span class="d up"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>4.8 / 15 min</span></div>
+<div class="lt"><span class="a">Humidity</span><span class="b">45.2<small>%</small></span><span class="d dn"><svg class="ic s" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>1.2 / 15 min</span></div>
+</div>
+<div class="card" style="padding:8px 10px 6px">
+<svg viewBox="0 0 330 62" width="100%" height="62" role="img" aria-label="Smoke level over the last 15 minutes, rising past the limit of 10 ppm"><defs><linearGradient id="sg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#35e7ff" stop-opacity=".28"/><stop offset="1" stop-color="#35e7ff" stop-opacity="0"/></linearGradient></defs><line x1="0" x2="330" y1="26" y2="26" stroke="#5a7488" stroke-dasharray="4 4"/><text x="326" y="22" fill="#8fa5bf" font-size="10" text-anchor="end">limit 10</text><polygon points="0,52 28,50 56,51 84,48 112,49 140,46 168,42 196,38 224,34 252,26 280,18 310,10 310,60 0,60" fill="url(#sg)"/><polyline points="0,52 28,50 56,51 84,48 112,49 140,46 168,42 196,38 224,34 252,26" fill="none" stroke="#35e7ff" stroke-width="2"/><polyline points="252,26 280,18 310,10" fill="none" stroke="#ff426d" stroke-width="2.5"/><circle cx="310" cy="10" r="4" fill="#ff426d"/></svg>
+<div class="row xs t3" style="justify-content:space-between"><span>14:50</span><span>15:10</span><span>15:30</span><span>15:42</span></div>
+</div>
+<button class="btn ghost" style="justify-content:space-between;width:100%"><span class="row" style="gap:8px"><svg class="ic" style="color:#6aa6ff" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>View camera CAM-L03</span><svg class="ic s t2" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+</div>
+<div class="pf"><button class="btn">Acknowledge <span class="kbd">A</span></button><button class="btn p">Resolve <span class="kbd">R</span></button></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

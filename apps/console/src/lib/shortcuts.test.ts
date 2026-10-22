@@ -15,7 +15,7 @@ describe('the keyboard shortcuts', () => {
   it('has these single-character keys, each listed once or more', () => {
     const characterKeys = rows.filter((row) => row.character).flatMap((row) => row.keys);
 
-    expect([...new Set(characterKeys)]).toEqual(['N', '/', 'V', 'F', '?', 'A', 'R']);
+    expect([...new Set(characterKeys)]).toEqual(['N', '/', 'V', 'F', 'P', '?', 'A', 'R']);
   });
 
   it('gives each of them the permission it needs, and V and F none', () => {
@@ -86,7 +86,7 @@ describe('the keyboard shortcuts', () => {
     const characterOnly = rows
       .filter((row) => row.requires === 'twin' && row.character)
       .flatMap((row) => row.keys);
-    expect(new Set(characterOnly)).toEqual(new Set(['V', 'F']));
+    expect(new Set(characterOnly)).toEqual(new Set(['V', 'F', 'P']));
   });
 
   it('draws the two pans as chords of Shift and another key', () => {
@@ -98,7 +98,7 @@ describe('the keyboard shortcuts', () => {
     ]);
     expect(chords.map((row) => row.description)).toEqual([
       'Pan',
-      'Pan (also right-drag, two-finger drag)',
+      'Pan (Pan tool: rotate; also right-drag, two-finger drag pan)',
     ]);
   });
 
