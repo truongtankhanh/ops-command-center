@@ -15,6 +15,7 @@ import { useSession } from '../auth/store';
 import { initialTelemetryState } from '../lib/telemetryState';
 import type { Binding } from '../lib/twinBindings';
 import { twinCommands } from '../lib/twinCommands';
+import { PAN_DIRECTIONS } from '../lib/twinPan';
 import { MAX_ZONE_LABELS } from '../lib/twinScene';
 import type { TelemetryClient } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
@@ -649,8 +650,9 @@ describe('TwinStage', () => {
       expect(view()).not.toContainElement(screen.getByText(/Drag to rotate/));
     });
 
-    // One stop for the picture, then the controls' own stops (V2-12.10); Tab then leaves the stage.
-    it('takes one tab stop for the view, then the legend and the camera controls, then Tab leaves', async () => {
+    // One stop for the picture, then the controls' own stops (V2-12.10); Tab then leaves the stage. The pan pad (V3-29)
+    // sits above the legend in the same column, so its nine buttons come right after the view and before the legend.
+    it('takes one tab stop for the view, then the pan pad, the legend and the camera controls, then Tab leaves', async () => {
       const user = userEvent.setup();
       renderStage([zone(0, 'building', 'Library')]);
 
@@ -658,8 +660,12 @@ describe('TwinStage', () => {
       expect(view()).toHaveFocus();
 
       for (const name of [
+        ...PAN_DIRECTIONS.map((direction) => direction.name),
+        'Centre on the selection',
         'Legend',
         'Face north',
+        'Orbit: drag rotates',
+        'Pan: drag moves the view',
         'Zoom in',
         'Zoom out',
         'Rotate left',
