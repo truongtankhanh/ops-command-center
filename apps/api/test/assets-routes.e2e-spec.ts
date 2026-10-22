@@ -28,6 +28,7 @@ const ASSET_KEYS = [
   'headingDeg',
   'headline',
   'id',
+  'levelCode',
   'name',
   'position',
   'zoneId',
