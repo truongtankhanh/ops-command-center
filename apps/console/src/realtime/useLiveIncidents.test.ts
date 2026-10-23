@@ -16,8 +16,8 @@ import { io } from 'socket.io-client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
-import type * as CriticalCue from '../lib/criticalCue';
-import { playCriticalCue } from '../lib/criticalCue';
+import type * as CriticalCue from '../lib/incidents/criticalCue';
+import { playCriticalCue } from '../lib/incidents/criticalCue';
 import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
@@ -28,7 +28,7 @@ import { useLiveIncidents } from './useLiveIncidents';
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 // The store reads and writes the sound preference through the real module; only the sound is faked.
-vi.mock('../lib/criticalCue', async (importOriginal) => ({
+vi.mock('../lib/incidents/criticalCue', async (importOriginal) => ({
   ...(await importOriginal<typeof CriticalCue>()),
   playCriticalCue: vi.fn(),
 }));

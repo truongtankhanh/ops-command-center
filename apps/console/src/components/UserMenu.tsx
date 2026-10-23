@@ -1,7 +1,7 @@
 import { useSession } from '../auth/store';
 import { useReadOnly } from '../auth/usePermission';
 import { useSignOut } from '../auth/useSignOut';
-import { playCriticalCue, unlockAudio } from '../lib/criticalCue';
+import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
 import { initials, rolesLabel } from '../lib/users';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';

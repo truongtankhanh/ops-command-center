@@ -3,7 +3,7 @@ import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
 import { AssetTip, CameraTip, IncidentTip } from '../components/Tips';
 import { tipSurface } from '../components/tipSurface';
 import { placeLabel } from '../lib/assets';
-import { isActive } from '../lib/incidents';
+import { isActive } from '../lib/incidents/incidents';
 import { onPick } from '../lib/twinPicker';
 import type { PickRef, ScreenPoint } from '../lib/twinPicking';
 import { placeTip, TIP_DELAY_MS } from '../lib/twinTooltip';

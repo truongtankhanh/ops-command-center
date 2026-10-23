@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { useIncidents } from '../../api/queries';
-import { isActive } from '../../lib/incidents';
+import { isActive } from '../../lib/incidents/incidents';
 import styles from './WallApp.module.css';
 import { useWallFocus } from './useWallFocus';
 import { useWallScale } from './useWallScale';

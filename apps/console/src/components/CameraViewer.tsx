@@ -1,7 +1,7 @@
 import type { Camera } from '@occ/contracts';
 import { useId, useRef } from 'react';
 import { useCameras, useStream, useZones } from '../api/queries';
-import { feedState } from '../lib/cameras';
+import { feedState } from '../lib/cameras/cameras';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';

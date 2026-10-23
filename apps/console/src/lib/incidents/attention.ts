@@ -1,7 +1,7 @@
 import type { Asset, Incident, IncidentSeverity, Zone } from '@occ/contracts';
-import { severityIcon } from '../ui/icons';
-import type { Toast } from '../ui/toasts';
-import { placeLabel } from './assets';
+import { severityIcon } from '../../ui/icons';
+import type { Toast } from '../../ui/toasts';
+import { placeLabel } from '../assets';
 import { severityLabel, typeLabel } from './incidents';
 
 /** Severities that announce a new incident with a toast; the others rely on the feed row. */

@@ -5,8 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { signOut } from '../auth/session';
 import { useSession } from '../auth/store';
-import type * as CriticalCue from '../lib/criticalCue';
-import { playCriticalCue, unlockAudio } from '../lib/criticalCue';
+import type * as CriticalCue from '../lib/incidents/criticalCue';
+import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
 import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -15,7 +15,7 @@ import { Header } from './Header';
 
 vi.mock('../auth/session', () => ({ signOut: vi.fn() }));
 // jsdom has no Web Audio; the sound preference itself is stored by the real module.
-vi.mock('../lib/criticalCue', async (importOriginal) => ({
+vi.mock('../lib/incidents/criticalCue', async (importOriginal) => ({
   ...(await importOriginal<typeof CriticalCue>()),
   unlockAudio: vi.fn(),
   playCriticalCue: vi.fn(),

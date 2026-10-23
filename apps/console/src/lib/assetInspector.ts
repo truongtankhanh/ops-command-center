@@ -8,7 +8,7 @@ import type {
   TelemetryValue,
 } from '@occ/contracts';
 import type { AssetState } from './assets';
-import { compareIncidents, isActive } from './incidents';
+import { compareIncidents, isActive } from './incidents/incidents';
 import { encodeReading } from './ringBuffer';
 import { formatReadingAge, formatSince } from './telemetryAge';
 import { isStale } from './telemetryFreshness';

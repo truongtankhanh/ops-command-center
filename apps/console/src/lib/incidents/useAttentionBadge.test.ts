@@ -1,8 +1,8 @@
 import type { Incident, IncidentSeverity, IncidentStatus } from '@occ/contracts';
 import type { QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { queryKeys } from '../api/queries';
-import { createTestQueryClient, queryWrapper } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { createTestQueryClient, queryWrapper } from '../../test-utils';
 import { useAttentionBadge } from './useAttentionBadge';
 
 const TITLE = 'Ops Command Center';

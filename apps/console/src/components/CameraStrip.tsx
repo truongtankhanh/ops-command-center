@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { isRateLimited } from '../api/client';
 import { useAssets, useCameras, useIncidents } from '../api/queries';
-import { cameraLink, stripCameras, stripSize, stripSubject } from '../lib/cameras';
+import { cameraLink, stripCameras, stripSize, stripSubject } from '../lib/cameras/cameras';
 import { useDisplayMode } from '../lib/useDisplayMode';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';

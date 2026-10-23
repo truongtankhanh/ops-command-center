@@ -1,5 +1,5 @@
 import type { IncidentSeverity } from '@occ/contracts';
-import { severityLabel } from '../lib/incidents';
+import { severityLabel } from '../lib/incidents/incidents';
 import { Icon } from './Icon';
 import { severityIcon } from './icons';
 import styles from './SeverityBadge.module.css';

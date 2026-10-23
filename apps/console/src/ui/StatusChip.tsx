@@ -1,5 +1,5 @@
 import type { IncidentStatus } from '@occ/contracts';
-import { statusLabel } from '../lib/incidents';
+import { statusLabel } from '../lib/incidents/incidents';
 import { Icon } from './Icon';
 import { statusIcon } from './icons';
 import styles from './StatusChip.module.css';

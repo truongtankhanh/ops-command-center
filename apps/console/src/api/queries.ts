@@ -20,7 +20,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { fetchGlbJson, nodeInfos } from '../lib/glbJson';
-import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents';
+import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents/incidents';
 import type { NodeInfo } from '../lib/twinBindings';
 import { api, ApiRequestError } from './client';
 

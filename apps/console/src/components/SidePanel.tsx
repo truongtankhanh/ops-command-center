@@ -1,6 +1,6 @@
 import { type KeyboardEvent, type ReactNode, useId, useRef } from 'react';
 import { useAssets, useIncidents } from '../api/queries';
-import { isActive } from '../lib/incidents';
+import { isActive } from '../lib/incidents/incidents';
 import { type SidePanelTab, useConsole } from '../store';
 import { nextTabIndex } from '../ui/tabNavigation';
 import styles from './SidePanel.module.css';

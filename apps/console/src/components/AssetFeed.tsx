@@ -20,8 +20,8 @@ import {
   matchesAssetQuery,
   openIncidentOf,
 } from '../lib/assets';
-import { searchTerms } from '../lib/incidents';
-import { nextRowIndex } from '../lib/rowNavigation';
+import { searchTerms } from '../lib/incidents/incidents';
+import { nextRowIndex } from '../lib/incidents/rowNavigation';
 import { ageMs, isStale, staleAfterMs } from '../lib/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { useShortcut } from '../lib/useShortcut';

@@ -16,8 +16,8 @@ import {
   wallStripSize,
   wallSubject,
   writePinnedCameras,
-} from '../lib/cameras';
-import { offsetM } from '../lib/geo';
+} from './cameras';
+import { offsetM } from '../geo';
 
 const cam = (code: string, zoneId: string, online = true): Camera => ({
   id: code,

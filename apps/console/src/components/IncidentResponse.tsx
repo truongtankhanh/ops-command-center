@@ -9,7 +9,7 @@ import {
   countByFilter,
   handlingScope,
   hasLimitedScope,
-} from '../lib/incidents';
+} from '../lib/incidents/incidents';
 import { useShortcut } from '../lib/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';

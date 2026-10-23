@@ -1,6 +1,6 @@
 import { INCIDENT_SEVERITIES } from '@occ/contracts';
 import { render, screen } from '@testing-library/react';
-import { severityLabel } from '../lib/incidents';
+import { severityLabel } from '../lib/incidents/incidents';
 import { SeverityBadge } from './SeverityBadge';
 
 describe('SeverityBadge', () => {

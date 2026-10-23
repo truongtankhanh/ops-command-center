@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useIncidents } from '../api/queries';
-import { faviconMark, mapColors } from '../styles/tokens';
+import { useIncidents } from '../../api/queries';
+import { faviconMark, mapColors } from '../../styles/tokens';
 import { countActiveBySeverity } from './incidents';
 
 /** The mark with a critical-red dot in its top-right corner, ringed in the ground colour. */

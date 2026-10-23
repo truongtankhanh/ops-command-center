@@ -1,7 +1,7 @@
 import type { Camera } from '@occ/contracts';
 import { useId } from 'react';
 import { useCameras, useStream, useZones } from '../api/queries';
-import { canPin, type CameraLink, feedState, PIN_LIMIT } from '../lib/cameras';
+import { canPin, type CameraLink, feedState, PIN_LIMIT } from '../lib/cameras/cameras';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';

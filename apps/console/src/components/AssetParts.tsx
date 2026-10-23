@@ -1,7 +1,7 @@
 import type { TelemetryPoint } from '@occ/contracts';
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { hasChildren, partText, type PartRow } from '../lib/modelParts';
-import { nextRowIndex } from '../lib/rowNavigation';
+import { nextRowIndex } from '../lib/incidents/rowNavigation';
 import type { AssetTelemetryState } from '../lib/telemetryState';
 import { focusSelection } from '../lib/twinFocus';
 import { useConsole } from '../store';

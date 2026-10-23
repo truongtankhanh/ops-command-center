@@ -10,7 +10,7 @@ import {
   readingIsStale,
 } from '../lib/assetInspector';
 import { assetStates, openIncidentOf, placeLabel } from '../lib/assets';
-import { severityLabel } from '../lib/incidents';
+import { severityLabel } from '../lib/incidents/incidents';
 import { partRows } from '../lib/modelParts';
 import { staleAfterMs } from '../lib/telemetryFreshness';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';

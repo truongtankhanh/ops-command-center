@@ -1,6 +1,6 @@
 import type { Incident } from '@occ/contracts';
 import type { ComponentProps } from 'react';
-import { formatAge, isPastAttention, severityLabel, typeLabel } from '../lib/incidents';
+import { formatAge, isPastAttention, severityLabel, typeLabel } from '../lib/incidents/incidents';
 import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
 import { Clock, incidentTypeIcon, severityIcon } from '../ui/icons';

@@ -1,6 +1,6 @@
 import type { Asset, Incident, IncidentSeverity, Zone } from '@occ/contracts';
 import { isInRing } from './geo';
-import { isActive } from './incidents';
+import { isActive } from './incidents/incidents';
 import { fanOut, isPulsing, type MarkerType, markerType } from './mapFeatures';
 import { footprintRing } from './sitePlan';
 import { type Frame, heightOf } from './twinScene';

@@ -17,7 +17,7 @@ import {
   SPARKLINE_WINDOW_MS,
 } from '../lib/assetInspector';
 import { assetLinkLines } from '../lib/assetLink';
-import { isActive } from '../lib/incidents';
+import { isActive } from '../lib/incidents/incidents';
 import { partRows } from '../lib/modelParts';
 import { formatReading } from '../lib/readings';
 import {

@@ -1,5 +1,5 @@
 import type { TelemetryPillState } from '../lib/telemetryState';
-import { formatAge } from '../lib/incidents';
+import { formatAge } from '../lib/incidents/incidents';
 import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';
 import { useTelemetryStatus } from '../realtime/telemetryStore';

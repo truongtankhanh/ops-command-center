@@ -16,8 +16,8 @@ import {
   offeredFilter,
   searchTerms,
   severityLabel,
-} from '../lib/incidents';
-import { nextRowIndex } from '../lib/rowNavigation';
+} from '../lib/incidents/incidents';
+import { nextRowIndex } from '../lib/incidents/rowNavigation';
 import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';
 import { useShortcut } from '../lib/useShortcut';

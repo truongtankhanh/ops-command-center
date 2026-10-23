@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
-import { isActive } from '../lib/incidents';
+import { isActive } from '../lib/incidents/incidents';
 import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../lib/mapHover';
 import { HOVER_LAYERS, visibleLayers } from '../lib/mapLayers';
 import { useConsole } from '../store';

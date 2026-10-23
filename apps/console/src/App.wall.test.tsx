@@ -4,8 +4,8 @@ import { queryKeys } from './api/queries';
 import { App } from './App';
 import { reauthenticate } from './auth/session';
 import { useSession } from './auth/store';
-import type * as CriticalCue from './lib/criticalCue';
-import { playCriticalCue } from './lib/criticalCue';
+import type * as CriticalCue from './lib/incidents/criticalCue';
+import { playCriticalCue } from './lib/incidents/criticalCue';
 import { AuthGate } from './components/AuthGate';
 import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';
@@ -48,7 +48,7 @@ vi.mock('./components/CampusMap', () => ({
 }));
 vi.mock('socket.io-client', () => ({ io: vi.fn(() => fake.socket) }));
 // The sound is the console's cue; a wall must make none, whatever the stored preference says.
-vi.mock('./lib/criticalCue', async (importOriginal) => ({
+vi.mock('./lib/incidents/criticalCue', async (importOriginal) => ({
   ...(await importOriginal<typeof CriticalCue>()),
   playCriticalCue: vi.fn(),
 }));

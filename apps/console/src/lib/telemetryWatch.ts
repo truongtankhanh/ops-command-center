@@ -1,5 +1,5 @@
 import { type Asset, type Incident, TELEMETRY_WATCH_LIMIT } from '@occ/contracts';
-import { isActive } from './incidents';
+import { isActive } from './incidents/incidents';
 
 /**
  * What the console wants every reading of, by asset **code** (`CT-01`). Codes, not ids: an

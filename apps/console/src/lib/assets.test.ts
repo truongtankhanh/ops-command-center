@@ -11,7 +11,7 @@ import {
   openIncidentOf,
   placeLabel,
 } from './assets';
-import { searchTerms } from './incidents';
+import { searchTerms } from './incidents/incidents';
 import type { AssetTelemetryState } from './telemetryState';
 
 const NOW = Date.parse('2026-10-15T08:00:00.000Z');

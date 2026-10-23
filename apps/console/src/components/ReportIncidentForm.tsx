@@ -15,7 +15,7 @@ import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/cl
 import { useReportIncident, useZones } from '../api/queries';
 import { usePermissionFor } from '../auth/usePermission';
 import { formatLatLng } from '../lib/geo';
-import { newIdempotencyKey } from '../lib/idempotency';
+import { newIdempotencyKey } from '../lib/incidents/idempotency';
 import {
   categoryLabel,
   REPORT_TITLE_MAX,
@@ -24,7 +24,7 @@ import {
   typeLabelInSentence,
   typesInCategory,
   typesLikelyIn,
-} from '../lib/incidents';
+} from '../lib/incidents/incidents';
 import { useStopPickingOnEscape } from '../lib/useStopPickingOnEscape';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';

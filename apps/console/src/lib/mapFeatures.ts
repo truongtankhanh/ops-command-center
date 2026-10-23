@@ -11,7 +11,7 @@ import {
 import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
 import { type AssetState, openIncidentOf } from './assets';
 import { distanceM, offsetM } from './geo';
-import { isActive, isKnownType } from './incidents';
+import { isActive, isKnownType } from './incidents/incidents';
 
 /**
  * Incidents closer than this share a fan-out ring: one marker (24 px) at the map's max zoom (20),

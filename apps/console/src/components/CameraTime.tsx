@@ -1,4 +1,4 @@
-import { formatCameraTime } from '../lib/cameras';
+import { formatCameraTime } from '../lib/cameras/cameras';
 import { useNow } from '../lib/useNow';
 
 /**

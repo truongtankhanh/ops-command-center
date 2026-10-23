@@ -19,7 +19,7 @@ import { queryKeys } from './api/queries';
 import { App } from './App';
 import { useSession } from './auth/store';
 import { AuthGate } from './components/AuthGate';
-import { incidentToast } from './lib/attention';
+import { incidentToast } from './lib/incidents/attention';
 import type { Beacon } from './lib/twinBeacons';
 import type { HeatScene } from './lib/twinHeat';
 import { SHORTCUTS } from './lib/shortcuts';

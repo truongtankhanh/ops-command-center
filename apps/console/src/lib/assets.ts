@@ -1,5 +1,5 @@
 import type { Asset, AssetStatePointKey, Incident, TelemetryValue, Zone } from '@occ/contracts';
-import { compareIncidents, fold, isActive } from './incidents';
+import { compareIncidents, fold, isActive } from './incidents/incidents';
 import { statePointOf } from './readings';
 import { isStale, staleAfterMs } from './telemetryFreshness';
 import type { AssetTelemetryState, TelemetryState } from './telemetryState';

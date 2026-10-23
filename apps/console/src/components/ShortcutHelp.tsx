@@ -1,7 +1,7 @@
 import { INCIDENT_CATEGORIES, type Role } from '@occ/contracts';
 import { Fragment, useId } from 'react';
 import { useSession } from '../auth/store';
-import { categoriesInScope, categoriesLabel } from '../lib/incidents';
+import { categoriesInScope, categoriesLabel } from '../lib/incidents/incidents';
 import { SHORTCUTS, type ShortcutRow } from '../lib/shortcuts';
 import { useShortcut } from '../lib/useShortcut';
 import { useTwinCapability } from '../lib/useTwinCapability';

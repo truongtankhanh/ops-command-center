@@ -149,7 +149,7 @@ Specs are `*.test.ts` and `*.test.tsx`, beside the code in `apps/console/src/`.
 
 ```bash
 pnpm --filter @occ/console test                                      # all console tests
-pnpm --filter @occ/console exec vitest run src/lib/incidents.test.ts # one file
+pnpm --filter @occ/console exec vitest run src/lib/incidents/incidents.test.ts # one file
 pnpm --filter @occ/console exec vitest run --maxWorkers=2            # cap the workers
 ```
 

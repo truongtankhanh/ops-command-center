@@ -8,7 +8,7 @@ import {
   type LifecycleStep,
   lifecycleSteps,
   openDuration,
-} from '../lib/incidents';
+} from '../lib/incidents/incidents';
 import { useNow } from '../lib/useNow';
 import { Icon } from '../ui/Icon';
 import { Clock } from '../ui/icons';

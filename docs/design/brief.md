@@ -168,7 +168,7 @@ The questions this brief left open, decided on 2026-10-05:
 3. **Attention threshold: fixed constants now, not waiting for SLA (OCC-26).** Applies only to
    **open** (unacknowledged) incidents; acknowledging clears it. Critical 2 min, high 5 min, medium
    15 min, low 30 min — starting values to confirm with operations before UI-07. One constant in
-   `apps/console/src/lib/incidents.ts`, named an attention threshold, not an SLA: display only, nothing
+   `apps/console/src/lib/incidents/incidents.ts`, named an attention threshold, not an SLA: display only, nothing
    enforces it server-side. OCC-26 later replaces it with the server's SLA.
 4. **The sheet covers the full stage height, camera strip included.** One behaviour at every width (at
    ≤ 1100 px the detail is already a full-height overlay); stopping above the strip would leave about

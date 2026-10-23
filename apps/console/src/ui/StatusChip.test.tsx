@@ -1,6 +1,6 @@
 import { INCIDENT_STATUSES } from '@occ/contracts';
 import { render, screen } from '@testing-library/react';
-import { statusLabel } from '../lib/incidents';
+import { statusLabel } from '../lib/incidents/incidents';
 import { StatusChip } from './StatusChip';
 
 describe('StatusChip', () => {

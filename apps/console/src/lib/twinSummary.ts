@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { isActive } from './incidents';
+import { isActive } from './incidents/incidents';
 
 /**
  * How many incidents are active (`open` or `acknowledged`): the rule the feed's Active tab and the KPI tiles
