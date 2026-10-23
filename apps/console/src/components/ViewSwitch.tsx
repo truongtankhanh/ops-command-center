@@ -1,6 +1,6 @@
 import { useId } from 'react';
-import { TWIN_UNAVAILABLE_COPY } from '../lib/twinCapability';
-import { useTwinCapability } from '../lib/useTwinCapability';
+import { TWIN_UNAVAILABLE_COPY } from '../lib/twin-core/twinCapability';
+import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Box, MapIcon } from '../ui/icons';

@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import { useIncidents, useSitePlan } from '../api/queries';
-import { HEAT_DOMAIN, type HeatScene } from '../lib/twinHeat';
-import { keyCommand } from '../lib/twinKeys';
+import { HEAT_DOMAIN, type HeatScene } from '../lib/twin-core/twinHeat';
+import { keyCommand } from '../lib/twin-core/twinKeys';
 import {
   activeIncidentCount,
   TWIN_VIEW_ID,
   TWIN_VIEW_KEYS,
   TWIN_VIEW_KEYS_ID,
   twinSummary,
-} from '../lib/twinSummary';
+} from '../lib/twin-core/twinSummary';
 import { useConsole } from '../store';
 import { runKeyCommand } from './runKeyCommand';
 import styles from './TwinView.module.css';

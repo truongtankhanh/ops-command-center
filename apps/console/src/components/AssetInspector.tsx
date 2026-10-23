@@ -11,7 +11,7 @@ import {
 } from '../lib/assets/assetInspector';
 import { assetStates, openIncidentOf, placeLabel } from '../lib/assets/assets';
 import { severityLabel } from '../lib/incidents/incidents';
-import { partRows } from '../lib/modelParts';
+import { partRows } from '../lib/twin-core/modelParts';
 import { staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

@@ -1,5 +1,5 @@
 import type { Object3D } from 'three';
-import type { AssetPose } from '../lib/twinPlacement';
+import type { AssetPose } from '../lib/twin-core/twinPlacement';
 
 /** One asset's copy of its class's model, made by `Equipment` and moved by `useBoundParts`. */
 export interface ModelInstance {

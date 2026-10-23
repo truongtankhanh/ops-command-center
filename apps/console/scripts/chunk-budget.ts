@@ -38,7 +38,7 @@ export const HEAVY_MARKERS = ['WebGLRenderer', 'BufferGeometry', 'Object3D'] as 
  * Text that only the developer HUD (V2-19.1) contains: its accessible name (`HUD_LABEL`, which holds the address
  * that switches it on) and the label of one of its rows. Neither is in shipped code, so either one in `dist` means the
  * development-only HUD reached a production build. `chunk-budget.test.ts` keeps them in step with the HUD's words
- * (`src/lib/twinHud.ts`).
+ * (`src/lib/twin-core/twinHud.ts`).
  */
 export const DEBUG_MARKERS = ['debug=twin', 'Frame (p95)'] as const;
 

@@ -19,9 +19,9 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { fetchGlbJson, nodeInfos } from '../lib/glbJson';
+import { fetchGlbJson, nodeInfos } from '../lib/twin-core/glbJson';
 import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents/incidents';
-import type { NodeInfo } from '../lib/twinBindings';
+import type { NodeInfo } from '../lib/twin-core/twinBindings';
 import { api, ApiRequestError } from './client';
 
 export const queryKeys = {

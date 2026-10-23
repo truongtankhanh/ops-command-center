@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { readTwinBannerDismissed, writeTwinBannerDismissed } from '../lib/twinBannerDismissal';
-import { TWIN_UNAVAILABLE_COPY, type TwinUnavailableReason } from '../lib/twinCapability';
-import { useTwinCapability } from '../lib/useTwinCapability';
+import {
+  readTwinBannerDismissed,
+  writeTwinBannerDismissed,
+} from '../lib/twin-core/twinBannerDismissal';
+import { TWIN_UNAVAILABLE_COPY, type TwinUnavailableReason } from '../lib/twin-core/twinCapability';
+import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
 import { Banner } from '../ui/Banner';
 import { Button } from '../ui/Button';
 import { Info, X } from '../ui/icons';

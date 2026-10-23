@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import { StrictMode, useRef } from 'react';
 import type { MockInstance } from 'vitest';
-import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twinHud';
+import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twin-core/twinHud';
 import type { TelemetryClient, TelemetryStats } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { expectNoAxeViolations } from '../test-utils';

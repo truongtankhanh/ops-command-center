@@ -1,9 +1,14 @@
 import { useMemo } from 'react';
 import { useAssets, useIncidents, useZones } from '../api/queries';
 import { assetStates } from '../lib/assets/assets';
-import { assetsText, buildingEyebrow, buildingSummary, incidentsText } from '../lib/twinBuilding';
-import { buildingReadings, tempText } from '../lib/twinHeat';
-import { levelOf } from '../lib/twinLevel';
+import {
+  assetsText,
+  buildingEyebrow,
+  buildingSummary,
+  incidentsText,
+} from '../lib/twin-core/twinBuilding';
+import { buildingReadings, tempText } from '../lib/twin-core/twinHeat';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import styles from './BuildingSummary.module.css';
@@ -16,7 +21,7 @@ const NO_INCIDENTS: never[] = [];
  * them report, how many incidents are open and the first one, and the indoor temperature. No "IT load" and no
  * "Power": no point is a building's load, and `powerSource` is not a headline.
  *
- * Every figure is the Assets tab's or the feed's own (`lib/twinBuilding.ts` composes their rules), so the card and
+ * Every figure is the Assets tab's or the feed's own (`lib/twin-core/twinBuilding.ts` composes their rules), so the card and
  * the lists cannot disagree (brief § Principle 1). It is shown at building level only: at asset and part level the
  * inspector carries the asset and V2-15.10's callout the part. The same for every role: it reads no permission.
  *
@@ -24,7 +29,7 @@ const NO_INCIDENTS: never[] = [];
  *   card; while the incident list has not loaded the incidents row is left out rather than read as "None", which
  *   would tell an operator the building is quiet (as `twinSummary` leaves an unknown count out). The indoor row is
  *   left out when the building has no fresh reading (silent): it is the heat overlay's own number
- *   (`lib/twinHeat.ts`, V2-17.2), so the two cannot disagree; the overlay's "No data" is its label, not a row here.
+ *   (`lib/twin-core/twinHeat.ts`, V2-17.2), so the two cannot disagree; the overlay's "No data" is its label, not a row here.
  * - **A named region, not a live region.** The figures change every second, and a new incident is announced by the
  *   feed and the toasts; the stage's own summary is no live region either (`TwinView`).
  * - **Where it stands:** frame 12's top right, offset by the open sheet (`--sheet-inset`) as the camera controls are,

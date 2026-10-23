@@ -2,16 +2,16 @@ import type { Zone } from '@occ/contracts';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { BufferGeometry, Float32BufferAttribute, type Mesh } from 'three';
-import { buildShellGeometry } from '../lib/twinBuildings';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import type { HeatScene } from '../lib/twinHeat';
-import { hoveredShellZone } from '../lib/twinHover';
-import { groupsForLooks, type Span } from '../lib/twinGroups';
-import { type HeatFade, presenceOf } from '../lib/twinLevel';
-import { GHOST_OPACITY, XRAY_OPACITY } from '../lib/twinMaterials';
-import type { PlacedAsset } from '../lib/twinPlacement';
-import { buildingTable } from '../lib/twinPicking';
-import { buildingShells, type Frame } from '../lib/twinScene';
+import { buildShellGeometry } from '../lib/twin-core/twinBuildings';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import type { HeatScene } from '../lib/twin-core/twinHeat';
+import { hoveredShellZone } from '../lib/twin-core/twinHover';
+import { groupsForLooks, type Span } from '../lib/twin-core/twinGroups';
+import { type HeatFade, presenceOf } from '../lib/twin-core/twinLevel';
+import { GHOST_OPACITY, XRAY_OPACITY } from '../lib/twin-core/twinMaterials';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
+import { buildingTable } from '../lib/twin-core/twinPicking';
+import { buildingShells, type Frame } from '../lib/twin-core/twinScene';
 import { twinColors } from '../styles/tokens';
 import { usePicker } from './PickContext';
 import { applyGroups } from './applyGroups';
@@ -47,7 +47,7 @@ const NO_CODES: ReadonlySet<string> = new Set();
  *   is `--tw-edge`, unlit.
  * - The faces are pushed back a little (`polygonOffset`) so the outline wins on the borders instead of
  *   z-fighting with them. Unlike the ground, the shells write depth: they occlude what is behind.
- * - The mesh keeps the per-building ranges as `userData.ranges` (`lib/twinBuildings.ts`): the table
+ * - The mesh keeps the per-building ranges as `userData.ranges` (`lib/twin-core/twinBuildings.ts`): the table
  *   that picking, the see-through look (V2-15.8) and the heat colouring (V2-17.3) read, so none of
  *   them needs a mesh per building. The faces are registered with the picker as they are (V2-15.3): a
  *   ray is cast at the mesh that is drawn, and a hit's triangle names its building through that table.
@@ -57,7 +57,7 @@ const NO_CODES: ReadonlySet<string> = new Set();
  *   focus is see-through (`Xray`: the idle face at `--tw-xray-opacity`, its outline `--tw-hub`, frames 12 and 15) so
  *   the equipment inside shows, at building, asset and part level; every other building is faded. Nothing is
  *   rebuilt and the picking table does not move (so a focus rebuilds no geometry); the faded and see-through groups
- *   are transparent and write no depth, so they never hide what is inside or behind them. `lib/twinLevel.ts`
+ *   are transparent and write no depth, so they never hide what is inside or behind them. `lib/twin-core/twinLevel.ts`
  *   (`presenceOf`) is the rule. The look is a material per group, not a colour: the colour attribute is the building's
  *   own colour, under the hover tint.
  * - With the heat overlay shown (V2-17.3, `heat`) the attribute holds each building's ramp colour (`paintHeat`) and a

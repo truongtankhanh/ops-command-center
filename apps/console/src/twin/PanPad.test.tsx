@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import type { Mock } from 'vitest';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
-import { HOLD_START_MS, PAN_DIRECTIONS } from '../lib/twinPan';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
+import { HOLD_START_MS, PAN_DIRECTIONS } from '../lib/twin-core/twinPan';
 import { useConsole } from '../store';
 import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../test-utils';
 import { PanPad } from './PanPad';

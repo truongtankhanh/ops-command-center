@@ -1,12 +1,12 @@
 import { useFrame } from '@react-three/fiber';
 import { useState } from 'react';
-import { createFallbackDetector } from '../lib/twinPerf';
+import { createFallbackDetector } from '../lib/twin-core/twinPerf';
 import { useConsole } from '../store';
 
 /**
  * Gives a video wall's 3D view up for the 2D map when it cannot hold its frame rate (V2-21.9, brief Open question 6: "a wall
  * screen whose GPU cannot hold the frame budget falls back to the 2D map like any other device"). Rendered inside the canvas
- * on a wall only, it draws nothing: every drawn frame's time goes to `createFallbackDetector` (`lib/twinPerf.ts`), and when
+ * on a wall only, it draws nothing: every drawn frame's time goes to `createFallbackDetector` (`lib/twin-core/twinPerf.ts`), and when
  * that trips it marks the twin lost as `too-slow`, the path of a lost context (V2-12.11), after which `WallStage` shows the map.
  *
  * The pixel-ratio controller cannot help a wall (it starts and stays on the last step), so this is the only answer to a

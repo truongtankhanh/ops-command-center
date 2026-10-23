@@ -1,6 +1,6 @@
-// `?raw` (typed by `vite/client`): the doc's text, with no `node:fs`. The path is from `apps/console/src/lib`
+// `?raw` (typed by `vite/client`): the doc's text, with no `node:fs`. The path is from `apps/console/src/lib/twin-core`
 // to the repo root, as in `twinBindings.test.ts`.
-import assetClassesText from '../../../../docs/design/v2/asset-classes.md?raw';
+import assetClassesText from '../../../../../docs/design/v2/asset-classes.md?raw';
 import type { Axis, Binding, BindingPoint, Motion } from './twinBindings';
 import {
   angleFor,

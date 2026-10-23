@@ -1,14 +1,14 @@
 import type { Incident } from '@occ/contracts';
 import { act, renderHook } from '@testing-library/react';
 import { queryKeys } from '../../api/queries';
-import { twinCommands } from '../../lib/twinCommands';
+import { twinCommands } from '../../lib/twin-core/twinCommands';
 import { WALL_HOLD_MS } from '../../lib/wall/wallFocus';
 import { useConsole } from '../../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../../test-utils';
 import { useWallFocus } from './useWallFocus';
 
 // The rig is the twin's; what is asserted here is what the wall asks of it.
-vi.mock('../../lib/twinCommands', () => ({
+vi.mock('../../lib/twin-core/twinCommands', () => ({
   twinCommands: { flyToIncident: vi.fn(), home: vi.fn() },
 }));
 

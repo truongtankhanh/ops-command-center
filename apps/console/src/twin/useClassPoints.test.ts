@@ -2,7 +2,7 @@ import type { AssetDetail, TelemetryPoint } from '@occ/contracts';
 import { renderHook, waitFor } from '@testing-library/react';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
-import type { ModelClass } from '../lib/twinLoadQueue';
+import type { ModelClass } from '../lib/twin-core/twinLoadQueue';
 import { createTestQueryClient, queryWrapper } from '../test-utils';
 import { useClassPoints } from './useClassPoints';
 

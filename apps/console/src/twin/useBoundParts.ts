@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { type Object3D, Quaternion, Vector3 } from 'three';
-import type { Binding } from '../lib/twinBindings';
+import type { Binding } from '../lib/twin-core/twinBindings';
 import {
   type BoundState,
   createBoundState,
@@ -9,7 +9,7 @@ import {
   poseOfBound,
   resetBoundState,
   stepBound,
-} from '../lib/twinMotion';
+} from '../lib/twin-core/twinMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { useReportFrameDemand } from './FrameDemandContext';

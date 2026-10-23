@@ -1,8 +1,8 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { type RefObject, useEffect } from 'react';
 import { Vector3 } from 'three';
-import { labelTransform, stagePoint } from '../lib/twinLabels';
-import type { LabelAnchor } from '../lib/twinScene';
+import { labelTransform, stagePoint } from '../lib/twin-core/twinLabels';
+import type { LabelAnchor } from '../lib/twin-core/twinScene';
 
 /** One vector for every projection: no allocation per label per frame. */
 const scratch = new Vector3();

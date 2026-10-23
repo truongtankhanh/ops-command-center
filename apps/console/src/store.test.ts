@@ -1,5 +1,5 @@
 import type { ReportPreset } from './lib/assets/assetReport';
-import { levelOf } from './lib/twinLevel';
+import { levelOf } from './lib/twin-core/twinLevel';
 import { FRESH_LIMIT, useConsole } from './store';
 import { resetStore, stubTwinAvailable, unstubTwin } from './test-utils';
 

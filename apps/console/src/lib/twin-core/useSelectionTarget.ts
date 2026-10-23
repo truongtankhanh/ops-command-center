@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useAssets, useIncident } from '../api/queries';
-import { useConsole } from '../store';
+import { useAssets, useIncident } from '../../api/queries';
+import { useConsole } from '../../store';
 import { type SelectionTarget, selectionTargetOf } from './twinSelection';
 
 /**

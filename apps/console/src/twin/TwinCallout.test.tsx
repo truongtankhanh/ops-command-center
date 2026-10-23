@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { initialTelemetryState } from '../lib/telemetry/telemetryState';
-import type { NodeInfo } from '../lib/twinBindings';
-import type { LeaderStart } from '../lib/twinLeader';
-import { TWIN_VIEW_ID } from '../lib/twinSummary';
+import type { NodeInfo } from '../lib/twin-core/twinBindings';
+import type { LeaderStart } from '../lib/twin-core/twinLeader';
+import { TWIN_VIEW_ID } from '../lib/twin-core/twinSummary';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import {

@@ -1,5 +1,5 @@
 import { act, render, screen, within } from '@testing-library/react';
-import { HEAT_DOMAIN } from '../lib/twinHeat';
+import { HEAT_DOMAIN } from '../lib/twin-core/twinHeat';
 import { useConsole } from '../store';
 import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { HeatLegend } from './HeatLegend';

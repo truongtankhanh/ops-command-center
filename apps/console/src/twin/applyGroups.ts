@@ -1,5 +1,5 @@
 import type { BufferGeometry } from 'three';
-import type { DrawGroup } from '../lib/twinGroups';
+import type { DrawGroup } from '../lib/twin-core/twinGroups';
 
 /**
  * Sets the groups of a merged geometry (V2-15.7): which runs are drawn with the mesh's first material (as they are)

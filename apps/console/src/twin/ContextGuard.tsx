@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
-import { watchContext } from '../lib/twinContext';
+import { watchContext } from '../lib/twin-core/twinContext';
 import { useConsole } from '../store';
 
 /**

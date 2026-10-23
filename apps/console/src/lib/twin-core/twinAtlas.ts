@@ -5,7 +5,7 @@ import type { AtlasCell, AtlasLayout, SpriteSize } from './twinMarkers';
  * and type) is drawn the first time an incident needs it. So the layout has to take new cells **without moving the
  * ones already placed** (the instance buffers hold their rectangles) and without a fixed size. Pure: no canvas, no
  * `three`, so what the texture cannot be checked for here (a cell on top of another, one past the edge) is tested
- * without WebGL. `atlasLayout` (one row, `lib/twinMarkers.ts`) stays for the cameras, whose list is fixed.
+ * without WebGL. `atlasLayout` (one row, `lib/twin-core/twinMarkers.ts`) stays for the cameras, whose list is fixed.
  */
 
 export interface PackOptions {

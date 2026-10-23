@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { HEAT_MEASURES, INDOOR_TEMPERATURE } from '../lib/heatMeasures';
-import { levelOf, showsHeat } from '../lib/twinLevel';
+import { HEAT_MEASURES, INDOOR_TEMPERATURE } from '../lib/twin-core/heatMeasures';
+import { levelOf, showsHeat } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
 import { Check, ChevronDown } from '../ui/icons';
@@ -17,7 +17,7 @@ import styles from './ColourBy.module.css';
 /**
  * Frame 13's "Colour by" picker (V2-17.4, ADR-0020 "Settled in V2-17.1" and "V2-17.4"): a button naming the measure the
  * heat overlay colours by, which opens a listbox of the measures. There is one ("Indoor temperature"), so a second is
- * a data addition (`lib/heatMeasures.ts`), not a redesign.
+ * a data addition (`lib/twin-core/heatMeasures.ts`), not a redesign.
  *
  * - **Shown only while the overlay is drawn**: the layer is on and the level is the campus or a building
  *   (`showsHeat`, the one place the level is read). Off, it would be a control for nothing. It stands in the tools row

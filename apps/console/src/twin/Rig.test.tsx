@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { act, fireEvent, render } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
-import { PENDING_SHOW_MS, twinCommands } from '../lib/twinCommands';
+import { PENDING_SHOW_MS, twinCommands } from '../lib/twin-core/twinCommands';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { Rig } from './Rig';

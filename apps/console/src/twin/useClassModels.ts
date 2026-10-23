@@ -1,9 +1,9 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { type Binding, bindingsFromNodes, type Problem } from '../lib/twinBindings';
-import type { ModelClass } from '../lib/twinLoadQueue';
-import { useTwinModelStore } from '../lib/twinModelStore';
-import { markTwin } from '../lib/twinPerf';
+import { type Binding, bindingsFromNodes, type Problem } from '../lib/twin-core/twinBindings';
+import type { ModelClass } from '../lib/twin-core/twinLoadQueue';
+import { useTwinModelStore } from '../lib/twin-core/twinModelStore';
+import { markTwin } from '../lib/twin-core/twinPerf';
 import { buildTemplate, type ClassTemplate, createMaterialTable } from './classModel';
 import { loadGltf } from './loadGltf';
 import { releaseGltfLoaders } from './loaders';

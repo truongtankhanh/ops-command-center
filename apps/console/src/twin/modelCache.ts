@@ -1,4 +1,4 @@
-import type { ClassProgress, ModelClass } from '../lib/twinLoadQueue';
+import type { ClassProgress, ModelClass } from '../lib/twin-core/twinLoadQueue';
 import type { ClassTemplate } from './classModel';
 import type { BytesProgress } from './loadGltf';
 

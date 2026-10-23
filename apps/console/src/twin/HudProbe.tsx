@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useMemo } from 'react';
-import { formatBudgetWarning, formatHud, HUD_ROWS } from '../lib/twinHud';
-import { createBudgetGuard, createPerfSampler } from '../lib/twinPerf';
+import { formatBudgetWarning, formatHud, HUD_ROWS } from '../lib/twin-core/twinHud';
+import { createBudgetGuard, createPerfSampler } from '../lib/twin-core/twinPerf';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 
 /** How often the figures are rewritten (V2-19.1: twice a second). */

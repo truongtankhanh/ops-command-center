@@ -1,15 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useRef } from 'react';
 import { Box3, Vector3 } from 'three';
-import { stagePoint, type StagePoint } from '../lib/twinLabels';
+import { stagePoint, type StagePoint } from '../lib/twin-core/twinLabels';
 import {
   type LeaderLine,
   type LeaderStart,
   leaderLine,
   NO_LINE,
   sameLine,
-} from '../lib/twinLeader';
-import { NO_SELECTION, type SelectedPart } from '../lib/twinHover';
+} from '../lib/twin-core/twinLeader';
+import { NO_SELECTION, type SelectedPart } from '../lib/twin-core/twinHover';
 import type { ModelInstance } from './AssetModel';
 
 /** One box and one vector for every frame: no allocation per drawn frame. */

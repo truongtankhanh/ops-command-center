@@ -4,7 +4,7 @@ import type { Asset, Incident } from '@occ/contracts';
  * What `F` flies to (V2-18.2, frame 16): the one choice behind a key that means three things by place (phase-0
  * decision 7). It is a function of what is selected, so there is one handler and no question of which of three
  * registered ones wins. Pure and free of the store and of React, so the rule tests without either; running the
- * flight is `lib/twinFlight.ts`.
+ * flight is `lib/twin-core/twinFlight.ts`.
  *
  * | Selected                         | Target            | The flight (the same as the control that exists)                    |
  * | -------------------------------- | ----------------- | ------------------------------------------------------------------- |

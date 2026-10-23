@@ -1,6 +1,6 @@
 import { type BufferAttribute, Color, type Float32BufferAttribute } from 'three';
-import type { ShellRange } from '../lib/twinBuildings';
-import { HOVER_MIX, mixInto } from '../lib/twinMaterials';
+import type { ShellRange } from '../lib/twin-core/twinBuildings';
+import { HOVER_MIX, mixInto } from '../lib/twin-core/twinMaterials';
 import { mapColors, twinColors } from '../styles/tokens';
 import { filled } from './vertexColours';
 

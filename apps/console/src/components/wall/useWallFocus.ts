@@ -1,7 +1,7 @@
 import type { Incident } from '@occ/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIncidents } from '../../api/queries';
-import { twinCommands } from '../../lib/twinCommands';
+import { twinCommands } from '../../lib/twin-core/twinCommands';
 import {
   next,
   secondsLeft,

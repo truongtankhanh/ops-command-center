@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { NO_HOVER } from '../lib/twinHover';
+import { NO_HOVER } from '../lib/twin-core/twinHover';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { useHoverRef } from './useHoverRef';

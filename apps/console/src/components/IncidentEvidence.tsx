@@ -18,7 +18,7 @@ import {
 } from '../lib/assets/assetInspector';
 import { assetLinkLines } from '../lib/assets/assetLink';
 import { isActive } from '../lib/incidents/incidents';
-import { partRows } from '../lib/modelParts';
+import { partRows } from '../lib/twin-core/modelParts';
 import { formatReading } from '../lib/assets/readings';
 import {
   describeEvidence,
@@ -28,9 +28,9 @@ import {
   type RuleEvidence,
 } from '../lib/telemetry/telemetryEvidence';
 import { ageMs, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { showAssetIn3d } from '../lib/twinFlight';
-import { buildingFocusOf } from '../lib/twinLevel';
-import { useTwinCapability } from '../lib/useTwinCapability';
+import { showAssetIn3d } from '../lib/twin-core/twinFlight';
+import { buildingFocusOf } from '../lib/twin-core/twinLevel';
+import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
 import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import text from '../styles/text.module.css';

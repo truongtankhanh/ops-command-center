@@ -1,5 +1,5 @@
 import type { Incident, LngLat, Zone } from '@occ/contracts';
-import { offsetM } from './map/geo';
+import { offsetM } from '../map/geo';
 import { HIGHLIGHT_WIDTH_M, highlightRibbon, highlightZoneOf } from './twinHighlight';
 import type { Mesh } from './twinGround';
 import { makeFrame } from './twinScene';

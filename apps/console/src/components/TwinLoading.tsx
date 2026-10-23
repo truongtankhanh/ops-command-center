@@ -1,4 +1,4 @@
-import { type LoadStep, loadedShare, type StepState } from '../lib/twinLoading';
+import { type LoadStep, loadedShare, type StepState } from '../lib/twin-core/twinLoading';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import { Check, CircleDot, CircleX } from '../ui/icons';
@@ -32,7 +32,7 @@ interface TwinLoadingProps {
  * - **No spinner** (brief Principle 5: only arrival, selection and escalation animate): a done step is a check, a
  *   failed one a cross, the rest a dot, and the bar's width is the share of steps done, not an animation.
  *   Shape and words carry the state, so colour is never the only cue.
- * - A failed step offers Retry. The steps are data (`lib/twinLoading.ts`): V2-14.7 adds one per equipment model.
+ * - A failed step offers Retry. The steps are data (`lib/twin-core/twinLoading.ts`): V2-14.7 adds one per equipment model.
  *
  * It is main-chunk code: it has to show before the twin chunk, and its CSS, have arrived.
  */

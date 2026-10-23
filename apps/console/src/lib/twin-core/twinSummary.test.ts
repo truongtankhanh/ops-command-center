@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { SHORTCUTS } from './shell/shortcuts';
+import { SHORTCUTS } from '../shell/shortcuts';
 import { activeIncidentCount, TWIN_VIEW_KEYS, twinSummary } from './twinSummary';
 
 const incident = (overrides: Partial<Incident>): Incident => ({

@@ -1,9 +1,9 @@
 import type { TelemetryPoint } from '@occ/contracts';
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from 'react';
-import { hasChildren, partText, type PartRow } from '../lib/modelParts';
+import { hasChildren, partText, type PartRow } from '../lib/twin-core/modelParts';
 import { nextRowIndex } from '../lib/incidents/rowNavigation';
 import type { AssetTelemetryState } from '../lib/telemetry/telemetryState';
-import { focusSelection } from '../lib/twinFocus';
+import { focusSelection } from '../lib/twin-core/twinFocus';
 import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
 import { Box, ChevronDown, CircleDot } from '../ui/icons';

@@ -1,8 +1,8 @@
 import type { Asset, Camera, SitePlan, Zone } from '@occ/contracts';
 import { useMemo } from 'react';
 import { useAssets, useCameras, useSitePlan, useZones } from '../api/queries';
-import { loadTarget, type ModelClass, modelClasses } from '../lib/twinLoadQueue';
-import { type PlacedAsset, placeAssets } from '../lib/twinPlacement';
+import { loadTarget, type ModelClass, modelClasses } from '../lib/twin-core/twinLoadQueue';
+import { type PlacedAsset, placeAssets } from '../lib/twin-core/twinPlacement';
 import {
   type Bounds,
   type Frame,
@@ -10,7 +10,7 @@ import {
   labelAnchors,
   sceneBounds,
   sceneFrame,
-} from '../lib/twinScene';
+} from '../lib/twin-core/twinScene';
 
 /** Everything the 3D stage draws from, derived once from the site's reference data. */
 export interface TwinScene {
@@ -21,7 +21,7 @@ export interface TwinScene {
   cameras: readonly Camera[];
   /**
    * Every asset placed and posed (V2-14.6), `inside` ones included: which of them a level draws, and how, is
-   * `presenceOf`'s answer (`lib/twinLevel.ts`). Empty while the catalogue loads or if it fails.
+   * `presenceOf`'s answer (`lib/twin-core/twinLevel.ts`). Empty while the catalogue loads or if it fails.
    */
   assets: readonly PlacedAsset[];
   /**

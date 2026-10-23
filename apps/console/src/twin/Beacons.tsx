@@ -1,15 +1,15 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import type { Beacon } from '../lib/twinBeacons';
+import type { Beacon } from '../lib/twin-core/twinBeacons';
 import {
   type BeaconTarget,
   beaconCells,
   beaconPlacements,
   beaconTargets,
   pulseRunning,
-} from '../lib/twinBeaconSprites';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import type { MarkerPlacement } from '../lib/twinMarkers';
+} from '../lib/twin-core/twinBeaconSprites';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import type { MarkerPlacement } from '../lib/twin-core/twinMarkers';
 import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapMotion } from '../styles/tokens';

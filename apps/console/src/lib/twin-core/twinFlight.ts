@@ -1,4 +1,4 @@
-import { useConsole } from '../store';
+import { useConsole } from '../../store';
 import { twinCommands } from './twinCommands';
 import { focusSelection } from './twinFocus';
 import type { SelectionTarget } from './twinSelection';

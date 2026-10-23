@@ -1,7 +1,7 @@
-import { twinCommands } from '../lib/twinCommands';
-import { resetView } from '../lib/twinFlight';
-import type { KeyCommand } from '../lib/twinKeys';
-import { levelOf } from '../lib/twinLevel';
+import { twinCommands } from '../lib/twin-core/twinCommands';
+import { resetView } from '../lib/twin-core/twinFlight';
+import type { KeyCommand } from '../lib/twin-core/twinKeys';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 
 /**

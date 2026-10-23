@@ -37,12 +37,12 @@ describe('the targets path holds no React state', () => {
   // The modules the buffer passes through after the worker: the feed, the maths, the render loop and the painter.
   const PATH = [
     '../realtime/twinFeed.ts',
-    '../lib/twinMotion.ts',
+    '../lib/twin-core/twinMotion.ts',
     '../twin/useBoundParts.ts',
     '../twin/useAssetLooks.ts',
   ];
   // Plain modules: not React, not three.
-  const PLAIN = ['../realtime/twinFeed.ts', '../lib/twinMotion.ts'];
+  const PLAIN = ['../realtime/twinFeed.ts', '../lib/twin-core/twinMotion.ts'];
 
   it('finds the modules it is about', () => {
     for (const path of PATH) expect(SOURCES[path], path).toBeDefined();

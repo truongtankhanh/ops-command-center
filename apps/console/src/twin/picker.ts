@@ -10,10 +10,10 @@ import {
   Vector3,
 } from 'three';
 import { acceleratedRaycast, MeshBVH } from 'three-mesh-bvh';
-import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twinBeaconSprites';
-import type { Vec3 } from '../lib/twinCamera';
-import type { MarkerPlacement } from '../lib/twinMarkers';
-import { pinHits } from '../lib/twinPin';
+import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twin-core/twinBeaconSprites';
+import type { Vec3 } from '../lib/twin-core/twinCamera';
+import type { MarkerPlacement } from '../lib/twin-core/twinMarkers';
+import { pinHits } from '../lib/twin-core/twinPin';
 import {
   beaconHits,
   cameraHits,
@@ -28,7 +28,7 @@ import {
   type ProjectedMarker,
   type ScreenPoint,
   type SurfaceHit,
-} from '../lib/twinPicking';
+} from '../lib/twin-core/twinPicking';
 
 /*
  * The three.js side of picking (V2-15.3, ADR-0020 § Scene, "Settled in V2-15.3"): it keeps the meshes that are
@@ -39,7 +39,7 @@ import {
  * instances of a class share their geometry.
  *
  * The camera markers and the incident beacons (V2-16.4) are sprites, so they are not meshes in the list: each is
- * projected with the camera of the pick and tested in screen space (`lib/twinPicking.ts`). The beacons it is given
+ * projected with the camera of the pick and tested in screen space (`lib/twin-core/twinPicking.ts`). The beacons it is given
  * are the ones that are drawn (`Beacons` registers them), a beacon's target is its disc, which stands
  * `DISC_CENTRE_PX` above its ground point on the screen.
  *
@@ -51,7 +51,7 @@ import {
  * before the camera's controls hear it whether it starts a drag.
  *
  * No React and no WebGL: `PickLayer` (the canvas) drives it, and it tests with real `three` objects. The
- * rules of which hit wins are `lib/twinPicking.ts`'s.
+ * rules of which hit wins are `lib/twin-core/twinPicking.ts`'s.
  */
 
 /** What a pick needs to know of the view: the camera and the canvas's size in CSS pixels. */

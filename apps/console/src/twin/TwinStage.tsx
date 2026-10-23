@@ -1,10 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FitBox } from '../lib/twinCamera';
-import type { LeaderStart } from '../lib/twinLeader';
-import { assetBoxes, buildingBoxes } from '../lib/twinLevelCamera';
-import type { ModelClass } from '../lib/twinLoadQueue';
-import { clearTwinMarks, debugTwinRequested, markTwin } from '../lib/twinPerf';
-import type { LabelAnchor } from '../lib/twinScene';
+import type { FitBox } from '../lib/twin-core/twinCamera';
+import type { LeaderStart } from '../lib/twin-core/twinLeader';
+import { assetBoxes, buildingBoxes } from '../lib/twin-core/twinLevelCamera';
+import type { ModelClass } from '../lib/twin-core/twinLoadQueue';
+import { clearTwinMarks, debugTwinRequested, markTwin } from '../lib/twin-core/twinPerf';
+import type { LabelAnchor } from '../lib/twin-core/twinScene';
 import { BuildingSummary } from './BuildingSummary';
 import { DragHint } from './DragHint';
 import { HeatLegend } from './HeatLegend';

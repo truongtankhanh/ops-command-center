@@ -10,11 +10,16 @@ import {
   MeshStandardMaterial,
   type Object3D,
 } from 'three';
-import { edgeIndices } from '../lib/twinBoxes';
-import { type HoverState, NO_HOVER, NO_SELECTION, type SelectedPart } from '../lib/twinHover';
-import type { Presence } from '../lib/twinLevel';
-import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
-import type { PlacedAsset } from '../lib/twinPlacement';
+import { edgeIndices } from '../lib/twin-core/twinBoxes';
+import {
+  type HoverState,
+  NO_HOVER,
+  NO_SELECTION,
+  type SelectedPart,
+} from '../lib/twin-core/twinHover';
+import type { Presence } from '../lib/twin-core/twinLevel';
+import { EDGE_DASH_M, edgeColour, faceColour, lookOf } from '../lib/twin-core/twinMaterials';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
 import type { AssetFlags, TwinFeed } from '../realtime/twinFeed';
 import { mapColors, twinColors } from '../styles/tokens';
 import {

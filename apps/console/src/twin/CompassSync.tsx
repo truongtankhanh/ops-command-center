@@ -1,7 +1,7 @@
 import { useFrame, useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useRef } from 'react';
 import { Vector3 } from 'three';
-import { compassLabel, yawOfDirection } from '../lib/twinCamera';
+import { compassLabel, yawOfDirection } from '../lib/twin-core/twinCamera';
 
 /** One vector for every frame: nothing is allocated while the camera moves. */
 const direction = new Vector3();

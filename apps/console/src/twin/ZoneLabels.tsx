@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
-import type { HeatScene } from '../lib/twinHeat';
-import type { LabelAnchor } from '../lib/twinScene';
+import type { HeatScene } from '../lib/twin-core/twinHeat';
+import type { LabelAnchor } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 import styles from './ZoneLabels.module.css';
 

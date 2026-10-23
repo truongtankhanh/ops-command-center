@@ -1,9 +1,9 @@
 import type { Zone } from '@occ/contracts';
 import { useEffect, useMemo } from 'react';
 import { BufferGeometry, DoubleSide, Float32BufferAttribute } from 'three';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import { highlightRibbon } from '../lib/twinHighlight';
-import type { Frame } from '../lib/twinScene';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import { highlightRibbon } from '../lib/twin-core/twinHighlight';
+import type { Frame } from '../lib/twin-core/twinScene';
 import { mapColors } from '../styles/tokens';
 
 /**
@@ -22,12 +22,12 @@ interface ZoneHighlightProps {
 /**
  * The outline of the selected incident's zone, or of the zone being reported while the report form is open, on the
  * ground (V2-16.4, the 2D map's `zoneHighlight`): the accent, drawn as a ribbon in metres along the zone's ring
- * (`lib/twinHighlight.ts`) because a WebGL line is one pixel wide. One mesh and one draw call, and nothing while no
+ * (`lib/twin-core/twinHighlight.ts`) because a WebGL line is one pixel wide. One mesh and one draw call, and nothing while no
  * zone is named or the zone has no ring. It does not follow the Incidents layer, as the map's does not: it marks a
  * place, not an incident. The geometry is built when the zone changes and disposed when it is replaced or unmounted;
  * R3F does not dispose a geometry it was handed as a prop.
  *
- * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `lib/twinHighlight.ts`.
+ * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `lib/twin-core/twinHighlight.ts`.
  */
 export function ZoneHighlight({ zones, frame, zoneId }: ZoneHighlightProps) {
   const geometry = useMemo(() => {

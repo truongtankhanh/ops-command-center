@@ -7,9 +7,9 @@ import { readCriticalSound, writeCriticalSound } from './lib/incidents/criticalC
 import { type Density, readDensity, writeDensity } from './lib/shell/density';
 import type { FeedFilter } from './lib/incidents/incidents';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shell/shortcuts';
-import { type TwinFault, twinCapability } from './lib/twinCapability';
-import type { SceneLayerKey, SceneLayers } from './lib/twinLayers';
-import { levelOf } from './lib/twinLevel';
+import { type TwinFault, twinCapability } from './lib/twin-core/twinCapability';
+import type { SceneLayerKey, SceneLayers } from './lib/twin-core/twinLayers';
+import { levelOf } from './lib/twin-core/twinLevel';
 import {
   effectiveView,
   readViewChoice,

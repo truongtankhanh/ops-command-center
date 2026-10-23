@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { TelemetryPoint } from '@occ/contracts';
-// `?raw` (typed by `vite/client`): the files' text. The paths are from `apps/console/src/lib` to the repo root,
+// `?raw` (typed by `vite/client`): the files' text. The paths are from `apps/console/src/lib/twin-core` to the repo root,
 // as in `twinBindings.test.ts`.
-import assetClassesText from '../../../../docs/design/v2/asset-classes.md?raw';
-import catalogueText from '../../../../ops/telemetry-sim/catalogue.json?raw';
+import assetClassesText from '../../../../../docs/design/v2/asset-classes.md?raw';
+import catalogueText from '../../../../../ops/telemetry-sim/catalogue.json?raw';
 import { nodeInfos, readGlbJson } from './glbJson';
 import { hasChildren, type PartRow, partRows, partText, sentenceCase } from './modelParts';
 import { bindingsFromNodes, type NodeInfo } from './twinBindings';
@@ -164,7 +164,7 @@ describe('partText', () => {
 const MODELLED = ['cooling_tower', 'standby_generator'] as const;
 
 // `import.meta.url` is not a `file:` URL under jsdom; the directory is.
-const MODELS_DIR = resolve(import.meta.dirname, '../../../../ops/models');
+const MODELS_DIR = resolve(import.meta.dirname, '../../../../../ops/models');
 
 /** The class root of the stand-in model of `classCode`, as the console reads it from the file. */
 function standIn(classCode: string): NodeInfo {

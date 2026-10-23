@@ -1,9 +1,9 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { lazy, type RefObject, Suspense, useCallback, useRef, useState } from 'react';
-import type { Beacon } from '../lib/twinBeacons';
-import { type FitBox, HOME_FOV_DEG } from '../lib/twinCamera';
-import type { HeatScene } from '../lib/twinHeat';
-import type { LeaderStart } from '../lib/twinLeader';
+import type { Beacon } from '../lib/twin-core/twinBeacons';
+import { type FitBox, HOME_FOV_DEG } from '../lib/twin-core/twinCamera';
+import type { HeatScene } from '../lib/twin-core/twinHeat';
+import type { LeaderStart } from '../lib/twin-core/twinLeader';
 import {
   debugTwinRequested,
   DPR_STEPS,
@@ -11,7 +11,7 @@ import {
   rememberDprStep,
   rememberedDprStep,
   WALL_DPR,
-} from '../lib/twinPerf';
+} from '../lib/twin-core/twinPerf';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { mapColors } from '../styles/tokens';
 import { Beacons } from './Beacons';

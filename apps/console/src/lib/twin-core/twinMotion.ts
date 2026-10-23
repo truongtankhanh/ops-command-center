@@ -1,5 +1,5 @@
 import type { TelemetryValue } from '@occ/contracts';
-import { encodeReading } from './telemetry/ringBuffer';
+import { encodeReading } from '../telemetry/ringBuffer';
 import type { Binding, BindingPoint } from './twinBindings';
 
 /*

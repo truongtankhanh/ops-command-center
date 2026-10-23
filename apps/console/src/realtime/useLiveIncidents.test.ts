@@ -18,7 +18,7 @@ import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import type * as CriticalCue from '../lib/incidents/criticalCue';
 import { playCriticalCue } from '../lib/incidents/criticalCue';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
 import { ToastRegion } from '../ui/Toast';

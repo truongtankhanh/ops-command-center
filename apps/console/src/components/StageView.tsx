@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState } from 'react';
-import { levelOf } from '../lib/twinLevel';
-import { useTwinLoading } from '../lib/useTwinLoading';
+import { levelOf } from '../lib/twin-core/twinLevel';
+import { useTwinLoading } from '../lib/twin-core/useTwinLoading';
 import { useConsole } from '../store';
 import { EmptyState } from '../ui/EmptyState';
 import { ErrorBoundary } from '../ui/ErrorBoundary';

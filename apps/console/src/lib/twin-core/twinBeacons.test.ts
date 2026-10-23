@@ -8,8 +8,8 @@ import type {
   Zone,
   ZoneKind,
 } from '@occ/contracts';
-import { offsetM } from './map/geo';
-import { fanOut, incidentFeatures, UNKNOWN_TYPE_IMAGE } from './map/mapFeatures';
+import { offsetM } from '../map/geo';
+import { fanOut, incidentFeatures, UNKNOWN_TYPE_IMAGE } from '../map/mapFeatures';
 import { type Beacon, beaconsOf } from './twinBeacons';
 import { DEFAULT_BUILDING_HEIGHT_M, makeFrame } from './twinScene';
 

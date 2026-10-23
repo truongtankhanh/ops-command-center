@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
-import { atlasLayout } from '../lib/twinMarkers';
-import { PIN_BELOW_TIP_PX, PIN_SIZE_PX } from '../lib/twinPin';
+import { atlasLayout } from '../lib/twin-core/twinMarkers';
+import { PIN_BELOW_TIP_PX, PIN_SIZE_PX } from '../lib/twin-core/twinPin';
 import { mapColors } from '../styles/tokens';
 import type { SpriteAtlas } from './useMarkerAtlas';
 

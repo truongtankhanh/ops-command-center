@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { isActive } from './incidents/incidents';
+import { isActive } from '../incidents/incidents';
 
 /**
  * How many incidents are active (`open` or `acknowledged`): the rule the feed's Active tab and the KPI tiles
@@ -34,7 +34,7 @@ interface TwinSummaryInput {
   /**
    * The heat overlay while it is shown (V2-17.3), `null` or absent otherwise: the names of the buildings with no
    * reading and the scale's ends. The domain is handed in, not imported, because this module is main-chunk code (the
-   * breadcrumb reads `TWIN_VIEW_ID`) and `lib/twinHeat.ts` is not.
+   * breadcrumb reads `TWIN_VIEW_ID`) and `lib/twin-core/twinHeat.ts` is not.
    */
   heat?: { silentNames: readonly string[]; domain: readonly [number, number] } | null;
 }

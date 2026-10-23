@@ -6,10 +6,10 @@ import type { Mock } from 'vitest';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
-import type { HeatScene } from '../lib/twinHeat';
-import { levelOf } from '../lib/twinLevel';
-import { TWIN_VIEW_KEYS } from '../lib/twinSummary';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
+import type { HeatScene } from '../lib/twin-core/twinHeat';
+import { levelOf } from '../lib/twin-core/twinLevel';
+import { TWIN_VIEW_KEYS } from '../lib/twin-core/twinSummary';
 import { useConsole } from '../store';
 import {
   createTestQueryClient,

@@ -25,7 +25,7 @@ import {
   typesInCategory,
   typesLikelyIn,
 } from '../lib/incidents/incidents';
-import { useStopPickingOnEscape } from '../lib/useStopPickingOnEscape';
+import { useStopPickingOnEscape } from '../lib/twin-core/useStopPickingOnEscape';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Field, Select, Textarea, TextInput } from '../ui/Field';

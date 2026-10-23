@@ -18,7 +18,7 @@ export interface HeatMeasure {
   label: string;
 }
 
-/** The reading the overlay shows today: the mean of a building's fresh `indoorTempC` sources (`lib/twinHeat.ts`). */
+/** The reading the overlay shows today: the mean of a building's fresh `indoorTempC` sources (`lib/twin-core/twinHeat.ts`). */
 export const INDOOR_TEMPERATURE: HeatMeasure = {
   id: 'indoor-temperature',
   label: 'Indoor temperature',

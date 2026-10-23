@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { useState } from 'react';
-import { createDprController } from '../lib/twinPerf';
+import { createDprController } from '../lib/twin-core/twinPerf';
 
 interface PixelRatioProps {
   /** The step the canvas starts at (`TwinCanvas`'s state): the controller begins at the first step at or below it. */
@@ -14,7 +14,7 @@ interface PixelRatioProps {
 /**
  * Lowers the canvas's pixel ratio when frames run long (V2-19.3, brief § Performance: "Pixel ratio ≤ 1.5 … drops one
  * step when frames run long for 2 s"). Rendered inside the canvas, it draws nothing: every drawn frame's time goes to
- * `createDprController` (`lib/twinPerf.ts`), and a step it returns is reported out through `onStep`. It does not call
+ * `createDprController` (`lib/twin-core/twinPerf.ts`), and a step it returns is reported out through `onStep`. It does not call
  * `setDpr` itself: R3F applies the `dpr` prop again on every configure, so a ratio set from inside is undone by the
  * next render of `TwinCanvas`, which therefore holds the step as state and passes it down.
  *
@@ -30,7 +30,7 @@ interface PixelRatioProps {
  *
  * Frame demand: none. It only observes the frames that others asked for; its `useFrame` stays at the default priority,
  * which keeps R3F rendering the scene. Not tested against WebGL (jsdom has none): its logic is the controller, tested in
- * `lib/twinPerf.test.ts`, and `PixelRatio.test.tsx` tests the wiring with a stand-in for `useFrame`.
+ * `lib/twin-core/twinPerf.test.ts`, and `PixelRatio.test.tsx` tests the wiring with a stand-in for `useFrame`.
  */
 export function PixelRatio({ initial, onStep, wall = false }: PixelRatioProps) {
   const [controller] = useState(() =>

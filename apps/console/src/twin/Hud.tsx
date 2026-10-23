@@ -1,5 +1,5 @@
 import { Fragment, type RefObject } from 'react';
-import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twinHud';
+import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twin-core/twinHud';
 import styles from './Hud.module.css';
 
 interface HudProps {

@@ -2,7 +2,7 @@ import type { Asset } from '@occ/contracts';
 import { useId } from 'react';
 import { useAssets, useZones } from '../api/queries';
 import { hasDimmedAsset } from '../lib/assets/assets';
-import { buildingLine, isolationLine } from '../lib/twinLevel';
+import { buildingLine, isolationLine } from '../lib/twin-core/twinLevel';
 import { useLegendOpen } from '../lib/shell/useLegendOpen';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

@@ -1,15 +1,15 @@
 import { useEffect, useMemo } from 'react';
 import { Box3 } from 'three';
-import { fitBoxOf, registerFocusResolver } from '../lib/twinFocus';
-import { assetBoxes } from '../lib/twinLevelCamera';
-import type { PlacedAsset } from '../lib/twinPlacement';
+import { fitBoxOf, registerFocusResolver } from '../lib/twin-core/twinFocus';
+import { assetBoxes } from '../lib/twin-core/twinLevelCamera';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
 import type { ModelInstance } from './AssetModel';
 
 /** One box for every call: the resolver allocates nothing. */
 const bounds = new Box3();
 
 /**
- * Tells "Focus" (V2-15.11, `lib/twinFocus.ts`) where things are. The inspector's foot and the Parts rows live outside
+ * Tells "Focus" (V2-15.11, `lib/twin-core/twinFocus.ts`) where things are. The inspector's foot and the Parts rows live outside
  * the canvas and cannot read a model, so the canvas registers the one place that can: given an asset and maybe one of
  * its parts, the resolver answers with the box the camera should fit. A part's box is its **world bounds at the moment
  * of the call** (a spinning blade is where it is now; the pose and the parent's transforms are in it), else the

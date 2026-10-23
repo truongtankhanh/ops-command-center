@@ -3,14 +3,14 @@ import type { FitBox, Vec3 } from './twinCamera';
 import { twinCommands } from './twinCommands';
 import { focusOf, presenceOf } from './twinLevel';
 import { placementOf } from './twinPlacement';
-import type { ViewChoice } from './shell/viewChoice';
+import type { ViewChoice } from '../shell/viewChoice';
 
 /*
  * "Focus" (V2-15.11, ADR-0020 "Settled in V2-15.11"): flying the camera to the selected part, else to the
  * isolated asset, from the controls outside the canvas (the inspector's foot, a Parts row). Those are main-chunk
  * code and may not import `three`, while a part's bounds only exist in the canvas, so this module is the seam: the
  * canvas registers a *resolver* (which box is this part or asset?) and the caller asks to focus; the flight itself is
- * the camera's `fitAsset`, unchanged. Plain module state, like `lib/twinCommands.ts`: nothing renders from it.
+ * the camera's `fitAsset`, unchanged. Plain module state, like `lib/twin-core/twinCommands.ts`: nothing renders from it.
  */
 
 /**

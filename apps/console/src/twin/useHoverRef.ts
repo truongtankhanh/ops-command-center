@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useRef } from 'react';
-import { type HoverState, hoverOf, NO_HOVER } from '../lib/twinHover';
+import { type HoverState, hoverOf, NO_HOVER } from '../lib/twin-core/twinHover';
 import { useConsole } from '../store';
 
 /**

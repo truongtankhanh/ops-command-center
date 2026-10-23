@@ -20,7 +20,7 @@ import { incidentToast, type IncidentToastContext } from '../lib/incidents/atten
 import { playCriticalCue } from '../lib/incidents/criticalCue';
 import { upsertIncident } from '../lib/incidents/incidents';
 import { evidenceOfTimeline, summariseEvidence } from '../lib/telemetry/telemetryEvidence';
-import { twinCommands } from '../lib/twinCommands';
+import { twinCommands } from '../lib/twin-core/twinCommands';
 import { useConsole } from '../store';
 import { hasToast, showToast, updateToast } from '../ui/toasts';
 

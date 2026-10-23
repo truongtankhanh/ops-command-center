@@ -1,4 +1,4 @@
-import { useConsole } from '../store';
+import { useConsole } from '../../store';
 import { type TwinCapability, twinCapability } from './twinCapability';
 
 /**

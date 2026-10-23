@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import type { Mock } from 'vitest';
-import type { FitBox } from '../lib/twinCamera';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
+import type { FitBox } from '../lib/twin-core/twinCamera';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { useLevelCamera } from './useLevelCamera';

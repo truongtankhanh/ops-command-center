@@ -1,10 +1,10 @@
 import type { Zone } from '@occ/contracts';
 import { useEffect, useMemo } from 'react';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import type { MarkerPlacement } from '../lib/twinMarkers';
-import { usePinDrag } from '../lib/twinPinDrag';
-import { PIN_BELOW_TIP_PX, pinScenePosition } from '../lib/twinPin';
-import type { Frame } from '../lib/twinScene';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import type { MarkerPlacement } from '../lib/twin-core/twinMarkers';
+import { usePinDrag } from '../lib/twin-core/twinPinDrag';
+import { PIN_BELOW_TIP_PX, pinScenePosition } from '../lib/twin-core/twinPin';
+import type { Frame } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 import { Markers } from './Markers';
 import { usePicker } from './PickContext';
@@ -35,7 +35,7 @@ interface ReportPinProps {
  * Nothing is drawn with no scene, no position or a closed form. The pin's tip is the sprite's anchor, so the
  * drawing is moved down by the shadow's few pixels.
  *
- * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `lib/twinPin.ts` and `lib/twinPinDrag.ts`.
+ * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `lib/twin-core/twinPin.ts` and `lib/twin-core/twinPinDrag.ts`.
  */
 export function ReportPin({ zones, frame }: ReportPinProps) {
   const reporting = useConsole((state) => state.reporting);

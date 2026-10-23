@@ -3,7 +3,7 @@ import { render, type RenderResult } from '@testing-library/react';
 import axe from 'axe-core';
 import type { ReactElement, ReactNode } from 'react';
 import type { StoreApi } from 'zustand';
-import { forgetWebgl2Probe } from './lib/twinCapability';
+import { forgetWebgl2Probe } from './lib/twin-core/twinCapability';
 
 /** A fresh client per test, without retries, so a failing request fails the test at once. */
 export function createTestQueryClient(): QueryClient {

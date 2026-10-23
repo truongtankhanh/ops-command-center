@@ -1,8 +1,8 @@
 import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
-import { assetStates } from './assets/assets';
+import { assetStates } from '../assets/assets';
 import { assetsText, buildingEyebrow, buildingSummary, incidentsText } from './twinBuilding';
 import { buildingReadings, heatLabel, tempText } from './twinHeat';
-import type { AssetTelemetryState } from './telemetry/telemetryState';
+import type { AssetTelemetryState } from '../telemetry/telemetryState';
 
 const NOW = Date.parse('2026-10-19T08:00:00.000Z');
 

@@ -1,5 +1,5 @@
 import type { IncidentSeverity } from '@occ/contracts';
-import { mapColors, twinColors } from '../styles/tokens';
+import { mapColors, twinColors } from '../../styles/tokens';
 
 /*
  * The console's materials for a model (ADR-0020 § Model contract, "Materials by name"): each glTF material

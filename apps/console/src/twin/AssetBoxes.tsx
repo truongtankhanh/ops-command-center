@@ -1,13 +1,13 @@
 import { useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import { groupsForLooks } from '../lib/twinGroups';
-import type { HoverState } from '../lib/twinHover';
-import type { Presence } from '../lib/twinLevel';
-import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY } from '../lib/twinMaterials';
-import type { PlacedAsset } from '../lib/twinPlacement';
-import { boxTable } from '../lib/twinPicking';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import { groupsForLooks } from '../lib/twin-core/twinGroups';
+import type { HoverState } from '../lib/twin-core/twinHover';
+import type { Presence } from '../lib/twin-core/twinLevel';
+import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY } from '../lib/twin-core/twinMaterials';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
+import { boxTable } from '../lib/twin-core/twinPicking';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { applyGroups } from './applyGroups';
 import { usePicker } from './PickContext';
@@ -50,7 +50,7 @@ interface AssetBoxesProps {
  * The equipment (V2-14.6, frame 15): every asset as a neutral box of its class's footprint, standing where
  * `placeAssets` put it, as **one merged mesh** of faces and **two** merged line layers (a solid one and a dashed one
  * that is empty until a box is stale). Which boxes the level shows is `presences`' (V2-15.8), applied as groups of the
- * faces and as the outline index lists, so a focus costs one draw call per group (`lib/twinGroups.ts`) and rebuilds
+ * faces and as the outline index lists, so a focus costs one draw call per group (`lib/twin-core/twinGroups.ts`) and rebuilds
  * nothing. Models replace the boxes class by class from V2-14.7. Nothing is drawn for a site with no asset.
  *
  * - The colours are per vertex (V2-14.9): the faces' material is white and Lambert, shaded by the two lights
@@ -60,7 +60,7 @@ interface AssetBoxesProps {
  *   segments of a stale asset are in the dashed layer, all the others in the solid one (`edgeIndices`).
  * - The faces are pushed back a little (`polygonOffset`) so the outline wins on the borders instead of
  *   z-fighting with them, as on the shells.
- * - The mesh keeps the per-box ranges as `userData.ranges` (`lib/twinBoxes.ts`): the table that the looks and
+ * - The mesh keeps the per-box ranges as `userData.ranges` (`lib/twin-core/twinBoxes.ts`): the table that the looks and
  *   picking read, so neither needs a mesh per asset. The faces are registered with the picker as they are
  *   (V2-15.3), so only the boxes that are drawn can be hit, and a hit's triangle names its asset through it.
  * - The faces mesh has two materials (as they are, faded) and the geometry's **groups** say which box is drawn with

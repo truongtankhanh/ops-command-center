@@ -4,7 +4,7 @@ import {
   initialTelemetryState,
   type TelemetryState,
 } from '../lib/telemetry/telemetryState';
-import type { Binding, Motion } from '../lib/twinBindings';
+import type { Binding, Motion } from '../lib/twin-core/twinBindings';
 import type { TargetsView, TelemetryClient, TelemetryView } from './telemetryClient';
 import type { TargetSlot } from './telemetryProtocol';
 import { useTelemetryStore } from './telemetryStore';

@@ -1,6 +1,6 @@
 import { useId } from 'react';
-import { layersOf, type SceneLayerKey } from '../lib/twinLayers';
-import { levelOf } from '../lib/twinLevel';
+import { layersOf, type SceneLayerKey } from '../lib/twin-core/twinLayers';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import type { ViewChoice } from '../lib/shell/viewChoice';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';

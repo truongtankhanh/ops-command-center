@@ -1,6 +1,6 @@
 import type { Asset, Incident, Zone } from '@occ/contracts';
-import { hasFreshReading, openIncidentOf } from './assets/assets';
-import type { TelemetryState } from './telemetry/telemetryState';
+import { hasFreshReading, openIncidentOf } from '../assets/assets';
+import type { TelemetryState } from '../telemetry/telemetryState';
 import { mixInto } from './twinMaterials';
 
 /*

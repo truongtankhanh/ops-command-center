@@ -19,7 +19,7 @@ export interface DrawGroup extends Span {
   materialIndex: 0 | 1 | 2;
 }
 
-/** How a span is drawn (V2-15.8): the same words as `Presence` in `lib/twinLevel.ts`, which decides them. */
+/** How a span is drawn (V2-15.8): the same words as `Presence` in `lib/twin-core/twinLevel.ts`, which decides them. */
 export type SpanLook = 'drawn' | 'faded' | 'xray' | 'hidden';
 
 const MATERIAL_OF = { drawn: 0, faded: 1, xray: 2 } as const;

@@ -209,7 +209,7 @@ export function presenceOf(
 /**
  * What the heat overlay changes about how things are drawn at campus level (V2-17.3): the zones whose building has no
  * reading (`silent`, faded) and the asset codes that stay as they are although the rest of the equipment recedes
- * (`lifted`: an open incident of their own, or the one under the pointer). Built from `HeatScene` (`lib/twinHeat.ts`)
+ * (`lifted`: an open incident of their own, or the one under the pointer). Built from `HeatScene` (`lib/twin-core/twinHeat.ts`)
  * and the hover; it is `null` while the overlay is not shown.
  */
 export interface HeatFade {

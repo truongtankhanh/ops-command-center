@@ -1,6 +1,6 @@
 import { useAssets, useZones } from '../api/queries';
-import { crumbsOf, levelOf, type LevelTarget } from '../lib/twinLevel';
-import { TWIN_VIEW_ID } from '../lib/twinSummary';
+import { crumbsOf, levelOf, type LevelTarget } from '../lib/twin-core/twinLevel';
+import { TWIN_VIEW_ID } from '../lib/twin-core/twinSummary';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';
@@ -38,7 +38,7 @@ const focusView = (): void => document.getElementById(TWIN_VIEW_ID)?.focus();
  * `aria-current="location"`. In the 3D view `StageView` shows it **instead of the 3D / 2D switch** at building and
  * asset level, as the frames do; it renders nothing at campus level.
  *
- * - The crumbs are `crumbsOf` (`lib/twinLevel.ts`): a building or an asset the console does not hold yet is left
+ * - The crumbs are `crumbsOf` (`lib/twin-core/twinLevel.ts`): a building or an asset the console does not hold yet is left
  *   out and never shown as an id, and an asset outside any building has no middle crumb (`Campus › TR-01`).
  * - These are actions, not addresses, so they are buttons and not links (the frames draw `<a href="#">`).
  * - The back button is one step of Escape's ladder (`goUp`), so at the level of a part it closes the callout and

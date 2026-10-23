@@ -1,4 +1,4 @@
-import type { LayerVisibility } from './map/mapLayers';
+import type { LayerVisibility } from '../map/mapLayers';
 import type { Vec3 } from './twinCamera';
 import type { BoxRange } from './twinBoxes';
 import type { ShellRange } from './twinBuildings';

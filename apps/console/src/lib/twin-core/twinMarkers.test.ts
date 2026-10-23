@@ -1,5 +1,5 @@
 import type { Camera, LngLat } from '@occ/contracts';
-import { offsetM } from './map/geo';
+import { offsetM } from '../map/geo';
 import {
   atlasLayout,
   cameraMarkers,

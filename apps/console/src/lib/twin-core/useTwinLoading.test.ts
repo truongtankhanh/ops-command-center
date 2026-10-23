@@ -1,8 +1,8 @@
 import type { Asset } from '@occ/contracts';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { api } from '../api/client';
-import { queryKeys } from '../api/queries';
-import { createTestQueryClient, queryWrapper } from '../test-utils';
+import { api } from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { createTestQueryClient, queryWrapper } from '../../test-utils';
 import { useTwinModelStore } from './twinModelStore';
 import { useTwinLoading } from './useTwinLoading';
 

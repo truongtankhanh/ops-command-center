@@ -2,7 +2,7 @@ import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Box3, MathUtils, Vector3 } from 'three';
-import type { Beacon } from '../lib/twinBeacons';
+import type { Beacon } from '../lib/twin-core/twinBeacons';
 import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import {
   CAMERA_LIMITS,
@@ -25,12 +25,12 @@ import {
   positionToPose,
   unionLimits,
   type Vec3,
-} from '../lib/twinCamera';
-import { PENDING_SHOW_MS, registerTwinCommands, twinCommands } from '../lib/twinCommands';
-import { levelOf } from '../lib/twinLevel';
-import { holdDelta, padStep } from '../lib/twinPan';
-import { startAssetBoxOf, startBoxOf } from '../lib/twinLevelCamera';
-import { type Bounds, panBounds } from '../lib/twinScene';
+} from '../lib/twin-core/twinCamera';
+import { PENDING_SHOW_MS, registerTwinCommands, twinCommands } from '../lib/twin-core/twinCommands';
+import { levelOf } from '../lib/twin-core/twinLevel';
+import { holdDelta, padStep } from '../lib/twin-core/twinPan';
+import { startAssetBoxOf, startBoxOf } from '../lib/twin-core/twinLevelCamera';
+import { type Bounds, panBounds } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 import { useReportFrameDemand } from './FrameDemandContext';
 import { sheetInset, sheetInsetOpen, useSheetOffset } from './useSheetOffset';
@@ -140,7 +140,7 @@ interface RigProps {
  *   reached this canvas, so there the request waits up to `PENDING_SHOW_MS` for the beacon, and `home` cancels it.
  * - **Show asset** (V2-16.6, `showAsset`) frames an asset without isolating it: the asset fit's view (its box's middle, the
  *   camera's own yaw and tilt) flown through the level's limits, so from at least 60 m. A request made before this rig
- *   existed (the switch from 2D) runs when it registers (`lib/twinCommands.ts`). It selects nothing and moves nothing
+ *   existed (the switch from 2D) runs when it registers (`lib/twin-core/twinCommands.ts`). It selects nothing and moves nothing
  *   by itself.
  * - **The keys** (V2-18.3) reach the camera through `rotateBy`, `tiltBy`, `panBy` and `zoomBy`: relative, smoothed moves that
  *   take the camera back from a fly-to and inherit the limits above (`unverified`: the feel of the steps, by eye).

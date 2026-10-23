@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
-import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from '../lib/twinCamera';
-import { twinCommands } from '../lib/twinCommands';
-import { resetView } from '../lib/twinFlight';
+import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from '../lib/twin-core/twinCamera';
+import { twinCommands } from '../lib/twin-core/twinCommands';
+import { resetView } from '../lib/twin-core/twinFlight';
 import { Button } from '../ui/Button';
 import { useConsole } from '../store';
 import { Hand, House, Minus, Orbit, Plus, RotateCcw, RotateCw } from '../ui/icons';

@@ -7,7 +7,7 @@ import {
   MARKER_MARGIN_PX,
   type SpriteSize,
   STEM_PX,
-} from '../lib/twinMarkers';
+} from '../lib/twin-core/twinMarkers';
 import { mapColors } from '../styles/tokens';
 
 /** The marker bitmaps of the stage in one texture, and where each one is in it. */

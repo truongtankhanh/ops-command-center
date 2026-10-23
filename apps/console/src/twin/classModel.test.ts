@@ -15,8 +15,14 @@ import {
   PerspectiveCamera,
   Vector3,
 } from 'three';
-import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twinCamera';
-import { EDGE_DASH_M, EDGE_GAP_M, GHOST_OPACITY, mixInto, tintFor } from '../lib/twinMaterials';
+import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twin-core/twinCamera';
+import {
+  EDGE_DASH_M,
+  EDGE_GAP_M,
+  GHOST_OPACITY,
+  mixInto,
+  tintFor,
+} from '../lib/twin-core/twinMaterials';
 import { mapColors, twinColors } from '../styles/tokens';
 import {
   buildTemplate,

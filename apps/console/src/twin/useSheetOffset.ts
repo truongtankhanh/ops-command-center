@@ -1,7 +1,7 @@
 import { useThree } from '@react-three/fiber';
 import { useEffect } from 'react';
 import { PerspectiveCamera } from 'three';
-import { viewOffset } from '../lib/twinCamera';
+import { viewOffset } from '../lib/twin-core/twinCamera';
 
 /**
  * How much of the stage's right side the open sheet covers, in px: the stage's `--sheet-inset`, which

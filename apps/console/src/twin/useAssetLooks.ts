@@ -10,7 +10,7 @@ import {
   type Mesh,
   type Object3D,
 } from 'three';
-import { type BoxRange, buildBoxGeometry, edgeIndices } from '../lib/twinBoxes';
+import { type BoxRange, buildBoxGeometry, edgeIndices } from '../lib/twin-core/twinBoxes';
 import {
   assetHover,
   type HoverState,
@@ -18,10 +18,10 @@ import {
   NO_SELECTION,
   partsPicked,
   type SelectedPart,
-} from '../lib/twinHover';
-import type { Presence } from '../lib/twinLevel';
-import { type AssetLook, edgeColour, faceColour, lookOf } from '../lib/twinMaterials';
-import type { PlacedAsset } from '../lib/twinPlacement';
+} from '../lib/twin-core/twinHover';
+import type { Presence } from '../lib/twin-core/twinLevel';
+import { type AssetLook, edgeColour, faceColour, lookOf } from '../lib/twin-core/twinMaterials';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { twinColors } from '../styles/tokens';
 import { type MaterialTable, OUTLINE_NAME } from './classModel';
@@ -29,7 +29,7 @@ import { filled } from './vertexColours';
 
 /*
  * How the equipment looks, painted without React (V2-14.9): stale grey with dashed edges, the severity tint and
- * edge of an open incident (frames 04, 05 and 15). `lookOf` (`lib/twinMaterials.ts`) decides; the hooks here
+ * edge of an open incident (frames 04, 05 and 15). `lookOf` (`lib/twin-core/twinMaterials.ts`) decides; the hooks here
  * only paint what it says. Each is one `useFrame` that reads `feed.read().flags(code)` and acts only for an
  * asset whose flags **object** changed (the feed keeps one until a field changes) and whose look changed with
  * it, so a quiet scene does nothing, and a flags change that does not move the look (the rule's key arriving)
@@ -39,9 +39,9 @@ import { filled } from './vertexColours';
  * it alone and its asset keeps its own look. An inspected asset keeps its look (frames 03, 08, 15, 17); since
  * V2-15.10 the models are also given the **selected part** (`useSelectedPartRef`), which takes the selected look
  * (`lookOf`'s `selected`: the accent face and the 1 px accent outline, as the hover's) and keeps it after the
- * pointer leaves, until it is deselected. `partsPicked` (`lib/twinHover.ts`) says which nodes of a model that is.
+ * pointer leaves, until it is deselected. `partsPicked` (`lib/twin-core/twinHover.ts`) says which nodes of a model that is.
  *
- * Since V2-15.7 both also take **presences** (V2-15.8: `lib/twinLevel.ts`'s `presenceOf` for every asset, one map per
+ * Since V2-15.7 both also take **presences** (V2-15.8: `lib/twin-core/twinLevel.ts`'s `presenceOf` for every asset, one map per
  * change of focus): an asset that is `faded` takes the ghost look. That is a state of the look (`ghost`), not another
  * colour, so a faded fault is still faintly tinted. A faded model has its outlines hidden and a faded or hidden box
  * draws none (`edgeIndices` with the set of the boxes drawn): context is a faint volume, and the stale dash and the

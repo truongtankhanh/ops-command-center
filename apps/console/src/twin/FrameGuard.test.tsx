@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { FALLBACK_AFTER_MS } from '../lib/twinPerf';
+import { FALLBACK_AFTER_MS } from '../lib/twin-core/twinPerf';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { FrameGuard } from './FrameGuard';

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { type Isolation, isolationOf } from '../lib/twinLevel';
+import { type Isolation, isolationOf } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 
 /**

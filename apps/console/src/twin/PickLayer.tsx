@@ -1,10 +1,10 @@
 import type { Camera } from '@occ/contracts';
 import { useFrame, useThree } from '@react-three/fiber';
 import { type ReactNode, useEffect, useMemo } from 'react';
-import { cameraMarkers } from '../lib/twinMarkers';
-import { createPendingPick, publishPick, registerPicker } from '../lib/twinPicker';
-import { createPickStats, scopeOf } from '../lib/twinPicking';
-import type { Frame } from '../lib/twinScene';
+import { cameraMarkers } from '../lib/twin-core/twinMarkers';
+import { createPendingPick, publishPick, registerPicker } from '../lib/twin-core/twinPicker';
+import { createPickStats, scopeOf } from '../lib/twin-core/twinPicking';
+import type { Frame } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 import { createPicker } from './picker';
 import { PickContext } from './PickContext';
@@ -34,7 +34,7 @@ const TIMED = import.meta.env.MODE === 'development';
  * Disposal of what it holds is the owners': the picker keeps only references and bounds trees, which go with
  * their geometry (V2-19.6).
  *
- * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `twin/picker.ts` and `lib/twinPicking.ts`.
+ * Not unit-tested: it is R3F glue, and jsdom has no WebGL. Its logic is `twin/picker.ts` and `lib/twin-core/twinPicking.ts`.
  *
  * Frame demand: one-shot. A pick request records its point and asks for one frame; the ray is cast in that frame
  *   and nothing keeps it asking.

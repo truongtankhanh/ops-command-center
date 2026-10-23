@@ -3,7 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { initialTelemetryState } from '../lib/telemetry/telemetryState';
-import { heatColor, heatT } from '../lib/twinHeat';
+import { heatColor, heatT } from '../lib/twin-core/twinHeat';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { twinColors } from '../styles/tokens';

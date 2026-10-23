@@ -1,5 +1,5 @@
 import type { Camera } from '@occ/contracts';
-import { imageIdOf } from './map/mapImages';
+import { imageIdOf } from '../map/mapImages';
 import type { Frame } from './twinScene';
 
 /*

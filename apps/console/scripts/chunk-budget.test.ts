@@ -1,4 +1,4 @@
-import { HUD_LABEL, HUD_ROWS } from '../src/lib/twinHud.ts';
+import { HUD_LABEL, HUD_ROWS } from '../src/lib/twin-core/twinHud.ts';
 import {
   BUDGET_BYTES,
   DEBUG_MARKERS,

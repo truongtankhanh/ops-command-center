@@ -1,6 +1,6 @@
-import { INDOOR_TEMPERATURE } from '../lib/heatMeasures';
-import { HEAT_DOMAIN } from '../lib/twinHeat';
-import { levelOf, showsHeat } from '../lib/twinLevel';
+import { INDOOR_TEMPERATURE } from '../lib/twin-core/heatMeasures';
+import { HEAT_DOMAIN } from '../lib/twin-core/twinHeat';
+import { levelOf, showsHeat } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 import styles from './HeatLegend.module.css';
 

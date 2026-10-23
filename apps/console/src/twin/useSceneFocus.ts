@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { focusOf, type SceneFocus } from '../lib/twinLevel';
+import { focusOf, type SceneFocus } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 
 /**
  * What the scene is looking at (V2-15.8): the building in focus and, at asset and part level, the isolated asset, or
- * `null` at campus level. It is what `presenceOf` (`lib/twinLevel.ts`) turns into how every building, box, model and
+ * `null` at campus level. It is what `presenceOf` (`lib/twin-core/twinLevel.ts`) turns into how every building, box, model and
  * marker is drawn. Read from the store as three values and memoised on them, so the object changes only when the focused
  * building, the selected asset or the `Inside` layer does: a hover renders nothing here, and a part being selected is no
  * change (the asset stays isolated at part level). The layer (V2-15.9) is the building level's, and `focusOf` ignores it

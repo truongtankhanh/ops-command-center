@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { twinLoadSteps } from '../lib/twinLoading';
+import { twinLoadSteps } from '../lib/twin-core/twinLoading';
 import { expectNoAxeViolations } from '../test-utils';
 import { TwinLoading } from './TwinLoading';
 

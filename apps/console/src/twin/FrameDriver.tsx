@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import { type ReactNode, useCallback, useRef } from 'react';
-import { createFrameDemand, type FrameReport, needsFrame } from '../lib/twinPerf';
+import { createFrameDemand, type FrameReport, needsFrame } from '../lib/twin-core/twinPerf';
 import { FrameDemandContext } from './FrameDemandContext';
 
 interface FrameDriverProps {
@@ -10,7 +10,7 @@ interface FrameDriverProps {
 
 /**
  * Keeps the on-demand canvas drawing for as long as one of our loops asks (V2-19.2, ADR-0020 § Scene, brief § Worker
- * and render loop: "the loop runs while something moves"). It makes the `FrameDemand` (`lib/twinPerf.ts`), provides a reporter for it
+ * and render loop: "the loop runs while something moves"). It makes the `FrameDemand` (`lib/twin-core/twinPerf.ts`), provides a reporter for it
  * to its children, and at the end of each frame asks R3F for the next one when `needsFrame` says so; a hidden tab asks
  * for none. It draws nothing.
  *

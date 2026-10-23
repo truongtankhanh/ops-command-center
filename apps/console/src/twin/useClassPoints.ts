@@ -2,7 +2,7 @@ import type { AssetDetail, TelemetryPoint } from '@occ/contracts';
 import { useQueries, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { assetQueryOptions } from '../api/queries';
-import type { ModelClass } from '../lib/twinLoadQueue';
+import type { ModelClass } from '../lib/twin-core/twinLoadQueue';
 
 /** A class's points by class code: what `bindingsFromNodes` needs to check a model's `extras` against. */
 export type ClassPoints = Readonly<Record<string, readonly TelemetryPoint[]>>;

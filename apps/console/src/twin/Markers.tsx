@@ -7,8 +7,8 @@ import {
   Vector2,
 } from 'three';
 import { PULSE_OPACITY_FROM, PULSE_SCALE_FROM, PULSE_SCALE_TO } from '../lib/map/mapPulse';
-import { GROUND_LAYERS } from '../lib/twinGround';
-import { type MarkerPlacement, spriteInstances } from '../lib/twinMarkers';
+import { GROUND_LAYERS } from '../lib/twin-core/twinGround';
+import { type MarkerPlacement, spriteInstances } from '../lib/twin-core/twinMarkers';
 import { mapMotion } from '../styles/tokens';
 import { useMarkerScale } from './markerScale';
 import type { SpriteAtlas } from './useMarkerAtlas';
@@ -121,7 +121,7 @@ interface MarkersProps {
  * - **Bigger on the video wall** (V2-21.6): every size and offset is multiplied by the marker scale the canvas provides
  *   (`markerScale.ts`), `1` outside a wall. It is a uniform, so the bitmaps and the buffers are the same at any scale.
  * - Nothing here is pickable; hover and click are V2-15.4's, which hit-tests in screen space from the same
- *   pixel rules (`lib/twinMarkers.ts`).
+ *   pixel rules (`lib/twin-core/twinMarkers.ts`).
  * - `frustumCulled` is off: the base quad's bounds say nothing about where the instances are.
  */
 export function Markers({

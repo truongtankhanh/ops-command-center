@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { FitBox } from '../lib/twinCamera';
-import { twinCommands } from '../lib/twinCommands';
-import { levelCameraStep, levelKeyOf } from '../lib/twinLevelCamera';
-import { levelOf } from '../lib/twinLevel';
+import type { FitBox } from '../lib/twin-core/twinCamera';
+import { twinCommands } from '../lib/twin-core/twinCommands';
+import { levelCameraStep, levelKeyOf } from '../lib/twin-core/twinLevelCamera';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 
 /**

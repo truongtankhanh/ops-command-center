@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
 import type { Mock } from 'vitest';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
 import { useConsole } from '../store';
 import { expectNoAxeViolations, resetStore } from '../test-utils';
 import { TwinControls } from './TwinControls';

@@ -1,6 +1,6 @@
 import { Group } from 'three';
 import type { MockInstance } from 'vitest';
-import type { ClassProgress, ModelClass } from '../lib/twinLoadQueue';
+import type { ClassProgress, ModelClass } from '../lib/twin-core/twinLoadQueue';
 import { type ClassTemplate, createMaterialTable } from './classModel';
 import type { BytesProgress } from './loadGltf';
 import {

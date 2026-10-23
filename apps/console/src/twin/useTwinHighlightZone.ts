@@ -1,5 +1,5 @@
 import { useIncidents } from '../api/queries';
-import { highlightZoneOf } from '../lib/twinHighlight';
+import { highlightZoneOf } from '../lib/twin-core/twinHighlight';
 import { useConsole } from '../store';
 import type { TwinScene } from './useTwinScene';
 

@@ -2,12 +2,12 @@ import type { Zone } from '@occ/contracts';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { placePinAt } from '../lib/map/reportPin';
-import { buildingFocusOf } from '../lib/twinLevel';
-import { lastPick, onPick, pinUnderPoint, requestPick } from '../lib/twinPicker';
-import { setPinDrag } from '../lib/twinPinDrag';
-import type { PlacedAsset } from '../lib/twinPlacement';
-import { attachPointer } from '../lib/twinPointer';
-import type { Frame } from '../lib/twinScene';
+import { buildingFocusOf } from '../lib/twin-core/twinLevel';
+import { lastPick, onPick, pinUnderPoint, requestPick } from '../lib/twin-core/twinPicker';
+import { setPinDrag } from '../lib/twin-core/twinPinDrag';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
+import { attachPointer } from '../lib/twin-core/twinPointer';
+import type { Frame } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 
 interface PointerProps {
@@ -20,9 +20,9 @@ interface PointerProps {
 
 /**
  * The pointer of the 3D canvas (V2-15.4): hover, click and drag on `gl.domElement`, through the pick seam
- * (`lib/twinPicker.ts`, answered by `PickLayer`) and the store's actions. A click on a beacon selects its incident
+ * (`lib/twin-core/twinPicker.ts`, answered by `PickLayer`) and the store's actions. A click on a beacon selects its incident
  * (V2-16.4); while the report's location is picked a click places its pin and a drag of the pin moves it (V2-16.7). It renders nothing; the logic is
- * `lib/twinPointer.ts`, which has no `three` and is tested with synthetic events, and this is only the wiring:
+ * `lib/twin-core/twinPointer.ts`, which has no `three` and is tested with synthetic events, and this is only the wiring:
  * the canvas element, the store, and the scene's lookups (an asset's building; a point's longitude and latitude).
  * The cursor is refreshed when `picking` changes, which no pointer event announces (the report form opening under a
  * still pointer).

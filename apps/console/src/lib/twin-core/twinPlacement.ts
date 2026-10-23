@@ -1,7 +1,7 @@
 import type { Asset, AssetFootprint, LngLat, Zone } from '@occ/contracts';
-import { isInRing } from './map/geo';
-import { fanOutAssets } from './map/mapFeatures';
-import { footprintRing } from './map/sitePlan';
+import { isInRing } from '../map/geo';
+import { fanOutAssets } from '../map/mapFeatures';
+import { footprintRing } from '../map/sitePlan';
 import { type Frame, heightOf } from './twinScene';
 
 /*

@@ -15,9 +15,9 @@ import {
   type PickRef,
   type PickScope,
   type PickTable,
-} from '../lib/twinPicking';
-import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twinBeaconSprites';
-import { groupsForLooks, type SpanLook } from '../lib/twinGroups';
+} from '../lib/twin-core/twinPicking';
+import { type BeaconTarget, DISC_CENTRE_PX } from '../lib/twin-core/twinBeaconSprites';
+import { groupsForLooks, type SpanLook } from '../lib/twin-core/twinGroups';
 import { applyGroups } from './applyGroups';
 import { createPicker, type PickView } from './picker';
 

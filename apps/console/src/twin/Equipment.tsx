@@ -1,11 +1,11 @@
 import { useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useMemo } from 'react';
-import type { Binding } from '../lib/twinBindings';
-import type { HeatScene } from '../lib/twinHeat';
-import type { LeaderStart } from '../lib/twinLeader';
-import type { ModelClass } from '../lib/twinLoadQueue';
-import { type HeatFade, presenceMap } from '../lib/twinLevel';
-import type { PlacedAsset } from '../lib/twinPlacement';
+import type { Binding } from '../lib/twin-core/twinBindings';
+import type { HeatScene } from '../lib/twin-core/twinHeat';
+import type { LeaderStart } from '../lib/twin-core/twinLeader';
+import type { ModelClass } from '../lib/twin-core/twinLoadQueue';
+import { type HeatFade, presenceMap } from '../lib/twin-core/twinLevel';
+import type { PlacedAsset } from '../lib/twin-core/twinPlacement';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { useConsole } from '../store';
 import { AssetBoxes } from './AssetBoxes';
@@ -46,7 +46,7 @@ interface EquipmentProps {
  *
  * It is one component on purpose: the swap from boxes to a model happens in the render in which the class
  * becomes ready, so there is never a frame with both, or with neither. Which assets a level draws, and how, is
- * `presenceOf`'s (`lib/twinLevel.ts`, V2-15.8): campus level draws the `outdoor` and `roof` assets, a building in
+ * `presenceOf`'s (`lib/twin-core/twinLevel.ts`, V2-15.8): campus level draws the `outdoor` and `roof` assets, a building in
  * focus adds its `inside` ones, and the equipment of the other buildings is faded.
  *
  * It makes the model instances and gives the same objects to `AssetModel` (which places them), to

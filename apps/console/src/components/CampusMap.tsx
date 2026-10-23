@@ -46,7 +46,7 @@ import { startPulse } from '../lib/map/mapPulse';
 import { placePinAt } from '../lib/map/reportPin';
 import { siteBounds } from '../lib/map/sitePlan';
 import { serverNow } from '../lib/telemetry/telemetryFreshness';
-import { buildingFocusOf } from '../lib/twinLevel';
+import { buildingFocusOf } from '../lib/twin-core/twinLevel';
 import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
 import { imageIdOf, MARKER_BOX, renderMarkerImages } from '../lib/map/mapImages';
-import { packCells } from '../lib/twinAtlas';
+import { packCells } from '../lib/twin-core/twinAtlas';
 import {
   type CellSpec,
   DISC_CENTRE_PX,
@@ -11,8 +11,8 @@ import {
   RING_GAP_PX,
   RING_STROKE_PX,
   STEM_WIDTH_PX,
-} from '../lib/twinBeaconSprites';
-import type { AtlasCell, AtlasLayout, SpriteSize } from '../lib/twinMarkers';
+} from '../lib/twin-core/twinBeaconSprites';
+import type { AtlasCell, AtlasLayout, SpriteSize } from '../lib/twin-core/twinMarkers';
 import { mapColors } from '../styles/tokens';
 import type { SpriteAtlas } from './useMarkerAtlas';
 

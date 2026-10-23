@@ -89,7 +89,7 @@ interface Faces {
  *
  * `ground` and `road` have the same hex as `mapColors.site.boundaryFill` and `road` because the
  * mockups drew them alike; they are not linked, so the 2D map and the 3D scene can diverge later.
- * The model contract's material names (`lib/twinMaterials.ts`, V2-14.7) are `Part` = `idle`, `Steel`, `Concrete`,
+ * The model contract's material names (`lib/twin-core/twinMaterials.ts`, V2-14.7) are `Part` = `idle`, `Steel`, `Concrete`,
  * `Rail`, `Blade`, `Hub`, `Screen` and `Xray` (`idle` at `xrayOpacity`).
  */
 export const twinColors = {

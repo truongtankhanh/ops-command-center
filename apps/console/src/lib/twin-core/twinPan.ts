@@ -3,8 +3,8 @@ import type { SelectionTarget } from './twinSelection';
 /*
  * What the 3D stage's pad means (V3-29, brief V3 § "Pan tool and the 8-direction pad"): the eight screen directions, how
  * far one press moves, how fast a held press moves and what the centre button looks at. Pure, with no React, no `three`
- * and no store, like `lib/twinKeys.ts`, so the rule tests without WebGL; moving the camera is `twin/Rig.tsx`, reached
- * through `lib/twinCommands.ts`.
+ * and no store, like `lib/twin-core/twinKeys.ts`, so the rule tests without WebGL; moving the camera is `twin/Rig.tsx`, reached
+ * through `lib/twin-core/twinCommands.ts`.
  *
  * Directions are **screen** directions along the ground: "up" is away from the viewer whatever the camera's azimuth,
  * which is what `Shift` and the arrows already do (`panBy`: `dx` to the camera's right, `dy` forward, each a fraction of

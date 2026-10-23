@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { flyToSelection } from '../lib/twinFlight';
-import { useSelectionTarget } from '../lib/useSelectionTarget';
+import { flyToSelection } from '../lib/twin-core/twinFlight';
+import { useSelectionTarget } from '../lib/twin-core/useSelectionTarget';
 import { useShortcut } from '../lib/shell/useShortcut';
-import { useTwinCapability } from '../lib/useTwinCapability';
+import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
 import { useConsole } from '../store';
 
 /** `V`: the other view. A function of the store at the moment of the press, so its identity never changes. */
@@ -33,7 +33,7 @@ function togglePanTool() {
  * 2D map ("Pick on map"), so leaving 3D strands nothing.
  *
  * A component of its own and long lived, like `TelemetryWatchSet` (it reads the same queries, so it adds no request):
- * `App` mounts it for the whole session, in the main chunk; the camera is reached through `lib/twinFlight.ts`, never
+ * `App` mounts it for the whole session, in the main chunk; the camera is reached through `lib/twin-core/twinFlight.ts`, never
  * the canvas.
  */
 export function TwinShortcuts() {

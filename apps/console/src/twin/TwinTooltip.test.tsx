@@ -1,7 +1,7 @@
 import type { Asset, Camera, Incident, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, fireEvent, screen } from '@testing-library/react';
 import { queryKeys } from '../api/queries';
-import { publishPick } from '../lib/twinPicker';
+import { publishPick } from '../lib/twin-core/twinPicker';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

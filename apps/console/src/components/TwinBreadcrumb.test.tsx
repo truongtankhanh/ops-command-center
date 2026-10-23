@@ -2,7 +2,7 @@ import type { Asset, Zone } from '@occ/contracts';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
-import { TWIN_VIEW_ID } from '../lib/twinSummary';
+import { TWIN_VIEW_ID } from '../lib/twin-core/twinSummary';
 import { useConsole } from '../store';
 import {
   createTestQueryClient,

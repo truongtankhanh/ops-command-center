@@ -8,8 +8,8 @@ import {
   type GroundLayerName,
   type Mesh,
   type TaggedMesh,
-} from '../lib/twinGround';
-import type { Frame } from '../lib/twinScene';
+} from '../lib/twin-core/twinGround';
+import type { Frame } from '../lib/twin-core/twinScene';
 import { mapColors, twinColors } from '../styles/tokens';
 
 /** One colour per layer; the zone fills carry theirs per vertex instead. */
@@ -104,7 +104,7 @@ interface GroundProps {
  * parking rows and the outlines, in the 2D map's colours and order. Nine layers are nine draw calls.
  *
  * - The layers are coplanar at `y = 0`, ordered by `renderOrder` and writing no depth, so there is no
- *   z-fighting and whatever stands on the ground (V2-12.7) is drawn over it (`lib/twinGround.ts`).
+ *   z-fighting and whatever stands on the ground (V2-12.7) is drawn over it (`lib/twin-core/twinGround.ts`).
  * - Unlit basic materials: the ground reads as its token, whatever the lights do.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does
  *   not dispose a geometry it was handed as a prop.

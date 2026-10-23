@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
-import { TWIN_UNAVAILABLE_COPY } from '../lib/twinCapability';
+import { TWIN_UNAVAILABLE_COPY } from '../lib/twin-core/twinCapability';
 import { useConsole } from '../store';
 import {
   createTestQueryClient,

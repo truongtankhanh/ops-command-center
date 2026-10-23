@@ -15,9 +15,9 @@ import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
-import type { NodeInfo } from '../lib/twinBindings';
-import type * as TwinFocus from '../lib/twinFocus';
-import { focusSelection } from '../lib/twinFocus';
+import type { NodeInfo } from '../lib/twin-core/twinBindings';
+import type * as TwinFocus from '../lib/twin-core/twinFocus';
+import { focusSelection } from '../lib/twin-core/twinFocus';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -29,7 +29,7 @@ vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn
 
 // "Focus" asks the canvas to fly; there is none here, so only the request is observed. The rule that shows the
 // button (`focusAvailable`) stays real.
-vi.mock('../lib/twinFocus', async (importOriginal) => ({
+vi.mock('../lib/twin-core/twinFocus', async (importOriginal) => ({
   ...(await importOriginal<typeof TwinFocus>()),
   focusSelection: vi.fn(),
 }));

@@ -1,7 +1,12 @@
 import { type PointerEvent, useCallback, useEffect, useRef } from 'react';
-import { twinCommands } from '../lib/twinCommands';
-import { centreTargetOf, HOLD_START_MS, PAN_DIRECTIONS, type PanDirection } from '../lib/twinPan';
-import { useSelectionTarget } from '../lib/useSelectionTarget';
+import { twinCommands } from '../lib/twin-core/twinCommands';
+import {
+  centreTargetOf,
+  HOLD_START_MS,
+  PAN_DIRECTIONS,
+  type PanDirection,
+} from '../lib/twin-core/twinPan';
+import { useSelectionTarget } from '../lib/twin-core/useSelectionTarget';
 import { ArrowUp, Crosshair } from '../ui/icons';
 import { Icon } from '../ui/Icon';
 import styles from './PanPad.module.css';

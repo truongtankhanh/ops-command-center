@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { FrameReport } from '../lib/twinPerf';
+import type { FrameReport } from '../lib/twin-core/twinPerf';
 
 /**
  * The reporter `FrameDriver` makes (V2-19.2), for the loops that keep the on-demand canvas drawing: `useBoundParts`,

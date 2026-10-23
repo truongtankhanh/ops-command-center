@@ -1,12 +1,12 @@
 import { type KeyboardEvent, type RefObject, useEffect, useMemo, useRef } from 'react';
 import { useAsset, useModelParts } from '../api/queries';
 import { readingIsStale } from '../lib/assets/assetInspector';
-import { partRows } from '../lib/modelParts';
+import { partRows } from '../lib/twin-core/modelParts';
 import { ageMs, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { calloutOf } from '../lib/twinCallout';
-import type { LeaderStart } from '../lib/twinLeader';
-import { levelOf } from '../lib/twinLevel';
-import { TWIN_VIEW_ID } from '../lib/twinSummary';
+import { calloutOf } from '../lib/twin-core/twinCallout';
+import type { LeaderStart } from '../lib/twin-core/twinLeader';
+import { levelOf } from '../lib/twin-core/twinLevel';
+import { TWIN_VIEW_ID } from '../lib/twin-core/twinSummary';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
@@ -18,7 +18,7 @@ import styles from './TwinCallout.module.css';
  * `.tw-callout`): what the part is, what it reads, and whether that is live. Shown at **part level** only; the
  * inner component is the one that reads the asset, so a stage with no part selected subscribes to nothing.
  *
- * - **Its content** is `calloutOf` (`lib/twinCallout.ts`), built from what the inspector already holds for the same
+ * - **Its content** is `calloutOf` (`lib/twin-core/twinCallout.ts`), built from what the inspector already holds for the same
  *   asset (`useAsset`, `useModelParts`, the telemetry store, the server clock; shared queries, no request of its own):
  *   the eyebrow "CT-01 · FanBlade", the part's label, its bound reading large with its unit, "Live" or its age when it
  *   is not live, and "Limit 85 °C" when a rule watches it. A boolean or an enum point reads in words ("Closed"). With

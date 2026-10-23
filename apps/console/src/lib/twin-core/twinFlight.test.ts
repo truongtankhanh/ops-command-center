@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
-import { useConsole } from '../store';
-import { resetStore, stubTwinAvailable, unstubTwin } from '../test-utils';
+import { useConsole } from '../../store';
+import { resetStore, stubTwinAvailable, unstubTwin } from '../../test-utils';
 import type { FitBox } from './twinCamera';
 import { registerTwinCommands, type TwinCommands } from './twinCommands';
 import { type FocusResolver, registerFocusResolver } from './twinFocus';

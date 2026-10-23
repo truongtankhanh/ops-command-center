@@ -2,8 +2,13 @@ import { useMemo, useState } from 'react';
 import type { Incident } from '@occ/contracts';
 import { useAssets, useIncidents } from '../api/queries';
 import type { TelemetryState } from '../lib/telemetry/telemetryState';
-import { buildingReadings, type HeatScene, heatSceneOf, showsHeat } from '../lib/twinHeat';
-import { levelOf } from '../lib/twinLevel';
+import {
+  buildingReadings,
+  type HeatScene,
+  heatSceneOf,
+  showsHeat,
+} from '../lib/twin-core/twinHeat';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { twinColors } from '../styles/tokens';

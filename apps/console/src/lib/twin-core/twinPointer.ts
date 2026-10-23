@@ -49,12 +49,12 @@ export interface PointerActions {
 }
 
 export interface PointerDeps {
-  /** The pick seam (`lib/twinPicker.ts`). */
+  /** The pick seam (`lib/twin-core/twinPicker.ts`). */
   requestPick(point: ScreenPoint, done?: PickDone): void;
   onPick(listener: (ref: PickRef | null) => void): () => void;
   lastPick(): PickRef | null;
   /**
-   * Whether the report's pin is under `point` on the screen right now (`lib/twinPicker.ts` `pinUnderPoint`); it must
+   * Whether the report's pin is under `point` on the screen right now (`lib/twin-core/twinPicker.ts` `pinUnderPoint`); it must
    * answer at once, because the press has to decide before the camera's controls hear it. `false` unless the pin is
    * drawn and a location is picked.
    */

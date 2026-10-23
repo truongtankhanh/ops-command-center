@@ -1,5 +1,5 @@
 import { INCIDENT_SEVERITIES, type IncidentSeverity } from '@occ/contracts';
-import { mapColors, twinColors } from '../styles/tokens';
+import { mapColors, twinColors } from '../../styles/tokens';
 import {
   type AssetLook,
   edgeColour,

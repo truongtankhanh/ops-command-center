@@ -1,6 +1,6 @@
 import type { LngLat, SitePlan, Zone } from '@occ/contracts';
-import { offsetM } from './map/geo';
-import { ROAD_WIDTH_M } from './map/sitePlan';
+import { offsetM } from '../map/geo';
+import { ROAD_WIDTH_M } from '../map/sitePlan';
 import {
   buildGround,
   fillTriangles,

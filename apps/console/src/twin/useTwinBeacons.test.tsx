@@ -1,7 +1,7 @@
 import type { Incident } from '@occ/contracts';
 import { renderHook } from '@testing-library/react';
 import { queryKeys } from '../api/queries';
-import { makeFrame } from '../lib/twinScene';
+import { makeFrame } from '../lib/twin-core/twinScene';
 import { useConsole } from '../store';
 import { createTestQueryClient, queryWrapper, resetStore } from '../test-utils';
 import { useTwinBeacons } from './useTwinBeacons';

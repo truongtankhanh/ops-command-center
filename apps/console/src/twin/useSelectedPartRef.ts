@@ -1,6 +1,6 @@
 import { useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useRef } from 'react';
-import { NO_SELECTION, type SelectedPart, selectionOf } from '../lib/twinHover';
+import { NO_SELECTION, type SelectedPart, selectionOf } from '../lib/twin-core/twinHover';
 import { useConsole } from '../store';
 
 /**

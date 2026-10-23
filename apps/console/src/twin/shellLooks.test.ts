@@ -1,5 +1,5 @@
 import { type BufferAttribute, Color } from 'three';
-import type { ShellRange } from '../lib/twinBuildings';
+import type { ShellRange } from '../lib/twin-core/twinBuildings';
 import { mapColors, twinColors } from '../styles/tokens';
 import { createShellColours, paintHeat, paintShell, SHELL_HOVER_COLOUR } from './shellLooks';
 

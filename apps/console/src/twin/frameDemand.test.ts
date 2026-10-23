@@ -1,6 +1,6 @@
 /*
  * Three rules about who asks the on-demand canvas for a frame (V2-19.2, ADR-0020 § Scene), stated as scans of the source
- * so that a later change cannot break them without a test saying which. `lib/twinPerf.test.ts` holds the table of
+ * so that a later change cannot break them without a test saying which. `lib/twin-core/twinPerf.test.ts` holds the table of
  * reasons (`needsFrame`) and `useBoundParts.test.ts` and `realtime/twinFeed.test.ts` the behaviour; this holds the shape:
  *
  * 1. Every file of the 3D code that calls `useFrame` or `invalidate` says, in a `Frame demand:` paragraph of its comments,

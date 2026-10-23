@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react';
  * The report pin while it is being dragged in the 3D view (V2-16.7, ADR-0020 "Settled in V2-16.7"): the place under
  * the pointer, in scene metres, east and north. It is a **preview**, not a location: the console store keeps the real
  * `reportPosition`, which changes only when the pin is dropped inside a zone. Plain module state like
- * `lib/twinPicker.ts`, because only the pin reads it and it changes on every pointer move, which must re-render the
+ * `lib/twin-core/twinPicker.ts`, because only the pin reads it and it changes on every pointer move, which must re-render the
  * pin alone. The pin's height is not here: it is derived from the place by the same rule as at rest (`pinScenePosition`).
  */
 

@@ -20,8 +20,8 @@ import {
   Vector3,
 } from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import type { NodeInfo } from '../lib/twinBindings';
-import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twinCamera';
+import type { NodeInfo } from '../lib/twin-core/twinBindings';
+import { HOME_FOV_DEG, LOD_HYSTERESIS, lodDistance } from '../lib/twin-core/twinCamera';
 import {
   type AssetLook,
   EDGE_DASH_M,
@@ -31,7 +31,7 @@ import {
   GHOST_OPACITY,
   type MaterialName,
   materialSpec,
-} from '../lib/twinMaterials';
+} from '../lib/twin-core/twinMaterials';
 
 /*
  * A loaded class model made ready for the scene (V2-14.7, ADR-0020 § Model contract): the vendor's

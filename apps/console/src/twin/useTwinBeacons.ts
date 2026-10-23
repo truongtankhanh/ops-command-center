@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Asset } from '@occ/contracts';
 import { useAssets, useIncidents } from '../api/queries';
-import { type Beacon, beaconsOf } from '../lib/twinBeacons';
+import { type Beacon, beaconsOf } from '../lib/twin-core/twinBeacons';
 import { useConsole } from '../store';
 import type { TwinScene } from './useTwinScene';
 

@@ -108,7 +108,7 @@ their author, checked in CI, and served by nginx as immutable files.
     first-useful-frame, idle and memory budgets were not measured on the reference hardware:** V2-19.7 was closed on
     2026-10-21 without a run, so they remain targets, and the HUD's "Frame (p95)" is still the interval between frames
     (about 16.7 ms at 60 Hz), which the 14 ms target cannot be read from. The release can be undone by restoring the
-    gate in `lib/twinCapability.ts`; no data or contract changed. The blocks from "Settled in V2-15.1" onward are
+    gate in `lib/twin-core/twinCapability.ts`; no data or contract changed. The blocks from "Settled in V2-15.1" onward are
     confirmed with this release.
 - **Scene.**
   - Local coordinates in metres, east-north-up from `SitePlan.center` (ADR-0017), Y up. A campus fits an
@@ -184,7 +184,7 @@ their author, checked in CI, and served by nginx as immutable files.
       keeps an open incident and an open report form. Its help word is "Reset to the campus view" (frame 16's "starting view"
       and `Main`'s wording merge into this one).
     - **Picking precedence.** Beacon (V2-16) > part > asset > camera > building. Beacons and camera markers are
-      sprites hit-tested in screen space (`lib/twinMarkers.ts`); everything else is one BVH raycast, at most once a
+      sprites hit-tested in screen space (`lib/twin-core/twinMarkers.ts`); everything else is one BVH raycast, at most once a
       frame, and the nearest surface on the ray wins, so a wall hides what is behind it. Kind decides only between a
       sprite and a ray hit under the same pixel. At campus level an asset is one target: its parts are pickable only
       while the asset is isolated, and a static part (merged at load, ADR-0020 § Model contract) is never a target;
@@ -217,7 +217,7 @@ their author, checked in CI, and served by nginx as immutable files.
       V2-19.5), and the shells and boxes are already single merged meshes with `ranges` tables, so a proxy would be a
       second copy that could diverge from what is seen. Instead: the shell faces and the box faces are registered with
       the picker as they are, and a hit's triangle names its building or asset through `entryAt` over the table
-      (`lib/twinPicking.ts`); a model's own merged static meshes and bound parts are registered per instance, and a
+      (`lib/twin-core/twinPicking.ts`); a model's own merged static meshes and bound parts are registered per instance, and a
       hit names the asset, or a part when the mesh sits under a node a binding names. The hidden `_edges` outlines are
       lines and are never registered. What can be hit is what is drawn: a mesh that is not drawn is unregistered.
     - **One bounds tree per geometry.** A `three-mesh-bvh` tree is built the first time a mesh using a geometry is
@@ -236,7 +236,7 @@ their author, checked in CI, and served by nginx as immutable files.
       won by the higher kind (part, asset, camera, building); a camera sprite and a ray hit under the same pixel are
       compared by kind only, never by distance. Camera markers are tested in screen space from the projected anchor,
       a target of at least 24 × 24 CSS pixels standing on it (`CAMERA_HIT_SIZE_PX`, WCAG 2.5.8, `unverified`).
-    - **The seam to the pointer.** `lib/twinPicker.ts` is module state in the pattern of `twinCommands`: V2-15.4's
+    - **The seam to the pointer.** `lib/twin-core/twinPicker.ts` is module state in the pattern of `twinCommands`: V2-15.4's
       `Pointer` calls `requestPick(point)` (CSS pixels from the canvas's top-left corner), the stage's `PickLayer`
       records the point and asks the on-demand canvas for a frame, and the ray is cast in that frame, at most one a
       frame; the winner is published to `onPick` listeners only when it changes. A frame with no request casts nothing.
@@ -266,7 +266,7 @@ their author, checked in CI, and served by nginx as immutable files.
       set by an Assets row is never cleared by it; a tap writes no hover.
     - **The cursor**, in this order: `crosshair` while a report location is picked, `grabbing` while a press has
       moved past the slop (any button), `pointer` over a pick, else `grab`.
-    - **Where the code is.** The logic is `lib/twinPointer.ts`, a DOM controller with no `three`, tested with synthetic
+    - **Where the code is.** The logic is `lib/twin-core/twinPointer.ts`, a DOM controller with no `three`, tested with synthetic
       pointer events; `twin/Pointer.tsx` only wires it. Known gap, left to V2-15.5: when the camera moves under a
       still pointer no `pointermove` fires, so the hover and the cursor are stale until the next move.
   - Settled in V2-15.5 (2026-10-19), without changing the decision: how hover looks and speaks.
@@ -276,7 +276,7 @@ their author, checked in CI, and served by nginx as immutable files.
       part's look is V2-15.10's. Hover sits above stale and alarm, as `lookOf` already says, and leaving restores them.
     - **A hovered part is tinted alone.** The pointer writes `hoveredAssetCode` and `hoveredPart` together, so while a
       part is hovered the asset around it keeps its own look and only the meshes under that bound node take the hover
-      face and accent outline (`lib/twinHover.ts` `assetHover`, `twin/useAssetLooks.ts`). A node the model does not
+      face and accent outline (`lib/twin-core/twinHover.ts` `assetHover`, `twin/useAssetLooks.ts`). A node the model does not
       have, and a part of another asset, change nothing; a box has no parts.
     - **The paint loops read the store, not the feed.** `twin/useHoverRef.ts` subscribes to the store's two hover fields
       once per consumer, keeps a ref (a new object per change) and asks the on-demand canvas for a frame; the loops
@@ -285,13 +285,13 @@ their author, checked in CI, and served by nginx as immutable files.
       reading, so the rule that readings never enter React state is untouched.
     - **A hovered `inside` asset tints its building.** Nothing of it is drawn at campus level, so the building of its
       zone takes `--tw-hover-top` (the accent at 30 % into the idle top, the tokens' arithmetic) while it is hovered
-      (`lib/twinHover.ts` `hoveredShellZone`, `twin/shellLooks.ts`). The shells became one white material with a
+      (`lib/twin-core/twinHover.ts` `hoveredShellZone`, `twin/shellLooks.ts`). The shells became one white material with a
       colour per vertex (`--tw-top` for every building, so the idle picture is unchanged; `unverified` until looked at),
       painted per building through `userData.ranges`: the first reader of the colour V2-15.8 and V2-17.3 also write.
       Hovering a building with the pointer tints nothing and says nothing yet (the cursor is its only hover).
     - **The tooltip follows the pick, for assets and cameras.** `twin/TwinTooltip.tsx` shows the bodies the 2D map's
       tooltip uses (`components/Tips.tsx`) after 150 ms of resting on one target, at the pointer plus 18 px, flipped to
-      the pointer's left at the stage's edge and clear of the open sheet (`lib/twinTooltip.ts`); a part, a building and
+      the pointer's left at the stage's edge and clear of the open sheet (`lib/twin-core/twinTooltip.ts`); a part, a building and
       nothing get none, and a row hovered in the Assets tab gets none (it tints the asset; there is no pointer to put a
       tooltip beside). Its foot is "Click to inspect · {place line}", or "No 3D model · drawn as a box" for a class with
       no `modelUrl` (`AssetTip`'s optional `foot`; the map's foot is unchanged). It is `aria-hidden`, never interactive,
@@ -309,12 +309,12 @@ their author, checked in CI, and served by nginx as immutable files.
       `goCampus()` call the fly commands; the store holds neither a building's box nor the stage's shape, which the
       fit needs, and the level changes in more ways than those two (a click on a building, a row, the crumbs, the
       Reset button, later the keys of V2-18.3). `twin/useLevelCamera.ts` listens to the store outside React and, when
-      the level or the focused building changes, asks the rig for the new level's fit (`lib/twinLevelCamera.ts`,
+      the level or the focused building changes, asks the rig for the new level's fit (`lib/twin-core/twinLevelCamera.ts`,
       pure): campus → the home view; building → that building's box, whether the operator flies in by clicking it or
       back out of an asset; asset and part → nothing yet (V2-15.7). It reads the store only, never data, so the camera
       moves only for an operator's act, and it does nothing at mount.
     - **A fit is the rig's.** `twinCommands.fit({ bounds, heightM })` is a new command because only the rig knows
-      the stage's aspect and the open sheet's inset. `fitBounds` (`lib/twinCamera.ts`, pure) fits the **box**: the
+      the stage's aspect and the open sheet's inset. `fitBounds` (`lib/twin-core/twinCamera.ts`, pure) fits the **box**: the
       footprint's corners at the ground and at the roof, looking at half the height from the home angles, within the
       campus limits (a building that would fit nearer than 60 m is shown from 60). With a height of nothing it is `homeView`.
       A building too small to have a shell falls back to its zone polygon. The asset's limits (4 – 40 m) are
@@ -345,7 +345,7 @@ their author, checked in CI, and served by nginx as immutable files.
       `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5).
   - Settled in V2-15.7 (2026-10-19), without changing the decision: how an asset is isolated and the camera fits it.
     - **One watcher, and the asset is in its key.** The asset's flight is one more case of the V2-15.6 watcher
-      (`useLevelCamera`, `lib/twinLevelCamera.ts`), not a second hook as the task named (`useFocusTarget`): selecting an
+      (`useLevelCamera`, `lib/twin-core/twinLevelCamera.ts`), not a second hook as the task named (`useFocusTarget`): selecting an
       asset in another building changes the level, the building and the asset in one store update, which must be one
       flight, the asset's. The level key gained the asset's code, because one level (`asset`) holds many selections and
       a second selection is a flight too; a part of the same asset is not.
@@ -369,7 +369,7 @@ their author, checked in CI, and served by nginx as immutable files.
       started while an asset is isolated clears the asset and so flies out; that is leaving the asset, not flying to the
       incident, which V2-16.1 still owns. The first view of a stage that starts with an asset isolated (3D → 2D → 3D)
       is its fit.
-    - **The rest is faded, not removed.** `lib/twinLevel.ts` holds the rule (`isolationOf`, `isFaded`): every building
+    - **The rest is faded, not removed.** `lib/twin-core/twinLevel.ts` holds the rule (`isolationOf`, `isFaded`): every building
       but the asset's, every other asset and the camera markers are drawn at `--tw-ghost-opacity`; the ground and the
       zone labels are not (the ground faded against the background would only vanish; the labels are V2-15.8's). Picking
       was already isolated (V2-15.3, 15.4). How it is drawn: the shells and the boxes are still one merged mesh each, with
@@ -395,7 +395,7 @@ their author, checked in CI, and served by nginx as immutable files.
       line is in it too. See the figure `-verify` reports for this task (334,669 bytes gzip of 350,000 after V2-15.5;
       V2-15.6's figure is not recorded).
   - Settled in V2-15.8 (2026-10-19), without changing the decision: how a building in focus is drawn.
-    - **One rule decides how everything is drawn.** `presenceOf` (`lib/twinLevel.ts`, extending V2-15.7's `isFaded`) gives
+    - **One rule decides how everything is drawn.** `presenceOf` (`lib/twin-core/twinLevel.ts`, extending V2-15.7's `isFaded`) gives
       each building, asset and camera marker one of `drawn`, `faded`, `xray` or `hidden` from the focus (`focusOf`: the
       building in focus and, at asset and part level, the isolated asset). The shells, the boxes, the models, the markers
       and the pick scope read it, so they cannot disagree. A building is `xray` when it is the one in focus and `faded`
@@ -408,7 +408,7 @@ their author, checked in CI, and served by nginx as immutable files.
       unchanged. The look is the `Xray` material of the models: the idle face at `--tw-xray-opacity` (0.14, no depth
       write), its outline `--tw-hub`, no new colour token.
     - **Groups, not a rebuild.** The shell's faces and outline have three materials (as it is, faded, see-through) and
-      `groupsForLooks` (`lib/twinGroups.ts`) turns the looks into the geometry's groups, as V2-15.7 did for two: this
+      `groupsForLooks` (`lib/twin-core/twinGroups.ts`) turns the looks into the geometry's groups, as V2-15.7 did for two: this
       replaces the "per-building attribute" the task suggested, which would have needed a shader and would have shared
       the colour attribute of hover and heat (V2-17.3). A `hidden` span is in no group, so it is neither drawn nor hit
       (`three-mesh-bvh` only tests the triangles inside a group of a multi-material mesh). The boxes are built once from
@@ -445,7 +445,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Chunk.** The twin chunk gains the rule, the third material, the log and the labels' fade; see the figure `-verify`
       reports for this task (336,916 bytes gzip of 350,000 after V2-15.7).
   - Settled in V2-15.9 (2026-10-19), without changing the decision: the building summary and the Inside layer.
-    - **Inside is the building level's layer.** `SceneFocus` carries `inside` (`lib/twinLevel.ts`) and `presenceOf` reads
+    - **Inside is the building level's layer.** `SceneFocus` carries `inside` (`lib/twin-core/twinLevel.ts`) and `presenceOf` reads
       it: with it off and no asset isolated, the building in focus is `drawn` (opaque) instead of `xray` and its `inside`
       assets are `hidden`; its roof and outdoor assets (`CT-01/02`, `GEN-01`) stay drawn and the other buildings stay
       faded. At asset and part level `focusOf` makes it `true`: the isolated asset is drawn and the shell stays
@@ -455,13 +455,13 @@ their author, checked in CI, and served by nginx as immutable files.
       asset). Nothing is rebuilt: the shells, boxes and models follow the groups and the mounted instances, as in
       V2-15.8. The focused walls are still not a target (V2-15.8), so with Inside off a click on them does nothing.
       The hover of an `inside` row in the Assets tab tints the opaque shell (`hoveredShellZone` asks `presenceOf`).
-    - **The scene layers are a type of their own.** `SceneLayers` (`lib/twinLayers.ts`) is the map's `LayerVisibility`
+    - **The scene layers are a type of their own.** `SceneLayers` (`lib/twin-core/twinLayers.ts`) is the map's `LayerVisibility`
       plus `inside`, so the 2D map reads the store as it did and has no layer it cannot draw; `layersOf(view, level)` is
       the control's list: 2D the three map layers; 3D Incidents and Cameras, plus Inside at building level only, where
       it does something. Frame 12 draws "Incidents · Inside · Heat" with no Cameras: Cameras stays, because
       `CameraMarkers` still reads it and a hidden toggle for a layer that is off would strand it (a "Frames to revise"
       row). Heat joins the list with V2-17.4 the same way.
-    - **The building summary** (`lib/twinBuilding.ts`, `twin/BuildingSummary.tsx`) is shown at building level only: at
+    - **The building summary** (`lib/twin-core/twinBuilding.ts`, `twin/BuildingSummary.tsx`) is shown at building level only: at
       asset level the inspector carries the asset and frame 15 has no card, and at part level the callout of V2-15.10
       does. A region named "{zone} summary", an eyebrow ("Building · data center", the zone's `use` as a word, "Building"
       without one), the name and three rows; not a live region. It stands at the top right like frame 12 and is
@@ -491,12 +491,12 @@ their author, checked in CI, and served by nginx as immutable files.
       painted in it from the click until it is deselected, over the asset's own look (an alarm or a stale dash stay on
       the rest of the asset), and a part that is both hovered and selected is one paint. `useModelLooks` takes the
       selection as a fifth, defaulted argument (`useSelectedPartRef`, the hover ref's twin) and `partsPicked`
-      (`lib/twinHover.ts`) decides which nodes of a model are picked and why. The frames' "2 px accent edge" is not
+      (`lib/twin-core/twinHover.ts`) decides which nodes of a model are picked and why. The frames' "2 px accent edge" is not
       built: the outlines are `LineSegments`, which WebGL draws 1 px wide, and the 2 px of the frames' scene is a
       canvas stroke. Fat lines (`Line2`) would cost a second geometry and material per part, a draw call and bytes
       the chunk's budget needs for V2-16 and V2-17; the callout and the leader are the strong cue. A candidate for
       V2-19 if it is missed.
-    - **The callout is `calloutOf`'s answer** (`lib/twinCallout.ts`), built from what the inspector already holds for
+    - **The callout is `calloutOf`'s answer** (`lib/twin-core/twinCallout.ts`), built from what the inspector already holds for
       the asset (`useAsset`, `useModelParts`, the telemetry store and the server clock; no request of its own).
       Where the task wrote `calloutOf(asset, binding, …)` it takes the model's **`PartRow`** (`partRows`), the source
       of the label the Parts rows and the incident link already use. The eyebrow is "CT-01 · FanBlade" (the node as the
@@ -555,7 +555,7 @@ their author, checked in CI, and served by nginx as immutable files.
       the asset (`focusAvailable`: not `hidden` by `presenceOf`, which only an `inside` asset whose building is not in
       focus is). It follows the report button as a `flex: none` ghost button, and ends the viewer's note through the
       note's new `action` slot. It has no `F` hint until V2-18.2.
-    - **How it flies.** The foot is main-chunk code and the part's bounds live in the lazy chunk, so `lib/twinFocus.ts`
+    - **How it flies.** The foot is main-chunk code and the part's bounds live in the lazy chunk, so `lib/twin-core/twinFocus.ts`
       holds a resolver the canvas registers (`useFocusTargets`, under `Equipment`): the part's world bounds at the
       moment of the call (a spinning blade is where it is now), else the asset's box. `focusSelection` hands it to the
       camera's existing `fitAsset`, so the camera, `TwinCommands` and the rig are unchanged. The distance floor of
@@ -564,7 +564,7 @@ their author, checked in CI, and served by nginx as immutable files.
       (`selectPart(null)`) and the next press closes the asset; the Close button ends both at once. `Sheet` calls its
       `onClose` for Escape alone, so `AssetInspector` passes it the stepping handler and `Sheet` is unchanged. The Close
       button keeps its `Esc` hint (one press away from the second step).
-    - **Tests.** `lib/twinFocus.test.ts` (the box, the availability rule, the registry), `AssetParts.test.tsx` (new:
+    - **Tests.** `lib/twin-core/twinFocus.test.ts` (the box, the availability rule, the registry), `AssetParts.test.tsx` (new:
       selection by click and keys, the 2D read-only case, the hover and its cleanup, axe), and `AssetInspector.test.tsx`
       (the Focus matrix by role and view, the Escape order). The resolver's `Box3` reading and the flight are not
       unit-tested (no WebGL in jsdom, as for their siblings).
@@ -622,7 +622,7 @@ their author, checked in CI, and served by nginx as immutable files.
       precedence beyond "Beacon (V2-16) > part" are V2-16.3 and V2-16.5; beacons stay out of the pick scope while an
       asset is isolated, as every other target, so a beacon is reached then through the feed, the search or the toast.
   - Settled in V2-16.2 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
-    decision: how an incident becomes a beacon, as plain data (`lib/twinBeacons.ts`, `beaconsOf`). Drawing is V2-16.3's.
+    decision: how an incident becomes a beacon, as plain data (`lib/twin-core/twinBeacons.ts`, `beaconsOf`). Drawing is V2-16.3's.
     - **The set and the positions are the map's.** The drawn set is the map's (active incidents, and the selected one
       even when resolved), `x` and `z` are `fanOut`'s position over that set through the scene frame, so two incidents
       at one point are spread the same way in both views. `isPulsing` (critical and open) is exported from
@@ -645,7 +645,7 @@ their author, checked in CI, and served by nginx as immutable files.
       two lists. `position[1]` is the marker's ground point (the stem's foot), the `MarkerPlacement` convention.
     - **Not data, so not here:** reduced motion (the pulse off) and fading by level are the drawing's (V2-16.3), and
       picking is V2-16.4's. The function reads no store and no preference.
-    - **Tests.** `lib/twinBeacons.test.ts`: frame 01's eight and frame 04's telemetry ninth, the roof and its edge
+    - **Tests.** `lib/twin-core/twinBeacons.test.ts`: frame 01's eight and frame 04's telemetry ninth, the roof and its edge
       cases, the resolved form, selection, the fan-out, an unknown type, an unresolved `assetId`, the order and
       purity.
   - Settled in V2-16.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
@@ -665,7 +665,7 @@ their author, checked in CI, and served by nginx as immutable files.
       ring and a pill per tag, not a cell for every combination. `Markers` gained optional per-sprite offset and
       phase and a clock; a camera has none and renders as before.
     - **A growing atlas.** The set of forms is data, so the atlas appends cells without moving the old ones
-      (`lib/twinAtlas.ts`, shelf rows up to 2048 px wide) and only the forms that are new are rasterised. The pill's
+      (`lib/twin-core/twinAtlas.ts`, shelf rows up to 2048 px wide) and only the forms that are new are rasterised. The pill's
       font is awaited before it is measured and drawn; its width is the drawn cell's, and a pill whose cell is not in
       the atlas yet is skipped until it is. The texture is rebuilt larger when a cell is added and the old one disposed.
     - **The pulse is the map's wave.** The ring grows 0.7× to 1.8× about its centre while it fades 0.9 to 0 with a
@@ -699,7 +699,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Overlapping beacons: what is on top is what is hit.** The nearest disc centre wins, unless another is within 1 px
       of it (`BEACON_TIE_PX`, `unverified`), and then the one painted later wins: the same number that paints
       (`paintRank`: resolved, then low to critical, open above acknowledged, the selected one last, exported from
-      `lib/twinBeaconSprites.ts` and not copied). Beacons that share a point overlap exactly (the 3D view has no
+      `lib/twin-core/twinBeaconSprites.ts` and not copied). Beacons that share a point overlap exactly (the 3D view has no
       clusters), so the tie is the common case.
     - **The hit list is what is drawn.** `Beacons` moved inside `PickLayer` and registers, through the picker, the
       beacons whose base sprite is placed (`beaconTargets`), as `Buildings` and `Equipment` register their meshes
@@ -724,7 +724,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **The zone outline is a ribbon.** The selected incident's zone, or the report's while the form is open (the 2D
       rule: the report's wins, and with no zone chosen yet nothing), is outlined on the ground in the accent. A WebGL line
       is one pixel wide whatever is asked, so the outline is a mesh: the existing road ribbon over the zone's closed
-      ring (`lib/twinHighlight.ts`), `HIGHLIGHT_WIDTH_M` = 2 m (`unverified`, tuned by eye), so it **thins with distance**
+      ring (`lib/twin-core/twinHighlight.ts`), `HIGHLIGHT_WIDTH_M` = 2 m (`unverified`, tuned by eye), so it **thins with distance**
       instead of staying 2 px as the map's. One draw call, depth tested and not written, `renderOrder` between the
       building faces and their outlines, so the outer half of a building's outline shows and a ring behind a wall is not
       drawn through it. It does not follow the Incidents layer, as the map's does not (it marks a place, not an
@@ -761,7 +761,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **The rig resolves the position from the beacons the stage draws.** The caller of the toast (`useLiveIncidents`, in the
       main chunk) has the incident and not the scene's frame, so `Rig` takes the stage's `beacons` as a prop, keeps the
       latest in a ref, and finds the one with the id when it is asked; an incident with no beacon (not drawn, or unknown) is
-      a no-op after the selection. The pose is a pure function, `incidentView(position, now)` in `lib/twinCamera.ts`: the
+      a no-op after the selection. The pose is a pure function, `incidentView(position, now)` in `lib/twin-core/twinCamera.ts`: the
       target is the beacon's **ground point** (the foot of its stem, so the disc stands above the middle of the view), the
       camera's yaw and tilt are kept, and the distance is the current one but at most `INCIDENT_FLY_DISTANCE_M` = 120 m
       (`unverified`, judged by eye); the rig then flies it through its usual limits (60 m floor at campus and building
@@ -800,7 +800,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       subject (`F`, V2-18.2), so a general subject-flight is not built yet. The rig takes the asset's box from the stage's
       placed asset boxes (`assetBoxes`, the box the isolate fit already uses), read through a ref so the latest is used,
       and flies the isolated fit's view (the middle of the box, the camera's own yaw and tilt) through its usual limits
-      and the 600 ms tween. It is not the drawn box (`lib/twinFocus.ts`' resolver): the placed box needs no model, and the
+      and the 600 ms tween. It is not the drawn box (`lib/twin-core/twinFocus.ts`' resolver): the placed box needs no model, and the
       models are still loading in exactly the 2D case. An unknown asset does nothing.
     - **From 2D the request waits for the stage.** The button switches the view and asks in the same tick, but the 3D
       stage is a lazy chunk, then a scene, then the rig. With no rig, `twinCommands.showAsset` keeps **one** pending
@@ -943,7 +943,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
   - Settled in V2-17.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: how the heat overlay is drawn, what it costs and where it is wired. Each question of the ticket's analysis
     was answered with its recommendation.
-    - **One value, `HeatScene`.** The overlay is data (`lib/twinHeat.ts`): a `#rrggbb` per building with a reading, the
+    - **One value, `HeatScene`.** The overlay is data (`lib/twin-core/twinHeat.ts`): a `#rrggbb` per building with a reading, the
       silent zones, the line under each building's name, the silent buildings' names, the assets in alarm and a `key`.
       One stage hook builds it (`useHeatScene`, because `<Canvas>` has no query client) and hands it to the canvas, the
       labels and the 3D view's name; `null` means "not shown" and every reader then does nothing. It is one object while
@@ -996,8 +996,8 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **The picker is main-chunk code (Q1), and `showsHeat` moved.** "Colour by" stands in the tools row beside the layers
       (frame 13), which `StageView` renders in the main chunk, and a main-chunk module cannot import the lazy chunk's
       `twinHeat.ts`. So `components/ColourBy.tsx` is not in `src/twin/` as the task wrote, `showsHeat` is defined in
-      `lib/twinLevel.ts` beside `SceneLevel` and `twinHeat.ts` re-exports it (the overlay's readers did not move), and
-      the measures are `lib/heatMeasures.ts`, which imports nothing. The legend is lazy-chunk code (`twin/HeatLegend.tsx`).
+      `lib/twin-core/twinLevel.ts` beside `SceneLevel` and `twinHeat.ts` re-exports it (the overlay's readers did not move), and
+      the measures are `lib/twin-core/heatMeasures.ts`, which imports nothing. The legend is lazy-chunk code (`twin/HeatLegend.tsx`).
     - **The legends are stacked (Q2).** The heat legend is above the marker legend in one bottom-left column
       (`TwinStage`'s `.legends`), which is the positioned box; neither sets its own position. Frame 13 shows the heat
       legend alone, but the marker legend still explains the beacons and the cameras, and at building level it is the
@@ -1020,14 +1020,14 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       written locally rather than extracted from `Popover`; a second listbox is the moment to extract it.
     - **The choice is not state while there is one measure.** The selected option is a constant and choosing it only
       closes the list. A second measure needs a source rule and a scale of its own (`humidityPct` stays rejected), a list
-      entry in `lib/heatMeasures.ts` and a store field for the choice; the ADR's "a data addition, not a redesign" holds.
+      entry in `lib/twin-core/heatMeasures.ts` and a store field for the choice; the ADR's "a data addition, not a redesign" holds.
     - **Left for the tickets, `unverified` until looked at:** the ramp on the shells against the legend's strip, the two
       legends stacked at 1072 × 671 and narrower and with the sheet open, the picker beside the layers when the row
       wraps, and the listbox with a screen reader. The cross-cutting accessibility cases with Heat on are V2-17.5's.
   - Settled in V2-18.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the 3D view's own keys. Each question of the ticket's analysis was answered with its recommendation.
     - **The keys are handled on the group, which has focus (Q1).** `TwinView` renders the one focusable element, so the
-      `onKeyDown` is there and not in `TwinStage` as the task wrote. A pure `lib/twinKeys.ts` (`keyCommand`) maps a key
+      `onKeyDown` is there and not in `TwinStage` as the task wrote. A pure `lib/twin-core/twinKeys.ts` (`keyCommand`) maps a key
       press to a command, and `twin/runKeyCommand.ts` runs it and says whether the key was used; `preventDefault()` is
       called for a used key only, so `Tab`, `V`, `F`, `?`, `/` and `N` reach their own handlers and an `Escape` at the
       campus (nothing to close) is not taken. The keys work only while the view has focus, so `Home` and the arrows keep
@@ -1042,10 +1042,10 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       `−5°` (towards overhead), `↓` `+5°`; `Shift` and an arrow pan a tenth of the distance (`←` left, `↑` forward).
       `+` and `=` zoom in by a factor `0.8` of the distance and `-` and `_` out by `1.25`: the task and the prototype
       write them as a scale, the other way round, and `zoomBy` takes the distance. The factors are shared with the
-      on-screen buttons (`ZOOM_IN_FACTOR`, `ZOOM_OUT_FACTOR` in `lib/twinCamera.ts`), and `Shift` is ignored for the zoom
+      on-screen buttons (`ZOOM_IN_FACTOR`, `ZOOM_OUT_FACTOR` in `lib/twin-core/twinCamera.ts`), and `Shift` is ignored for the zoom
       keys because `+` needs it on most layouts. The steps are the prototype's and `unverified` against the real camera.
     - **`Home` is the Reset button's function.** `resetView` (campus level, then the home view; an open incident and the
-      report form stay) moved from `TwinControls` to `lib/twinFlight.ts`, and both call it. **`Esc` is `goUp()` only** and
+      report form stay) moved from `TwinControls` to `lib/twin-core/twinFlight.ts`, and both call it. **`Esc` is `goUp()` only** and
       asks for no camera: `useLevelCamera` flies with the level, so a second request would fly twice. It leaves a building
       only here, while the view has focus; the inspector's Escape still stops at the asset (V2-15.11).
     - **A press on the picture focuses the group (Q4).** `onPointerDownCapture` calls `focus({ preventScroll: true })` and
@@ -1094,7 +1094,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **Three loops keep the canvas drawing; everything else is a one-shot.** The audit of every `useFrame` and `invalidate`
       found no call that asks without a reason. The loops that sustain themselves are the bound parts and their spin
       (`stepBound`, `useBoundParts`), the camera's fly-to (`Rig`) and the pulse of a critical beacon (`pulseRunning`,
-      `Beacons`); each writes a field of a `FrameDemand` (`lib/twinPerf.ts`) in the frame it runs, through a reporter function
+      `Beacons`); each writes a field of a `FrameDemand` (`lib/twin-core/twinPerf.ts`) in the frame it runs, through a reporter function
       (`useReportFrameDemand`: the console's lint rules for React forbid modifying an object a hook returns, a ref from a
       custom hook included), and no longer calls `invalidate()`. `needsFrame(demand, { hidden })` is the table. A camera in motion is drei's (`CameraControls`
       invalidates on its own `update` event), and a pick, a label or leader projection, a changed look or layer and a
@@ -1128,7 +1128,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
   - Settled in V2-19.3 (2026-10-20, confirmed 2026-10-21 with V2-19.8), without changing the
     decision: the pixel ratio steps down when frames run long. Each question of the ticket's analysis was answered with
     its recommendation.
-    - **The rule.** `createDprController` (`lib/twinPerf.ts`) is fed every drawn frame's time and the clock and judges in
+    - **The rule.** `createDprController` (`lib/twin-core/twinPerf.ts`) is fed every drawn frame's time and the clock and judges in
       tumbling windows of 2 s: at the end of a window with at least 30 kept frames whose p95 is above the budget, the ratio
       goes one step down (1.5 → 1.25 → 1.0) and the next window starts at once, so one full window passes before the
       next judgment. It never steps up: a ratio that flapped would be worse than a stable lower one (`unverified` as a
@@ -1176,13 +1176,13 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       per mesh). `InstancedMesh` for the merged statics would save 2 – 3 calls an asset and nothing on the bound parts, which
       cannot be instanced; going further is a change to the model contract (parts merged into fewer meshes), a decision of its
       own. Neither is done: the demo does not need it, and the guard shows the day a site does.
-    - **The guard.** `budgetBreaches` (`lib/twinPerf.ts`) compares `gl.info.render.calls` and `.triangles` with the brief's 150
+    - **The guard.** `budgetBreaches` (`lib/twin-core/twinPerf.ts`) compares `gl.info.render.calls` and `.triangles` with the brief's 150
       and 250,000 (strictly above: "at most" is within budget; a figure that is not a number is never a breach).
       `createBudgetGuard` warns on the rising edge, per figure, and arms a figure again when it is back within budget, so a
       scene that stays over warns once and not twice a second. It runs in `HudProbe`'s tick, so **in a development build with
       `?debug=twin` only**; a probe for every development session is a few lines later. The HUD marks an over-budget value
       with `data-over` (a `--sev-critical` bar under the figure; the text keeps `--text-primary`; the pair is in
-      `scripts/contrast.ts`). The text of the warning is in `lib/twinHud.ts`, which production drops, and never names the
+      `scripts/contrast.ts`). The text of the warning is in `lib/twin-core/twinHud.ts`, which production drops, and never names the
       address that switches the HUD on. It judges the last frame's reading, twice a second: a budget about steady views, so
       a one-frame spike can be missed. It is not a CI check: that would need a headless render, which the V2 plan does not
       have.
@@ -1205,7 +1205,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       `lod1`, which starts hidden (three lowers a shown level's threshold by the hysteresis, so a LOD1 that began visible
       would be chosen 10 % early). A class with no LOD1 (the checker makes it optional), or one that cannot be merged, or
       with no sphere to measure, is the plain copy as before: LOD1 is an optimisation and never costs a model.
-    - **Where it switches.** `lodDistance(radius, fov)` in `lib/twinCamera.ts`: a sphere's projected height is
+    - **Where it switches.** `lodDistance(radius, fov)` in `lib/twin-core/twinCamera.ts`: a sphere's projected height is
       `r / (d · tan(fov / 2))` of the screen's, so 5 % is `d = r / (0.05 · tan(fov / 2))`, about 43 times the radius at the
       fixed lens (`HOME_FOV_DEG`). The sphere is the circumscribed sphere of the LOD0 root's bounding box (a little loose,
       which errs towards keeping the better level), measured once when the template is built. For the demo's seed
@@ -1292,20 +1292,20 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       alone, which the HUD will now show. V2-19.7's scenes should read both rows.
   - Settled in V2-14.6 (2026-10-19), without changing the decision: how an asset gets into the scene.
     - **Placed once, in the scene.** `useTwinScene` reads the catalogue with the zones and places every asset
-      (`lib/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
+      (`lib/twin-core/twinPlacement.ts`): its placement by the V2-12.1 rule, its pose (`x` east, `y` the base's elevation, `z` =
       −north, turned by `π − heading`) and its box from the class's `footprint_m`. The canvas receives the placed
       assets as props, because a query hook has no client inside `<Canvas>`. The position drawn is the 2D map's own
       (`fanOutAssets`, run over all assets), so assets on one spot are spread the same way in both views; the
       placement itself uses the catalogue position.
     - **One merged mesh, not instances.** Every drawn box is merged into one triangle mesh and one list of edges
-      (`lib/twinBoxes.ts`, wrapped by `twin/AssetBoxes.tsx`): two draw calls however many assets, with a range per asset
+      (`lib/twin-core/twinBoxes.ts`, wrapped by `twin/AssetBoxes.tsx`): two draw calls however many assets, with a range per asset
       for colouring by state and for picking. The neutral base is `--tw-neutral`, shaded by the scene's two lights.
     - **Campus level draws `outdoor` and `roof` assets.** `inside` assets are placed but not drawn until a building is
       in focus (V2-15.8). An asset whose zone is not in the list is `outdoor`, a building too small to have a footprint
       has nothing `inside`, and a missing height is the shell's `DEFAULT_BUILDING_HEIGHT_M`.
   - Settled in V2-14.7 (2026-10-19), without changing the decision: how the class models get into the scene.
     - **One request per class, nearest first.** The classes that have a `modelUrl` are listed once, nearest the middle
-      of the campus first (`lib/twinLoadQueue.ts`), and the stage fetches their files two at a time in that order; two
+      of the campus first (`lib/twin-core/twinLoadQueue.ts`), and the stage fetches their files two at a time in that order; two
       assets of one class, or two calls, cost one request. The models stream after the site plan, so the boxes of
       V2-14.6 are the placeholders and an asset's box is replaced by its model in the render in which its class
       becomes ready (`twin/Equipment.tsx`): never both, never neither.
@@ -1314,7 +1314,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       shows such a class as a finished row ("drawn as a box"), so a model that cannot load never holds the card up.
     - **The card has bytes.** The stage loads with its own loader (three's `GLTFLoader`, `twin/loadGltf.ts`), not drei's
       `useGLTF`, because only its progress events give a class's bytes ("0.6 / 1.4 MB"). The cache writes them,
-      throttled, to a store of its own (`lib/twinModelStore.ts`) that the card, which is main-chunk code, reads.
+      throttled, to a store of its own (`lib/twin-core/twinModelStore.ts`) that the card, which is main-chunk code, reads.
     - **Bindings are built and kept, not applied.** Once a class's model has arrived and its points are known (the
       detail of one asset of the class, through the inspector's cache entry), its bindings are built from its `extras`
       and kept with the class; V2-14.8 mounts the telemetry feed and applies them. A bound part the catalogue cannot
@@ -1383,7 +1383,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       (frame 18 has no such variant: a row in the brief's "Frames to revise"). The camera rules still apply, with the map
       fitting the incident. A wall at pixel ratio 1.0 is already on the controller's last step (`wall: true`), so the
       budget the task names ("cannot hold the frame budget") has no step left to give: a pure `shouldFallBack` in
-      `lib/twinPerf.ts` marks the twin lost (`markTwinLost`, the path of a lost context) when the p95 interval stays above
+      `lib/twin-core/twinPerf.ts` marks the twin lost (`markTwinLost`, the path of a lost context) when the p95 interval stays above
       the budget for a long window (60 s proposed), and the wall shows the map. The tech lead may prefer the capability
       fallback alone; both numbers are `unverified` until the wall controller (V2-21.12).
     - **Built in V2-21.9: the fallback.** `WallStage` (in the stage cell) shows `LazyTwinStage wall` where `useTwinCapability`
@@ -1393,7 +1393,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       MapLibre with `interactive: false` (no drag, wheel, touch or key; the canvas leaves the Tab order), no tooltip, legend or
       controls, and it follows `wallFocusId` instead of the selected incident: it eases to the incident at zoom 18 and back to
       the campus fit when the hold ends. The focus banner and the legend are over the stage cell, so they show on the map
-      too. The frame-budget detector is shipped: `createFallbackDetector` (`lib/twinPerf.ts`) judges 2 s windows as the
+      too. The frame-budget detector is shipped: `createFallbackDetector` (`lib/twin-core/twinPerf.ts`) judges 2 s windows as the
       pixel-ratio controller does and trips, once, after a minute of back-to-back bad windows, a window being bad when it
       kept at least 30 frames and their p95 interval is above 33 ms (`FALLBACK_BUDGET_MS`; a window with fewer frames, a
       canvas that draws now and then, ends the run). `FrameGuard`, mounted in the wall's canvas only, marks the twin lost as
@@ -1451,7 +1451,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **A spinning part shows a legible speed, not the rotor's.** Visual speed = reading / `range[1]` (clamped to
       0 – 1) × `MAX_VISUAL_REV_PER_S`, which is 1.5 rev/s: monotonic, zero at zero, about 9° a frame at 60 FPS, so the
       eye reads faster, slower or stopped and never the wagon-wheel of a real 1,420 rpm rotor. The readings carry the
-      number. Both constants live in `lib/twinMotion.ts` (V2-14.3).
+      number. Both constants live in `lib/twin-core/twinMotion.ts` (V2-14.3).
     - **`tint` shows alarm, not value.** A `tint` node keeps its idle material, and takes the severity of an open
       incident raised by a rule that watches its bound point (the key comes from the incident's evidence,
       `lib/telemetry/telemetryEvidence.ts`) at `--tw-alarm-mix` (35 %). A threshold crossed without an open incident tints
@@ -1515,7 +1515,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       empty layout so the worker stops posting buffers nobody reads.
   - Settled in V2-14.8 (2026-10-19), without changing the decision: how the bound parts move.
     - **One loop, no React.** `twin/useBoundParts.ts` is one `useFrame` for every model instance. Per frame it reads the feed and, for each bound part, steps its
-      eased value toward the reading in its slot (`stepBound` in `lib/twinMotion.ts`: `turn` and `slide` ease the encoded value, `spin` eases the visual speed and
+      eased value toward the reading in its slot (`stepBound` in `lib/twin-core/twinMotion.ts`: `turn` and `slide` ease the encoded value, `spin` eases the visual speed and
       integrates the angle) and writes the pose onto the node. Nothing is allocated in the frame and no React state is set. The targets buffer already holds
       encoded numbers (the worker encodes against the layout's `enumValues`), so the loop does not encode.
     - **What moves, what rests.** A part's rotation is the rotation it was authored with followed by a rotation about its own axis; a slide runs along that axis. A
@@ -1530,7 +1530,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       prop; the canvas gives its `invalidate` back through `onCreated`, which the feed calls through a ref. Slots are looked up once per layout
       (`TwinFeedReader.layout`), because `slotOf` builds a string per call. `Equipment` tells the feed each ready class's bindings (`setBindings`).
   - Settled in V2-14.9 (2026-10-19), without changing the decision: how stale and alarm are drawn.
-    - **One table decides the look.** `lookOf(flags, hovered, selected)` in `lib/twinMaterials.ts` gives an asset a face, an edge and whether it may move. Face:
+    - **One table decides the look.** `lookOf(flags, hovered, selected)` in `lib/twin-core/twinMaterials.ts` gives an asset a face, an edge and whether it may move. Face:
       hovered or selected, then stale or offline, then alarm, then idle. Edge: the accent, then the severity (solid), then the stale dash, then the idle outline.
       So a stale fault is **grey with a solid severity edge**: "a fault is never hidden by a stale reading" is kept by the edge, not by a coloured face on data
       that is not live (this reverses the order the task text gave for the face). Offline looks stale. A stale material is one grey for every material.
@@ -1600,7 +1600,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
         material, with their transform relative to the class root baked in; every asset's copy shares that geometry, so
         an instance costs a transform and its bound parts. A bound part is moved under the new root keeping its world
         transform, and its own children, static or bound, stay under it and are not merged: they move with it.
-      - **Materials by name are applied.** The eight names (`lib/twinMaterials.ts`) are the console's materials from
+      - **Materials by name are applied.** The eight names (`lib/twin-core/twinMaterials.ts`) are the console's materials from
         `twinColors`; `Hub`, `Screen` and the `Xray` opacity are tokens (`--tw-hub`, `--tw-screen`, `--tw-xray-opacity`).
         The vendor's material is replaced whole: baked occlusion textures are not applied yet, and whether they will be
         is for the first delivery that has some (V2-13.8).

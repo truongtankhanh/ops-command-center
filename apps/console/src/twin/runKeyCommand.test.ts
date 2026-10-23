@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest';
-import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
-import { levelOf } from '../lib/twinLevel';
+import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
+import { levelOf } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { runKeyCommand } from './runKeyCommand';
