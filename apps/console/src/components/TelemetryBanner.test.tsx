@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
 import type { TelemetryClient } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { expectNoAxeViolations, resetStore } from '../test-utils';

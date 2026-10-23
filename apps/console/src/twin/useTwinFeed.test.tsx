@@ -3,7 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import { type ReactNode, StrictMode } from 'react';
 import { queryKeys } from '../api/queries';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import type { Binding } from '../lib/twinBindings';
 import type { TargetsView, TelemetryClient } from '../realtime/telemetryClient';
 import type { TargetSlot } from '../realtime/telemetryProtocol';

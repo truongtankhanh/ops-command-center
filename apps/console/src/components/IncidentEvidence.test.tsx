@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
 import type { NodeInfo } from '../lib/twinBindings';
 import { registerTwinCommands, type TwinCommands } from '../lib/twinCommands';
 import { seriesKey, type SeriesView } from '../realtime/telemetryClient';

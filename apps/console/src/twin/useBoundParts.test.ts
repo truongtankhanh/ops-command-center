@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { createElement, type ReactNode } from 'react';
 import { Group, type Object3D, Quaternion, Vector3 } from 'three';
-import { initialTelemetryState, type SocketState } from '../lib/telemetryState';
+import { initialTelemetryState, type SocketState } from '../lib/telemetry/telemetryState';
 import type { Axis, Binding, BindingPoint, Motion } from '../lib/twinBindings';
 import { integrateAngle, MAX_FRAME_DT_S, spinSpeed } from '../lib/twinMotion';
 import { createFrameDemand, type FrameReport, needsFrame } from '../lib/twinPerf';

@@ -1,5 +1,5 @@
 import type { TelemetryStatus } from '@occ/contracts';
-import type { AssetTelemetryState, SocketState } from '../lib/telemetryState';
+import type { AssetTelemetryState, SocketState } from '../lib/telemetry/telemetryState';
 
 /**
  * The messages between the main thread and the telemetry worker (ADR-0019, ADR-0020 § State).

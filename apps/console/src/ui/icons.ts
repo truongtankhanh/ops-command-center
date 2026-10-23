@@ -78,8 +78,8 @@ import type {
   IncidentType,
   ZoneKind,
 } from '@occ/contracts';
-import type { AssetState } from '../lib/assets';
-import type { TelemetryPillState } from '../lib/telemetryState';
+import type { AssetState } from '../lib/assets/assets';
+import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import type { ConnectionState } from '../store';
 
 /** A drawable glyph. Consumers use this type, never the icon set's own. */

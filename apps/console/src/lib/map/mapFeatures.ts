@@ -9,7 +9,7 @@ import {
   severityRank,
 } from '@occ/contracts';
 import type { Feature, FeatureCollection, Point, Polygon } from 'geojson';
-import { type AssetState, openIncidentOf } from '../assets';
+import { type AssetState, openIncidentOf } from '../assets/assets';
 import { distanceM, offsetM } from './geo';
 import { isActive, isKnownType } from '../incidents/incidents';
 

@@ -1,8 +1,8 @@
 import { type AssetTelemetry, TELEMETRY_WATCH_LIMIT } from '@occ/contracts';
 import { api } from '../api/client';
 import { getAccessToken, renewSession } from '../auth/session';
-import { encodeReading } from '../lib/ringBuffer';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { encodeReading } from '../lib/telemetry/ringBuffer';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
 import { createTelemetryEngine, type SocketFactory, type TelemetryEngine } from './telemetryEngine';
 import {
   type FromWorker,

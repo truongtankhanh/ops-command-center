@@ -19,7 +19,7 @@ import { getAccessToken, renewSession } from '../auth/session';
 import { incidentToast, type IncidentToastContext } from '../lib/incidents/attention';
 import { playCriticalCue } from '../lib/incidents/criticalCue';
 import { upsertIncident } from '../lib/incidents/incidents';
-import { evidenceOfTimeline, summariseEvidence } from '../lib/telemetryEvidence';
+import { evidenceOfTimeline, summariseEvidence } from '../lib/telemetry/telemetryEvidence';
 import { twinCommands } from '../lib/twinCommands';
 import { useConsole } from '../store';
 import { hasToast, showToast, updateToast } from '../ui/toasts';

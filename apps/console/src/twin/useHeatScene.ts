@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Incident } from '@occ/contracts';
 import { useAssets, useIncidents } from '../api/queries';
-import type { TelemetryState } from '../lib/telemetryState';
+import type { TelemetryState } from '../lib/telemetry/telemetryState';
 import { buildingReadings, type HeatScene, heatSceneOf, showsHeat } from '../lib/twinHeat';
 import { levelOf } from '../lib/twinLevel';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';

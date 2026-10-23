@@ -8,10 +8,10 @@ import type {
   TelemetryValue,
 } from '@occ/contracts';
 import type { AssetState } from './assets';
-import { compareIncidents, isActive } from './incidents/incidents';
-import { encodeReading } from './ringBuffer';
-import { formatReadingAge, formatSince } from './telemetryAge';
-import { isStale } from './telemetryFreshness';
+import { compareIncidents, isActive } from '../incidents/incidents';
+import { encodeReading } from '../telemetry/ringBuffer';
+import { formatReadingAge, formatSince } from '../telemetry/telemetryAge';
+import { isStale } from '../telemetry/telemetryFreshness';
 
 /*
  * What the asset inspector says and draws (V2-09.8; wording settled in V2-09.1, frames 03, 05, 08):

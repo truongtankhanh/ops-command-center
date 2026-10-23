@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 're
 import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
 import { AssetTip, CameraTip, IncidentTip } from '../components/Tips';
 import { tipSurface } from '../components/tipSurface';
-import { placeLabel } from '../lib/assets';
+import { placeLabel } from '../lib/assets/assets';
 import { isActive } from '../lib/incidents/incidents';
 import { onPick } from '../lib/twinPicker';
 import type { PickRef, ScreenPoint } from '../lib/twinPicking';

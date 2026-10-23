@@ -1,7 +1,7 @@
 import type { Asset } from '@occ/contracts';
 import { useZones } from '../api/queries';
 import { usePermission } from '../auth/usePermission';
-import { reportPresetOf } from '../lib/assetReport';
+import { reportPresetOf } from '../lib/assets/assetReport';
 import { focusAvailable, focusSelection } from '../lib/twinFocus';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';

@@ -8,10 +8,10 @@ import {
   type InspectorRows,
   overSeverity,
   SPARKLINE_WINDOW_MS,
-} from '../lib/assetInspector';
-import { formatReading, limitLine } from '../lib/readings';
-import { ageMs as readingAgeMs } from '../lib/telemetryFreshness';
-import type { AssetTelemetryState } from '../lib/telemetryState';
+} from '../lib/assets/assetInspector';
+import { formatReading, limitLine } from '../lib/assets/readings';
+import { ageMs as readingAgeMs } from '../lib/telemetry/telemetryFreshness';
+import type { AssetTelemetryState } from '../lib/telemetry/telemetryState';
 import { useAssetSeries } from '../realtime/telemetryStore';
 import { Hint } from '../ui/Hint';
 import { Clock } from '../ui/icons';

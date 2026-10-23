@@ -3,7 +3,7 @@ import {
   type AssetTelemetryState,
   initialTelemetryState,
   type TelemetryState,
-} from '../lib/telemetryState';
+} from '../lib/telemetry/telemetryState';
 import type { Binding, Motion } from '../lib/twinBindings';
 import type { TargetsView, TelemetryClient, TelemetryView } from './telemetryClient';
 import type { TargetSlot } from './telemetryProtocol';

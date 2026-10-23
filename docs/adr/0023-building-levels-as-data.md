@@ -15,7 +15,7 @@ only its longitude and latitude (V2-16.1). So "level 2" is text, and nothing can
 
 Two places already guess one:
 
-- `placeLabel` in `apps/console/src/lib/assets.ts` says "roof" when an asset stands at its building's `heightM`, and "level n" when
+- `placeLabel` in `apps/console/src/lib/assets/assets.ts` says "roof" when an asset stands at its building's `heightM`, and "level n" when
   `elevationM` is a multiple of 4 ("floors are 4 m apart, ground is level 1").
 - `docs/design/v2/asset-classes.md` § Demo assets states the same rule ("level _n_ is 4 (_n_ − 1)").
 

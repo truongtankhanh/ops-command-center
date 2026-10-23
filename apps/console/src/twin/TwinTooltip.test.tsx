@@ -2,7 +2,7 @@ import type { Asset, Camera, Incident, TelemetryPoint, Zone } from '@occ/contrac
 import { act, fireEvent, screen } from '@testing-library/react';
 import { queryKeys } from '../api/queries';
 import { publishPick } from '../lib/twinPicker';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import {

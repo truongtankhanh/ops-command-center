@@ -5,7 +5,7 @@ import type {
   TelemetryRule,
   TelemetryValue,
 } from '@occ/contracts';
-import { formatReading, limitLine } from './readings';
+import { formatReading, limitLine } from '../assets/readings';
 import { formatReadingAge } from './telemetryAge';
 
 /*

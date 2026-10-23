@@ -1,4 +1,4 @@
-import type { ReportPreset } from './lib/assetReport';
+import type { ReportPreset } from './lib/assets/assetReport';
 import { levelOf } from './lib/twinLevel';
 import { FRESH_LIMIT, useConsole } from './store';
 import { resetStore, stubTwinAvailable, unstubTwin } from './test-utils';

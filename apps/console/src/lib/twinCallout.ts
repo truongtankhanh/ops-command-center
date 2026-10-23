@@ -1,7 +1,7 @@
 import type { TelemetryPoint, TelemetryRule, TelemetryValue } from '@occ/contracts';
 import { type PartRow, sentenceCase } from './modelParts';
-import { limitLine, readingParts } from './readings';
-import { formatAgeCoarse } from './telemetryAge';
+import { limitLine, readingParts } from './assets/readings';
+import { formatAgeCoarse } from './telemetry/telemetryAge';
 
 /*
  * What the 3D view's part callout says (V2-15.10, frames 03, 08 and 17, ADR-0020 "Settled in V2-15.1" and

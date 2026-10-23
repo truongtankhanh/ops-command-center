@@ -14,7 +14,7 @@ import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
 import type { NodeInfo } from '../lib/twinBindings';
 import type * as TwinFocus from '../lib/twinFocus';
 import { focusSelection } from '../lib/twinFocus';

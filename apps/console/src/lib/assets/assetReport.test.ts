@@ -1,6 +1,6 @@
 import { categoryOf, type LngLat, type Zone } from '@occ/contracts';
 import { reportPresetOf } from './assetReport';
-import { REPORT_TITLE_MAX } from './incidents/incidents';
+import { REPORT_TITLE_MAX } from '../incidents/incidents';
 
 /** A closed square ring, `size` degrees a side, from its south-west corner. */
 const square = (west: number, south: number, size: number): LngLat[] => [

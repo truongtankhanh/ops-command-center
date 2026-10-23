@@ -15,19 +15,19 @@ import {
   overSeverity,
   readingIsStale,
   SPARKLINE_WINDOW_MS,
-} from '../lib/assetInspector';
-import { assetLinkLines } from '../lib/assetLink';
+} from '../lib/assets/assetInspector';
+import { assetLinkLines } from '../lib/assets/assetLink';
 import { isActive } from '../lib/incidents/incidents';
 import { partRows } from '../lib/modelParts';
-import { formatReading } from '../lib/readings';
+import { formatReading } from '../lib/assets/readings';
 import {
   describeEvidence,
   type EvidenceDescription,
   evidenceOfTimeline,
   matchRule,
   type RuleEvidence,
-} from '../lib/telemetryEvidence';
-import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
+} from '../lib/telemetry/telemetryEvidence';
+import { ageMs, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { showAssetIn3d } from '../lib/twinFlight';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { useTwinCapability } from '../lib/useTwinCapability';

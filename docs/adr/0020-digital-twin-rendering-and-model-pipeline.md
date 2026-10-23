@@ -500,7 +500,7 @@ their author, checked in CI, and served by nginx as immutable files.
       the asset (`useAsset`, `useModelParts`, the telemetry store and the server clock; no request of its own).
       Where the task wrote `calloutOf(asset, binding, …)` it takes the model's **`PartRow`** (`partRows`), the source
       of the label the Parts rows and the incident link already use. The eyebrow is "CT-01 · FanBlade" (the node as the
-      model names it), then the part's label; the big value is `readingParts` (`lib/readings.ts`: the figure and the
+      model names it), then the part's label; the big value is `readingParts` (`lib/assets/readings.ts`: the figure and the
       unit apart, a word such as "Closed" with no unit); "Limit 85 °C" or "Low at 20 %" comes from `limitLine` for the
       first rule on the point. The figure is `--type-3xl` and the unit `--type-l` (frame 03's 30 px has no token).
     - **Stale and unknown readings.** A stale or offline asset reads **"last 1,420 rpm"** (the Parts row's own wording)
@@ -1440,7 +1440,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
   - Settled in V2-14.1 (2026-10-18, tech lead), without changing the decision. The brief's maths stands
     (`x += (target − x)·(1 − e^(−λ·dt))`, λ = 8 / s as `EASE_LAMBDA`; spin eases the _speed_ and integrates the
     angle); this block adds what a build needs to start:
-    - **Encoding.** A reading becomes one number with `encodeReading(value, enumValues)` (`lib/ringBuffer.ts`): a
+    - **Encoding.** A reading becomes one number with `encodeReading(value, enumValues)` (`lib/telemetry/ringBuffer.ts`): a
       number as it is, a boolean 0 / 1, an enum its index in the point's `enumValues`; a value that does not encode
       is no target, so the part keeps its pose. The layout message the worker posts at the start (V2-14.4) carries
       `enumValues`, so the reserved `enums` field of the `watch` message stays unused.
@@ -1454,7 +1454,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       number. Both constants live in `lib/twinMotion.ts` (V2-14.3).
     - **`tint` shows alarm, not value.** A `tint` node keeps its idle material, and takes the severity of an open
       incident raised by a rule that watches its bound point (the key comes from the incident's evidence,
-      `lib/telemetryEvidence.ts`) at `--tw-alarm-mix` (35 %). A threshold crossed without an open incident tints
+      `lib/telemetry/telemetryEvidence.ts`) at `--tw-alarm-mix` (35 %). A threshold crossed without an open incident tints
       nothing: brief Principle 2 ("a part takes a severity colour only while an incident it raised is open") wins, so
       the colour and the incident list can never disagree. A `tint` bound to a point no rule watches (`controlMode`,
       `pumpFlowM3h`, …) never changes colour; its value is in the inspector.

@@ -1,8 +1,8 @@
 import type { Asset, AssetStatePointKey, Incident, TelemetryValue, Zone } from '@occ/contracts';
-import { compareIncidents, fold, isActive } from './incidents/incidents';
+import { compareIncidents, fold, isActive } from '../incidents/incidents';
 import { statePointOf } from './readings';
-import { isStale, staleAfterMs } from './telemetryFreshness';
-import type { AssetTelemetryState, TelemetryState } from './telemetryState';
+import { isStale, staleAfterMs } from '../telemetry/telemetryFreshness';
+import type { AssetTelemetryState, TelemetryState } from '../telemetry/telemetryState';
 
 /*
  * What the Assets list and the inspector derive from the catalogue, the incidents and the

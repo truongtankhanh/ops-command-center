@@ -10,7 +10,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { isRateLimited } from '../api/client';
 import { useAssets, useCameras, useIncidents, useSitePlan, useZones } from '../api/queries';
-import { assetStates } from '../lib/assets';
+import { assetStates } from '../lib/assets/assets';
 import {
   assetFeatures,
   cameraFeatures,
@@ -45,7 +45,7 @@ import {
 import { startPulse } from '../lib/map/mapPulse';
 import { placePinAt } from '../lib/map/reportPin';
 import { siteBounds } from '../lib/map/sitePlan';
-import { serverNow } from '../lib/telemetryFreshness';
+import { serverNow } from '../lib/telemetry/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';

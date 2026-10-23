@@ -3,7 +3,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { MapLegend } from '../components/MapLegend';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import {

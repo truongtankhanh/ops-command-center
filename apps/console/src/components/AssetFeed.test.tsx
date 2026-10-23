@@ -10,7 +10,7 @@ import {
 } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';

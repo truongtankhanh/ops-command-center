@@ -13,8 +13,8 @@ import {
   type TelemetryValue,
 } from '@occ/contracts';
 import { io, type Socket } from 'socket.io-client';
-import { createRingBuffer, encodeReading, type RingBuffer } from '../lib/ringBuffer';
-import { serverNow } from '../lib/telemetryFreshness';
+import { createRingBuffer, encodeReading, type RingBuffer } from '../lib/telemetry/ringBuffer';
+import { serverNow } from '../lib/telemetry/telemetryFreshness';
 import {
   type AssetTelemetryState,
   applyMessage,
@@ -22,7 +22,7 @@ import {
   type SocketState,
   type TelemetryMessage,
   type TelemetryState,
-} from '../lib/telemetryState';
+} from '../lib/telemetry/telemetryState';
 import {
   type FromWorker,
   type SeriesData,

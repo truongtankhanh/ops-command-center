@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { TelemetryPillState } from '../lib/telemetryState';
+import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import { formatClockTimeSeconds } from '../lib/time';
 import { useTelemetryStatus } from '../realtime/telemetryStore';
 import { retryTelemetry } from '../realtime/useTelemetry';

@@ -1,7 +1,7 @@
 import type { Asset } from '@occ/contracts';
 import { useId } from 'react';
 import { useAssets, useZones } from '../api/queries';
-import { hasDimmedAsset } from '../lib/assets';
+import { hasDimmedAsset } from '../lib/assets/assets';
 import { buildingLine, isolationLine } from '../lib/twinLevel';
 import { useLegendOpen } from '../lib/useLegendOpen';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';

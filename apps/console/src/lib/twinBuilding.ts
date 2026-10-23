@@ -1,5 +1,5 @@
 import type { Asset, Incident, Zone } from '@occ/contracts';
-import { type AssetState, matchesAssetFilter } from './assets';
+import { type AssetState, matchesAssetFilter } from './assets/assets';
 import { compareIncidents, isActive } from './incidents/incidents';
 import type { HeatReading } from './twinHeat';
 

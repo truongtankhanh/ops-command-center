@@ -1,7 +1,7 @@
 import type { IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
-import type { ReportPreset } from './lib/assetReport';
-import type { AssetFilter } from './lib/assets';
+import type { ReportPreset } from './lib/assets/assetReport';
+import type { AssetFilter } from './lib/assets/assets';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/incidents/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/density';

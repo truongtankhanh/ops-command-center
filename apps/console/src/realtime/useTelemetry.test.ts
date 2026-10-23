@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { StrictMode } from 'react';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { resetStore } from '../test-utils';
 import { createTelemetryClient, type TelemetryClient, type TelemetryView } from './telemetryClient';
 import type * as TelemetryClientModule from './telemetryClient';

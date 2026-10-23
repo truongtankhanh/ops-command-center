@@ -1,5 +1,5 @@
 import { useAssets, useIncident } from '../api/queries';
-import { deriveWatchSet, incidentWatchCode } from '../lib/telemetryWatch';
+import { deriveWatchSet, incidentWatchCode } from '../lib/telemetry/telemetryWatch';
 import { useTelemetryWatch } from '../realtime/useTelemetry';
 import { useConsole } from '../store';
 

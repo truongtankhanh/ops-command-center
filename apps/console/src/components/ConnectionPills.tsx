@@ -1,4 +1,4 @@
-import type { TelemetryPillState } from '../lib/telemetryState';
+import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import { formatAge } from '../lib/incidents/incidents';
 import { formatClockTime } from '../lib/time';
 import { useNow } from '../lib/useNow';

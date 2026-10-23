@@ -1,10 +1,10 @@
 import type { Asset, Camera, Incident, IncidentSeverity } from '@occ/contracts';
-import { assetStates, openIncidentOf } from '../lib/assets';
-import { freshnessText } from '../lib/assetInspector';
-import { stateText } from '../lib/assetList';
+import { assetStates, openIncidentOf } from '../lib/assets/assets';
+import { freshnessText } from '../lib/assets/assetInspector';
+import { stateText } from '../lib/assets/assetList';
 import { formatAge, severityLabel, statusLabel } from '../lib/incidents/incidents';
-import { formatReading } from '../lib/readings';
-import { ageMs as readingAgeMs, isStale, staleAfterMs } from '../lib/telemetryFreshness';
+import { formatReading } from '../lib/assets/readings';
+import { ageMs as readingAgeMs, isStale, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { useNow } from '../lib/useNow';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { Icon } from '../ui/Icon';

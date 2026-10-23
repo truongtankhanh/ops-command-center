@@ -2,7 +2,7 @@ import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ
 import { act, renderHook } from '@testing-library/react';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { heatColor, heatT } from '../lib/twinHeat';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

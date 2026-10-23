@@ -1,5 +1,5 @@
 import type { TelemetryPoint, TelemetryValue } from '@occ/contracts';
-import { formatReading } from './readings';
+import { formatReading } from './assets/readings';
 import { bindingsFromNodes, type NodeInfo, partTree } from './twinBindings';
 
 /*

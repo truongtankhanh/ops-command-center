@@ -12,7 +12,7 @@ import { act, fireEvent, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import type { Binding } from '../lib/twinBindings';
 import { twinCommands } from '../lib/twinCommands';
 import { PAN_DIRECTIONS } from '../lib/twinPan';

@@ -1,8 +1,8 @@
 import { type KeyboardEvent, type RefObject, useEffect, useMemo, useRef } from 'react';
 import { useAsset, useModelParts } from '../api/queries';
-import { readingIsStale } from '../lib/assetInspector';
+import { readingIsStale } from '../lib/assets/assetInspector';
 import { partRows } from '../lib/modelParts';
-import { ageMs, staleAfterMs } from '../lib/telemetryFreshness';
+import { ageMs, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { calloutOf } from '../lib/twinCallout';
 import type { LeaderStart } from '../lib/twinLeader';
 import { levelOf } from '../lib/twinLevel';

@@ -441,7 +441,7 @@ Settled 2026-10-15 (V2-09.9) by the tech lead: every proposal of the analysis is
 
 ### Words for values
 
-A table by point `key`, in `lib/readingLabels.ts`; any other boolean reads "Yes" / "No", and any other enum value in
+A table by point `key`, in `lib/assets/readingLabels.ts`; any other boolean reads "Yes" / "No", and any other enum value in
 sentence case. A value this table does not know is drawn as it came (types, kinds and values can arrive from a newer
 API first). A follow-up may move the words into the catalogue (a column and a migration) if a site needs its own.
 
@@ -485,7 +485,7 @@ is a multiple of 4, with _n_ = `elevationM` / 4 + 1 (floors are 4 m apart, § De
 
 Settled 2026-10-15 (V2-09.6) by the tech lead: every proposal of the analysis is accepted as written. What a row of
 the Assets list and its notice say, where the sections above give the state and the order but not the words. All of it
-is in `lib/assetList.ts`.
+is in `lib/assets/assetList.ts`.
 
 - **A row** reads the asset's name, its **first headline reading** (`values` over the overview's `headline`, "—" when
   there is none), then the state and the code. The state word is the one of § State of an asset, with what makes it
@@ -523,7 +523,7 @@ is in `lib/assetList.ts`.
 
 Settled 2026-10-15 (V2-09.8) by the tech lead: every proposal of the analysis is accepted as written. What the
 inspector sheet says, where the sections above give the rows and the state but not the words. The pure part is
-`lib/assetInspector.ts`.
+`lib/assets/assetInspector.ts`.
 
 - **The head** reads "{code} · {class name}", the name, then three badges: the state pill, the place line and the
   incident badge. The pill is the state of § State of an asset with no age: "Fault", "Running", "Standby",

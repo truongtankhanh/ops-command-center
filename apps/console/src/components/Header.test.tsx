@@ -7,7 +7,7 @@ import { signOut } from '../auth/session';
 import { useSession } from '../auth/store';
 import type * as CriticalCue from '../lib/incidents/criticalCue';
 import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';

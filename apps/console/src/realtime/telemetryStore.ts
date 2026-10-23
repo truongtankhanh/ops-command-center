@@ -1,13 +1,13 @@
 import type { TelemetryValue } from '@occ/contracts';
 import { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
-import { ageMs, isStale, serverNow } from '../lib/telemetryFreshness';
+import { ageMs, isStale, serverNow } from '../lib/telemetry/telemetryFreshness';
 import {
   type AssetTelemetryState,
   initialTelemetryState,
   type TelemetryPillState,
   telemetryPillState,
-} from '../lib/telemetryState';
+} from '../lib/telemetry/telemetryState';
 import {
   seriesKey,
   type SeriesView,

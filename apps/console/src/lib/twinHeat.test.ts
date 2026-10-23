@@ -1,6 +1,6 @@
 import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
 import { twinColors } from '../styles/tokens';
-import type { AssetTelemetryState } from './telemetryState';
+import type { AssetTelemetryState } from './telemetry/telemetryState';
 import {
   buildingReadings,
   HEAT_DOMAIN,

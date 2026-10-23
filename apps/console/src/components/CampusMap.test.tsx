@@ -21,7 +21,7 @@ import {
   zoneOverlayLayers,
 } from '../lib/map/mapLayers';
 import { siteBounds, type SiteProperties } from '../lib/map/sitePlan';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';

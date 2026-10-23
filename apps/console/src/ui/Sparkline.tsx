@@ -3,7 +3,7 @@ import {
   SPARK_WIDTH,
   sparklineGeometry,
   type SparklineInput,
-} from '../lib/sparkline';
+} from '../lib/telemetry/sparkline';
 import styles from './Sparkline.module.css';
 
 /** What `over` can tint the line with; the same four words as an incident's severity. */
@@ -22,7 +22,7 @@ const round = (n: number): number => Math.round(n * 100) / 100;
  *
  * `over` is the severity of the rule the latest reading has passed: the caller decides that, it
  * knows the comparator. `stale` wins over `over` in CSS: a fault keeps its stale values grey.
- * The series is drawn as given and never extended to `to` (see `lib/sparkline.ts`).
+ * The series is drawn as given and never extended to `to` (see `lib/telemetry/sparkline.ts`).
  */
 export function Sparkline({
   stale = false,

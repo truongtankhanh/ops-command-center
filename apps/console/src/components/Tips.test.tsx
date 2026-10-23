@@ -1,8 +1,8 @@
 import type { Asset, Camera, Incident, TelemetryPoint } from '@occ/contracts';
 import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { formatReading } from '../lib/readings';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
+import { formatReading } from '../lib/assets/readings';
+import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { resetStore } from '../test-utils';
 import { AssetTip, CameraTip, ClusterTip, IncidentTip } from './Tips';

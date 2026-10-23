@@ -1,6 +1,6 @@
 import type { Asset, IncidentCategory, IncidentType, LngLat, Zone } from '@occ/contracts';
-import { zoneAt } from './map/geo';
-import { REPORT_TITLE_MAX } from './incidents/incidents';
+import { zoneAt } from '../map/geo';
+import { REPORT_TITLE_MAX } from '../incidents/incidents';
 
 /*
  * What the report form starts with when an operator reports a fault from an asset's inspector

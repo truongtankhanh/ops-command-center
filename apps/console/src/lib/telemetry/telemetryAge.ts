@@ -1,4 +1,4 @@
-import { formatClock } from './incidents/incidents';
+import { formatClock } from '../incidents/incidents';
 
 /**
  * How a reading's age and "since" time are written: the display half of freshness. The wording is

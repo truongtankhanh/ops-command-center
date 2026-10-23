@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAssets, useIncidents, useZones } from '../api/queries';
-import { assetStates } from '../lib/assets';
+import { assetStates } from '../lib/assets/assets';
 import { assetsText, buildingEyebrow, buildingSummary, incidentsText } from '../lib/twinBuilding';
 import { buildingReadings, tempText } from '../lib/twinHeat';
 import { levelOf } from '../lib/twinLevel';

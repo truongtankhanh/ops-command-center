@@ -30,7 +30,7 @@ import { levelOf } from './lib/twinLevel';
 import { publishPick } from './lib/twinPicker';
 import { TWIN_VIEW_KEYS } from './lib/twinSummary';
 import { TWIN_UNAVAILABLE_COPY } from './lib/twinCapability';
-import { initialTelemetryState } from './lib/telemetryState';
+import { initialTelemetryState } from './lib/telemetry/telemetryState';
 import type { NodeInfo } from './lib/twinBindings';
 import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';

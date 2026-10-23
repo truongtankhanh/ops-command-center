@@ -9,7 +9,7 @@ import {
   groupKey,
   listItems,
   noticeText,
-} from '../lib/assetList';
+} from '../lib/assets/assetList';
 import {
   ASSET_FILTERS,
   type AssetFilter,
@@ -19,10 +19,10 @@ import {
   matchesAssetFilter,
   matchesAssetQuery,
   openIncidentOf,
-} from '../lib/assets';
+} from '../lib/assets/assets';
 import { searchTerms } from '../lib/incidents/incidents';
 import { nextRowIndex } from '../lib/incidents/rowNavigation';
-import { ageMs, isStale, staleAfterMs } from '../lib/telemetryFreshness';
+import { ageMs, isStale, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { useShortcut } from '../lib/useShortcut';
 import { useServerNow, useTelemetryStatus, useTelemetryStore } from '../realtime/telemetryStore';

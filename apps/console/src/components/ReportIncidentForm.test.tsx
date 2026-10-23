@@ -11,7 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
-import type { ReportPreset } from '../lib/assetReport';
+import type { ReportPreset } from '../lib/assets/assetReport';
 import { useConsole } from '../store';
 import { resetStore } from '../test-utils';
 import { useToasts } from '../ui/toasts';

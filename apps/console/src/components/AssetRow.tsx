@@ -1,7 +1,7 @@
 import type { Asset, Incident } from '@occ/contracts';
 import { memo, useCallback } from 'react';
-import { rowValue, stateText } from '../lib/assetList';
-import type { AssetState } from '../lib/assets';
+import { rowValue, stateText } from '../lib/assets/assetList';
+import type { AssetState } from '../lib/assets/assets';
 import { severityLabel } from '../lib/incidents/incidents';
 import { useAssetState } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

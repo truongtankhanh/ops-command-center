@@ -1,6 +1,6 @@
 import { useAsset, useAssets, useIncident, useIncidents, useZones } from '../../api/queries';
-import { formatReading } from '../../lib/readings';
-import { describeEvidence, evidenceOfTimeline } from '../../lib/telemetryEvidence';
+import { formatReading } from '../../lib/assets/readings';
+import { describeEvidence, evidenceOfTimeline } from '../../lib/telemetry/telemetryEvidence';
 import { Icon } from '../../ui/Icon';
 import { severityIcon } from '../../ui/icons';
 import styles from './WallFocusBanner.module.css';

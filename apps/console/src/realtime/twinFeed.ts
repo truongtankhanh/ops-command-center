@@ -1,7 +1,7 @@
 import type { Asset, Incident, IncidentDetail, IncidentSeverity } from '@occ/contracts';
-import { openIncidentOf } from '../lib/assets';
-import { evidenceOfTimeline } from '../lib/telemetryEvidence';
-import { isStale, serverNow, staleAfterMs } from '../lib/telemetryFreshness';
+import { openIncidentOf } from '../lib/assets/assets';
+import { evidenceOfTimeline } from '../lib/telemetry/telemetryEvidence';
+import { isStale, serverNow, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import type { Binding } from '../lib/twinBindings';
 import type { TelemetryClient } from './telemetryClient';
 import type { TargetSlot } from './telemetryProtocol';

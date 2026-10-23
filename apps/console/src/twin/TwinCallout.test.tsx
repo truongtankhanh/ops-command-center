@@ -4,7 +4,7 @@ import { createRef } from 'react';
 import userEvent from '@testing-library/user-event';
 import { api } from '../api/client';
 import { queryKeys } from '../api/queries';
-import { initialTelemetryState } from '../lib/telemetryState';
+import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import type { NodeInfo } from '../lib/twinBindings';
 import type { LeaderStart } from '../lib/twinLeader';
 import { TWIN_VIEW_ID } from '../lib/twinSummary';

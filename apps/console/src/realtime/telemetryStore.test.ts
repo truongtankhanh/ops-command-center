@@ -3,7 +3,7 @@ import {
   type AssetTelemetryState,
   initialTelemetryState,
   type TelemetryState,
-} from '../lib/telemetryState';
+} from '../lib/telemetry/telemetryState';
 import { resetStore } from '../test-utils';
 import type { TelemetryClient, TelemetryView } from './telemetryClient';
 import {

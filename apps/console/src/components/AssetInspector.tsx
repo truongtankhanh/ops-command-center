@@ -8,11 +8,11 @@ import {
   inspectorRows,
   inspectorStateText,
   readingIsStale,
-} from '../lib/assetInspector';
-import { assetStates, openIncidentOf, placeLabel } from '../lib/assets';
+} from '../lib/assets/assetInspector';
+import { assetStates, openIncidentOf, placeLabel } from '../lib/assets/assets';
 import { severityLabel } from '../lib/incidents/incidents';
 import { partRows } from '../lib/modelParts';
-import { staleAfterMs } from '../lib/telemetryFreshness';
+import { staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
