@@ -7,7 +7,7 @@ import { useConsole } from '../../store';
 import { Button } from '../../ui/Button';
 import { Crosshair, Flag } from '../../ui/icons';
 import styles from './AssetFoot.module.css';
-import { ViewOnlyNote } from '../ViewOnlyNote';
+import { ViewOnlyNote } from '../shell/ViewOnlyNote';
 
 /**
  * The foot of the asset inspector (frames 03, 17). A user who may report gets "Report a fault on

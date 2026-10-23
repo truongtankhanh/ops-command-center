@@ -2,15 +2,15 @@ import type { Asset, Incident, Zone } from '@occ/contracts';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ReactElement } from 'react';
-import { queryKeys } from '../api/queries';
-import { useSession } from '../auth/store';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
-import { IncidentFeed } from './incidents/IncidentFeed';
+import { queryKeys } from '../../api/queries';
+import { useSession } from '../../auth/store';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
+import { IncidentFeed } from '../incidents/IncidentFeed';
 import { SidePanel } from './SidePanel';
 
 // No token in these cases; the API client only asks for one.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const zone: Zone = {
   id: 'z1',

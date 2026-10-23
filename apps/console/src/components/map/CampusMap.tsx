@@ -54,7 +54,7 @@ import { mapColors, mapMotion } from '../../styles/tokens';
 import { Icon } from '../../ui/Icon';
 import { Crosshair } from '../../ui/icons';
 import styles from './CampusMap.module.css';
-import { LoadFailed, RateLimited } from '../LoadStates';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 import { MapControls } from './MapControls';
 import { MapLegend } from './MapLegend';
 import { MapTooltip } from './MapTooltip';

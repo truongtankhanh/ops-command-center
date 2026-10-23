@@ -10,8 +10,8 @@ import { queryRetryDelay, shouldRetryQuery } from './api/client';
 import { App } from './App';
 import appStyles from './App.module.css';
 import { startSession } from './auth/session';
-import { AuthGate } from './components/AuthGate';
-import { RegionFallback } from './components/LoadStates';
+import { AuthGate } from './components/auth/AuthGate';
+import { RegionFallback } from './components/shell/LoadStates';
 import { rememberWall, wallScreen } from './lib/wall/wallMode';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 

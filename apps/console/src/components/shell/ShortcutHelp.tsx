@@ -1,14 +1,14 @@
 import { INCIDENT_CATEGORIES, type Role } from '@occ/contracts';
 import { Fragment, useId } from 'react';
-import { useSession } from '../auth/store';
-import { categoriesInScope, categoriesLabel } from '../lib/incidents/incidents';
-import { SHORTCUTS, type ShortcutRow } from '../lib/shell/shortcuts';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Dialog } from '../ui/Dialog';
-import { Kbd } from '../ui/Kbd';
+import { useSession } from '../../auth/store';
+import { categoriesInScope, categoriesLabel } from '../../lib/incidents/incidents';
+import { SHORTCUTS, type ShortcutRow } from '../../lib/shell/shortcuts';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
+import { Kbd } from '../../ui/Kbd';
 import styles from './ShortcutHelp.module.css';
 
 /**

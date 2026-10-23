@@ -1,8 +1,8 @@
 import { Eye } from '../../ui/icons';
 import { Icon } from '../../ui/Icon';
-import { Brand } from '../Brand';
-import { ConnectionPill, TelemetryPill } from '../ConnectionPills';
-import { HeaderClock } from '../HeaderClock';
+import { Brand } from '../shell/Brand';
+import { ConnectionPill, TelemetryPill } from '../shell/ConnectionPills';
+import { HeaderClock } from '../shell/HeaderClock';
 import { KpiTiles } from '../incidents/KpiTiles';
 import styles from './WallHeader.module.css';
 import { WallSessionNotice } from './WallSessionNotice';

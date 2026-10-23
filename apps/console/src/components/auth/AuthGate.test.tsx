@@ -1,12 +1,12 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { reauthenticate, signInAgain, signOut } from '../auth/session';
-import { useSession } from '../auth/store';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../test-utils';
+import { reauthenticate, signInAgain, signOut } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../../test-utils';
 import { AuthGate } from './AuthGate';
 
-vi.mock('../auth/session', () => ({
+vi.mock('../../auth/session', () => ({
   reauthenticate: vi.fn(),
   signInAgain: vi.fn(),
   signOut: vi.fn(),

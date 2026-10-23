@@ -290,7 +290,7 @@ their author, checked in CI, and served by nginx as immutable files.
       painted per building through `userData.ranges`: the first reader of the colour V2-15.8 and V2-17.3 also write.
       Hovering a building with the pointer tints nothing and says nothing yet (the cursor is its only hover).
     - **The tooltip follows the pick, for assets and cameras.** `twin/TwinTooltip.tsx` shows the bodies the 2D map's
-      tooltip uses (`components/Tips.tsx`) after 150 ms of resting on one target, at the pointer plus 18 px, flipped to
+      tooltip uses (`components/shell/Tips.tsx`) after 150 ms of resting on one target, at the pointer plus 18 px, flipped to
       the pointer's left at the stage's edge and clear of the open sheet (`lib/twin-core/twinTooltip.ts`); a part, a building and
       nothing get none, and a row hovered in the Assets tab gets none (it tints the asset; there is no pointer to put a
       tooltip beside). Its foot is "Click to inspect · {place line}", or "No 3D model · drawn as a box" for a class with

@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
-import { signInAgain } from '../auth/session';
-import { useSession } from '../auth/store';
-import { useSignOut } from '../auth/useSignOut';
-import { useConsole } from '../store';
-import { Banner } from '../ui/Banner';
-import { Button, type ButtonSize } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { CircleX, type Glyph, LoaderCircle, Lock, Shield } from '../ui/icons';
+import { signInAgain } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import { useSignOut } from '../../auth/useSignOut';
+import { useConsole } from '../../store';
+import { Banner } from '../../ui/Banner';
+import { Button, type ButtonSize } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { CircleX, type Glyph, LoaderCircle, Lock, Shield } from '../../ui/icons';
 import styles from './AuthGate.module.css';
 import { AuthBackdrop } from './AuthBackdrop';
-import { Brand } from './Brand';
-import { useWallReauth } from './wall/useWallReauth';
+import { Brand } from '../shell/Brand';
+import { useWallReauth } from '../wall/useWallReauth';
 
 /**
  * Renders the console only once the operator is signed in with a role, so no query or socket

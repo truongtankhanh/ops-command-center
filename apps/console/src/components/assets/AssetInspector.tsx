@@ -28,7 +28,7 @@ import { AssetIncidents } from './AssetIncidents';
 import styles from './AssetInspector.module.css';
 import { AssetParts, AssetPartsSkeleton } from './AssetParts';
 import { AssetReadings } from './AssetReadings';
-import { LoadFailed, RateLimited } from '../LoadStates';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /**
  * One asset in the sheet (frames 03, 05, 08): its head and badges, then its live readings. One

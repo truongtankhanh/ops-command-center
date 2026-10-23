@@ -1,13 +1,13 @@
-import { useSession } from '../auth/store';
-import { useReadOnly } from '../auth/usePermission';
-import { useSignOut } from '../auth/useSignOut';
-import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
-import { initials, rolesLabel } from '../lib/shell/users';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { ChevronDown, Eye, Info, Keyboard, LogOut, Rows3, Volume2 } from '../ui/icons';
-import { Popover } from '../ui/Popover';
+import { useSession } from '../../auth/store';
+import { useReadOnly } from '../../auth/usePermission';
+import { useSignOut } from '../../auth/useSignOut';
+import { playCriticalCue, unlockAudio } from '../../lib/incidents/criticalCue';
+import { initials, rolesLabel } from '../../lib/shell/users';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { ChevronDown, Eye, Info, Keyboard, LogOut, Rows3, Volume2 } from '../../ui/icons';
+import { Popover } from '../../ui/Popover';
 import styles from './UserMenu.module.css';
 
 /**

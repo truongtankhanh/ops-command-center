@@ -1,11 +1,11 @@
-import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
-import { formatAge } from '../lib/incidents/incidents';
-import { formatClockTime } from '../lib/shared/time';
-import { useNow } from '../lib/shared/useNow';
-import { useTelemetryStatus } from '../realtime/telemetryStore';
-import { type ConnectionState, useConsole } from '../store';
-import { Icon } from '../ui/Icon';
-import { connectionIcon, telemetryIcon } from '../ui/icons';
+import type { TelemetryPillState } from '../../lib/telemetry/telemetryState';
+import { formatAge } from '../../lib/incidents/incidents';
+import { formatClockTime } from '../../lib/shared/time';
+import { useNow } from '../../lib/shared/useNow';
+import { useTelemetryStatus } from '../../realtime/telemetryStore';
+import { type ConnectionState, useConsole } from '../../store';
+import { Icon } from '../../ui/Icon';
+import { connectionIcon, telemetryIcon } from '../../ui/icons';
 import styles from './ConnectionPills.module.css';
 
 /*

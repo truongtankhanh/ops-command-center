@@ -1,9 +1,9 @@
 import type { Role } from '@occ/contracts';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useSession } from '../auth/store';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../test-utils';
+import { useSession } from '../../auth/store';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../../test-utils';
 import { ShortcutHelp } from './ShortcutHelp';
 
 /** The help beside an opener (to give focus back to) and a text field (where keys are typed). */

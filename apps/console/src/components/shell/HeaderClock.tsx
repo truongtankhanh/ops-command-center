@@ -1,5 +1,5 @@
-import { formatClockTime } from '../lib/shared/time';
-import { useNow } from '../lib/shared/useNow';
+import { formatClockTime } from '../../lib/shared/time';
+import { useNow } from '../../lib/shared/useNow';
 import styles from './HeaderClock.module.css';
 
 const DATE = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });

@@ -2,20 +2,20 @@ import type { Incident, IncidentSeverity, IncidentStatus } from '@occ/contracts'
 import type { QueryClient } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { signOut } from '../auth/session';
-import { useSession } from '../auth/store';
-import type * as CriticalCue from '../lib/incidents/criticalCue';
-import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { signOut } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import type * as CriticalCue from '../../lib/incidents/criticalCue';
+import { playCriticalCue, unlockAudio } from '../../lib/incidents/criticalCue';
+import { initialTelemetryState, type TelemetryState } from '../../lib/telemetry/telemetryState';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { Header } from './Header';
 
-vi.mock('../auth/session', () => ({ signOut: vi.fn() }));
+vi.mock('../../auth/session', () => ({ signOut: vi.fn() }));
 // jsdom has no Web Audio; the sound preference itself is stored by the real module.
-vi.mock('../lib/incidents/criticalCue', async (importOriginal) => ({
+vi.mock('../../lib/incidents/criticalCue', async (importOriginal) => ({
   ...(await importOriginal<typeof CriticalCue>()),
   unlockAudio: vi.fn(),
   playCriticalCue: vi.fn(),

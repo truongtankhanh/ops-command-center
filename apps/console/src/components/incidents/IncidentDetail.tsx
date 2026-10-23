@@ -20,7 +20,7 @@ import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
 import { IncidentTimeline } from './IncidentTimeline';
-import { LoadFailed, RateLimited } from '../LoadStates';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /**
  * The incident in the sheet (frames 02 / 06). One `Sheet` holds the loading, failed and loaded

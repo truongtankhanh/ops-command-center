@@ -18,7 +18,7 @@ import type { Mock } from 'vitest';
 import { queryKeys } from './api/queries';
 import { App } from './App';
 import { useSession } from './auth/store';
-import { AuthGate } from './components/AuthGate';
+import { AuthGate } from './components/auth/AuthGate';
 import { incidentToast } from './lib/incidents/attention';
 import type { Beacon } from './lib/twin-core/twinBeacons';
 import type { HeatScene } from './lib/twin-core/twinHeat';

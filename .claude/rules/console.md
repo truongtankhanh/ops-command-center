@@ -24,6 +24,9 @@ paths:
 - Group files by feature in a sub-folder of `lib/` or `components/` (ADR-0032; `components/wall/` is the example). Never
   name such a folder `twin`: the ADR-0020 lint pattern `**/twin/*` matches the name anywhere, so use `twin-core` or `stage`.
   `lib/` never imports `components/` (lint-enforced); logic sits below the components that use it.
+- `components/` folders: `incidents`, `assets`, `map`, `cameras`, `telemetry`, `stage` (2D/3D switch and the twin's
+  main-chunk banners), `shell` (header, side panel, tips, load states), `auth`, `wall`. `components/auth/` holds only the
+  sign-in React components; the OIDC session code is `src/auth/`.
 - Glyphs come from `src/ui/icons.ts` only; importing `lucide-react` anywhere else fails lint.
 - `three`, `@react-three/*` and `three-mesh-bvh` are imported only under `src/twin/` (lint-enforced), which loads as a
   lazy chunk through the one dynamic `import()` in `StageView`; the 2D view, the fallback and the sign-in screens must

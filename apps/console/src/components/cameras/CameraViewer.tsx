@@ -12,7 +12,7 @@ import { CameraFeed } from './CameraFeed';
 import { CameraTime } from './CameraTime';
 import { LivePill } from './CameraTile';
 import styles from './CameraViewer.module.css';
-import { RegionFallback } from '../LoadStates';
+import { RegionFallback } from '../shell/LoadStates';
 
 /**
  * One camera, large, with the other cameras of its zone to switch to (no frame draws it; D1, D9).

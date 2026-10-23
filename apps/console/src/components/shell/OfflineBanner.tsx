@@ -1,7 +1,7 @@
-import { formatClockTime } from '../lib/shared/time';
-import { useConsole } from '../store';
-import { Banner } from '../ui/Banner';
-import { connectionIcon } from '../ui/icons';
+import { formatClockTime } from '../../lib/shared/time';
+import { useConsole } from '../../store';
+import { Banner } from '../../ui/Banner';
+import { connectionIcon } from '../../ui/icons';
 
 /**
  * Frame 05: while the live connection is down, what the operator sees may be stale. Mounted only

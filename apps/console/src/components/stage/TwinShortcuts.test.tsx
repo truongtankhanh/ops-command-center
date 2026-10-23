@@ -13,7 +13,7 @@ import {
   stubTwinAvailable,
   unstubTwin,
 } from '../../test-utils';
-import { ShortcutHelp } from '../ShortcutHelp';
+import { ShortcutHelp } from '../shell/ShortcutHelp';
 import { TwinShortcuts } from './TwinShortcuts';
 
 // The flights themselves are `twinFlight.test.ts`'s: here only what each key asks for, and when.

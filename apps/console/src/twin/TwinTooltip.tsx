@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
-import { AssetTip, CameraTip, IncidentTip } from '../components/Tips';
-import { tipSurface } from '../components/tipSurface';
+import { AssetTip, CameraTip, IncidentTip } from '../components/shell/Tips';
+import { tipSurface } from '../components/shell/tipSurface';
 import { placeLabel } from '../lib/assets/assets';
 import { isActive } from '../lib/incidents/incidents';
 import { onPick } from '../lib/twin-core/twinPicker';
@@ -38,7 +38,7 @@ function place(tip: HTMLElement, layer: HTMLElement, pointer: ScreenPoint): void
 
 /**
  * The tooltip of the 3D view (V2-15.5, frame 02): what the pointer rests on, said with the bodies the 2D map's
- * tooltip uses (`components/Tips.tsx`), at the pointer. An asset gets its name, code, state word, two headline
+ * tooltip uses (`components/shell/Tips.tsx`), at the pointer. An asset gets its name, code, state word, two headline
  * readings and where a click leads (the place line, or "No 3D model · drawn as a box"); a camera gets its name
  * and code; an incident's beacon (V2-16.4) gets the map's incident tooltip (title, severity, status, code, zone and
  * age), for an incident that is active or selected, as the map's, so one that has just left the picture says

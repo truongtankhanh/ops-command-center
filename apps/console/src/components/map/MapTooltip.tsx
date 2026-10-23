@@ -5,8 +5,8 @@ import { isActive } from '../../lib/incidents/incidents';
 import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../../lib/map/mapHover';
 import { HOVER_LAYERS, visibleLayers } from '../../lib/map/mapLayers';
 import { useConsole } from '../../store';
-import { AssetTip, CameraTip, ClusterTip, IncidentTip } from '../Tips';
-import { tipSurface } from '../tipSurface';
+import { AssetTip, CameraTip, ClusterTip, IncidentTip } from '../shell/Tips';
+import { tipSurface } from '../shell/tipSurface';
 import styles from './MapTooltip.module.css';
 
 /** Half the tooltip's `max-width` in the module: it is clamped this far from the map's sides. */

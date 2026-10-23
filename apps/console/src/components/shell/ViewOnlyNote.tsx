@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Icon } from '../ui/Icon';
-import { Eye, type Glyph } from '../ui/icons';
+import { Icon } from '../../ui/Icon';
+import { Eye, type Glyph } from '../../ui/icons';
 import styles from './ViewOnlyNote.module.css';
 
 /**

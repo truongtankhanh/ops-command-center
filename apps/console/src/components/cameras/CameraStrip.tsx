@@ -8,7 +8,7 @@ import text from '../../styles/text.module.css';
 import { Skeleton } from '../../ui/Skeleton';
 import styles from './CameraStrip.module.css';
 import { CameraTile } from './CameraTile';
-import { LoadFailed, RateLimited } from '../LoadStates';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /**
  * One row of tiles — four, six on a wall, eight on a 4K wall (`stripSize`): pinned cameras first,

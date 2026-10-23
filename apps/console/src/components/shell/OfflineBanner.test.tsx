@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
-import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import { useConsole } from '../../store';
+import { resetStore } from '../../test-utils';
 import { OfflineBanner } from './OfflineBanner';
 
 // A local time, so the text does not depend on the runner's timezone.

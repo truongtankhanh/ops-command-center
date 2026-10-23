@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RegionFallback } from '../components/LoadStates';
+import { RegionFallback } from '../components/shell/LoadStates';
 import { ErrorBoundary } from './ErrorBoundary';
 
 /** While set, `Feed` throws on every render: the fault the boundary has to contain. */

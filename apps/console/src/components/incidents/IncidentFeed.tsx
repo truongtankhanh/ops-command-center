@@ -32,7 +32,7 @@ import { Tabs } from '../../ui/Tabs';
 import { FeedSearch } from './FeedSearch';
 import styles from './IncidentFeed.module.css';
 import { IncidentRow } from './IncidentRow';
-import { LoadFailed, RateLimited } from '../LoadStates';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /** As many placeholder rows as a short shift's list, enough to fill the column's first screen. */
 const SKELETON_ROWS = 5;

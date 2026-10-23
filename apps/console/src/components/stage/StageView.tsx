@@ -8,7 +8,7 @@ import { CircleX } from '../../ui/icons';
 import { CampusMap } from '../map/CampusMap';
 import { ColourBy } from '../map/ColourBy';
 import { LayersControl } from '../map/LayersControl';
-import { RegionFallback } from '../LoadStates';
+import { RegionFallback } from '../shell/LoadStates';
 import styles from './StageView.module.css';
 import { TwinBreadcrumb } from './TwinBreadcrumb';
 import { TwinLoading } from './TwinLoading';

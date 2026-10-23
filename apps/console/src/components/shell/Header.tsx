@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
-import { usePermission } from '../auth/usePermission';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Plus } from '../ui/icons';
+import { usePermission } from '../../auth/usePermission';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Plus } from '../../ui/icons';
 import { Brand } from './Brand';
 import { ConnectionPill, TelemetryPill } from './ConnectionPills';
 import { HeaderClock } from './HeaderClock';
 import styles from './Header.module.css';
-import { KpiTiles } from './incidents/KpiTiles';
+import { KpiTiles } from '../incidents/KpiTiles';
 import { UserMenu } from './UserMenu';
 
 /**

@@ -6,7 +6,7 @@ import { reauthenticate } from './auth/session';
 import { useSession } from './auth/store';
 import type * as CriticalCue from './lib/incidents/criticalCue';
 import { playCriticalCue } from './lib/incidents/criticalCue';
-import { AuthGate } from './components/AuthGate';
+import { AuthGate } from './components/auth/AuthGate';
 import { useTelemetryStore } from './realtime/telemetryStore';
 import { useConsole } from './store';
 import {

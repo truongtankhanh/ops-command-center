@@ -19,7 +19,7 @@ import { focusLost } from '../../ui/focus';
 import { Hint } from '../../ui/Hint';
 import { Info } from '../../ui/icons';
 import styles from './IncidentResponse.module.css';
-import { ViewOnlyNote } from '../ViewOnlyNote';
+import { ViewOnlyNote } from '../shell/ViewOnlyNote';
 
 /** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
 export const NOTE_KEPT = 'Esc keeps your note. Close discards it.';

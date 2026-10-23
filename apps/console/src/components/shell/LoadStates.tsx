@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
-import { loadErrorText, RATE_LIMITED_RETRYING } from '../api/client';
-import { Button } from '../ui/Button';
-import { EmptyState } from '../ui/EmptyState';
-import { focusLost } from '../ui/focus';
-import { CircleX } from '../ui/icons';
+import { loadErrorText, RATE_LIMITED_RETRYING } from '../../api/client';
+import { Button } from '../../ui/Button';
+import { EmptyState } from '../../ui/EmptyState';
+import { focusLost } from '../../ui/focus';
+import { CircleX } from '../../ui/icons';
 
 /**
  * What a region shows when its data could not be loaded: why, in the operator's words
