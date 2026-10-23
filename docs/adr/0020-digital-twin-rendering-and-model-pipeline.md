@@ -327,7 +327,7 @@ their author, checked in CI, and served by nginx as immutable files.
       the report form) and flies home even from the campus level. Its name stays "Reset view"; "Reset to the campus
       view" is the keyboard help's word. No key is bound here: V2-18.3 calls `goUp()` and `resetView()`
       (`goCampus()` and `home()`), and the camera already follows the level ("Settled in V2-18.3").
-    - **The breadcrumb is main-chunk code, in the switch's place.** `components/TwinBreadcrumb.tsx`, not
+    - **The breadcrumb is main-chunk code, in the switch's place.** `components/stage/TwinBreadcrumb.tsx`, not
       `src/twin/` as the task wrote: it sits in `StageView`'s tools and `src/twin/` can only be crossed by the dynamic
       import (as the loading card, V2-12.11). The frames (03, 12, 15) put it where the 3D / 2D switch is, with the
       layers beside it at building level, not in the layers control's place as the task text says; so at building

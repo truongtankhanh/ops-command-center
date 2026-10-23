@@ -1,10 +1,10 @@
-import { useAssets, useZones } from '../api/queries';
-import { crumbsOf, levelOf, type LevelTarget } from '../lib/twin-core/twinLevel';
-import { TWIN_VIEW_ID } from '../lib/twin-core/twinSummary';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { ArrowLeft, ChevronRight } from '../ui/icons';
+import { useAssets, useZones } from '../../api/queries';
+import { crumbsOf, levelOf, type LevelTarget } from '../../lib/twin-core/twinLevel';
+import { TWIN_VIEW_ID } from '../../lib/twin-core/twinSummary';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { ArrowLeft, ChevronRight } from '../../ui/icons';
 import styles from './TwinBreadcrumb.module.css';
 
 /**

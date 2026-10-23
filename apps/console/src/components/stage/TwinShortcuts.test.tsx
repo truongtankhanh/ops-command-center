@@ -2,22 +2,22 @@ import type { Asset, IncidentDetail, Role } from '@occ/contracts';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { useSession } from '../auth/store';
-import { flyToSelection } from '../lib/twin-core/twinFlight';
-import { useConsole } from '../store';
+import { queryKeys } from '../../api/queries';
+import { useSession } from '../../auth/store';
+import { flyToSelection } from '../../lib/twin-core/twinFlight';
+import { useConsole } from '../../store';
 import {
   createTestQueryClient,
   renderWithQueryClient,
   resetStore,
   stubTwinAvailable,
   unstubTwin,
-} from '../test-utils';
-import { ShortcutHelp } from './ShortcutHelp';
+} from '../../test-utils';
+import { ShortcutHelp } from '../ShortcutHelp';
 import { TwinShortcuts } from './TwinShortcuts';
 
 // The flights themselves are `twinFlight.test.ts`'s: here only what each key asks for, and when.
-vi.mock('../lib/twin-core/twinFlight', () => ({ flyToSelection: vi.fn() }));
+vi.mock('../../lib/twin-core/twinFlight', () => ({ flyToSelection: vi.fn() }));
 
 const asset = (id: string, code: string) => ({ id, code }) as Asset;
 const ASSETS = [asset('asset-ct-01', 'CT-01'), asset('asset-lks-b3', 'LKS-B3')];

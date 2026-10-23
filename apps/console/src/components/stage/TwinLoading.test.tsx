@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { twinLoadSteps } from '../lib/twin-core/twinLoading';
-import { expectNoAxeViolations } from '../test-utils';
+import { twinLoadSteps } from '../../lib/twin-core/twinLoading';
+import { expectNoAxeViolations } from '../../test-utils';
 import { TwinLoading } from './TwinLoading';
 
 const loading = twinLoadSteps({ codeLoaded: false, sitePlan: 'pending' });

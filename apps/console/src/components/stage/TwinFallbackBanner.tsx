@@ -2,12 +2,15 @@ import { useState } from 'react';
 import {
   readTwinBannerDismissed,
   writeTwinBannerDismissed,
-} from '../lib/twin-core/twinBannerDismissal';
-import { TWIN_UNAVAILABLE_COPY, type TwinUnavailableReason } from '../lib/twin-core/twinCapability';
-import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
-import { Banner } from '../ui/Banner';
-import { Button } from '../ui/Button';
-import { Info, X } from '../ui/icons';
+} from '../../lib/twin-core/twinBannerDismissal';
+import {
+  TWIN_UNAVAILABLE_COPY,
+  type TwinUnavailableReason,
+} from '../../lib/twin-core/twinCapability';
+import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
+import { Banner } from '../../ui/Banner';
+import { Button } from '../../ui/Button';
+import { Info, X } from '../../ui/icons';
 import styles from './TwinFallbackBanner.module.css';
 import { VIEW_SWITCH_3D_ID } from './ViewSwitch';
 

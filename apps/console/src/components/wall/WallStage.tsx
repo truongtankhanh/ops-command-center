@@ -3,7 +3,7 @@ import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
 import { Icon } from '../../ui/Icon';
 import { Info } from '../../ui/icons';
 import { CampusMap } from '../map/CampusMap';
-import { LazyTwinStage } from '../StageView';
+import { LazyTwinStage } from '../stage/StageView';
 import styles from './WallStage.module.css';
 
 /**

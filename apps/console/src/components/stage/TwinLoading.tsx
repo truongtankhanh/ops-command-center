@@ -1,7 +1,7 @@
-import { type LoadStep, loadedShare, type StepState } from '../lib/twin-core/twinLoading';
-import { Button } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { Check, CircleDot, CircleX } from '../ui/icons';
+import { type LoadStep, loadedShare, type StepState } from '../../lib/twin-core/twinLoading';
+import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { Check, CircleDot, CircleX } from '../../ui/icons';
 import styles from './TwinLoading.module.css';
 
 const STATE_ICON = { done: Check, failed: CircleX, active: CircleDot, queued: CircleDot };

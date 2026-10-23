@@ -1,14 +1,14 @@
 import { lazy, Suspense, useState } from 'react';
-import { levelOf } from '../lib/twin-core/twinLevel';
-import { useTwinLoading } from '../lib/twin-core/useTwinLoading';
-import { useConsole } from '../store';
-import { EmptyState } from '../ui/EmptyState';
-import { ErrorBoundary } from '../ui/ErrorBoundary';
-import { CircleX } from '../ui/icons';
-import { CampusMap } from './map/CampusMap';
-import { ColourBy } from './map/ColourBy';
-import { LayersControl } from './map/LayersControl';
-import { RegionFallback } from './LoadStates';
+import { levelOf } from '../../lib/twin-core/twinLevel';
+import { useTwinLoading } from '../../lib/twin-core/useTwinLoading';
+import { useConsole } from '../../store';
+import { EmptyState } from '../../ui/EmptyState';
+import { ErrorBoundary } from '../../ui/ErrorBoundary';
+import { CircleX } from '../../ui/icons';
+import { CampusMap } from '../map/CampusMap';
+import { ColourBy } from '../map/ColourBy';
+import { LayersControl } from '../map/LayersControl';
+import { RegionFallback } from '../LoadStates';
 import styles from './StageView.module.css';
 import { TwinBreadcrumb } from './TwinBreadcrumb';
 import { TwinLoading } from './TwinLoading';
@@ -19,7 +19,7 @@ import { ViewSwitch } from './ViewSwitch';
  * it as a dynamic `import()` only), so the 2D view, the fallback and the sign-in screens never
  * download three.js.
  */
-const loadTwinStage = () => import('../twin/TwinStage');
+const loadTwinStage = () => import('../../twin/TwinStage');
 
 /**
  * Whether the twin chunk has been fetched in this page's life. A later visit to 3D then starts with the code

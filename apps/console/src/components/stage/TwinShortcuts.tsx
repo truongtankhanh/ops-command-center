@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { flyToSelection } from '../lib/twin-core/twinFlight';
-import { useSelectionTarget } from '../lib/twin-core/useSelectionTarget';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
-import { useConsole } from '../store';
+import { flyToSelection } from '../../lib/twin-core/twinFlight';
+import { useSelectionTarget } from '../../lib/twin-core/useSelectionTarget';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
+import { useConsole } from '../../store';
 
 /** `V`: the other view. A function of the store at the moment of the press, so its identity never changes. */
 function toggleView() {

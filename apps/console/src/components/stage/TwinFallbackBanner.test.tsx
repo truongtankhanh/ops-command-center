@@ -1,15 +1,15 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type * as CapabilityModule from '../lib/twin-core/twinCapability';
-import { twinCapability, type TwinCapability } from '../lib/twin-core/twinCapability';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore } from '../test-utils';
+import type * as CapabilityModule from '../../lib/twin-core/twinCapability';
+import { twinCapability, type TwinCapability } from '../../lib/twin-core/twinCapability';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore } from '../../test-utils';
 import { TwinFallbackBanner } from './TwinFallbackBanner';
 import { ViewSwitch } from './ViewSwitch';
 
 // The cases that need another answer set it here. It keeps the real answer by default (no WebGL 2
 // under jsdom): the store reads it when its module is first imported.
-vi.mock('../lib/twin-core/twinCapability', async (importOriginal) => {
+vi.mock('../../lib/twin-core/twinCapability', async (importOriginal) => {
   const actual = await importOriginal<typeof CapabilityModule>();
   return { ...actual, twinCapability: vi.fn(actual.twinCapability) };
 });

@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../test-utils';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../../test-utils';
 import { ViewSwitch } from './ViewSwitch';
 
 const KEY = 'occ.console.view';

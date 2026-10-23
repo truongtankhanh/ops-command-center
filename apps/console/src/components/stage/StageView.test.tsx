@@ -1,29 +1,29 @@
 import type { SitePlan, Zone } from '@occ/contracts';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { api } from '../api/client';
-import { queryKeys } from '../api/queries';
-import { TWIN_UNAVAILABLE_COPY } from '../lib/twin-core/twinCapability';
-import { useConsole } from '../store';
+import { api } from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { TWIN_UNAVAILABLE_COPY } from '../../lib/twin-core/twinCapability';
+import { useConsole } from '../../store';
 import {
   createTestQueryClient,
   renderWithQueryClient,
   resetStore,
   stubTwinAvailable,
   unstubTwin,
-} from '../test-utils';
-import { CampusMap } from './map/CampusMap';
+} from '../../test-utils';
+import { CampusMap } from '../map/CampusMap';
 import { LazyTwinStage, StageView } from './StageView';
 
 // MapLibre needs WebGL, which jsdom does not have; the map's own tests cover the map.
-vi.mock('./map/CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
+vi.mock('../map/CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
 
 // The 3D chunk, stood in for: R3F needs WebGL too. A mock factory runs when the module is first
 // imported, so `twin.evaluated` says whether anything asked for the chunk, and `twin.fail` makes
 // that import fail (a chunk that cannot be fetched). The factory stays synchronous: the registry then
 // forgets a failed import, so a Retry runs it again.
 const twin = vi.hoisted(() => ({ evaluated: 0, fail: false, crash: false }));
-vi.mock('../twin/TwinStage', () => {
+vi.mock('../../twin/TwinStage', () => {
   twin.evaluated += 1;
   if (twin.fail) throw new Error('chunk failed to load');
   return {
