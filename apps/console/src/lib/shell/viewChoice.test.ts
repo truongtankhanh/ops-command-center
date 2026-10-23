@@ -1,4 +1,4 @@
-import type { TwinCapability } from './twinCapability';
+import type { TwinCapability } from '../twinCapability';
 import { effectiveView, readViewChoice, writeViewChoice } from './viewChoice';
 
 const KEY = 'occ.console.view';

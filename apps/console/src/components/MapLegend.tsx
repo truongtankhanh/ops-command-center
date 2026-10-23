@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { useLegendOpen } from '../lib/useLegendOpen';
+import { useLegendOpen } from '../lib/shell/useLegendOpen';
 import { Icon } from '../ui/Icon';
 import { cameraIcon, ChevronDown } from '../ui/icons';
 import styles from './MapLegend.module.css';

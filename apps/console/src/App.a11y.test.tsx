@@ -22,7 +22,7 @@ import { AuthGate } from './components/AuthGate';
 import { incidentToast } from './lib/incidents/attention';
 import type { Beacon } from './lib/twinBeacons';
 import type { HeatScene } from './lib/twinHeat';
-import { SHORTCUTS } from './lib/shortcuts';
+import { SHORTCUTS } from './lib/shell/shortcuts';
 import type { FitBox } from './lib/twinCamera';
 import { registerTwinCommands, type TwinCommands } from './lib/twinCommands';
 import { type FocusResolver, registerFocusResolver } from './lib/twinFocus';

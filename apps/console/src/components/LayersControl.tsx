@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { layersOf, type SceneLayerKey } from '../lib/twinLayers';
 import { levelOf } from '../lib/twinLevel';
-import type { ViewChoice } from '../lib/viewChoice';
+import type { ViewChoice } from '../lib/shell/viewChoice';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import styles from './LayersControl.module.css';

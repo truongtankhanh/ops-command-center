@@ -1,6 +1,6 @@
 import { useCameras, useIncidents } from '../../api/queries';
 import { cameraLink, stripCameras, wallStripSize, wallSubject } from '../../lib/cameras/cameras';
-import { useDisplayMode } from '../../lib/useDisplayMode';
+import { useDisplayMode } from '../../lib/shell/useDisplayMode';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
 import { Skeleton } from '../../ui/Skeleton';

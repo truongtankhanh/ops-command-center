@@ -47,7 +47,7 @@ import { placePinAt } from '../lib/map/reportPin';
 import { siteBounds } from '../lib/map/sitePlan';
 import { serverNow } from '../lib/telemetry/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
-import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { mapColors, mapMotion } from '../styles/tokens';

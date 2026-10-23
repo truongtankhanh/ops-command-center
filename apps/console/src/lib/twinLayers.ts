@@ -1,6 +1,6 @@
 import { MAP_LAYER_KEYS, type LayerVisibility, type MapLayerKey } from './map/mapLayers';
 import type { SceneLevel } from './twinLevel';
-import type { ViewChoice } from './viewChoice';
+import type { ViewChoice } from './shell/viewChoice';
 
 /*
  * The layers the operator can show or hide, as plain data (V2-15.9): the three of the 2D map (`mapLayers.ts`) and,

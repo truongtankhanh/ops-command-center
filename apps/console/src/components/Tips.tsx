@@ -5,7 +5,7 @@ import { stateText } from '../lib/assets/assetList';
 import { formatAge, severityLabel, statusLabel } from '../lib/incidents/incidents';
 import { formatReading } from '../lib/assets/readings';
 import { ageMs as readingAgeMs, isStale, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { useNow } from '../lib/useNow';
+import { useNow } from '../lib/shared/useNow';
 import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { Icon } from '../ui/Icon';
 import {

@@ -1,4 +1,4 @@
-import { formatClockTime } from '../lib/time';
+import { formatClockTime } from '../lib/shared/time';
 import { useConsole } from '../store';
 import { Banner } from '../ui/Banner';
 import { connectionIcon } from '../ui/icons';

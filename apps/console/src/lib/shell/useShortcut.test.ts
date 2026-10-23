@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
-import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import { useConsole } from '../../store';
+import { resetStore } from '../../test-utils';
 import { isShortcut, useShortcut } from './useShortcut';
 
 /** An element in the page, so `closest()` sees its ancestors. */

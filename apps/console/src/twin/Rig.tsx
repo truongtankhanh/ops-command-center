@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Box3, MathUtils, Vector3 } from 'three';
 import type { Beacon } from '../lib/twinBeacons';
-import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import {
   CAMERA_LIMITS,
   type DistanceLimits,

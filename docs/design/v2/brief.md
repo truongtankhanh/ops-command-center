@@ -175,7 +175,7 @@ Four levels, shown in a breadcrumb (`Campus › Data Center › CT-01`):
 
 ### Keyboard
 
-The `?` help (frame 16) lists every key; V2 adds the rows marked "New" to V1's `SHORTCUTS` (`lib/shortcuts.ts`).
+The `?` help (frame 16) lists every key; V2 adds the rows marked "New" to V1's `SHORTCUTS` (`lib/shell/shortcuts.ts`).
 
 | Where                       | Keys                                                                                                     |
 | --------------------------- | -------------------------------------------------------------------------------------------------------- |

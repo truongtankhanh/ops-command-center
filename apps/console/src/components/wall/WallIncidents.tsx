@@ -1,6 +1,6 @@
 import { useIncidents, useZones } from '../../api/queries';
 import { compareIncidents, isActive } from '../../lib/incidents/incidents';
-import { useNow } from '../../lib/useNow';
+import { useNow } from '../../lib/shared/useNow';
 import text from '../../styles/text.module.css';
 import { Icon } from '../../ui/Icon';
 import { statusIcon } from '../../ui/icons';

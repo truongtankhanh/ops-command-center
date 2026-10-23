@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { breakpoints } from '../styles/tokens';
+import { breakpoints } from '../../styles/tokens';
 
 /** The console's layouts by screen width; `breakpoints` in `styles/tokens.ts` describes each. */
 export type DisplayMode = 'phone' | 'tablet' | 'laptop' | 'wall' | 'wall-4k';

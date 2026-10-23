@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { useNow } from '../lib/useNow';
+import { useNow } from '../lib/shared/useNow';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { SheetSection } from '../ui/SheetSection';

@@ -27,7 +27,7 @@ see [icons.md](icons.md#map-glyphs)).
   strip), laptop (the reference), **wall ≥ 1920 px** (`--ui-scale: 1.125`, 6 camera tiles) and **4K wall
   ≥ 3200 px** (`--ui-scale: 1.75`, 8 tiles). Only `--ui-scale` changes in the wall media queries at the end of
   `tokens.css`; `lint` checks that their widths match `breakpoints.wall` / `wall4k`. Script reads the mode with
-  `useDisplayMode()` (`lib/useDisplayMode.ts`) — today only the camera strip, for its tile count.
+  `useDisplayMode()` (`lib/shell/useDisplayMode.ts`) — today only the camera strip, for its tile count.
 - **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
   (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
   overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--kpi-height`, `--strip-pad`,

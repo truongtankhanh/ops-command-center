@@ -14,7 +14,7 @@ import { readingWord } from './readingLabels';
  * thing (V2-09.3; wording settled in V2-09.1).
  */
 
-// `en-GB` like the other formatters of the console (`Header`, `lib/time.ts`): "1,420".
+// `en-GB` like the other formatters of the console (`Header`, `lib/shared/time.ts`): "1,420".
 const NUMBER = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
 
 /** "1,420": at most one fraction digit. */

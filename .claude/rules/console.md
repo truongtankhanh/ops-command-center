@@ -32,7 +32,7 @@ paths:
   `staleTime: Infinity`). UI state is the Zustand store in `store.ts`. Realtime goes through `realtime/`, not through
   ad-hoc sockets in components.
 - Browser storage is optional: wrap reads and writes in `try/catch` and render correctly without it (see
-  `lib/shortcuts.ts`).
+  `lib/shell/shortcuts.ts`).
 - Types, event names and permission checks (`hasPermission`, `hasPermissionFor`) come from `@occ/contracts`. The
   console hides what a role cannot do, but the API enforces it.
 - Render unknown enum values safely (types, kinds, uses, roles can be added server-side first).
@@ -40,7 +40,7 @@ paths:
 ## Accessibility
 
 - Single-character keyboard shortcuts must stay switchable (WCAG 2.1.4); register them with `useShortcut` and list
-  them in `lib/shortcuts.ts` so the help dialog stays true.
+  them in `lib/shell/shortcuts.ts` so the help dialog stays true.
 - `App.a11y.test.tsx` and the `axe` helper in `test-utils.tsx` guard regressions; new interactive components get a
   role-based test.
 - `lint` also runs `scripts/contrast.ts --check`; a failing contrast pair is a lint failure.

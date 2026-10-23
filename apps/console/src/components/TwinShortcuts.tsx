@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { flyToSelection } from '../lib/twinFlight';
 import { useSelectionTarget } from '../lib/useSelectionTarget';
-import { useShortcut } from '../lib/useShortcut';
+import { useShortcut } from '../lib/shell/useShortcut';
 import { useTwinCapability } from '../lib/useTwinCapability';
 import { useConsole } from '../store';
 
@@ -20,7 +20,7 @@ function togglePanTool() {
  * The single-key shortcuts of the 3D view (V2-18.2, frame 16; `P` is V3-29's): `V` switches between 3D and 2D, `F` flies to
  * the selection, `P` switches the drag between Orbit and Pan. Both are character keys, so `useShortcut` turns them off with the account menu's switch (WCAG 2.1.4) and
  * ignores them in text fields, with modifiers, on repeat, during IME composition and inside a dialog; both are
- * listed in `lib/shortcuts.ts` (V2-18.1) and read nothing about the user's role, as choosing a view and flying a
+ * listed in `lib/shell/shortcuts.ts` (V2-18.1) and read nothing about the user's role, as choosing a view and flying a
  * camera act on nothing.
  *
  * `F` has three meanings by place (phase-0 decision 7) and is registered **once**, here, with one handler that

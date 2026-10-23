@@ -1,7 +1,7 @@
 import type { Asset, Camera, Incident, LngLat } from '@occ/contracts';
 import { isInView } from '../map/geo';
 import { compareIncidents, isActive } from '../incidents/incidents';
-import type { DisplayMode } from '../useDisplayMode';
+import type { DisplayMode } from '../shell/useDisplayMode';
 
 /**
  * The most cameras that can be pinned: the strip's size in its smallest mode, so every pin keeps a

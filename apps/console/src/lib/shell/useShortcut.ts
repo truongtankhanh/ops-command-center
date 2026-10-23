@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useConsole } from '../store';
+import { useConsole } from '../../store';
 
 /** Elements where a letter key types text (or picks an option) instead of running a command. */
 function takesKeys(target: EventTarget | null): boolean {

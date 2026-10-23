@@ -18,9 +18,9 @@ import {
   severityLabel,
 } from '../lib/incidents/incidents';
 import { nextRowIndex } from '../lib/incidents/rowNavigation';
-import { formatClockTime } from '../lib/time';
-import { useNow } from '../lib/useNow';
-import { useShortcut } from '../lib/useShortcut';
+import { formatClockTime } from '../lib/shared/time';
+import { useNow } from '../lib/shared/useNow';
+import { useShortcut } from '../lib/shell/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { EmptyState } from '../ui/EmptyState';

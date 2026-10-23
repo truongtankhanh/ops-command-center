@@ -19,7 +19,7 @@ import { TwinFallbackBanner } from './components/TwinFallbackBanner';
 import { TwinShortcuts } from './components/TwinShortcuts';
 import { WallApp } from './components/wall/WallApp';
 import { useAudioUnlock } from './lib/incidents/criticalCue';
-import { useDensityAttribute } from './lib/density';
+import { useDensityAttribute } from './lib/shell/density';
 import { useAttentionBadge } from './lib/incidents/useAttentionBadge';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
 import { useTelemetry } from './realtime/useTelemetry';

@@ -1,4 +1,4 @@
-import type { TwinCapability } from './twinCapability';
+import type { TwinCapability } from '../twinCapability';
 
 /** What the map stage draws: the MapLibre site plan, or the three.js twin (V2-12). */
 export type ViewChoice = '2d' | '3d';

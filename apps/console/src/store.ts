@@ -4,13 +4,18 @@ import type { ReportPreset } from './lib/assets/assetReport';
 import type { AssetFilter } from './lib/assets/assets';
 import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/incidents/criticalCue';
-import { type Density, readDensity, writeDensity } from './lib/density';
+import { type Density, readDensity, writeDensity } from './lib/shell/density';
 import type { FeedFilter } from './lib/incidents/incidents';
-import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shortcuts';
+import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shell/shortcuts';
 import { type TwinFault, twinCapability } from './lib/twinCapability';
 import type { SceneLayerKey, SceneLayers } from './lib/twinLayers';
 import { levelOf } from './lib/twinLevel';
-import { effectiveView, readViewChoice, type ViewChoice, writeViewChoice } from './lib/viewChoice';
+import {
+  effectiveView,
+  readViewChoice,
+  type ViewChoice,
+  writeViewChoice,
+} from './lib/shell/viewChoice';
 import { wallScreen } from './lib/wall/wallMode';
 
 /**

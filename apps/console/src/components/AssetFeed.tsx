@@ -24,7 +24,7 @@ import { searchTerms } from '../lib/incidents/incidents';
 import { nextRowIndex } from '../lib/incidents/rowNavigation';
 import { ageMs, isStale, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
-import { useShortcut } from '../lib/useShortcut';
+import { useShortcut } from '../lib/shell/useShortcut';
 import { useServerNow, useTelemetryStatus, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { EmptyState } from '../ui/EmptyState';

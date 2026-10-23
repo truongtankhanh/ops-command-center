@@ -3,7 +3,7 @@ import type { FitBox, Vec3 } from './twinCamera';
 import { twinCommands } from './twinCommands';
 import { focusOf, presenceOf } from './twinLevel';
 import { placementOf } from './twinPlacement';
-import type { ViewChoice } from './viewChoice';
+import type { ViewChoice } from './shell/viewChoice';
 
 /*
  * "Focus" (V2-15.11, ADR-0020 "Settled in V2-15.11"): flying the camera to the selected part, else to the

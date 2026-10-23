@@ -2,7 +2,7 @@ import { useSession } from '../auth/store';
 import { useReadOnly } from '../auth/usePermission';
 import { useSignOut } from '../auth/useSignOut';
 import { playCriticalCue, unlockAudio } from '../lib/incidents/criticalCue';
-import { initials, rolesLabel } from '../lib/users';
+import { initials, rolesLabel } from '../lib/shell/users';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Icon } from '../ui/Icon';

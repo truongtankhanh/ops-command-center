@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { usePermission } from '../auth/usePermission';
-import { useShortcut } from '../lib/useShortcut';
+import { useShortcut } from '../lib/shell/useShortcut';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { Plus } from '../ui/icons';

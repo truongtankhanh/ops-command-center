@@ -10,7 +10,7 @@ import {
 } from '../lib/twinBeaconSprites';
 import { GROUND_LAYERS } from '../lib/twinGround';
 import type { MarkerPlacement } from '../lib/twinMarkers';
-import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
+import { usePrefersReducedMotion } from '../lib/shared/usePrefersReducedMotion';
 import { useConsole } from '../store';
 import { mapMotion } from '../styles/tokens';
 import { useReportFrameDemand } from './FrameDemandContext';

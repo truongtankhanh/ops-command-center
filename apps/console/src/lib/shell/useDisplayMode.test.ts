@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { stubViewportWidth } from '../test-utils';
+import { stubViewportWidth } from '../../test-utils';
 import { useDisplayMode } from './useDisplayMode';
 
 afterEach(() => vi.unstubAllGlobals());

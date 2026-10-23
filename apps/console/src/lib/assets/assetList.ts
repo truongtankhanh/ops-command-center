@@ -3,7 +3,7 @@ import type { AssetFilter, AssetGroup, AssetState } from './assets';
 import { formatReading } from './readings';
 import { formatAgeCoarse } from '../telemetry/telemetryAge';
 import type { AssetTelemetryState, TelemetryPillState } from '../telemetry/telemetryState';
-import { formatClockTimeSeconds } from '../time';
+import { formatClockTimeSeconds } from '../shared/time';
 
 /*
  * What the Assets list says and in what order the keyboard walks it (V2-09.6): the value and the
