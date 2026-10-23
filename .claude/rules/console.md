@@ -24,6 +24,9 @@ paths:
 - Group files by feature in a sub-folder of `lib/` or `components/` (ADR-0032; `components/wall/` is the example). Never
   name such a folder `twin`: the ADR-0020 lint pattern `**/twin/*` matches the name anywhere, so use `twin-core` or `stage`.
   `lib/` never imports `components/` (lint-enforced); logic sits below the components that use it.
+- `lib/` folders: `twin-core` (pure 3D logic that main-chunk code also needs, so it cannot live in `src/twin/`), `map`,
+  `assets`, `telemetry`, `incidents`, `cameras`, `wall`, `shell` (cross-cutting UI concerns: shortcuts, density, display
+  mode) and `shared` (generic helpers: time, `useNow`, reduced motion).
 - `components/` folders: `incidents`, `assets`, `map`, `cameras`, `telemetry`, `stage` (2D/3D switch and the twin's
   main-chunk banners), `shell` (header, side panel, tips, load states), `auth`, `wall`. `components/auth/` holds only the
   sign-in React components; the OIDC session code is `src/auth/`.

@@ -5,3 +5,34 @@
 #
 # One full SHA per line, with a comment naming the PR. Add the squash-commit SHA in the PR that follows the merge
 # (the SHA is not known before). Only purely mechanical commits belong here: never one that also changes behaviour.
+
+# RS-03 (API telemetry/ sub-folders), RS-04 (console lib/ folders), RS-05 (console components/ folders): moves and
+# path rewrites, in commit order. The contracts split (a978ad3) is left out: it re-arranges declarations, not only paths.
+757ecf964502bed8f19635ca1e3da21ec3593658  # refactor(api): move telemetry sources into telemetry/sources
+8f4f31c6d4c21503f3d93b1ddd2b51cc2160d4fc  # refactor(api): rewrite imports after moving telemetry sources
+f23699fdb6b03c2c767cd1652d076e5aefbca55b  # efactor(api): move telemetry ingest, rules, samples and gateway into folders
+d54834e57e19e3792a67b92b76f0ab5575e1f77f  # refactor(api): rewrite imports after moving telemetry folders
+22a460f69c161db0d9c8dc3ff8940e842f4020b8  # refactor(console): move wall logic into lib/wall
+90f29592c96e5a9e218f232c1a8acee932818d76  # refactor(console): rewrite imports after moving wall logic
+8096c37af1cf703217fd6702e2e8c580174adf2c  # refactor(console): move cameras and incidents logic into lib folders
+a94f9784882eb7298ae56e7824a4787b5c29f4f3  # refactor(console): rewrite imports after moving cameras and incidents
+73a34c4474c38ab97efd4e219193194d49a39234  # refactor(console): move map logic into lib/map
+0431d4bcb016a2db5b8a139ffc05f494103944cc  # refactor(console): rewrite imports after moving map logic
+353b27848db31d1f60ae4cfaaba31a587f933e37  # refactor(console): move assets and telemetry logic into lib folders
+dae649ef95062650450cad60db91ebdf7c1ec320  # refactor(console): rewrite imports after moving assets and telemetry
+7b53982b2c1cd222a6a8542f2a79007c3dc3d03e  # refactor(console): move shell and shared helpers into lib folders
+2d4597c6376a84a1f9c415cdf378cc766361a45f  # refactor(console): rewrite imports after moving shell and shared helpers
+380f1a6792827cf758c0fb29f7faaedfec82c00f  # refactor(console): move twin logic into lib/twin-core
+257b667c3418845faa402fc190eca9cf5f896cb9  # refactor(console): rewrite imports after moving twin logic
+e5e6f9051fb618b048d4f4898e0a9f5dd28b6ee0  # refactor(console): RS-05.2 move camera components into components/cameras
+d4e6fcfb514227d58e2c2c0ca216e1fb59ed1f27  # refactor(console): RS-05.2 rewrite imports after moving camera components
+293152055889ca1debf90011f555687449083227  # refactor(console): RS-05.3 move incident components into components/incidents
+9393156b98e07af4329e633758230cf0ed5b5163  # refactor(console): RS-05.3 rewrite imports after moving incident components
+89f1b0bfd2866fd807ce0b5ff30a66b55c9e7f7e  # refactor(console): RS-05.4 move map components into components/map
+79512ff8aa2fa539649692225ee8476914fb2c77  # refactor(console): RS-05.4 rewrite imports after moving map components
+0b481856d507e35602a1e92942e3bdb963ba7bfd  # refactor(console): RS-05.5 move asset and telemetry components into component folders
+c3752304b55c2a8f2393a8370e73fd288d21ab4c  # refactor(console): RS-05.5 rewrite imports after moving asset and telemetry components
+2582aa62fe902b36f0dafadc8086e699111a384e  # refactor(console): RS-05.6 move stage components into components/stage
+83f7bc0f81a5aa9f7d87c95cef3c0c566a364abb  # refactor(console): RS-05.6 rewrite imports after moving stage components
+934d7f4c355cc80f7931b0461fa730209789347d  # refactor(console): RS-05.7 move shell and auth components into component folders
+e4a21b6795a61bbe2da94fe70d79f25583737651  # refactor(console): RS-05.7 rewrite imports after moving shell and auth components

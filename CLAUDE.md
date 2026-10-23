@@ -57,14 +57,14 @@ Design in full: `docs/architecture.md`; decisions: the ADR table in `README.md`.
 
 | Path                                           | Purpose                                                                                                                                                                                                                                  |
 | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/api/src/<feature>/`                      | One NestJS module per feature: `assets`, `auth`, `cameras`, `incidents`, `sites`, `telemetry`, `zones`, `realtime`, `outbox`, `simulator`, `health`, `metrics`, `logging`, `rate-limit`                                                  |
+| `apps/api/src/<feature>/`                      | One NestJS module per feature: `assets`, `auth`, `cameras`, `incidents`, `sites`, `telemetry/{sources,ingest,rules,samples,gateway}`, `zones`, `realtime`, `outbox`, `simulator`, `health`, `metrics`, `logging`, `rate-limit`           |
 | `apps/api/src/common/`                         | Domain errors, the exception filter, geo helpers                                                                                                                                                                                         |
 | `apps/api/src/config/`                         | Env validation (`env.validation.ts`) and env-file lookup                                                                                                                                                                                 |
 | `apps/api/src/database/`                       | Data source, `migrations/`, `seed/`, advisory locks, migrate-on-boot                                                                                                                                                                     |
 | `apps/api/test/`                               | e2e specs (`*.e2e-spec.ts`), global setup, `support/` (test issuer, MQTT broker, tokens)                                                                                                                                                 |
 | `apps/console/src/components/`                 | Feature components in folders (`incidents`, `assets`, `map`, `cameras`, `telemetry`, `stage`, `shell`, `auth`, `wall`), each with its `.module.css`                                                                                      |
 | `apps/console/src/ui/`                         | Primitives (Button, Dialog, Sheet, Toast …) and the icon map `icons.ts`                                                                                                                                                                  |
-| `apps/console/src/lib/`                        | Pure logic and small hooks (map, incidents, shortcuts, density …)                                                                                                                                                                        |
+| `apps/console/src/lib/`                        | Pure logic and small hooks in feature folders: `twin-core`, `map`, `assets`, `telemetry`, `incidents`, `cameras`, `wall`, `shell`, `shared`                                                                                              |
 | `apps/console/src/twin/`                       | The 3D twin (three.js, R3F): the only code that imports them, loaded lazily (ADR-0020)                                                                                                                                                   |
 | `apps/console/src/{api,realtime,auth,styles}/` | REST client + query keys, socket hooks, OIDC, tokens and global CSS                                                                                                                                                                      |
 | `apps/console/scripts/`                        | `contrast.ts`: checks design tokens (runs in `lint`)                                                                                                                                                                                     |
@@ -93,6 +93,8 @@ Specs sit next to the code they test (`*.spec.ts` in the API, `*.test.ts(x)` els
 - **Validation:** class-validator DTOs with unknown fields rejected; server-side authorization only.
 - **Config:** read through the validated `Env`, never `process.env` directly.
 - **Comments** explain why and cite the ADR; many files do. Keep that habit.
+- **Layout:** new console code goes into an existing feature folder of `lib/` or `components/`; a new folder never uses
+  the bare name `twin` outside `src/twin/` (ADR-0032, ADR-0020 lint).
 - Path-specific rules are in `.claude/rules/` and load automatically.
 
 <!-- INIT-CONTEXT:END:conventions -->

@@ -95,3 +95,25 @@ not worth it); (c) a second package entry point, which breaks "the apps import o
   is rebasing import lines.
 - Not decided here: an alias or barrel files later, a `features/` slice layout (option 2) if cross-folder coupling grows, reorganising
   `src/twin/`.
+
+## Addendum 2026-10-23: as built
+
+The decision was carried out without change to it. What the work showed:
+
+- **Done:** `packages/contracts/src/domain/` (seven context files and an index); `apps/api/src/telemetry/` in `sources/`, `ingest/`,
+  `rules/`, `samples/` and `gateway/`; `apps/console/src/lib/` in nine folders (`twin-core` holds 52 files, one more than planned because
+  `useSelectionTarget` wraps `twinSelection` and is used only by 3D code); `apps/console/src/components/` in eight new folders beside
+  `wall/` (none holds more than 12 source files, none is left loose).
+- **Not done, by choice:** lifting `seed/` out of `database/` (decision 5 left it optional) and any change inside `src/twin/` (decision 8).
+- **The `twin` naming constraint did not bite.** The ADR-0020 lint patterns matched neither `lib/twin-core/` nor `components/stage/`.
+- **The method held.** After every batch the import graph mapped through the move list equalled the graph before it (console 1,792
+  edges, API 534), the public surface of `@occ/contracts` was byte-identical (runtime keys in ESM and CJS, exported names in
+  `index.d.ts` and `index.d.cts`), and the API still had no runtime import cycle between files. Unit tests stayed at the same
+  totals (API 50 suites, console 197 files / 5,161 tests).
+- **The twin chunk grew by 4 bytes** (350,997 B to 351,001 B of the 375,000 B budget), after the last console batch. Moving `Tips` changed
+  its path, which feeds the CSS-module class name hash that the 3D tooltip uses; this is a cause worked out from how the hash is built,
+  not measured separately.
+- **Two string references to moved files remain on purpose:** two comments in the migration `1791880200000-telemetry-sample.ts` still
+  name `telemetry/telemetry-sample-writer.service.ts` and `telemetry/sample-partitions.ts`. Migrations are append-only, so they were not edited.
+- **A tool that rewrites only module specifiers needs a check on the rest:** the codemod does not see paths in CSS or prose, so every
+  batch ended with a search for the old path in code, tests, comments and tracked documents.

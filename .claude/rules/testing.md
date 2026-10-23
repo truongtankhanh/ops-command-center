@@ -45,6 +45,10 @@ runs them (and CI's model-check step), `pnpm models:typecheck` type-checks them.
 - **Wrap Zustand or socket changes made outside React in `act(...)`** before asserting on the DOM.
 - **A cached incident update must carry a higher `version`**, or `mergeIncidentLists` (structural sharing in
   `useIncidents`) keeps the cached copy and the update silently does nothing.
+- **Some tests name source files by path, and `tsc` cannot check those strings.** `src/realtime/twinPath.test.ts` and
+  `src/twin/frameDemand.test.ts` scan the source tree and list files by path; `?raw` imports of `docs/…` and `ops/…`
+  (`modelParts`, `twinBindings`, `twinMotion` tests) depend on the folder depth. When you move a file, run these tests and
+  fix the literals; they fail loudly rather than pass silently.
 
 ## Running
 

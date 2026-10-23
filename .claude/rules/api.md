@@ -10,6 +10,9 @@ paths:
 - One folder per feature: `<feature>.module.ts`, `.controller.ts`, `.service.ts`, `.entity.ts`, `dto/*.dto.ts`.
   Register the module in `app.module.ts`. An entity also goes into the `entities` array in
   `database/typeorm-options.ts`, and `TypeOrmModule.forFeature` lists only what the module's services inject.
+- A module with distinct roles may group files in sub-folders of the same Nest module (ADR-0032): `telemetry/` has
+  `sources/`, `ingest/`, `rules/`, `samples/` and `gateway/` and one `telemetry.module.ts`. Do not split it into several
+  Nest modules for layout alone: that changes the provider graph. A move must not add a runtime import cycle between files.
 - Constructor-injected classes are imported as values. Do not turn them into `import type`: with
   `emitDecoratorMetadata` that silently breaks DI (the lint rule is off for this app for that reason).
 - Read configuration with `ConfigService<Env, true>` and `{ infer: true }`, not `process.env`.
