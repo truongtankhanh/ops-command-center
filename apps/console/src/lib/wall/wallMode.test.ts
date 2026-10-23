@@ -1,4 +1,4 @@
-import { readWall, rememberWall, wallScreen, wallScreenOf } from './wallMode';
+import { forgetWall, readWall, rememberWall, wallScreen, wallScreenOf } from './wallMode';
 
 const KEY = 'occ.console.wall';
 
@@ -73,11 +73,39 @@ describe('the tab remembers its screen', () => {
     expect(wallScreen()).toBe(3);
   });
 
-  it('keeps what the tab remembered when the address has a value that is not a number', () => {
+  it('keeps what the tab remembered on the callback when the address has a value that is not a number', () => {
     rememberWall(4);
-    history.replaceState(null, '', '/?wall=x');
+    history.replaceState(null, '', '/?wall=x&code=abc&state=xyz');
 
     expect(wallScreen()).toBe(4);
+  });
+
+  it('keeps what the tab remembered on an error callback too', () => {
+    rememberWall(2);
+    history.replaceState(null, '', '/?error=access_denied&state=xyz');
+
+    expect(wallScreen()).toBe(2);
+  });
+
+  // The bug: a tab that was a wall once stayed one at the plain address, and the console could not be entered.
+  it('is a console at a plain address, whatever the tab remembered', () => {
+    rememberWall(4);
+
+    expect(wallScreen()).toBeNull();
+    history.replaceState(null, '', '/?wall=x');
+    expect(wallScreen()).toBeNull();
+    history.replaceState(null, '', '/?code=abc');
+    expect(wallScreen()).toBeNull();
+  });
+
+  it('forgets the screen for a tab that is a console again', () => {
+    rememberWall(2);
+
+    forgetWall();
+
+    expect(readWall()).toBeNull();
+    history.replaceState(null, '', '/?code=abc&state=xyz');
+    expect(wallScreen()).toBeNull();
   });
 
   it('does not throw where storage is blocked: the address still opens the wall, nothing else does', () => {
@@ -89,6 +117,7 @@ describe('the tab remembers its screen', () => {
 
     expect(readWall()).toBeNull();
     expect(() => rememberWall(2)).not.toThrow();
+    expect(() => forgetWall()).not.toThrow();
     expect(wallScreen()).toBeNull();
     history.replaceState(null, '', '/?wall=2');
     expect(wallScreen()).toBe(2);

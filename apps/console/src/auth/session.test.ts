@@ -176,6 +176,16 @@ describe('session', () => {
       expect(window.location.search).toBe('');
     });
 
+    it("keeps a video wall's number on the address, so a reload is still that wall", async () => {
+      sessionStorage.setItem('occ.console.wall', '2');
+      const { session } = await load('/?code=c&state=s');
+      await session.startSession();
+
+      expect(window.location.pathname).toBe('/');
+      expect(window.location.search).toBe('?wall=2');
+      sessionStorage.clear();
+    });
+
     it('still removes the code from the address when the sign-in response is rejected', async () => {
       oidc.FakeUserManager.onCreate = (manager) =>
         manager.signinRedirectCallback.mockRejectedValue(new Error('invalid_grant'));

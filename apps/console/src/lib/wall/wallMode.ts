@@ -5,9 +5,11 @@
  *
  * The sign-in redirect loses the query string: the redirect URI is the origin root, and `signIn()` in
  * `auth/session.ts` replaces the address with its path once the callback is done. So the number is kept in
- * `sessionStorage`, for the tab, which is one wall screen's window, and read again whenever the address has no `wall`.
- * Storage is optional (`.claude/rules/console.md`): where it is blocked the address still works for the page that
- * carried it, and a reload after sign-in is then an ordinary console.
+ * `sessionStorage`, for the tab, which is one wall screen's window, and read again only while the address is that
+ * redirect's callback (`code`/`error` and `state`); `main.tsx` forgets it on any other address, so a tab that was a wall
+ * once is an ordinary console again when it is opened at the plain address, and `signIn()` puts `?wall=N` back on the
+ * address, so a reload stays a wall. Storage is optional (`.claude/rules/console.md`): where it is blocked the address
+ * still works for the page that carried it.
  */
 
 const STORAGE_KEY = 'occ.console.wall';
@@ -42,13 +44,32 @@ export function rememberWall(screen: number): void {
   }
 }
 
-/** The screen this window is: the address's `wall` while it has one, else the one the tab remembered, else `null`. */
+/** Forgets the screen number, for a tab that is now an ordinary console. */
+export function forgetWall(): void {
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // Not forgotten: `wallScreen()` only reads it back on a sign-in callback, which this tab no longer makes.
+  }
+}
+
+/** Whether the address is the sign-in redirect's callback; the same test as `auth/session.ts`. */
+function isSigninCallback(search: string): boolean {
+  const params = new URLSearchParams(search);
+  return (params.has('code') || params.has('error')) && params.has('state');
+}
+
+/**
+ * The screen this window is: the address's `wall` while it has one, else, on the sign-in callback only, the one the tab
+ * remembered, else `null`. Any other address without `wall` is a console, whatever an earlier page of the tab was.
+ */
 export function wallScreen(): number | null {
   try {
     const fromAddress = wallScreenOf(location.search);
     if (fromAddress !== null) return fromAddress;
+    return isSigninCallback(location.search) ? readWall() : null;
   } catch {
     // No `location`: not a browser page.
+    return null;
   }
-  return readWall();
 }

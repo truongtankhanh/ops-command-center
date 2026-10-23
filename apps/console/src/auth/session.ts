@@ -5,6 +5,7 @@ import {
   type UserProfile,
   WebStorageStateStore,
 } from 'oidc-client-ts';
+import { wallScreen } from '../lib/wall/wallMode';
 import { useSession } from './store';
 
 /** Realm and public client from `docker/keycloak/occ-realm.json`, served on the console's own origin. */
@@ -104,8 +105,14 @@ async function signIn(): Promise<void> {
     console.error('Sign-in failed', error);
     useSession.getState().setStatus('failed');
   } finally {
-    // Whatever the outcome, a reload must never send a used code again.
-    window.history.replaceState(null, '', window.location.pathname);
+    // Whatever the outcome, a reload must never send a used code again. A video wall keeps its `?wall=N`, so a reload
+    // of the window is still that wall (V2-21.2); the number is read before the address changes.
+    const wall = wallScreen();
+    window.history.replaceState(
+      null,
+      '',
+      wall === null ? window.location.pathname : `${window.location.pathname}?wall=${wall}`,
+    );
   }
 }
 

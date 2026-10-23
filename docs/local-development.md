@@ -90,6 +90,20 @@ reload.
 
 `pnpm dev` builds `@occ/contracts` and `@occ/camera-adapter` first (Turborepo `dependsOn: ["^build"]`).
 
+### Trying a video wall locally
+
+A video wall screen is the same console opened with `?wall=N` (`N` is the screen number), read-only for every role:
+
+- Wall: <http://localhost:15173/?wall=1>. The header says "Wall 1 · view only", and nothing on the page can be pressed.
+- Console: <http://localhost:15173/> (no `wall`). Use this one to operate incidents or reach the 3D view's controls.
+
+The address decides the mode, once per page load. Keycloak's redirect drops the query string, so the tab keeps the
+number in `sessionStorage` for the length of the sign-in and puts `?wall=N` back on the address afterwards, which is
+why reloading a wall window stays a wall. Any other address without `wall` is a console, and the tab forgets the
+number: to leave a wall, open the plain address in that tab (or any other tab) and reload. Use a separate tab or
+browser profile per screen. For kiosk flags, session limits and renewal, see **Video walls** in the
+[README](../README.md#operations).
+
 ## Running the tests
 
 > The e2e suite is heavy (a real database, run in band) and the unit suites fan out over workers. On a laptop,
@@ -208,3 +222,4 @@ git config blame.ignoreRevsFile .git-blame-ignore-revs
 | The API refuses to boot with an `OIDC_*` message            | Copy the `OIDC_*` lines from `apps/api/.env.example` into your existing `.env`                     |
 | Edited the Keycloak realm and nothing changed               | The realm is imported on start: `pnpm docker:restart`                                              |
 | Images job stops at its first step                          | Port 18080 is taken by `pnpm docker:stack`; stop it                                                |
+| Console shows "Wall N · view only" and nothing responds     | The address has `?wall=N`. Open the plain address (`http://localhost:15173/`) and reload           |
