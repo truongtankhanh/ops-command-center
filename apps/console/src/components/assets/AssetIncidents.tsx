@@ -1,10 +1,10 @@
 import type { Incident } from '@occ/contracts';
-import { useNow } from '../lib/shared/useNow';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { SheetSection } from '../ui/SheetSection';
+import { useNow } from '../../lib/shared/useNow';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { SheetSection } from '../../ui/SheetSection';
 import styles from './AssetIncidents.module.css';
-import { IncidentRow } from './incidents/IncidentRow';
+import { IncidentRow } from '../incidents/IncidentRow';
 
 /**
  * The incident(s) this asset raised (frame 15), drawn as the feed draws them. `incidents` is the

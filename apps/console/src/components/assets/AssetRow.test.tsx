@@ -2,11 +2,14 @@ import type { Asset, Incident, TelemetryPoint } from '@occ/contracts';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
-import type { AssetState } from '../lib/assets/assets';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import type { AssetState } from '../../lib/assets/assets';
+import {
+  type AssetTelemetryState,
+  initialTelemetryState,
+} from '../../lib/telemetry/telemetryState';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { resetStore } from '../../test-utils';
 import { AssetRow } from './AssetRow';
 
 const point = (overrides: Partial<TelemetryPoint> = {}): TelemetryPoint => ({

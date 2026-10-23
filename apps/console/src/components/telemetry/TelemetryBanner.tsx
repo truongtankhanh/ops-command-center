@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
-import { formatClockTimeSeconds } from '../lib/shared/time';
-import { useTelemetryStatus } from '../realtime/telemetryStore';
-import { retryTelemetry } from '../realtime/useTelemetry';
-import { Banner } from '../ui/Banner';
-import { Button } from '../ui/Button';
-import { connectionIcon, telemetryIcon } from '../ui/icons';
+import type { TelemetryPillState } from '../../lib/telemetry/telemetryState';
+import { formatClockTimeSeconds } from '../../lib/shared/time';
+import { useTelemetryStatus } from '../../realtime/telemetryStore';
+import { retryTelemetry } from '../../realtime/useTelemetry';
+import { Banner } from '../../ui/Banner';
+import { Button } from '../../ui/Button';
+import { connectionIcon, telemetryIcon } from '../../ui/icons';
 
 /** How long "Reconnect" stays disabled after a press (V2-08.1), so a stuck link is not hammered. */
 const RECONNECT_COOLDOWN_MS = 5000;

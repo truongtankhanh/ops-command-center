@@ -1,12 +1,12 @@
 import type { TelemetryPoint } from '@occ/contracts';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import type { PartRow } from '../lib/twin-core/modelParts';
-import { focusSelection } from '../lib/twin-core/twinFocus';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore } from '../test-utils';
+import type { PartRow } from '../../lib/twin-core/modelParts';
+import { focusSelection } from '../../lib/twin-core/twinFocus';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore } from '../../test-utils';
 import { AssetParts } from './AssetParts';
 
-vi.mock('../lib/twin-core/twinFocus', () => ({ focusSelection: vi.fn() }));
+vi.mock('../../lib/twin-core/twinFocus', () => ({ focusSelection: vi.fn() }));
 
 const point = (key: string, label: string, unit: string): TelemetryPoint => ({
   key,

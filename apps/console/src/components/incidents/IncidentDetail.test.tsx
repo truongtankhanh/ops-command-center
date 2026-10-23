@@ -18,7 +18,7 @@ import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { SheetHost } from '../../ui/Sheet';
-import { AssetInspector } from '../AssetInspector';
+import { AssetInspector } from '../assets/AssetInspector';
 import { IncidentDetail } from './IncidentDetail';
 
 // The session module is tested on its own; here it only decides which token the client sends.

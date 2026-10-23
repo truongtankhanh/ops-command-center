@@ -1,7 +1,7 @@
-import { useAssets, useIncident } from '../api/queries';
-import { deriveWatchSet, incidentWatchCode } from '../lib/telemetry/telemetryWatch';
-import { useTelemetryWatch } from '../realtime/useTelemetry';
-import { useConsole } from '../store';
+import { useAssets, useIncident } from '../../api/queries';
+import { deriveWatchSet, incidentWatchCode } from '../../lib/telemetry/telemetryWatch';
+import { useTelemetryWatch } from '../../realtime/useTelemetry';
+import { useConsole } from '../../store';
 
 /**
  * What the console asks the API for every reading of: the asset open in the inspector, then the

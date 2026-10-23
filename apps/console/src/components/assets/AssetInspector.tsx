@@ -1,34 +1,34 @@
 import type { AssetDetail } from '@occ/contracts';
 import { type ReactNode, useCallback, useMemo } from 'react';
-import { ApiRequestError, isRateLimited } from '../api/client';
-import { useAsset, useIncidents, useModelParts, useZones } from '../api/queries';
+import { ApiRequestError, isRateLimited } from '../../api/client';
+import { useAsset, useIncidents, useModelParts, useZones } from '../../api/queries';
 import {
   footprintText,
   incidentsOf,
   inspectorRows,
   inspectorStateText,
   readingIsStale,
-} from '../lib/assets/assetInspector';
-import { assetStates, openIncidentOf, placeLabel } from '../lib/assets/assets';
-import { severityLabel } from '../lib/incidents/incidents';
-import { partRows } from '../lib/twin-core/modelParts';
-import { staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { useAssetState, useServerNow } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { EmptyState } from '../ui/EmptyState';
-import { Hint } from '../ui/Hint';
-import { Icon } from '../ui/Icon';
-import { assetStateIcon, Box, severityIcon, zoneKindIcon } from '../ui/icons';
-import { Sheet } from '../ui/Sheet';
-import { SheetSection } from '../ui/SheetSection';
-import { Skeleton } from '../ui/Skeleton';
+} from '../../lib/assets/assetInspector';
+import { assetStates, openIncidentOf, placeLabel } from '../../lib/assets/assets';
+import { severityLabel } from '../../lib/incidents/incidents';
+import { partRows } from '../../lib/twin-core/modelParts';
+import { staleAfterMs } from '../../lib/telemetry/telemetryFreshness';
+import { useAssetState, useServerNow } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { EmptyState } from '../../ui/EmptyState';
+import { Hint } from '../../ui/Hint';
+import { Icon } from '../../ui/Icon';
+import { assetStateIcon, Box, severityIcon, zoneKindIcon } from '../../ui/icons';
+import { Sheet } from '../../ui/Sheet';
+import { SheetSection } from '../../ui/SheetSection';
+import { Skeleton } from '../../ui/Skeleton';
 import { AssetFoot } from './AssetFoot';
 import { AssetIncidents } from './AssetIncidents';
 import styles from './AssetInspector.module.css';
 import { AssetParts, AssetPartsSkeleton } from './AssetParts';
 import { AssetReadings } from './AssetReadings';
-import { LoadFailed, RateLimited } from './LoadStates';
+import { LoadFailed, RateLimited } from '../LoadStates';
 
 /**
  * One asset in the sheet (frames 03, 05, 08): its head and badges, then its live readings. One

@@ -1,13 +1,13 @@
 import type { Asset, IncidentDetail } from '@occ/contracts';
 import { act, waitFor } from '@testing-library/react';
-import { queryKeys } from '../api/queries';
-import { useTelemetryWatch } from '../realtime/useTelemetry';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { useTelemetryWatch } from '../../realtime/useTelemetry';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { TelemetryWatchSet } from './TelemetryWatchSet';
 
 // The hook's own debounce and client are covered in `useTelemetry.test.ts`: here only the set it is given.
-vi.mock('../realtime/useTelemetry', () => ({ useTelemetryWatch: vi.fn() }));
+vi.mock('../../realtime/useTelemetry', () => ({ useTelemetryWatch: vi.fn() }));
 
 const asset = (id: string, code: string) => ({ id, code }) as Asset;
 const ASSETS = [asset('asset-ct-01', 'CT-01'), asset('asset-lks-b3', 'LKS-B3')];

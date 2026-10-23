@@ -120,7 +120,7 @@ drift tables of `docs/design/tokens.md`. The theme's token copies are therefore 
 V3-02 must also check:
 
 - **`--sev-low` readers.** `ui/SeverityBadge.module.css`, `styles/base.css` (`[data-severity='low']`, read by the KPI tile, the feed
-  rows, the map markers and the report form), `components/incidents/IncidentRow.module.css`, `components/AssetRow.module.css`,
+  rows, the map markers and the report form), `components/incidents/IncidentRow.module.css`, `components/assets/AssetRow.module.css`,
   `styles/tokens.ts` (`severity.low`) and `scripts/contrast.ts`; the map legend and markers take it through `mapColors`.
 - **`--warning` against the new `--sev-high`** (hue 37° against 34°) and **`--danger` against the new `--sev-critical`** (355°
   against 346°): V1's rule "system feedback never on an incident" now rests on a few degrees of hue, so they move, or shape tells

@@ -1,13 +1,13 @@
 import type { Asset } from '@occ/contracts';
-import { useZones } from '../api/queries';
-import { usePermission } from '../auth/usePermission';
-import { reportPresetOf } from '../lib/assets/assetReport';
-import { focusAvailable, focusSelection } from '../lib/twin-core/twinFocus';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Crosshair, Flag } from '../ui/icons';
+import { useZones } from '../../api/queries';
+import { usePermission } from '../../auth/usePermission';
+import { reportPresetOf } from '../../lib/assets/assetReport';
+import { focusAvailable, focusSelection } from '../../lib/twin-core/twinFocus';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Crosshair, Flag } from '../../ui/icons';
 import styles from './AssetFoot.module.css';
-import { ViewOnlyNote } from './ViewOnlyNote';
+import { ViewOnlyNote } from '../ViewOnlyNote';
 
 /**
  * The foot of the asset inspector (frames 03, 17). A user who may report gets "Report a fault on

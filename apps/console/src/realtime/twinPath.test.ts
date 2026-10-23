@@ -94,7 +94,7 @@ describe('the 3D side asks for no watch', () => {
     const setters = pathsWhere((path) => /(?<!function )\buseTelemetryWatch\(/.test(codeOf(path)));
     const clientCallers = pathsWhere((path) => /\.setWatch\(/.test(codeOf(path)));
 
-    expect(setters).toEqual(['../components/TelemetryWatchSet.tsx']);
+    expect(setters).toEqual(['../components/telemetry/TelemetryWatchSet.tsx']);
     expect(clientCallers).toEqual(['../realtime/useTelemetry.ts']);
   });
 });

@@ -1,7 +1,7 @@
 import type { Incident } from '@occ/contracts';
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { isRateLimited } from '../api/client';
-import { useAssets, useIncidents, useZones } from '../api/queries';
+import { isRateLimited } from '../../api/client';
+import { useAssets, useIncidents, useZones } from '../../api/queries';
 import {
   assetEmptyMessage,
   assetKey,
@@ -9,7 +9,7 @@ import {
   groupKey,
   listItems,
   noticeText,
-} from '../lib/assets/assetList';
+} from '../../lib/assets/assetList';
 import {
   ASSET_FILTERS,
   type AssetFilter,
@@ -19,24 +19,24 @@ import {
   matchesAssetFilter,
   matchesAssetQuery,
   openIncidentOf,
-} from '../lib/assets/assets';
-import { searchTerms } from '../lib/incidents/incidents';
-import { nextRowIndex } from '../lib/incidents/rowNavigation';
-import { ageMs, isStale, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { buildingFocusOf } from '../lib/twin-core/twinLevel';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useServerNow, useTelemetryStatus, useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { EmptyState } from '../ui/EmptyState';
-import { FilterChip } from '../ui/FilterChip';
-import { Icon } from '../ui/Icon';
-import { Clock, Search, unknownIcon, zoneKindIcon } from '../ui/icons';
-import { Skeleton } from '../ui/Skeleton';
-import { Tabs } from '../ui/Tabs';
+} from '../../lib/assets/assets';
+import { searchTerms } from '../../lib/incidents/incidents';
+import { nextRowIndex } from '../../lib/incidents/rowNavigation';
+import { ageMs, isStale, staleAfterMs } from '../../lib/telemetry/telemetryFreshness';
+import { buildingFocusOf } from '../../lib/twin-core/twinLevel';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useServerNow, useTelemetryStatus, useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { EmptyState } from '../../ui/EmptyState';
+import { FilterChip } from '../../ui/FilterChip';
+import { Icon } from '../../ui/Icon';
+import { Clock, Search, unknownIcon, zoneKindIcon } from '../../ui/icons';
+import { Skeleton } from '../../ui/Skeleton';
+import { Tabs } from '../../ui/Tabs';
 import styles from './AssetFeed.module.css';
 import { AssetRow } from './AssetRow';
-import { FeedSearch } from './incidents/FeedSearch';
-import { LoadFailed, RateLimited } from './LoadStates';
+import { FeedSearch } from '../incidents/FeedSearch';
+import { LoadFailed, RateLimited } from '../LoadStates';
 
 /** As many placeholder rows as the incident feed's, enough to fill the column's first screen. */
 const SKELETON_ROWS = 5;

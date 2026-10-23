@@ -10,26 +10,29 @@ import type {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
-import { TOO_MANY_REQUESTS } from '../api/client';
-import { queryKeys } from '../api/queries';
-import { getAccessToken, renewSession } from '../auth/session';
-import { useSession } from '../auth/store';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
-import type { NodeInfo } from '../lib/twin-core/twinBindings';
-import type * as TwinFocus from '../lib/twin-core/twinFocus';
-import { focusSelection } from '../lib/twin-core/twinFocus';
-import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { TOO_MANY_REQUESTS } from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken, renewSession } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import {
+  type AssetTelemetryState,
+  initialTelemetryState,
+} from '../../lib/telemetry/telemetryState';
+import type { NodeInfo } from '../../lib/twin-core/twinBindings';
+import type * as TwinFocus from '../../lib/twin-core/twinFocus';
+import { focusSelection } from '../../lib/twin-core/twinFocus';
+import { seriesKey, type SeriesView } from '../../realtime/telemetryClient';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { AssetInspector } from './AssetInspector';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 // "Focus" asks the canvas to fly; there is none here, so only the request is observed. The rule that shows the
 // button (`focusAvailable`) stays real.
-vi.mock('../lib/twin-core/twinFocus', async (importOriginal) => ({
+vi.mock('../../lib/twin-core/twinFocus', async (importOriginal) => ({
   ...(await importOriginal<typeof TwinFocus>()),
   focusSelection: vi.fn(),
 }));

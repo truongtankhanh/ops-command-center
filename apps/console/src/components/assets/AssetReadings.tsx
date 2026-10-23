@@ -8,14 +8,14 @@ import {
   type InspectorRows,
   overSeverity,
   SPARKLINE_WINDOW_MS,
-} from '../lib/assets/assetInspector';
-import { formatReading, limitLine } from '../lib/assets/readings';
-import { ageMs as readingAgeMs } from '../lib/telemetry/telemetryFreshness';
-import type { AssetTelemetryState } from '../lib/telemetry/telemetryState';
-import { useAssetSeries } from '../realtime/telemetryStore';
-import { Hint } from '../ui/Hint';
-import { Clock } from '../ui/icons';
-import { Sparkline } from '../ui/Sparkline';
+} from '../../lib/assets/assetInspector';
+import { formatReading, limitLine } from '../../lib/assets/readings';
+import { ageMs as readingAgeMs } from '../../lib/telemetry/telemetryFreshness';
+import type { AssetTelemetryState } from '../../lib/telemetry/telemetryState';
+import { useAssetSeries } from '../../realtime/telemetryStore';
+import { Hint } from '../../ui/Hint';
+import { Clock } from '../../ui/icons';
+import { Sparkline } from '../../ui/Sparkline';
 import styles from './AssetReadings.module.css';
 
 const BOOLEAN_RANGE = { min: 0, max: 1 } as const;

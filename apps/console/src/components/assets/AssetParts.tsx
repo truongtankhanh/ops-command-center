@@ -1,14 +1,14 @@
 import type { TelemetryPoint } from '@occ/contracts';
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from 'react';
-import { hasChildren, partText, type PartRow } from '../lib/twin-core/modelParts';
-import { nextRowIndex } from '../lib/incidents/rowNavigation';
-import type { AssetTelemetryState } from '../lib/telemetry/telemetryState';
-import { focusSelection } from '../lib/twin-core/twinFocus';
-import { useConsole } from '../store';
-import { Icon } from '../ui/Icon';
-import { Box, ChevronDown, CircleDot } from '../ui/icons';
-import { SheetSection } from '../ui/SheetSection';
-import { Skeleton } from '../ui/Skeleton';
+import { hasChildren, partText, type PartRow } from '../../lib/twin-core/modelParts';
+import { nextRowIndex } from '../../lib/incidents/rowNavigation';
+import type { AssetTelemetryState } from '../../lib/telemetry/telemetryState';
+import { focusSelection } from '../../lib/twin-core/twinFocus';
+import { useConsole } from '../../store';
+import { Icon } from '../../ui/Icon';
+import { Box, ChevronDown, CircleDot } from '../../ui/icons';
+import { SheetSection } from '../../ui/SheetSection';
+import { Skeleton } from '../../ui/Skeleton';
 import styles from './AssetParts.module.css';
 
 /** What this list wrote to the store's hover, so it takes back only that (V2-15.11). */
