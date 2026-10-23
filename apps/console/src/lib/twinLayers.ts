@@ -1,4 +1,4 @@
-import { MAP_LAYER_KEYS, type LayerVisibility, type MapLayerKey } from './mapLayers';
+import { MAP_LAYER_KEYS, type LayerVisibility, type MapLayerKey } from './map/mapLayers';
 import type { SceneLevel } from './twinLevel';
 import type { ViewChoice } from './viewChoice';
 

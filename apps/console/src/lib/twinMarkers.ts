@@ -1,5 +1,5 @@
 import type { Camera } from '@occ/contracts';
-import { imageIdOf } from './mapImages';
+import { imageIdOf } from './map/mapImages';
 import type { Frame } from './twinScene';
 
 /*
@@ -37,7 +37,7 @@ export interface MarkerPlacement {
   offset?: [x: number, y: number];
   /**
    * Makes the sprite a repeating pulse (V2-16.3): its cycle position at time 0, as a fraction of the period. The
-   * sprite grows and fades about its centre along the map's wave (`lib/mapPulse.ts`). Absent is a still sprite.
+   * sprite grows and fades about its centre along the map's wave (`lib/map/mapPulse.ts`). Absent is a still sprite.
    */
   phase?: number;
 }

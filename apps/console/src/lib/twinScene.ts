@@ -1,6 +1,6 @@
 import type { LngLat, SitePlan, Zone } from '@occ/contracts';
-import { METRES_PER_DEGREE } from './geo';
-import { footprintRing, type SitePart, siteBounds, siteFeatures } from './sitePlan';
+import { METRES_PER_DEGREE } from './map/geo';
+import { footprintRing, type SitePart, siteBounds, siteFeatures } from './map/sitePlan';
 
 /*
  * The 3D twin's scene as plain data: the site's longitudes and latitudes in metres, the building shells

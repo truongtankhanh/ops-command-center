@@ -1,5 +1,5 @@
 import type { SitePlan, Zone } from '@occ/contracts';
-import { ROAD_WIDTH_M } from './sitePlan';
+import { ROAD_WIDTH_M } from './map/sitePlan';
 import {
   type Bounds,
   flatZones,

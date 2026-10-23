@@ -7,7 +7,7 @@ import type {
   LayerSpecification,
   Map as MapLibreMap,
 } from 'maplibre-gl';
-import { mapColors } from '../styles/tokens';
+import { mapColors } from '../../styles/tokens';
 import { metresToPixels } from './geo';
 import { CLUSTER_COUNT_MAX, CLUSTER_COUNT_PREFIX, clusterSeverityImageId } from './mapFeatures';
 import { ROAD_WIDTH_M, type SitePart, siteFeatures, zoneFeatures } from './sitePlan';

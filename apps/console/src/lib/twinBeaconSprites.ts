@@ -1,5 +1,5 @@
 import { severityRank } from '@occ/contracts';
-import { discRadiusOf, imageIdOf, MARKER_BOX, type MarkerForm } from './mapImages';
+import { discRadiusOf, imageIdOf, MARKER_BOX, type MarkerForm } from './map/mapImages';
 import { mapColors } from '../styles/tokens';
 import type { Beacon } from './twinBeacons';
 import type { AtlasLayout, MarkerPlacement } from './twinMarkers';

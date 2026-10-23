@@ -1,6 +1,6 @@
 import type { LngLat, SitePlan, Zone } from '@occ/contracts';
-import { offsetM } from './geo';
-import { siteFeatures } from './sitePlan';
+import { offsetM } from './map/geo';
+import { siteFeatures } from './map/sitePlan';
 import {
   type Bounds,
   buildingShells,

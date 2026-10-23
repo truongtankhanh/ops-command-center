@@ -2,7 +2,7 @@ import type { Asset, Camera, Incident, TelemetryPoint, Zone } from '@occ/contrac
 import { act, screen, waitFor } from '@testing-library/react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { queryKeys } from '../api/queries';
-import { MAP_LAYERS } from '../lib/mapLayers';
+import { MAP_LAYERS } from '../lib/map/mapLayers';
 import { formatReading } from '../lib/readings';
 import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';

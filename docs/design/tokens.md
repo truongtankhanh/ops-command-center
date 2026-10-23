@@ -13,7 +13,7 @@ V3 revises the palette, the type and the radii ([ADR-0022](../adr/0022-console-v
 | `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                |
 
 A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently. One exception:
-the cluster count font on the map (`lib/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
+the cluster count font on the map (`lib/map/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
 see [icons.md](icons.md#map-glyphs)).
 
 ## Display modes and density (UI-17)
@@ -125,9 +125,9 @@ focus ring. These may stay raw:
   `--control-m` / `--control-s` (40 / 32 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
   sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
   multiplies them by the scale — see [icons.md](icons.md).
-- MapLibre numbers in `CampusMap.tsx`, `lib/map*.ts`, `lib/geo.ts` and `lib/sitePlan.ts`: `line-width` and
+- MapLibre numbers in `CampusMap.tsx`, `lib/map/map*.ts`, `lib/map/geo.ts` and `lib/map/sitePlan.ts`: `line-width` and
   `line-dasharray`, circle radii and stroke widths, `fitBounds` padding, `easeTo` duration, zoom levels, cluster
-  radius, marker offsets, the pulse frame rate and scale, the marker image geometry in `lib/mapImages.ts` (image boxes,
+  radius, marker offsets, the pulse frame rate and scale, the marker image geometry in `lib/map/mapImages.ts` (image boxes,
   disc radii, glyph sizes and strokes), and the site plan geometry in metres (boundary, roads, field markings, inset
   and row spacing). The site plan colours are map-only values in `tokens.ts` (`mapColors.site`), not tokens.
 - The map tooltip's placement distances (flip below the anchor near the top, horizontal clamp) and the zone label

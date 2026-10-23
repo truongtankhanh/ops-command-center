@@ -1,5 +1,5 @@
 import type { Asset, Camera, Incident, LngLat } from '@occ/contracts';
-import { isInView } from '../geo';
+import { isInView } from '../map/geo';
 import { compareIncidents, isActive } from '../incidents/incidents';
 import type { DisplayMode } from '../useDisplayMode';
 

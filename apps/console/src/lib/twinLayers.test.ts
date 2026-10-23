@@ -1,4 +1,4 @@
-import { MAP_LAYER_KEYS } from './mapLayers';
+import { MAP_LAYER_KEYS } from './map/mapLayers';
 import { layersOf } from './twinLayers';
 import type { SceneLevel } from './twinLevel';
 

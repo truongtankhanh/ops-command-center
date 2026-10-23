@@ -1,5 +1,5 @@
 import type { LngLat, Zone } from '@occ/contracts';
-import { useConsole } from '../store';
+import { useConsole } from '../../store';
 import { zoneAt } from './geo';
 
 /**

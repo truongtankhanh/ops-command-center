@@ -133,7 +133,7 @@ their author, checked in CI, and served by nginx as immutable files.
     - **Axes.** Local metres, three.js `x` = east, `y` = up, `z` = −north (right-handed), origin at `SitePlan.center`.
       The conversion is `geo.ts`'s flat-earth model with the cosine of the centre's latitude, so the scene and the 2D
       map agree; its inverse serves picks.
-    - **Shells are the 2D footprints.** A building is extruded from the footprint rule of `lib/sitePlan.ts` (the zone
+    - **Shells are the 2D footprints.** A building is extruded from the footprint rule of `lib/map/sitePlan.ts` (the zone
       inset by 8 m, ADR-0017), not from the raw zone polygon, so 2D and 3D draw the same building. A building whose
       `heightM` is `null` is drawn at `DEFAULT_BUILDING_HEIGHT_M` = 12 m (no earlier document named a value; 12 m is in
       the lower half of the seed's 6 – 24 m, so a missing height is never taller than a real one). Zones that are not
@@ -669,7 +669,7 @@ their author, checked in CI, and served by nginx as immutable files.
       font is awaited before it is measured and drawn; its width is the drawn cell's, and a pill whose cell is not in
       the atlas yet is skipped until it is. The texture is rebuilt larger when a cell is added and the old one disposed.
     - **The pulse is the map's wave.** The ring grows 0.7× to 1.8× about its centre while it fades 0.9 to 0 with a
-      quadratic ease-out over `mapMotion.pulseMs` (1800 ms), from the constants `lib/mapPulse.ts` now exports, in the
+      quadratic ease-out over `mapMotion.pulseMs` (1800 ms), from the constants `lib/map/mapPulse.ts` now exports, in the
       shader; every pulse has phase 0 (the beacons pulse together, like the map's one wave). The on-demand canvas is
       asked for the next frame only while the layer is shown, motion is allowed, the tab is visible and a beacon
       pulses (`pulseRunning`); under reduced motion the pulse ring is not placed at all and the critical beacon keeps
@@ -838,7 +838,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     - **A click places the pin by the map's rule.** The pointer controller, which did nothing while picking by design,
       now asks for the pick at the release point as a click does and a `ground` answer calls `placePin`; an answer that is
       a thing, or that arrives after picking ended, does nothing, and no hover is asked while picking. The point becomes a
-      longitude and latitude (`frame.fromLocal`) and goes through `placePinAt`, moved verbatim to `lib/reportPin.ts` so
+      longitude and latitude (`frame.fromLocal`) and goes through `placePinAt`, moved verbatim to `lib/map/reportPin.ts` so
       the 2D map and the 3D view place pins by one rule (`zoneAt`, the API's own): the zone it is in is selected, outside
       every zone the pin stays and the existing message shows. The function stays coupled to the console store, where the
       location lives.

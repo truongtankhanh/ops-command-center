@@ -1,7 +1,7 @@
 import type { Zone } from '@occ/contracts';
 import { useThree } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
-import { placePinAt } from '../lib/reportPin';
+import { placePinAt } from '../lib/map/reportPin';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { lastPick, onPick, pinUnderPoint, requestPick } from '../lib/twinPicker';
 import { setPinDrag } from '../lib/twinPinDrag';

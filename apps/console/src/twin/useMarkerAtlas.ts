@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
-import { type MarkerForm, renderMarkerImages } from '../lib/mapImages';
+import { type MarkerForm, renderMarkerImages } from '../lib/map/mapImages';
 import {
   type AtlasLayout,
   atlasLayout,

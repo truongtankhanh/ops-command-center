@@ -17,7 +17,7 @@ import {
   wallSubject,
   writePinnedCameras,
 } from './cameras';
-import { offsetM } from '../geo';
+import { offsetM } from '../map/geo';
 
 const cam = (code: string, zoneId: string, online = true): Camera => ({
   id: code,

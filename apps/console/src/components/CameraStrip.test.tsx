@@ -4,7 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../api/client';
 import { queryKeys } from '../api/queries';
-import { offsetM } from '../lib/geo';
+import { offsetM } from '../lib/map/geo';
 import { useConsole } from '../store';
 import {
   createTestQueryClient,

@@ -1,5 +1,5 @@
 import type { LngLat, Zone } from '@occ/contracts';
-import { offsetM } from './geo';
+import { offsetM } from './map/geo';
 import { PIN_BELOW_TIP_PX, PIN_SIZE_PX, pinHits, pinScenePosition } from './twinPin';
 import { makeFrame } from './twinScene';
 

@@ -13,7 +13,7 @@ import { TOO_MANY_REQUESTS } from '../api/client';
 import { queryKeys } from '../api/queries';
 import { getAccessToken, renewSession } from '../auth/session';
 import { useSession } from '../auth/store';
-import { offsetM } from '../lib/geo';
+import { offsetM } from '../lib/map/geo';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';

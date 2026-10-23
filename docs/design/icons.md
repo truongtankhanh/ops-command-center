@@ -206,7 +206,7 @@ Standing alone, labelled:
 
 MapLibre cannot render React components, and the offline map style has no sprite or `glyphs` URL, so map icons are
 registered as images with `map.addImage()`. They use the **same `Glyph` components** — no second icon pipeline. Built
-in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, layers in `lib/mapLayers.ts`.
+in UI-08: `apps/console/src/lib/map/mapImages.ts`, ids in `lib/map/mapFeatures.ts`, layers in `lib/map/mapLayers.ts`.
 
 1. **One pre-composed image per marker form.** Disc (or camera square) and glyph are drawn together, so a single
    `symbol` layer orders overlapping markers with `symbol-sort-key`, and the glyph keeps its exact colour at 12–14 px.
@@ -217,7 +217,7 @@ in UI-08: `apps/console/src/lib/mapImages.ts`, ids in `lib/mapFeatures.ts`, laye
    `incident-resolved-unknown`, drawn with `unknownIcon`, V2-03.2), `camera-online` / `camera-offline`,
    `cluster-severity-{severity}` (4, UI-16), `asset-normal` / `asset-nodata` / `asset-fault-{severity}` (6, V2-10.3)
    — 237 images. `incidentImageId` maps any type that is not in
-   `INCIDENT_TYPES` to the `unknown` suffix (`markerType` in `lib/mapFeatures.ts`; a unit test keeps `unknown` out of
+   `INCIDENT_TYPES` to the `unknown` suffix (`markerType` in `lib/map/mapFeatures.ts`; a unit test keeps `unknown` out of
    the contract). The unknown-type forms are registered up front with all the others, not on `styleimagemissing`
    (item 6): that event needs the image added synchronously, and glyph images decode asynchronously (item 4). The
    cluster badge is a 16 px box: a severity disc (r 7, 1.5 px ground edge) with the severity glyph at 10 px in

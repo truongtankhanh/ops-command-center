@@ -6,7 +6,7 @@
 ## Context
 
 UI-09 drew the campus site plan (boundary, roads, sports-field markings) from a console module,
-`apps/console/src/lib/sitePlan.ts`, in metres from a copy of the seed's `CAMPUS_CENTER`, and it left out camera
+`apps/console/src/lib/map/sitePlan.ts`, in metres from a copy of the seed's `CAMPUS_CENTER`, and it left out camera
 field-of-view cones because `Camera` had no orientation. Both shortcuts (UI-09 decisions D1 and D4) kept that change
 React-only.
 
@@ -110,6 +110,6 @@ Constraints:
   a seed building's `use` or `height_m` (V2-04.2). A seed camera deleted by hand (SQL; there is no delete route)
   comes back at the next boot with the seed's name, position and `online` (V2-04.3), while a camera that exists is
   never rewritten. That is acceptable for demo data only.
-- **Reverses UI-09 D1 and D4.** The console's `lib/sitePlan.ts` keeps only the footprint and parking-row rules once the
+- **Reverses UI-09 D1 and D4.** The console's `lib/map/sitePlan.ts` keeps only the footprint and parking-row rules once the
   console half of IMP-24 lands.
 - **A camera synced from a VMS (OCC-28)** can arrive without an orientation; it simply has no cone.

@@ -17,8 +17,8 @@ import {
   cameraViewFeatures,
   fanOutAssets,
   incidentFeatures,
-} from '../lib/mapFeatures';
-import { addClusterCountImage, registerMapImages } from '../lib/mapImages';
+} from '../lib/map/mapFeatures';
+import { addClusterCountImage, registerMapImages } from '../lib/map/mapImages';
 import {
   assetLayers,
   assetRingFilter,
@@ -41,10 +41,10 @@ import {
   visibleLayers,
   zoneHighlightFilter,
   zoneOverlayLayers,
-} from '../lib/mapLayers';
-import { startPulse } from '../lib/mapPulse';
-import { placePinAt } from '../lib/reportPin';
-import { siteBounds } from '../lib/sitePlan';
+} from '../lib/map/mapLayers';
+import { startPulse } from '../lib/map/mapPulse';
+import { placePinAt } from '../lib/map/reportPin';
+import { siteBounds } from '../lib/map/sitePlan';
 import { serverNow } from '../lib/telemetryFreshness';
 import { buildingFocusOf } from '../lib/twinLevel';
 import { usePrefersReducedMotion } from '../lib/usePrefersReducedMotion';
@@ -70,7 +70,7 @@ const OFFLINE_STYLE: StyleSpecification = {
   layers: [{ id: 'ground', type: 'background', paint: { 'background-color': mapColors.ground } }],
 };
 
-/** Past this the offline plan shows nothing more; the fan-out in `lib/mapFeatures` is sized for it. */
+/** Past this the offline plan shows nothing more; the fan-out in `lib/map/mapFeatures` is sized for it. */
 const MAX_ZOOM = 20;
 /** About 1.4 zoom levels out from the fitted campus (≈ 16.4): the plan stays recognisable. */
 const MIN_ZOOM = 15;
@@ -660,7 +660,7 @@ const PIN_TIP_OFFSET: [number, number] = [0, 3];
  * zone places the pin there and selects that zone; a click outside every zone places nothing. The
  * pin is a DOM marker, so MapLibre drags it (mouse and touch); a drop in another zone selects that
  * zone, a drop outside every zone puts the pin back. Zones are found by the API's own rule
- * (`placePinAt`, `lib/reportPin.ts`), so a placed pin is never refused for lying outside its zone.
+ * (`placePinAt`, `lib/map/reportPin.ts`), so a placed pin is never refused for lying outside its zone.
  *
  * The marker exists only while there is a pin. Pointer-only: the zone select is the keyboard route,
  * and a report without a pin goes to the zone's centre.

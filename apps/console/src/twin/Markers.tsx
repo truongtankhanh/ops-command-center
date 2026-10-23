@@ -6,7 +6,7 @@ import {
   InstancedBufferGeometry,
   Vector2,
 } from 'three';
-import { PULSE_OPACITY_FROM, PULSE_SCALE_FROM, PULSE_SCALE_TO } from '../lib/mapPulse';
+import { PULSE_OPACITY_FROM, PULSE_SCALE_FROM, PULSE_SCALE_TO } from '../lib/map/mapPulse';
 import { GROUND_LAYERS } from '../lib/twinGround';
 import { type MarkerPlacement, spriteInstances } from '../lib/twinMarkers';
 import { mapMotion } from '../styles/tokens';
@@ -31,7 +31,7 @@ const NO_CLOCK = { value: 0 };
  *
  * Two optional per-sprite attributes serve the incident beacons (V2-16.3), and a camera's are zero and `-1`, which
  * change nothing: `aOffset` moves the sprite's anchor by that many pixels (a ring round a disc, a tag beside it), and
- * `aPhase` makes it a repeating pulse (`-1` is a still sprite). A pulse is the map's wave (`lib/mapPulse.ts`): about
+ * `aPhase` makes it a repeating pulse (`-1` is a still sprite). A pulse is the map's wave (`lib/map/mapPulse.ts`): about
  * its **centre** it grows from 0.7× to 1.8× of its size while it fades from 0.9 to 0, with a quadratic ease-out,
  * once every `uPeriodMs` of the shared clock `uTime`.
  */

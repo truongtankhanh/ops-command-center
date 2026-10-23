@@ -1,5 +1,5 @@
 import type { Asset, LngLat, SitePlan, Zone } from '@occ/contracts';
-import { offsetM } from './geo';
+import { offsetM } from './map/geo';
 import {
   type ClassProgress,
   formatProgress,

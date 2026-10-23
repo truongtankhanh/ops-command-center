@@ -1,5 +1,5 @@
 import type { Asset, IncidentCategory, IncidentType, LngLat, Zone } from '@occ/contracts';
-import { zoneAt } from './geo';
+import { zoneAt } from './map/geo';
 import { REPORT_TITLE_MAX } from './incidents/incidents';
 
 /*

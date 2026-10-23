@@ -1,6 +1,6 @@
 import type { Asset, LngLat, SitePlan, Zone } from '@occ/contracts';
-import { distanceM } from './geo';
-import { siteBounds } from './sitePlan';
+import { distanceM } from './map/geo';
+import { siteBounds } from './map/sitePlan';
 import type { LoadStep } from './twinLoading';
 
 /*

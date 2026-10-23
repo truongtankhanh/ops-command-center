@@ -1,6 +1,6 @@
 import type { Camera } from '@occ/contracts';
 import { useMemo } from 'react';
-import type { MarkerForm } from '../lib/mapImages';
+import type { MarkerForm } from '../lib/map/mapImages';
 import { presenceOf } from '../lib/twinLevel';
 import { GHOST_OPACITY } from '../lib/twinMaterials';
 import { cameraMarkers } from '../lib/twinMarkers';

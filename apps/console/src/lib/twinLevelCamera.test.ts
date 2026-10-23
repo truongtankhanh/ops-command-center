@@ -1,5 +1,5 @@
 import type { LngLat, Zone } from '@occ/contracts';
-import { offsetM } from './geo';
+import { offsetM } from './map/geo';
 import type { FitBox } from './twinCamera';
 import type { PlacedAsset } from './twinPlacement';
 import {

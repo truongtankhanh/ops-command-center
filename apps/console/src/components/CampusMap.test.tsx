@@ -8,8 +8,8 @@ import {
   fanOutAssets,
   incidentFeatures,
   type IncidentProperties,
-} from '../lib/mapFeatures';
-import { registerMapImages } from '../lib/mapImages';
+} from '../lib/map/mapFeatures';
+import { registerMapImages } from '../lib/map/mapImages';
 import {
   cameraViewLayers,
   groundLayers,
@@ -19,8 +19,8 @@ import {
   MAP_LAYERS,
   MAP_SOURCES,
   zoneOverlayLayers,
-} from '../lib/mapLayers';
-import { siteBounds, type SiteProperties } from '../lib/sitePlan';
+} from '../lib/map/mapLayers';
+import { siteBounds, type SiteProperties } from '../lib/map/sitePlan';
 import { initialTelemetryState, type TelemetryState } from '../lib/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -164,7 +164,7 @@ vi.mock('maplibre-gl', () => ({
 vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 // Rasterising needs an image decoder and fonts; the images themselves are tested in mapImages.test.
-vi.mock('../lib/mapImages', () => ({
+vi.mock('../lib/map/mapImages', () => ({
   registerMapImages: vi.fn(() => Promise.resolve()),
   addClusterCountImage: vi.fn(),
 }));

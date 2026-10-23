@@ -1,6 +1,6 @@
 import type { Asset, LngLat, Zone, ZoneKind } from '@occ/contracts';
-import { offsetM } from './geo';
-import { fanOutAssets } from './mapFeatures';
+import { offsetM } from './map/geo';
+import { fanOutAssets } from './map/mapFeatures';
 import { DEFAULT_BUILDING_HEIGHT_M, makeFrame } from './twinScene';
 import { assetPose, boxOf, type PlacedAsset, placeAssets, placementOf } from './twinPlacement';
 

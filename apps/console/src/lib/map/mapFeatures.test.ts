@@ -7,7 +7,7 @@ import {
   type IncidentType,
   type LngLat,
 } from '@occ/contracts';
-import type { AssetState } from './assets';
+import type { AssetState } from '../assets';
 import {
   assetFeatures,
   assetImageId,

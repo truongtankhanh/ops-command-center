@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CanvasTexture, LinearFilter, SRGBColorSpace } from 'three';
-import { imageIdOf, MARKER_BOX, renderMarkerImages } from '../lib/mapImages';
+import { imageIdOf, MARKER_BOX, renderMarkerImages } from '../lib/map/mapImages';
 import { packCells } from '../lib/twinAtlas';
 import {
   type CellSpec,

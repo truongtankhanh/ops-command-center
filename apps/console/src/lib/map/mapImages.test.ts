@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { mapColors } from '../styles/tokens';
-import { cameraIcon, incidentTypeIcon, severityIcon, unknownIcon } from '../ui/icons';
+import { mapColors } from '../../styles/tokens';
+import { cameraIcon, incidentTypeIcon, severityIcon, unknownIcon } from '../../ui/icons';
 import {
   addClusterCountImage,
   glyphStyle,

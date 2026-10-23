@@ -14,7 +14,7 @@ import { type FormEvent, useCallback, useId, useLayoutEffect, useRef, useState }
 import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
 import { useReportIncident, useZones } from '../api/queries';
 import { usePermissionFor } from '../auth/usePermission';
-import { formatLatLng } from '../lib/geo';
+import { formatLatLng } from '../lib/map/geo';
 import { newIdempotencyKey } from '../lib/incidents/idempotency';
 import {
   categoryLabel,

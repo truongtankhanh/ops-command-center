@@ -1,6 +1,6 @@
 import type { LngLat, Zone } from '@occ/contracts';
-import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
+import { useConsole } from '../../store';
+import { resetStore } from '../../test-utils';
 import { placePinAt } from './reportPin';
 
 const square = (west: number, south: number, size: number): LngLat[] => [

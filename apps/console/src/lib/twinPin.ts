@@ -1,6 +1,6 @@
 import type { LngLat, Zone } from '@occ/contracts';
-import { isInRing } from './geo';
-import { footprintRing } from './sitePlan';
+import { isInRing } from './map/geo';
+import { footprintRing } from './map/sitePlan';
 import type { Vec3 } from './twinCamera';
 import type { ScreenPoint } from './twinPicking';
 import { type Frame, heightOf } from './twinScene';
