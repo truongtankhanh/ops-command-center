@@ -12,11 +12,11 @@ import {
   stubTwinAvailable,
   unstubTwin,
 } from '../test-utils';
-import { CampusMap } from './CampusMap';
+import { CampusMap } from './map/CampusMap';
 import { LazyTwinStage, StageView } from './StageView';
 
 // MapLibre needs WebGL, which jsdom does not have; the map's own tests cover the map.
-vi.mock('./CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
+vi.mock('./map/CampusMap', () => ({ CampusMap: vi.fn(() => null) }));
 
 // The 3D chunk, stood in for: R3F needs WebGL too. A mock factory runs when the module is first
 // imported, so `twin.evaluated` says whether anything asked for the chunk, and `twin.fail` makes

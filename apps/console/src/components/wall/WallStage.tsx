@@ -2,7 +2,7 @@ import { TWIN_UNAVAILABLE_COPY } from '../../lib/twin-core/twinCapability';
 import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
 import { Icon } from '../../ui/Icon';
 import { Info } from '../../ui/icons';
-import { CampusMap } from '../CampusMap';
+import { CampusMap } from '../map/CampusMap';
 import { LazyTwinStage } from '../StageView';
 import styles from './WallStage.module.css';
 

@@ -1,9 +1,9 @@
 import { useId } from 'react';
-import { layersOf, type SceneLayerKey } from '../lib/twin-core/twinLayers';
-import { levelOf } from '../lib/twin-core/twinLevel';
-import type { ViewChoice } from '../lib/shell/viewChoice';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
+import { layersOf, type SceneLayerKey } from '../../lib/twin-core/twinLayers';
+import { levelOf } from '../../lib/twin-core/twinLevel';
+import type { ViewChoice } from '../../lib/shell/viewChoice';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
 import styles from './LayersControl.module.css';
 
 const LABELS: Record<SceneLayerKey, string> = {

@@ -995,7 +995,7 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       legend and its lines: toggling Heat at asset level changes nothing on screen.
     - **The picker is main-chunk code (Q1), and `showsHeat` moved.** "Colour by" stands in the tools row beside the layers
       (frame 13), which `StageView` renders in the main chunk, and a main-chunk module cannot import the lazy chunk's
-      `twinHeat.ts`. So `components/ColourBy.tsx` is not in `src/twin/` as the task wrote, `showsHeat` is defined in
+      `twinHeat.ts`. So `components/map/ColourBy.tsx` is not in `src/twin/` as the task wrote, `showsHeat` is defined in
       `lib/twin-core/twinLevel.ts` beside `SceneLevel` and `twinHeat.ts` re-exports it (the overlay's readers did not move), and
       the measures are `lib/twin-core/heatMeasures.ts`, which imports nothing. The legend is lazy-chunk code (`twin/HeatLegend.tsx`).
     - **The legends are stacked (Q2).** The heat legend is above the marker legend in one bottom-left column

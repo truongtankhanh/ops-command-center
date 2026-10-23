@@ -1,13 +1,16 @@
 import type { Asset, Camera, Incident, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, screen, waitFor } from '@testing-library/react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { queryKeys } from '../api/queries';
-import { MAP_LAYERS } from '../lib/map/mapLayers';
-import { formatReading } from '../lib/assets/readings';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { MAP_LAYERS } from '../../lib/map/mapLayers';
+import { formatReading } from '../../lib/assets/readings';
+import {
+  type AssetTelemetryState,
+  initialTelemetryState,
+} from '../../lib/telemetry/telemetryState';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { MapTooltip } from './MapTooltip';
 
 type Handler = (event?: unknown) => void;

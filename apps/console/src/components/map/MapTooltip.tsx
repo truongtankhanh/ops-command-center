@@ -1,12 +1,12 @@
 import type { Map as MapLibreMap, MapMouseEvent } from 'maplibre-gl';
 import { type ReactNode, useEffect, useState } from 'react';
-import { useAssets, useCameras, useIncidents, useZones } from '../api/queries';
-import { isActive } from '../lib/incidents/incidents';
-import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../lib/map/mapHover';
-import { HOVER_LAYERS, visibleLayers } from '../lib/map/mapLayers';
-import { useConsole } from '../store';
-import { AssetTip, CameraTip, ClusterTip, IncidentTip } from './Tips';
-import { tipSurface } from './tipSurface';
+import { useAssets, useCameras, useIncidents, useZones } from '../../api/queries';
+import { isActive } from '../../lib/incidents/incidents';
+import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../../lib/map/mapHover';
+import { HOVER_LAYERS, visibleLayers } from '../../lib/map/mapLayers';
+import { useConsole } from '../../store';
+import { AssetTip, CameraTip, ClusterTip, IncidentTip } from '../Tips';
+import { tipSurface } from '../tipSurface';
 import styles from './MapTooltip.module.css';
 
 /** Half the tooltip's `max-width` in the module: it is clamped this far from the map's sides. */

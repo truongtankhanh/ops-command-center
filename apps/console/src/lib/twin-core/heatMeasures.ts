@@ -1,7 +1,7 @@
 /*
  * What the heat overlay can colour by, as plain data (V2-17.4, ADR-0020 "Settled in V2-17.1" and "V2-17.4"): the
  * "Colour by" picker lists these and the legend's title reads the name of the one in effect, so a measure is written
- * once. It imports nothing: the picker is main-chunk code (`components/ColourBy.tsx`, beside the layers control) and
+ * once. It imports nothing: the picker is main-chunk code (`components/map/ColourBy.tsx`, beside the layers control) and
  * the legend is lazy-chunk code (`twin/HeatLegend.tsx`), and both read it.
  *
  * There is one measure today, so the choice is not state: the picker marks `INDOOR_TEMPERATURE` as selected and

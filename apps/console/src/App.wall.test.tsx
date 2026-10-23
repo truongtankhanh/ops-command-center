@@ -41,7 +41,7 @@ vi.mock('maplibre-gl', () => ({ default: { Map: class {}, Marker: class {} } }))
 // The twin's chunk, stood in for: R3F needs WebGL. The wall mounts it, and what it draws is the twin's own tests'.
 vi.mock('./twin/TwinStage', () => ({ default: () => <p>3D stage</p> }));
 // The map the wall falls back to (V2-21.9): MapLibre is the map's own tests'; what is asserted is that the wall asked for it.
-vi.mock('./components/CampusMap', () => ({
+vi.mock('./components/map/CampusMap', () => ({
   CampusMap: ({ wall }: { wall?: boolean }) => (
     <section aria-label="Campus map">{wall ? '2D map (wall)' : '2D map'}</section>
   ),

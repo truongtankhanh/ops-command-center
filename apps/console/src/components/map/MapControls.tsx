@@ -1,7 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { useEffect, useState } from 'react';
-import { Button } from '../ui/Button';
-import { Minus, Plus, Scan } from '../ui/icons';
+import { Button } from '../../ui/Button';
+import { Minus, Plus, Scan } from '../../ui/icons';
 import styles from './MapControls.module.css';
 
 /**

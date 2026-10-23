@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore } from '../test-utils';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore } from '../../test-utils';
 import { LayersControl } from './LayersControl';
 
 const toggle = (name: string) => screen.getByRole('button', { name });

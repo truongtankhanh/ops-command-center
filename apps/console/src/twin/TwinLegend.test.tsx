@@ -2,7 +2,7 @@ import type { Asset, TelemetryPoint, Zone } from '@occ/contracts';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryKeys } from '../api/queries';
-import { MapLegend } from '../components/MapLegend';
+import { MapLegend } from '../components/map/MapLegend';
 import { initialTelemetryState } from '../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';

@@ -7,11 +7,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { HEAT_MEASURES, INDOOR_TEMPERATURE } from '../lib/twin-core/heatMeasures';
-import { levelOf, showsHeat } from '../lib/twin-core/twinLevel';
-import { useConsole } from '../store';
-import { Icon } from '../ui/Icon';
-import { Check, ChevronDown } from '../ui/icons';
+import { HEAT_MEASURES, INDOOR_TEMPERATURE } from '../../lib/twin-core/heatMeasures';
+import { levelOf, showsHeat } from '../../lib/twin-core/twinLevel';
+import { useConsole } from '../../store';
+import { Icon } from '../../ui/Icon';
+import { Check, ChevronDown } from '../../ui/icons';
 import styles from './ColourBy.module.css';
 
 /**

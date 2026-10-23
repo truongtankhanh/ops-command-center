@@ -2,14 +2,14 @@ import type { Asset, Camera, Incident, SitePlan, TelemetryPoint, Zone } from '@o
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { FeatureCollection, Geometry, Point } from 'geojson';
-import { queryKeys } from '../api/queries';
+import { queryKeys } from '../../api/queries';
 import {
   type AssetProperties,
   fanOutAssets,
   incidentFeatures,
   type IncidentProperties,
-} from '../lib/map/mapFeatures';
-import { registerMapImages } from '../lib/map/mapImages';
+} from '../../lib/map/mapFeatures';
+import { registerMapImages } from '../../lib/map/mapImages';
 import {
   cameraViewLayers,
   groundLayers,
@@ -19,12 +19,12 @@ import {
   MAP_LAYERS,
   MAP_SOURCES,
   zoneOverlayLayers,
-} from '../lib/map/mapLayers';
-import { siteBounds, type SiteProperties } from '../lib/map/sitePlan';
-import { initialTelemetryState, type TelemetryState } from '../lib/telemetry/telemetryState';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+} from '../../lib/map/mapLayers';
+import { siteBounds, type SiteProperties } from '../../lib/map/sitePlan';
+import { initialTelemetryState, type TelemetryState } from '../../lib/telemetry/telemetryState';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { CampusMap } from './CampusMap';
 
 // MapLibre needs WebGL, which jsdom does not have: a fake map records what the component asks of it.
@@ -161,10 +161,10 @@ vi.mock('maplibre-gl', () => ({
 }));
 
 // The session module is tested on its own; a site plan that is not cached goes through the client.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 // Rasterising needs an image decoder and fonts; the images themselves are tested in mapImages.test.
-vi.mock('../lib/map/mapImages', () => ({
+vi.mock('../../lib/map/mapImages', () => ({
   registerMapImages: vi.fn(() => Promise.resolve()),
   addClusterCountImage: vi.fn(),
 }));

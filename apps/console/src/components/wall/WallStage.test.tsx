@@ -10,7 +10,7 @@ import {
 import { WallStage } from './WallStage';
 
 // MapLibre is the map's own tests'; the stand-ins say whether the wall asked for the wall variant.
-vi.mock('../CampusMap', () => ({
+vi.mock('../map/CampusMap', () => ({
   CampusMap: ({ wall }: { wall?: boolean }) => (
     <section aria-label="Campus map">{wall ? '2D map (wall)' : '2D map'}</section>
   ),

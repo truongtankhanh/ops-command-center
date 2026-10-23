@@ -1,9 +1,9 @@
 import type { Role } from '@occ/contracts';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useSession } from '../auth/store';
-import { useConsole } from '../store';
-import { expectNoAxeViolations, resetStore } from '../test-utils';
+import { useSession } from '../../auth/store';
+import { useConsole } from '../../store';
+import { expectNoAxeViolations, resetStore } from '../../test-utils';
 import { ColourBy } from './ColourBy';
 
 const TRIGGER = 'Colour by Indoor temperature';
