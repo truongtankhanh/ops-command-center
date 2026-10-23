@@ -8,10 +8,10 @@ import {
   type LifecycleStep,
   lifecycleSteps,
   openDuration,
-} from '../lib/incidents/incidents';
-import { useNow } from '../lib/shared/useNow';
-import { Icon } from '../ui/Icon';
-import { Clock } from '../ui/icons';
+} from '../../lib/incidents/incidents';
+import { useNow } from '../../lib/shared/useNow';
+import { Icon } from '../../ui/Icon';
+import { Clock } from '../../ui/icons';
 import styles from './IncidentLifecycle.module.css';
 
 /**

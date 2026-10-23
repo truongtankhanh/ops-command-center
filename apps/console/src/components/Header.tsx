@@ -8,7 +8,7 @@ import { Brand } from './Brand';
 import { ConnectionPill, TelemetryPill } from './ConnectionPills';
 import { HeaderClock } from './HeaderClock';
 import styles from './Header.module.css';
-import { KpiTiles } from './KpiTiles';
+import { KpiTiles } from './incidents/KpiTiles';
 import { UserMenu } from './UserMenu';
 
 /**

@@ -1,8 +1,8 @@
 import type { IncidentEvent } from '@occ/contracts';
-import { eventLabel, formatAgo, formatClock } from '../lib/incidents/incidents';
-import { useNow } from '../lib/shared/useNow';
-import { Icon } from '../ui/Icon';
-import { actorKindIcon, eventKindIcon } from '../ui/icons';
+import { eventLabel, formatAgo, formatClock } from '../../lib/incidents/incidents';
+import { useNow } from '../../lib/shared/useNow';
+import { Icon } from '../../ui/Icon';
+import { actorKindIcon, eventKindIcon } from '../../ui/icons';
 import styles from './IncidentTimeline.module.css';
 
 /**

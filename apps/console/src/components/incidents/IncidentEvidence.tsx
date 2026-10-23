@@ -6,8 +6,8 @@ import type {
   TelemetryRule,
 } from '@occ/contracts';
 import { type ReactNode, useMemo } from 'react';
-import { ApiRequestError } from '../api/client';
-import { useAsset, useAssets, useModelParts, useZones } from '../api/queries';
+import { ApiRequestError } from '../../api/client';
+import { useAsset, useAssets, useModelParts, useZones } from '../../api/queries';
 import {
   drawnSeries,
   encodedLatest,
@@ -15,31 +15,31 @@ import {
   overSeverity,
   readingIsStale,
   SPARKLINE_WINDOW_MS,
-} from '../lib/assets/assetInspector';
-import { assetLinkLines } from '../lib/assets/assetLink';
-import { isActive } from '../lib/incidents/incidents';
-import { partRows } from '../lib/twin-core/modelParts';
-import { formatReading } from '../lib/assets/readings';
+} from '../../lib/assets/assetInspector';
+import { assetLinkLines } from '../../lib/assets/assetLink';
+import { isActive } from '../../lib/incidents/incidents';
+import { partRows } from '../../lib/twin-core/modelParts';
+import { formatReading } from '../../lib/assets/readings';
 import {
   describeEvidence,
   type EvidenceDescription,
   evidenceOfTimeline,
   matchRule,
   type RuleEvidence,
-} from '../lib/telemetry/telemetryEvidence';
-import { ageMs, staleAfterMs } from '../lib/telemetry/telemetryFreshness';
-import { showAssetIn3d } from '../lib/twin-core/twinFlight';
-import { buildingFocusOf } from '../lib/twin-core/twinLevel';
-import { useTwinCapability } from '../lib/twin-core/useTwinCapability';
-import { useAssetSeries, useAssetState, useServerNow } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import text from '../styles/text.module.css';
-import { Button } from '../ui/Button';
-import { Icon } from '../ui/Icon';
-import { assetClassIcon, Box } from '../ui/icons';
-import { SheetSection } from '../ui/SheetSection';
-import { Skeleton } from '../ui/Skeleton';
-import { Sparkline } from '../ui/Sparkline';
+} from '../../lib/telemetry/telemetryEvidence';
+import { ageMs, staleAfterMs } from '../../lib/telemetry/telemetryFreshness';
+import { showAssetIn3d } from '../../lib/twin-core/twinFlight';
+import { buildingFocusOf } from '../../lib/twin-core/twinLevel';
+import { useTwinCapability } from '../../lib/twin-core/useTwinCapability';
+import { useAssetSeries, useAssetState, useServerNow } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import text from '../../styles/text.module.css';
+import { Button } from '../../ui/Button';
+import { Icon } from '../../ui/Icon';
+import { assetClassIcon, Box } from '../../ui/icons';
+import { SheetSection } from '../../ui/SheetSection';
+import { Skeleton } from '../../ui/Skeleton';
+import { Sparkline } from '../../ui/Sparkline';
 import styles from './IncidentEvidence.module.css';
 
 const TITLE = 'Why it was raised';

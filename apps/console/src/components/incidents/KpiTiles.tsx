@@ -1,9 +1,9 @@
 import { INCIDENT_SEVERITIES, type Incident } from '@occ/contracts';
-import { useIncidents } from '../api/queries';
-import { countActiveBySeverity, severityLabel } from '../lib/incidents/incidents';
-import { useConsole } from '../store';
-import { Icon } from '../ui/Icon';
-import { severityIcon } from '../ui/icons';
+import { useIncidents } from '../../api/queries';
+import { countActiveBySeverity, severityLabel } from '../../lib/incidents/incidents';
+import { useConsole } from '../../store';
+import { Icon } from '../../ui/Icon';
+import { severityIcon } from '../../ui/icons';
 import styles from './KpiTiles.module.css';
 
 /**

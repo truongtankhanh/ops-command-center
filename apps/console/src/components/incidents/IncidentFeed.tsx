@@ -1,8 +1,8 @@
 import type { Incident, Zone } from '@occ/contracts';
 import { type KeyboardEvent, useCallback, useRef, useState } from 'react';
-import { isRateLimited } from '../api/client';
-import { useIncidents, useZones } from '../api/queries';
-import { useRoles } from '../auth/usePermission';
+import { isRateLimited } from '../../api/client';
+import { useIncidents, useZones } from '../../api/queries';
+import { useRoles } from '../../auth/usePermission';
 import {
   categoryTag,
   countByFilter,
@@ -16,23 +16,23 @@ import {
   offeredFilter,
   searchTerms,
   severityLabel,
-} from '../lib/incidents/incidents';
-import { nextRowIndex } from '../lib/incidents/rowNavigation';
-import { formatClockTime } from '../lib/shared/time';
-import { useNow } from '../lib/shared/useNow';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { EmptyState } from '../ui/EmptyState';
-import { FilterChip } from '../ui/FilterChip';
-import { Icon } from '../ui/Icon';
-import { Clock, Search, severityIcon } from '../ui/icons';
-import { Skeleton } from '../ui/Skeleton';
-import { Tabs } from '../ui/Tabs';
+} from '../../lib/incidents/incidents';
+import { nextRowIndex } from '../../lib/incidents/rowNavigation';
+import { formatClockTime } from '../../lib/shared/time';
+import { useNow } from '../../lib/shared/useNow';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { EmptyState } from '../../ui/EmptyState';
+import { FilterChip } from '../../ui/FilterChip';
+import { Icon } from '../../ui/Icon';
+import { Clock, Search, severityIcon } from '../../ui/icons';
+import { Skeleton } from '../../ui/Skeleton';
+import { Tabs } from '../../ui/Tabs';
 import { FeedSearch } from './FeedSearch';
 import styles from './IncidentFeed.module.css';
 import { IncidentRow } from './IncidentRow';
-import { LoadFailed, RateLimited } from './LoadStates';
+import { LoadFailed, RateLimited } from '../LoadStates';
 
 /** As many placeholder rows as a short shift's list, enough to fill the column's first screen. */
 const SKELETON_ROWS = 5;

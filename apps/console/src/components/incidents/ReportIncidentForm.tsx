@@ -11,11 +11,11 @@ import {
   type Zone,
 } from '@occ/contracts';
 import { type FormEvent, useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
-import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
-import { useReportIncident, useZones } from '../api/queries';
-import { usePermissionFor } from '../auth/usePermission';
-import { formatLatLng } from '../lib/map/geo';
-import { newIdempotencyKey } from '../lib/incidents/idempotency';
+import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../../api/client';
+import { useReportIncident, useZones } from '../../api/queries';
+import { usePermissionFor } from '../../auth/usePermission';
+import { formatLatLng } from '../../lib/map/geo';
+import { newIdempotencyKey } from '../../lib/incidents/idempotency';
 import {
   categoryLabel,
   REPORT_TITLE_MAX,
@@ -24,16 +24,16 @@ import {
   typeLabelInSentence,
   typesInCategory,
   typesLikelyIn,
-} from '../lib/incidents/incidents';
-import { useStopPickingOnEscape } from '../lib/twin-core/useStopPickingOnEscape';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Field, Select, Textarea, TextInput } from '../ui/Field';
-import { Hint, type HintTone } from '../ui/Hint';
-import { categoryIcon, incidentTypeIcon, MapPin, severityIcon, X } from '../ui/icons';
-import { SegmentedControl } from '../ui/SegmentedControl';
-import { Sheet } from '../ui/Sheet';
-import { showToast } from '../ui/toasts';
+} from '../../lib/incidents/incidents';
+import { useStopPickingOnEscape } from '../../lib/twin-core/useStopPickingOnEscape';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Field, Select, Textarea, TextInput } from '../../ui/Field';
+import { Hint, type HintTone } from '../../ui/Hint';
+import { categoryIcon, incidentTypeIcon, MapPin, severityIcon, X } from '../../ui/icons';
+import { SegmentedControl } from '../../ui/SegmentedControl';
+import { Sheet } from '../../ui/Sheet';
+import { showToast } from '../../ui/toasts';
 import styles from './ReportIncidentForm.module.css';
 
 const DESCRIPTION_MAX = 2000;

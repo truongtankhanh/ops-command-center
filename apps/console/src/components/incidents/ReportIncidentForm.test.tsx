@@ -8,17 +8,17 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { getAccessToken, renewSession } from '../auth/session';
-import { useSession } from '../auth/store';
-import type { ReportPreset } from '../lib/assets/assetReport';
-import { useConsole } from '../store';
-import { resetStore } from '../test-utils';
-import { useToasts } from '../ui/toasts';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken, renewSession } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import type { ReportPreset } from '../../lib/assets/assetReport';
+import { useConsole } from '../../store';
+import { resetStore } from '../../test-utils';
+import { useToasts } from '../../ui/toasts';
 import { ReportIncidentForm } from './ReportIncidentForm';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const zone: Zone = {
   id: '6f1c2b1e-0000-4000-8000-000000000001',

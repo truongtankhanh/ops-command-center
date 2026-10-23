@@ -9,20 +9,20 @@ import type {
 } from '@occ/contracts';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TOO_MANY_REQUESTS } from '../api/client';
-import { queryKeys } from '../api/queries';
-import { getAccessToken, renewSession } from '../auth/session';
-import { useSession } from '../auth/store';
-import { offsetM } from '../lib/map/geo';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
-import { SheetHost } from '../ui/Sheet';
-import { AssetInspector } from './AssetInspector';
+import { TOO_MANY_REQUESTS } from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken, renewSession } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import { offsetM } from '../../lib/map/geo';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
+import { SheetHost } from '../../ui/Sheet';
+import { AssetInspector } from '../AssetInspector';
 import { IncidentDetail } from './IncidentDetail';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const OPERATOR_SUBJECT = 'f3b1c2d4-5e6f-4a1b-9c8d-7e6f5a4b3c2d';
 const NOTE_LABEL = 'Note for the timeline (optional)';

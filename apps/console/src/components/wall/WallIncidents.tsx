@@ -5,7 +5,7 @@ import text from '../../styles/text.module.css';
 import { Icon } from '../../ui/Icon';
 import { statusIcon } from '../../ui/icons';
 import { Skeleton } from '../../ui/Skeleton';
-import { IncidentRow } from '../IncidentRow';
+import { IncidentRow } from '../incidents/IncidentRow';
 import styles from './WallIncidents.module.css';
 
 /** The most rows drawn: the list shows what fits and cuts the rest, so there is no need to build a long night's worth. */

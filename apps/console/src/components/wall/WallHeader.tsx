@@ -3,7 +3,7 @@ import { Icon } from '../../ui/Icon';
 import { Brand } from '../Brand';
 import { ConnectionPill, TelemetryPill } from '../ConnectionPills';
 import { HeaderClock } from '../HeaderClock';
-import { KpiTiles } from '../KpiTiles';
+import { KpiTiles } from '../incidents/KpiTiles';
 import styles from './WallHeader.module.css';
 import { WallSessionNotice } from './WallSessionNotice';
 

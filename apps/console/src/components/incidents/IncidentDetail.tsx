@@ -1,26 +1,26 @@
 import type { Camera, IncidentDetail as Detail } from '@occ/contracts';
 import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { ApiRequestError, isRateLimited } from '../api/client';
-import { useAssets, useCameras, useIncident, useZones } from '../api/queries';
-import { incidentCameras } from '../lib/cameras/cameras';
-import { categoryLabel, categoryOfType, typeLabel } from '../lib/incidents/incidents';
-import { useConsole } from '../store';
-import text from '../styles/text.module.css';
-import { Button } from '../ui/Button';
-import { EmptyState } from '../ui/EmptyState';
-import { focusLost } from '../ui/focus';
-import { Icon } from '../ui/Icon';
-import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../ui/icons';
-import { SeverityBadge } from '../ui/SeverityBadge';
-import { Sheet } from '../ui/Sheet';
-import { Skeleton } from '../ui/Skeleton';
-import { CameraTile } from './cameras/CameraTile';
+import { ApiRequestError, isRateLimited } from '../../api/client';
+import { useAssets, useCameras, useIncident, useZones } from '../../api/queries';
+import { incidentCameras } from '../../lib/cameras/cameras';
+import { categoryLabel, categoryOfType, typeLabel } from '../../lib/incidents/incidents';
+import { useConsole } from '../../store';
+import text from '../../styles/text.module.css';
+import { Button } from '../../ui/Button';
+import { EmptyState } from '../../ui/EmptyState';
+import { focusLost } from '../../ui/focus';
+import { Icon } from '../../ui/Icon';
+import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../../ui/icons';
+import { SeverityBadge } from '../../ui/SeverityBadge';
+import { Sheet } from '../../ui/Sheet';
+import { Skeleton } from '../../ui/Skeleton';
+import { CameraTile } from '../cameras/CameraTile';
 import styles from './IncidentDetail.module.css';
 import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
 import { IncidentTimeline } from './IncidentTimeline';
-import { LoadFailed, RateLimited } from './LoadStates';
+import { LoadFailed, RateLimited } from '../LoadStates';
 
 /**
  * The incident in the sheet (frames 02 / 06). One `Sheet` holds the loading, failed and loaded

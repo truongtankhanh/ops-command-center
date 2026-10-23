@@ -6,7 +6,7 @@ import { queryKeys } from '../api/queries';
 import { useSession } from '../auth/store';
 import { useConsole } from '../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
-import { IncidentFeed } from './IncidentFeed';
+import { IncidentFeed } from './incidents/IncidentFeed';
 import { SidePanel } from './SidePanel';
 
 // No token in these cases; the API client only asks for one.

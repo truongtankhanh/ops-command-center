@@ -1,25 +1,25 @@
 import type { IncidentCategory, IncidentDetail } from '@occ/contracts';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../api/client';
-import { useIncidents, useTransition } from '../api/queries';
-import { usePermission, usePermissionFor, useRoles } from '../auth/usePermission';
+import { ApiRequestError, NO_LONGER_ALLOWED, TOO_MANY_REQUESTS } from '../../api/client';
+import { useIncidents, useTransition } from '../../api/queries';
+import { usePermission, usePermissionFor, useRoles } from '../../auth/usePermission';
 import {
   categoryLabel,
   categoryOfType,
   countByFilter,
   handlingScope,
   hasLimitedScope,
-} from '../lib/incidents/incidents';
-import { useShortcut } from '../lib/shell/useShortcut';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Dialog } from '../ui/Dialog';
-import { Field, Textarea } from '../ui/Field';
-import { focusLost } from '../ui/focus';
-import { Hint } from '../ui/Hint';
-import { Info } from '../ui/icons';
+} from '../../lib/incidents/incidents';
+import { useShortcut } from '../../lib/shell/useShortcut';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
+import { Field, Textarea } from '../../ui/Field';
+import { focusLost } from '../../ui/focus';
+import { Hint } from '../../ui/Hint';
+import { Info } from '../../ui/icons';
 import styles from './IncidentResponse.module.css';
-import { ViewOnlyNote } from './ViewOnlyNote';
+import { ViewOnlyNote } from '../ViewOnlyNote';
 
 /** Shown under a note being written, and announced by the sheet when Escape is ignored for it. */
 export const NOTE_KEPT = 'Esc keeps your note. Close discards it.';

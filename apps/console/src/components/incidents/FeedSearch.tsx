@@ -1,9 +1,9 @@
 import type { KeyboardEvent, RefObject } from 'react';
-import { useConsole } from '../store';
-import { TextInput } from '../ui/Field';
-import { Icon } from '../ui/Icon';
-import { Search, X } from '../ui/icons';
-import { Kbd } from '../ui/Kbd';
+import { useConsole } from '../../store';
+import { TextInput } from '../../ui/Field';
+import { Icon } from '../../ui/Icon';
+import { Search, X } from '../../ui/icons';
+import { Kbd } from '../../ui/Kbd';
 import styles from './FeedSearch.module.css';
 
 /**

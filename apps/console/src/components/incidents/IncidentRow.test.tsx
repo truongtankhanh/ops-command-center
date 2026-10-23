@@ -1,8 +1,8 @@
 import type { Incident } from '@occ/contracts';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useConsole } from '../store';
-import { renderWithQueryClient, resetStore } from '../test-utils';
+import { useConsole } from '../../store';
+import { renderWithQueryClient, resetStore } from '../../test-utils';
 import { IncidentRow } from './IncidentRow';
 
 const incident: Incident = {

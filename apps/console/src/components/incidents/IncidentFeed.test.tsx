@@ -7,15 +7,15 @@ import {
   RATE_LIMITED_RETRYING,
   shouldRetryQuery,
   TOO_MANY_REQUESTS,
-} from '../api/client';
-import { queryKeys } from '../api/queries';
-import { useSession } from '../auth/store';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+} from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { useSession } from '../../auth/store';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { IncidentFeed } from './IncidentFeed';
 
 // No token in these cases; the API client only asks for one.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const zone: Zone = {
   id: 'z1',

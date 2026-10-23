@@ -8,15 +8,18 @@ import type {
 } from '@occ/contracts';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { getAccessToken, renewSession } from '../auth/session';
-import { useSession } from '../auth/store';
-import { type AssetTelemetryState, initialTelemetryState } from '../lib/telemetry/telemetryState';
-import type { NodeInfo } from '../lib/twin-core/twinBindings';
-import { registerTwinCommands, type TwinCommands } from '../lib/twin-core/twinCommands';
-import { seriesKey, type SeriesView } from '../realtime/telemetryClient';
-import { useTelemetryStore } from '../realtime/telemetryStore';
-import { useConsole } from '../store';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken, renewSession } from '../../auth/session';
+import { useSession } from '../../auth/store';
+import {
+  type AssetTelemetryState,
+  initialTelemetryState,
+} from '../../lib/telemetry/telemetryState';
+import type { NodeInfo } from '../../lib/twin-core/twinBindings';
+import { registerTwinCommands, type TwinCommands } from '../../lib/twin-core/twinCommands';
+import { seriesKey, type SeriesView } from '../../realtime/telemetryClient';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
+import { useConsole } from '../../store';
 import {
   createTestQueryClient,
   expectNoAxeViolations,
@@ -24,11 +27,11 @@ import {
   resetStore,
   stubTwinAvailable,
   unstubTwin,
-} from '../test-utils';
+} from '../../test-utils';
 import { IncidentEvidence } from './IncidentEvidence';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const RECEIVED = '2026-10-16T08:00:00.000Z';
 const RECEIVED_MS = Date.parse(RECEIVED);

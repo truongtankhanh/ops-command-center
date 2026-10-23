@@ -35,7 +35,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { Tabs } from '../ui/Tabs';
 import styles from './AssetFeed.module.css';
 import { AssetRow } from './AssetRow';
-import { FeedSearch } from './FeedSearch';
+import { FeedSearch } from './incidents/FeedSearch';
 import { LoadFailed, RateLimited } from './LoadStates';
 
 /** As many placeholder rows as the incident feed's, enough to fill the column's first screen. */
