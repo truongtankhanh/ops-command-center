@@ -1,14 +1,14 @@
 import type { Camera, StreamDescriptor, Zone } from '@occ/contracts';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { getAccessToken } from '../auth/session';
-import { useConsole } from '../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken } from '../../auth/session';
+import { useConsole } from '../../store';
+import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
 import { CameraViewer } from './CameraViewer';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const CLOCK = /^\d{2}:\d{2}:\d{2}$/;
 

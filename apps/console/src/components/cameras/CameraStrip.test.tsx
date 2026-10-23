@@ -2,20 +2,20 @@ import type { Asset, Camera, Incident, Zone } from '@occ/contracts';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../api/client';
-import { queryKeys } from '../api/queries';
-import { offsetM } from '../lib/map/geo';
-import { useConsole } from '../store';
+import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../../api/client';
+import { queryKeys } from '../../api/queries';
+import { offsetM } from '../../lib/map/geo';
+import { useConsole } from '../../store';
 import {
   createTestQueryClient,
   renderWithQueryClient,
   resetStore,
   stubViewportWidth,
-} from '../test-utils';
+} from '../../test-utils';
 import { CameraStrip } from './CameraStrip';
 
 // No token in these cases; the API client only asks for one.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 /** Offline by default: no stream request and no canvas, so a case tests the strip, not the tile. */
 const camera = (overrides: Partial<Camera> = {}): Camera => ({

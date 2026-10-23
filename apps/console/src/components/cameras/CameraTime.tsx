@@ -1,5 +1,5 @@
-import { formatCameraTime } from '../lib/cameras/cameras';
-import { useNow } from '../lib/shared/useNow';
+import { formatCameraTime } from '../../lib/cameras/cameras';
+import { useNow } from '../../lib/shared/useNow';
 
 /**
  * The time on a camera frame, ticking every second. Its own component so that only this `<time>`

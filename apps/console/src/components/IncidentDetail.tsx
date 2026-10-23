@@ -14,7 +14,7 @@ import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../
 import { SeverityBadge } from '../ui/SeverityBadge';
 import { Sheet } from '../ui/Sheet';
 import { Skeleton } from '../ui/Skeleton';
-import { CameraTile } from './CameraTile';
+import { CameraTile } from './cameras/CameraTile';
 import styles from './IncidentDetail.module.css';
 import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';

@@ -4,7 +4,7 @@ import { useDisplayMode } from '../../lib/shell/useDisplayMode';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
 import { Skeleton } from '../../ui/Skeleton';
-import { CameraTile } from '../CameraTile';
+import { CameraTile } from '../cameras/CameraTile';
 import styles from './WallCameras.module.css';
 
 /**

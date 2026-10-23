@@ -1,13 +1,13 @@
 import type { Camera, StreamDescriptor } from '@occ/contracts';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { queryKeys } from '../api/queries';
-import { getAccessToken } from '../auth/session';
-import { createTestQueryClient, renderWithQueryClient } from '../test-utils';
+import { queryKeys } from '../../api/queries';
+import { getAccessToken } from '../../auth/session';
+import { createTestQueryClient, renderWithQueryClient } from '../../test-utils';
 import { CameraFeed } from './CameraFeed';
 
 // The session module is tested on its own; here it only decides which token the client sends.
-vi.mock('../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
 
 const PLAYER_PENDING = 'Live player arrives in M2';
 

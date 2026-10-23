@@ -1,18 +1,18 @@
 import type { Camera } from '@occ/contracts';
 import { useId, useRef } from 'react';
-import { useCameras, useStream, useZones } from '../api/queries';
-import { feedState } from '../lib/cameras/cameras';
-import { useConsole } from '../store';
-import { Button } from '../ui/Button';
-import { Dialog } from '../ui/Dialog';
-import { ErrorBoundary } from '../ui/ErrorBoundary';
-import { Icon } from '../ui/Icon';
-import { cameraIcon, Maximize } from '../ui/icons';
+import { useCameras, useStream, useZones } from '../../api/queries';
+import { feedState } from '../../lib/cameras/cameras';
+import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
+import { Dialog } from '../../ui/Dialog';
+import { ErrorBoundary } from '../../ui/ErrorBoundary';
+import { Icon } from '../../ui/Icon';
+import { cameraIcon, Maximize } from '../../ui/icons';
 import { CameraFeed } from './CameraFeed';
 import { CameraTime } from './CameraTime';
 import { LivePill } from './CameraTile';
 import styles from './CameraViewer.module.css';
-import { RegionFallback } from './LoadStates';
+import { RegionFallback } from '../LoadStates';
 
 /**
  * One camera, large, with the other cameras of its zone to switch to (no frame draws it; D1, D9).

@@ -1,14 +1,14 @@
 import type { CSSProperties } from 'react';
-import { isRateLimited } from '../api/client';
-import { useAssets, useCameras, useIncidents } from '../api/queries';
-import { cameraLink, stripCameras, stripSize, stripSubject } from '../lib/cameras/cameras';
-import { useDisplayMode } from '../lib/shell/useDisplayMode';
-import { useConsole } from '../store';
-import text from '../styles/text.module.css';
-import { Skeleton } from '../ui/Skeleton';
+import { isRateLimited } from '../../api/client';
+import { useAssets, useCameras, useIncidents } from '../../api/queries';
+import { cameraLink, stripCameras, stripSize, stripSubject } from '../../lib/cameras/cameras';
+import { useDisplayMode } from '../../lib/shell/useDisplayMode';
+import { useConsole } from '../../store';
+import text from '../../styles/text.module.css';
+import { Skeleton } from '../../ui/Skeleton';
 import styles from './CameraStrip.module.css';
 import { CameraTile } from './CameraTile';
-import { LoadFailed, RateLimited } from './LoadStates';
+import { LoadFailed, RateLimited } from '../LoadStates';
 
 /**
  * One row of tiles — four, six on a wall, eight on a 4K wall (`stripSize`): pinned cameras first,
