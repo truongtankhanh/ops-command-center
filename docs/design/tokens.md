@@ -2,17 +2,24 @@
 
 The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, focus and layers. Approved in the
 [design brief](brief.md) (UI-01), implemented in UI-03.
-V3 revises the palette, the type and the radii ([ADR-0022](../adr/0022-console-visual-language.md)); the generated tables below follow from V3-02.
+V3 ([ADR-0022](../adr/0022-console-visual-language.md), [V3 brief](v3/brief.md)) replaced the palette, the shadows and
+the radii; the chosen values and their reasons are in the brief's
+[V3 values](v3/brief.md#v3-values-settled-in-v3-021), the measured ratios are in the generated tables below. The type
+family and scale are still V2's until V3-03.
 
 ## Where they live
 
-| File                                     | Holds                                                                                               |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).      |
-| `apps/console/src/styles/tokens.ts`      | The map's values (`mapColors`, `mapMotion`: MapLibre takes literals) and the `breakpoints` (UI-17). |
-| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                |
+| File                                     | Holds                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).                                                                                                                                                                                                     |
+| `apps/console/src/styles/tokens.ts`      | The literal copies for code that cannot read CSS: `mapColors` and `mapMotion` (MapLibre), `twinColors` (WebGL), `faviconMark`, and the `breakpoints` (UI-17).                                                                                                                                      |
+| `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                                                                                                                                                                                                               |
+| `docker/keycloak/themes/occ/login/`      | The sign-in theme: its own `:root` in `resources/css/occ.css` (colours, `--shadow-3`, `--radius-m` / `-l`, fonts, focus ring), two `rgb()` literals for the card and the shade, and the mark's colours in `template.ftl`. It loads before any console CSS, so it cannot `var()` into `tokens.css`. |
 
-A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently. One exception:
+A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently: a token change and
+its copies land in one change, and a new token with no pair in `scripts/contrast.ts` is unproven. The elevation tokens
+(`--shadow-1…3`, `--glow-edge`, `--glass-bg`, `--vignette`) are CSS only, so they have no copy in `tokens.ts`; the theme
+copies `--shadow-3` alone. One exception:
 the cluster count font on the map (`lib/map/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
 see [icons.md](icons.md#map-glyphs)).
 
@@ -28,6 +35,9 @@ see [icons.md](icons.md#map-glyphs)).
   ≥ 3200 px** (`--ui-scale: 1.75`, 8 tiles). Only `--ui-scale` changes in the wall media queries at the end of
   `tokens.css`; `lint` checks that their widths match `breakpoints.wall` / `wall4k`. Script reads the mode with
   `useDisplayMode()` (`lib/shell/useDisplayMode.ts`) — today only the camera strip, for its tile count.
+- **Shape.** `--radius-s` / `-m` / `-l` are 4 / 8 / 12 px: chips and badges / controls (buttons, fields, menus) / cards,
+  the inspector and floating panels. `--control-m` is 40 px (buttons and fields), `--control-dense` 36 px (dense bars),
+  `--control-s` 32 px (an action inside a row; the 24 px target floor holds). All of them scale with `--ui-scale`.
 - **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
   (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
   overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--kpi-height`, `--strip-pad`,
@@ -59,7 +69,28 @@ From the brief's surface rules:
 - The escalated critical KPI tile (frame 04) uses the same rule on `--sev-critical-hot-bg`, an opaque 18 % mix into
   `--surface-1` (the header): count and label in `--text-primary`, the hue on the icon, the border and the
   `--sev-critical-hot-ring` glow.
-- Status (`--status-*`) is neutral-based and never uses a severity hue. Severity (`--sev-*`) is the only loud colour.
+- **One meaning per hue.** Severity is the only loud _meaning_ (ADR-0022): neon, the accent and live-data colour may
+  glow, thinly and on purpose, but never stand for severity, and severity never borrows them. Status (`--status-*`) is
+  neutral-based and never uses a severity hue.
+- **The accent has two tones.** `--accent` (`#3185ff`) is the fill, the graphic and the focus ring, held to 3:1 on every
+  surface and never used as text. `--accent-ink` is the same hue lightened for anything that reads as text or a glyph
+  standing in for text (4.5:1 on every surface). `--on-accent` stays dark: white on `--accent` is 3.54:1.
+  `--accent-hover` is a hover fill only.
+- **`--signal` is live data**: telemetry lines, the healthy device marker, the Live pill. Text-capable (4.5:1). It is
+  never a severity, never interaction. `--accent-2` is a second data series and a hover tint: graphics only (3:1), never
+  text, because it falls under 4.5:1 on `--surface-3`.
+- **Low is neutral.** `--sev-low` is a steel (`#87a2c4`) and hue does not tell it from a quiet label. A Low item is
+  found by its `Info` glyph, the word "Low", its place in the severity order and its 15 % tint with a 45 % border, which
+  a status chip does not have. On the map and in 3D a resolved marker is drawn smaller than an acknowledged one, because
+  both are neutral rings.
+- **`--warning` and `--danger` are feedback only.** They sit close to `--sev-high` and `--sev-critical` in hue, so the
+  rule is by place and shape: feedback goes on chrome (banner, pill, hint, form error) with its own glyph and never on
+  the same element as a severity. The one exception is the late age on a feed row, which stays in `--warning` and is
+  told apart by its clock glyph, weight and hidden text.
+- **Elevation and neon.** `--shadow-1…3` are the only drop shadows. `--glow-edge` (a 1 px `--accent` ring plus a soft
+  halo) is the lit edge of the active tab, the selected button and the open panel, never every card. `--glass-bg` is a
+  panel at 90 %, legible without blur; blur is for small floating overlays. `--vignette` darkens the stage edge and
+  never sits over a control or a label. Until V3-04 no component uses these three.
 - System feedback (`--success`, `--warning`, `--danger`) appears only in the connection pill, banners, toasts and
   form errors, never on an incident.
 - Layers, bottom to top: `--z-sheet`, `--z-banner`, `--z-popover`, `--z-toast`, `--z-dialog` (a modal confirmation,
@@ -74,7 +105,7 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
 
 | Token                                          | Value                                                        | Use                                                                           |
 | ---------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `--tw-top` / `-south` / `-east`                | `#2a4658` / `#1f3748` / `#172b3a`                            | Part material, idle: three faces under one key light from the west-south-west |
+| `--tw-top` / `-south` / `-east`                | `#274152` / `#1f3748` / `#172b3a`                            | Part material, idle: three faces under one key light from the west-south-west |
 | `--tw-edge`, `--tw-blade`                      | `#3e5a6e`, `#4d6a80`                                         | Part outline; fan blades                                                      |
 | `--tw-ground`, `--tw-grid`, `--tw-road`        | `#0f1d27`, `#14242f`, `#182a36`                              | Campus ground, its grid, roads                                                |
 | `--tw-steel-top` / `-south` / `-east`          | `#435766` / `#334553` / `#273745`                            | Motors, pumps, pipes, valves, cabinets                                        |
@@ -88,8 +119,11 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
 | `--tw-stale-top` / `-south` / `-east`          | `#2b3338` / `#22292e` / `#1b2125`                            | No recent data: desaturated faces                                             |
 | `--tw-stale-edge`                              | `#4a555c`, dashed                                            | No recent data: the edge                                                      |
 | `--tw-ghost-opacity`                           | `0.18`                                                       | The rest of the campus while one asset is isolated                            |
-| `--heat-0` … `--heat-5`                        | `#1f2a4d` → `#b3bdff`                                        | Telemetry overlay: sequential, the accent's hue                               |
+| `--heat-0` … `--heat-5`                        | `#132b50` → `#9bc3ff`                                        | Telemetry overlay: sequential, the accent's hue (216°)                        |
 
+- **`--tw-top` was lightened in V3** (from `#2a4658`) so a hovered, selected or alarmed edge keeps 3:1 against an idle
+  neighbour with the V3 accent and critical. The other scene materials keep their V2 values until the realistic scene
+  (Phase 3), so the 3D view is V2's look on a darker ground.
 - **Alarm per severity.** Only the critical faces are tokens (frame 00's reference). The scene mixes
   `--tw-alarm-mix` of the incident's severity into the material itself, rather than 12 more tokens here.
 - **Edges.** A hovered, selected or alarmed part's edge is held to 3:1 on `--tw-top` (an idle neighbour) and on
@@ -121,7 +155,7 @@ focus ring. These may stay raw:
   `vh` lengths, and the geometry of drawn graphics (lifecycle stepper dot and rail, legend samples). Since UI-17 they
   are written as the laptop value times the scale, `calc(34px * var(--ui-scale))`, so they grow with the text on a
   wall; percentages, `ch` / `vh` and `999px` pill radii stay as they are. Shared sizes are tokens: `--sheet-width`
-  (440 px, frame 02; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
+  (440 px, frame 02, until V3-09 resizes it; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
   `--control-m` / `--control-s` / `--control-dense` (40 / 32 / 36 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
   sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
   multiplies them by the scale — see [icons.md](icons.md).

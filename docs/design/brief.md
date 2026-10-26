@@ -30,7 +30,8 @@ a design instead of inventing one per PR. Every later UI task links the frame it
 
 1. **Severity is the only loud colour.** One cool accent for interaction; status uses shape, icon and
    neutral tones, never the severity hue.
-   _Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md) ("severity is the only loud meaning")._
+   _Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md) ("severity is the only loud meaning"),
+   [V3 brief § Principles](v3/brief.md#principles)._
 2. **Never colour alone.** Severity and status always carry an icon and text (WCAG 1.4.1).
 3. **Depth over lines.** Four surface levels with shadows; borders only where they carry meaning.
 4. **One scale for everything.** 4 px spacing grid, one type scale, three radii, three shadows.
@@ -50,7 +51,7 @@ or visual identity.
 
 ### Accent: periwinkle `#8c9bff`
 
-> Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md). The accent is now the direction's blue (fill `--accent`, text `--accent-ink`) and Low severity is no longer cyan. This section stays as history.
+> Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md) and the [V3 brief § Colour](v3/brief.md#colour). The accent is now the direction's blue (fill `--accent`, text `--accent-ink`) and Low severity is no longer cyan. This section stays as history.
 
 | Option                     | Why not / why                                                                                                                                                      |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -67,7 +68,7 @@ swapped. Map markers render the same glyphs (MapLibre `addImage()` in UI-08).
 
 ### Type: keep Barlow Semi Condensed (UI) + Barlow (body)
 
-> Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md). The family is now Inter, with a 11 px step for secondary metadata. This section stays as history.
+> Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md) and the [V3 brief § Type and components](v3/brief.md#type-and-components). The family is now Inter, with a 11 px step for secondary metadata. This section stays as history.
 
 Already bundled through `@fontsource`, condensed enough for a dense feed and header, with tabular
 figures. Replacing it would cost bundle and visual churn for no gain in legibility. Scale: 12 / 13 / 14 /
@@ -156,7 +157,7 @@ into `tokens.css`.
 
 The questions this brief left open, decided on 2026-10-05:
 
-1. **Accent: periwinkle `#8c9bff`.** The only hue clear of the severity set (red, orange, yellow, cyan),
+1. **Accent: periwinkle `#8c9bff`.** _Superseded in part by V3 ([V3 brief § Colour](v3/brief.md#colour))._ The only hue clear of the severity set (red, orange, yellow, cyan),
    of `--success` green and of the `--danger` / critical reds; AA on every surface.
 2. **Session texts: two secondary lines are added; the existing texts stay unchanged** (so the
    assertions in `AuthGate.test.tsx` hold).
