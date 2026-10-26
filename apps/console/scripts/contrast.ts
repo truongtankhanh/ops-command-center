@@ -94,29 +94,39 @@ const MAP: Record<string, string> = {
   // V3-19 re-renders the picture and measures again.
   'sign-in backdrop, brightest': '#2c3e4b',
   'sign-in backdrop, foot band': '#1f2f3a',
+  // The lightest thing that can be behind a floating `Panel` (V3-04.1): a white pixel, such as a bright camera
+  // picture. The brief (§ Elevation) measures `--glass-bg` the same way.
+  'glass backdrop, worst case': '#ffffff',
   ...Object.fromEntries(
     Object.entries(mapColors.zoneFill).map(([kind, fill]) => [`map zone ${kind}`, fill]),
   ),
 };
 const ZONE_FILLS = Object.keys(mapColors.zoneFill).map((kind) => `map zone ${kind}`);
 
+// The tokens that may be text: held to 4.5:1 on every surface and on the floating panel's glass.
+const TEXT_TOKENS = [
+  '--text-primary',
+  '--text-secondary',
+  '--text-tertiary',
+  '--status-resolved',
+  '--accent-ink',
+  '--signal',
+];
+
 // Which token sits on which surface: the surface rules in docs/design/brief.md.
 const PAIRS: Pair[] = [
   // The accent is split (ADR-0022): `--accent` is the fill, graphics and the focus ring (3:1), and
   // `--accent-ink` is the accent as text (4.5:1). `--signal` is live data and may be text; `--accent-2`
   // is a series or tint colour, graphics only, because it falls under 4.5:1 on surface-3.
-  ...cross(
-    [
-      '--text-primary',
-      '--text-secondary',
-      '--text-tertiary',
-      '--status-resolved',
-      '--accent-ink',
-      '--signal',
-    ],
-    SURFACES,
-    TEXT,
-  ),
+  ...cross(TEXT_TOKENS, SURFACES, TEXT),
+  // The floating `Panel` (V3-04.1) is `--glass-bg`, 90 % `--surface-1`: text on it is measured over the worst
+  // case behind it, so a real backdrop (the dark map, the scene) can only raise these ratios.
+  ...TEXT_TOKENS.map((fg) => ({
+    fg,
+    bg: '--glass-bg',
+    over: 'glass backdrop, worst case',
+    min: TEXT,
+  })),
   // `--glow-edge`'s 1 px ring is `--accent`, so this is also the lit edge's 3:1 on every surface.
   ...cross(['--accent', '--accent-2'], SURFACES, UI),
   { fg: '--on-accent', bg: '--accent', min: TEXT },

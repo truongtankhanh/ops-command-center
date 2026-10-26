@@ -270,6 +270,18 @@
 }
 
 /*
+ * The 3D quality tier (V3-04.1, ADR-0022 §4). `data-twin-tier` is a contract between `ui/Panel` and the tier
+ * (V3-18): `high` | `standard` | `low`, set on <html> by V3-18 while the 3D view is mounted and taken away when it
+ * is not. Nothing sets it yet, so no panel is blurred. Script never reads it: the only thing the tier changes here is
+ * this token. A floating `Panel` blurs what is behind it only where `--panel-blur` is defined, so a missing attribute,
+ * `standard` and `low` all draw no blur, and there is no rule for them on purpose. Not scaled by `--ui-scale`: a
+ * blur is an effect, like a shadow.
+ */
+:root[data-twin-tier='high'] {
+  --panel-blur: blur(10px);
+}
+
+/*
  * Control-room wall (UI-17): ≥ 1920 px is a 1080p wall or desktop — kept mild, since operators also
  * fill forms there; ≥ 3200 px is a 4K wall at device pixel ratio 1. Same values as `breakpoints` in
  * tokens.ts (`scripts/contrast.ts --check` compares them, in this order).
