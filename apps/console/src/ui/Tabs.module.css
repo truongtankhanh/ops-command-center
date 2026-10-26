@@ -1,4 +1,4 @@
-/* Tabs (mockup 01): natural-width tabs on a hairline, the selected one underlined in the accent. */
+/* Tabs (mockup 01): natural-width tabs on a hairline, the selected one marked by a lit bar in the accent. */
 
 .list {
   display: flex;
@@ -8,10 +8,11 @@
 }
 
 .tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: calc(42px * var(--ui-scale));
+  height: calc(44px * var(--ui-scale));
   padding: 0 var(--space-3);
   border: 0;
   background: none;
@@ -26,13 +27,32 @@
   color: var(--text-primary);
 }
 
-/* An underline as well as colour, so the selection never rests on colour alone. */
 .tab[aria-selected='true'] {
   color: var(--text-primary);
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-/* The optional count (mockup 01): a small pill after the label, accent-tinted on the selected tab. */
+/*
+ * The lit edge of the selected tab (ADR-0022 §4: neon is edge and signal, not fill): a 2 px bar on
+ * the list's hairline, with `--glow-edge`. That token is a ring plus a halo, so it goes on a thin
+ * bar and not on the tab, which it would box. The bar is the shape that says "selected" besides the
+ * brighter label, so the selection never rests on colour alone. Inactive tabs have none.
+ */
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: var(--space-2);
+  bottom: 0;
+  left: var(--space-2);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: var(--glow-edge);
+}
+
+/*
+ * The optional count (mockup 01): a small pill after the label, in the accent on the selected tab
+ * (`--accent-ink` on `--accent-tint`, a checked pair).
+ */
 .count {
   display: inline-grid;
   place-items: center;
@@ -42,10 +62,10 @@
   border-radius: 999px;
   background: var(--surface-3);
   font-size: var(--type-s);
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .tab[aria-selected='true'] .count {
   background: var(--accent-tint);
-  color: var(--text-primary);
+  color: var(--accent-ink);
 }
