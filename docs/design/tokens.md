@@ -19,7 +19,7 @@ see [icons.md](icons.md#map-glyphs)).
 ## Display modes and density (UI-17)
 
 - **One scale.** `--ui-scale` (`1` on `:root`) multiplies every size token: `--type-*`, `--leading-*`, `--space-*`,
-  `--radius-*`, `--sheet-width`, `--feed-width`, `--toast-width`, `--control-m` / `--control-s`, `--kpi-height`.
+  `--radius-*`, `--sheet-width`, `--feed-width`, `--toast-width`, `--control-m` / `--control-s` / `--control-dense`, `--kpi-height`.
   Each is written as `calc(<laptop px> * var(--ui-scale))`, so at scale 1 every value is the one in the mockups
   (frames at 1440 px). Colours, shadows, motion, the focus ring and z-index do not scale.
 - **Modes by width**, named in `breakpoints` (`tokens.ts`): phone ≤ 720 px (a fallback: the map stacks above the
@@ -122,7 +122,7 @@ focus ring. These may stay raw:
   are written as the laptop value times the scale, `calc(34px * var(--ui-scale))`, so they grow with the text on a
   wall; percentages, `ch` / `vh` and `999px` pill radii stay as they are. Shared sizes are tokens: `--sheet-width`
   (440 px, frame 02; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
-  `--control-m` / `--control-s` (40 / 32 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
+  `--control-m` / `--control-s` / `--control-dense` (40 / 32 / 36 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
   sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
   multiplies them by the scale — see [icons.md](icons.md).
 - MapLibre numbers in `CampusMap.tsx`, `lib/map/map*.ts`, `lib/map/geo.ts` and `lib/map/sitePlan.ts`: `line-width` and
@@ -402,8 +402,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--warning` (occ.css `:root`)                              | #e2be7a                                                        | #e2be7a                                                        | match  |
 | `--success` (occ.css `:root`)                              | #35e0a1                                                        | #35e0a1                                                        | match  |
 | `--shadow-3` (occ.css `:root`)                             | 0 20px 48px rgb(0 0 0 / 0.6)                                   | 0 20px 48px rgb(0 0 0 / 0.6)                                   | match  |
-| `--radius-m` (occ.css `:root`)                             | 6px                                                            | 6px                                                            | match  |
-| `--radius-l` (occ.css `:root`)                             | 10px                                                           | 10px                                                           | match  |
+| `--radius-m` (occ.css `:root`)                             | 8px                                                            | 8px                                                            | match  |
+| `--radius-l` (occ.css `:root`)                             | 12px                                                           | 12px                                                           | match  |
 | `--font-ui` (occ.css `:root`)                              | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | match  |
 | `--font-body` (occ.css `:root`)                            | 'Barlow', system-ui, sans-serif                                | 'Barlow', system-ui, sans-serif                                | match  |
 | `--focus-ring` (occ.css `:root`)                           | 2px solid var(--accent)                                        | 2px solid var(--accent)                                        | match  |
