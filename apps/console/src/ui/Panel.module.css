@@ -1,0 +1,36 @@
+/*
+ * Panel (V3-04.1, ADR-0022 §4): the console's two surfaces. Look only, the caller places it (no `display`,
+ * `width` or `margin` here, as in `Button`). Neither variant carries a glow: a lit edge is for selected,
+ * active and open things (V3-04.2, V3-04.3).
+ */
+
+/* `flat`: the base look, a plain `--surface-1` with a hairline. */
+.panel {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  background: var(--surface-1);
+}
+
+/*
+ * `floating`: about 90 % opaque, so it is legible without blur (text on it is held to the pairs on a white pixel in
+ * `scripts/contrast.ts`); the border stays a hairline and the depth is the shadow.
+ */
+.panel[data-variant='floating'] {
+  background: var(--glass-bg);
+  box-shadow: var(--shadow-3);
+}
+
+/*
+ * The blur is a look, not a legibility fix, so it is the only part that can go. It needs all of: the browser can do
+ * it (`@supports`; Safari before 18 knows only the prefixed property and draws none here), the person has not asked
+ * for less transparency (a browser that does not know the preference does not match `not (…)`, so it draws none either),
+ * and the 3D quality tier is High: `--panel-blur` is defined only under `:root[data-twin-tier='high']`
+ * (tokens.css), and a `var()` with no value leaves `backdrop-filter` at `none`.
+ */
+@supports (backdrop-filter: blur(1px)) {
+  @media not (prefers-reduced-transparency: reduce) {
+    .panel[data-variant='floating'] {
+      backdrop-filter: var(--panel-blur);
+    }
+  }
+}
