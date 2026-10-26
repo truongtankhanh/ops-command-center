@@ -75,6 +75,19 @@ export const mapMotion = {
   pulseMs: 1800,
 };
 
+/**
+ * The fonts canvas text is drawn with: a canvas cannot read `--font-ui`, so these are copies.
+ * `scripts/contrast.ts --check` (run by the console's `lint`) fails when the family list of either
+ * drifts from `--font-ui`. The weight and size are copies of the tokens in each comment and are not
+ * compared; the canvases wait for the face with `document.fonts.load` on the same string.
+ */
+export const canvasFont = {
+  /** The map's cluster count: `--weight-semibold`, `--type-s`, `--font-ui`. */
+  clusterCount: '600 13px "Inter Variable", system-ui, sans-serif',
+  /** The 3D beacon's tag pill: `--weight-semibold`, `--type-2xs`, `--font-ui`. */
+  beaconTag: '600 11px "Inter Variable", system-ui, sans-serif',
+} as const;
+
 /** The three faces of a part's material, lit from the north-west (frame 00). */
 interface Faces {
   top: string;

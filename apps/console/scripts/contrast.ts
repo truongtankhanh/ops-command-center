@@ -8,6 +8,7 @@
  * copied out of tokens.css (MapLibre, index.html, favicon.svg cannot read custom properties) no
  * longer matches it, when the copy of favicon.svg the title badge draws over has drifted, or when
  * the wall breakpoints in tokens.ts no longer match the media queries of tokens.css, or when the
+ * family of a canvas font in tokens.ts no longer matches `--font-ui`, or when the
  * sign-in theme in docker/keycloak/themes/occ (V2-20.7), which is served before anyone is signed in and
  * so cannot read tokens.css, no longer matches it or the console's copy of its backdrop. Plain
  * Node 24 with type stripping and no dependency, so it stays cheap to run in lint. Ratios use the
@@ -17,6 +18,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import {
   breakpoints,
+  canvasFont,
   faviconMark,
   mapColors,
   mapMotion,
@@ -401,6 +403,18 @@ function normalise(hex: string): string {
   return hexOf(parseColour(hex.toLowerCase(), hex));
 }
 
+/**
+ * The family list of a font value, as `--font-ui` writes it: a canvas string leads with its weight and
+ * size (`600 13px "Inter Variable", system-ui`), which are not compared. Quotes and spacing are ignored.
+ */
+function familyList(value: string): string {
+  return value
+    .replace(/^\s*(?:[\w-]+\s+)*[\d.]+px\s+/, '')
+    .replace(/["']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function copiedTokens(): { copy: string; actual: string; expected: string }[] {
   const html = readFileSync(INDEX_HTML, 'utf8');
   const themeColor = /<meta\s+name="theme-color"\s+content="(#[0-9a-f]+)"/i.exec(html)?.[1];
@@ -494,6 +508,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       actual: `${mapMotion.pulseMs}ms`,
       expected: css.get('--duration-pulse') ?? 'missing',
     },
+    ...Object.entries(canvasFont).map(([name, font]) => ({
+      copy: `\`canvasFont.${name}\` family (src/styles/tokens.ts)`,
+      actual: familyList(font),
+      expected: familyList(css.get('--font-ui') ?? 'missing'),
+    })),
     ...(['wall', 'wall4k'] as const).map((mode, i) => ({
       copy: `\`breakpoints.${mode}\` (src/styles/tokens.ts)`,
       actual: `${breakpoints[mode]}px`,

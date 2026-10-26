@@ -3,7 +3,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
-import { mapColors } from '../../styles/tokens';
+import { canvasFont, mapColors } from '../../styles/tokens';
 import {
   cameraIcon,
   type Glyph,
@@ -84,8 +84,8 @@ export const discRadiusOf = (
   form: Extract<MarkerForm, { kind: 'incident' | 'resolved' }>,
 ): number => (form.kind === 'resolved' ? RESOLVED.radius : DISC_RADIUS[form.severity]);
 
-/** Cluster count labels: `--weight-semibold`, `--type-s`, `--font-ui` (canvas cannot read tokens). */
-const COUNT_FONT = '600 13px "Barlow Semi Condensed"';
+/** Cluster count labels. The canvas cannot read tokens: the family is drift-checked against `--font-ui`. */
+const COUNT_FONT = canvasFont.clusterCount;
 const COUNT_BOX = 28;
 
 interface GlyphStyle {
