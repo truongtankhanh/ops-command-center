@@ -30,8 +30,8 @@
 # are never pruned here (run `docker builder prune` yourself if the disk fills up). The Postgres
 # container, the Compose containers/volumes and the temporary log folder are always removed.
 #
-# Environment: CI_LOCAL_PG_PORT (e2e Postgres, default 55432), CI_LOCAL_COMPOSE_PG_PORT (15433),
-# CI_LOCAL_COMPOSE_KC_PORT (18082). The console's port 18080 is fixed by docker/docker-compose.yml, so stop
+# Environment: CI_LOCAL_PG_PORT (e2e Postgres, default 55432), CI_LOCAL_COMPOSE_PG_PORT (25433),
+# CI_LOCAL_COMPOSE_KC_PORT (28082). The console's port 18080 is fixed by docker/docker-compose.yml, so stop
 # `pnpm docker:stack` before the images job.
 
 set -uo pipefail
@@ -79,8 +79,8 @@ LOG_DIR="$(mktemp -d "${TMPDIR:-/tmp}/occ-ci-local.XXXXXX")"
 
 # Same project name for every `dc` call below: its own containers, network and volumes.
 export COMPOSE_PROJECT_NAME=occ-ci-local
-export POSTGRES_PORT="${CI_LOCAL_COMPOSE_PG_PORT:-15433}"
-export KEYCLOAK_PORT="${CI_LOCAL_COMPOSE_KC_PORT:-18082}"
+export POSTGRES_PORT="${CI_LOCAL_COMPOSE_PG_PORT:-25433}"
+export KEYCLOAK_PORT="${CI_LOCAL_COMPOSE_KC_PORT:-28082}"
 # The Compose file lives in docker/; `dc` is `docker compose` pointed at it (as in ci.yml and the pnpm scripts).
 dc() { docker compose -f docker/docker-compose.yml "$@"; }
 

@@ -27,10 +27,10 @@ const site = {
 
 /** Copies of `--sev-*`. */
 const severity: Record<IncidentSeverity, string> = {
-  critical: '#ff5a4e',
-  high: '#ff9f43',
+  critical: '#ff426d',
+  high: '#ffad42',
   medium: '#f2d04b',
-  low: '#6cc3d5',
+  low: '#87a2c4',
 };
 
 /**
@@ -44,23 +44,23 @@ const severity: Record<IncidentSeverity, string> = {
  */
 export const mapColors = {
   /** `--surface-0` */
-  ground: '#0c1821',
+  ground: '#07111f',
   zoneOutline: '#56728a',
   zoneFill,
   site,
   severity,
   /** `--surface-1` */
-  surface1: '#13222d',
+  surface1: '#0d1c2d',
   /** `--surface-2` */
-  surface2: '#1a2d3a',
+  surface2: '#12263b',
   /** `--surface-3` */
-  surface3: '#223848',
+  surface3: '#1a3250',
   /** `--accent` */
-  accent: '#8c9bff',
+  accent: '#3185ff',
   /** `--on-accent` */
-  onAccent: '#0c1821',
+  onAccent: '#07111f',
   /** `--text-primary` */
-  textPrimary: '#e4edf3',
+  textPrimary: '#e7f2ff',
   /** `--text-secondary` */
   textSecondary: '#a6b8c5',
   /** `--text-tertiary` */
@@ -114,18 +114,18 @@ export const twinColors = {
   /** `--tw-xray-opacity`: a see-through shell, such as the generator's enclosure. */
   xrayOpacity: 0.14,
   /** `--tw-top` / `-south` / `-east`: the idle part material. */
-  idle: { top: '#2a4658', south: '#1f3748', east: '#172b3a' } satisfies Faces,
+  idle: { top: '#274152', south: '#1f3748', east: '#172b3a' } satisfies Faces,
   /** `--tw-steel-*`: motors, pumps, pipes, valves and cabinets. */
   steel: { top: '#435766', south: '#334553', east: '#273745' } satisfies Faces,
   /** `--tw-concrete-*`: basins, plinths and skids. */
   concrete: { top: '#363c41', south: '#2b3034', east: '#22262a' } satisfies Faces,
   /** `--tw-hover-*`: 30 % `--accent` into the idle material; the edge is `--accent`. */
-  hover: { top: '#47608a', south: '#40557f', east: '#3a4d75' } satisfies Faces,
+  hover: { top: '#2a5586', south: '#244e7f', east: '#1f4675' } satisfies Faces,
   /**
    * `--tw-alarm-*`: `--tw-alarm-mix` (35 %) of `--sev-critical` into the idle material. Only the critical
    * faces are tokens; the scene mixes the other severities with the same weight.
    */
-  alarm: { top: '#754d55', south: '#6d434a', east: '#683b41' } satisfies Faces,
+  alarm: { top: '#73415b', south: '#6d3b55', east: '#68334c' } satisfies Faces,
   /**
    * `--tw-alarm-mix` as a fraction: how much of an alarmed asset's severity is mixed into each of its materials
    * (`tintFor`, V2-14.9). The critical faces above are what this weight gives for `--tw-top`; every other
@@ -139,7 +139,7 @@ export const twinColors = {
   /** `--tw-ghost-opacity`: the rest of the campus while one asset is isolated. */
   ghostOpacity: 0.18,
   /** `--heat-0` … `--heat-5`: the telemetry overlay's ramp, in the accent's hue. */
-  heat: ['#1f2a4d', '#2b3a72', '#3d4f99', '#5868c4', '#7b8af0', '#b3bdff'],
+  heat: ['#132b50', '#1c3d6f', '#22539c', '#266cd5', '#5292f2', '#9bc3ff'],
 } as const;
 
 /**
@@ -169,4 +169,4 @@ export const breakpoints = {
  * `scripts/contrast.ts --check` fails when it no longer matches the file.
  */
 export const faviconMark =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0c1821"/><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"/><circle cx="16" cy="16" r="3.5" fill="#8c9bff"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#07111f"/><circle cx="16" cy="16" r="9" fill="none" stroke="#e7f2ff" stroke-width="2"/><circle cx="16" cy="16" r="3.5" fill="#3185ff"/></svg>';

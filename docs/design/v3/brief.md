@@ -132,6 +132,112 @@ V3-02 must also check:
 - **The heat ramp is indigo today** (`--heat-0 … --heat-5`, `#1f2a4d` to `#b3bdff`); it follows the blue accent, and V2's rule
   (never red, orange, yellow or cyan) stays.
 
+### V3 values (settled in V3-02.1)
+
+**Settled 2026-10-26** (proposal for the tech lead's sign-off; nothing is written to `tokens.css` yet, that is V3-02.2).
+Every ratio below was computed with the WCAG 2.x formula of `scripts/contrast.ts`, and the whole set was run through a
+copy of that script with these values in a scratch `tokens.css`: no pair failed except the ones the split below changes
+on purpose. All nine hexes of the direction are kept as they are; only the tokens the direction does not name are chosen
+here. Columns are the ratio on `--surface-0` / `-1` / `-2` / `-3`.
+
+| Token                       | Value                     | 0     | 1     | 2     | 3     | Rule                                                                                |
+| --------------------------- | ------------------------- | ----- | ----- | ----- | ----- | ----------------------------------------------------------------------------------- |
+| `--surface-0`               | `#07111F`                 |       |       |       |       | Direction. Ground, stage, inputs                                                    |
+| `--surface-1`               | `#0D1C2D`                 |       |       |       |       | Direction. Header, sidebar, inspector, status bar                                   |
+| `--surface-2`               | `#12263B`                 |       |       |       |       | Cards, selected row. Steps 1.10 / 1.12 / 1.18 (V2: 1.11 / 1.14 / 1.17)              |
+| `--surface-3`               | `#1A3250`                 |       |       |       |       | Menu, toast, banner                                                                 |
+| `--text-primary`            | `#E7F2FF`                 | 16.72 | 15.19 | 13.05 | 11.03 | Direction                                                                           |
+| `--text-secondary`          | `#a6b8c5` (unchanged)     | 9.27  | 8.42  | 7.53  | 6.36  |                                                                                     |
+| `--text-tertiary`           | `#91a5b4` (unchanged)     | 7.43  | 6.75  | 6.04  | 5.10  |                                                                                     |
+| `--accent`                  | `#3185FF`                 | 5.35  | 4.86  | 4.34  | 3.67  | **Fill, graphics and the focus ring (3:1), never text**                             |
+| `--accent-ink` (new)        | `#5E9FFF`                 | 7.10  | 6.45  | 5.77  | 4.88  | **Accent as text or a glyph that must read as text** (4.5:1 on all four)            |
+| `--accent-hover`            | `#4F96FF`                 | 6.44  | 5.85  | 5.23  | 4.42  | Hover fill only                                                                     |
+| `--accent-tint`             | `rgb(49 133 255 / 0.14)`  |       |       |       |       | `--text-primary` on it 12.64, `--accent-ink` 5.37 (on `-1`) and 4.78 (on `-2`)      |
+| `--on-accent`               | `#07111F`                 |       |       |       |       | 5.35 on `--accent`, 6.44 on hover; white would be 3.54, so the label stays dark     |
+| `--accent-2`                | `#8B7CFF`                 | 5.79  | 5.26  | 4.70  | 3.98  | **Graphics only** (series, hover tint, 3:1); never text, it falls under 4.5 on `-3` |
+| `--signal`                  | `#35E7FF`                 | 12.65 | 11.49 | 10.27 | 8.68  | Direction. Text-capable                                                             |
+| `--sev-critical`            | `#FF426D`                 | 5.64  | 5.12  | 4.58  | 3.87  | Direction. Icon only on `-3`, as today                                              |
+| `--sev-high`                | `#FFAD42`                 | 10.20 | 9.26  | 8.28  | 7.00  | Direction                                                                           |
+| `--sev-medium`              | `#f2d04b` (unchanged)     | 12.53 | 11.38 | 10.17 | 8.60  |                                                                                     |
+| `--sev-low` (neutral steel) | `#87A2C4`                 | 7.21  | 6.55  | 5.85  | 4.95  | See "Low" below                                                                     |
+| `--success`                 | `#35E0A1`                 | 11.12 | 10.10 | 9.02  | 7.63  | Direction. System feedback                                                          |
+| `--warning`                 | `#E2BE7A` (was `#f0b85e`) | 10.71 | 9.73  | 8.70  | 7.35  | System feedback. See "Warning and danger"                                           |
+| `--danger`                  | `#FF8A7A` (was `#ff7f8a`) | 8.27  | 7.51  | 6.71  | 5.67  | System feedback. See "Warning and danger"                                           |
+| `--status-resolved`         | `#86bba0` (unchanged)     | 8.68  | 7.89  | 7.05  | 5.96  |                                                                                     |
+| `--border-strong`           | `#5a7488` (unchanged)     | 3.87  | 3.51  |       |       | Input boundary, 3:1 on `-0` and `-1` only (the rule in `tokens.md`)                 |
+| `--border-subtle`           | `#1E3550`                 | 1.52  | 1.38  | 1.23  | 1.04  | Decorative hairline; carries no meaning                                             |
+| `--camera-ground`           | `#050D18`                 |       |       |       |       | A little darker than the ground (V2: `#070f15`)                                     |
+| `--camera-off-a` / `-b`     | `#08121D` / `#0A1624`     |       |       |       |       | Stripes of a camera frame with no picture                                           |
+
+The `--sev-*-bg` (15 %), `-border` (45 %) and `--sev-critical-hot-*` (18 % on `--surface-1`) derivations keep their
+rule and are recomputed from the new hues. Measured over `--surface-1`: `--text-primary` on the Low tint 11.84,
+`--sev-low` on it 5.10, `--warning` on the Low, Medium, High and Critical tints 7.59 / 6.93 / 7.30 / 8.41.
+
+**Accent: fill and ink (open question 2, decided here).** `#3185FF` is the direction's colour, so it stays the fill, the
+graphic and the focus ring (3:1 holds on all four surfaces, lowest 3.67). Anything that reads as text uses `--accent-ink`.
+This changes one rule of `scripts/contrast.ts`: `--accent` is today checked at 4.5:1 as text on all four surfaces and
+fails on `-2` (4.34) and `-3` (3.67). V3-02.2 moves that pair to `--accent-ink` (4.5:1) and checks `--accent` at 3:1.
+V3-02.4 finds the places that use `--accent` as text (52 lines in 23 files at `0133d6d`).
+
+**Low.** `#87A2C4` is 213° / 31 % saturation. `--text-tertiary` is 206° / 19 % at about the same lightness, so **hue does
+not tell Low from a quiet label, and is not asked to**: a Low item carries the info glyph, the word "Low" and its place
+in the severity order; its tile has a 15 % tint and a 45 % border, which a status chip (no tint, no severity glyph) has
+not. `--status-open` (`--text-primary`) and `--status-acknowledged` (`--text-secondary`) stay neutral as they are.
+
+**Warning and danger (resolved in writing).** Hue cannot separate them from the severities: `--warning` is 39° against
+`--sev-high` 34° and `--sev-medium` 48°, and no amber is both clear of High and clear of Medium. So `--warning` is
+desaturated (46 % against High's 74 %), and the V1 rule is enforced by place and glyph: system feedback sits on chrome
+(banner, pill, hint, form error) with the triangle glyph and never on the same element as a severity. `--danger` does
+move: 7° (a warm coral) against `--sev-critical` 346° and `--sev-high` 34°, a gap of 21° and 27° (it was 9° from
+the new critical). Not measurable here: whether an operator tells the new `--warning` from High at 1–2 m. The operations lead
+looks at frame 00 before V3-02.2 merges (`unverified`).
+**Found while checking:** `scripts/contrast.ts` already pairs `--warning` with every `--sev-*-bg` ("a late age" on a
+feed row), so today a warning-coloured age sits on an incident row, against V1's rule. V3-02.4 should change that age to
+`--text-secondary` with a clock glyph (recommendation; the tech lead decides).
+
+**Heat ramp (open question 1, decided here): retuned to the accent's hue, V2's rule stays.**
+
+| `--heat-0` | `--heat-1` | `--heat-2` | `--heat-3` | `--heat-4` | `--heat-5` |
+| ---------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+| `#132B50`  | `#1C3D6F`  | `#22539C`  | `#266CD5`  | `#5292F2`  | `#9BC3FF`  |
+
+Hue 216° (the accent's), 29° from `--signal` cyan and 31° from `--accent-2` violet, never red, orange, yellow or cyan.
+The luminance of each stop is V2's, so the steps are 1.31 / 1.43 / 1.50 / 1.61 / 1.72 (V2: 1.30 to 1.73). **Open
+check for V3-12 / V3-16:** a selection edge in `--accent` against the mid stops is only 1.1 to 2.1:1 (`--heat-2` 2.13,
+`--heat-3` 1.42, `--heat-4` 1.14), so a selected part under the overlay needs a second keyline (`--surface-0`) or it
+vanishes; V2's ramp had the same weakness and no rule for it.
+
+**Elevation (names are proposals, no component uses them in V3-02.2).**
+
+| Token         | Value                                                                          | Check                                                                 |
+| ------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `--shadow-1`  | `0 1px 2px rgb(0 0 0 / 0.45)`                                                  | Deeper than V2's 0.35: the ground is darker                           |
+| `--shadow-2`  | `0 8px 20px rgb(0 0 0 / 0.5)`                                                  |                                                                       |
+| `--shadow-3`  | `0 20px 48px rgb(0 0 0 / 0.6)`                                                 |                                                                       |
+| `--glow-edge` | `0 0 0 1px var(--accent), 0 0 12px rgb(49 133 255 / 0.45)`                     | The 1 px edge is 3:1 on all four surfaces (3.67 at the lowest)        |
+| `--glass-bg`  | `color-mix(in srgb, var(--surface-1) 90%, transparent)`                        | Over a white backdrop: `--text-primary` 11.40, `--text-tertiary` 5.07 |
+| `--vignette`  | `radial-gradient(ellipse at center, transparent 58%, rgb(7 17 31 / 0.6) 100%)` | Never over a control or label (Neon rules)                            |
+
+The glass figure shows the 90 % panel is legible even over a white pixel, so blur is a look and not a legibility fix,
+which is what Q2 decided.
+
+**One scene token moves.** `--tw-top` goes from `#2a4658` to `#274152` (and its copy in `twinColors`). With the V2 value,
+`--sev-critical` on it is 2.96:1 and `--accent` 2.80:1, under the 3:1 that a hovered, selected or alarmed part's edge is
+held to on an idle neighbour; at `#274152` they are 3.18 and 3.02. The other `--tw-*` values keep their V2 value until
+Phase 3. `--tw-hover-*` and `--tw-alarm-*` are mixes and follow.
+
+**Hand-off to V3-02.2.** Pairs to change in `scripts/contrast.ts`: `--accent-ink` on all four surfaces at 4.5 and on
+`--accent-tint` over `-1` and `-2` at 4.5; `--accent` and `--accent-2` on all four at 3; `--signal` on all four at 4.5;
+the existing `--accent` text pair is removed. Add `--signal` and `--accent-2` to `MATRIX_ROWS`. The copies that must
+move in the same change are the ones named above; the sign-in theme is in `docker/keycloak/themes/occ/login/` (the task
+files still say `ops/keycloak/…`, which does not exist). `docs/design/tokens.md` is regenerated by the script.
+
+**How this was checked, and what is not.** Measured: every ratio in the table and the three quoted tints, by the WCAG
+formula; the full pair set of `scripts/contrast.ts` run on a scratch copy with these values (the copied-token drift
+reports were the only other output). **`unverified`:** how any colour looks on a real panel or at 1–2 m (no one has seen
+these values rendered), frame 00 still draws `#142940` / `#1C3552` for surfaces 2 and 3 (which put
+`--sev-critical` at 4.40:1 on `-2`, under the 4.5 the text pair needs), and V3-01.8 redraws frame 00 with the table above.
+
 ### Neon rules
 
 | Element            | Treatment                                                                                                                                                                              |

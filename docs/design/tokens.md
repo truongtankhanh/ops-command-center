@@ -157,22 +157,25 @@ A pair marked "reported only" is published but not enforced yet, with the reason
 
 ### Every colour token on every surface
 
-| Token               | Value   | `--surface-0` #0c1821 | `--surface-1` #13222d | `--surface-2` #1a2d3a | `--surface-3` #223848 |
+| Token               | Value   | `--surface-0` #07111f | `--surface-1` #0d1c2d | `--surface-2` #12263b | `--surface-3` #1a3250 |
 | ------------------- | ------- | --------------------- | --------------------- | --------------------- | --------------------- |
-| `--text-primary`    | #e4edf3 | 15.16                 | 13.68                 | 11.96                 | 10.25                 |
-| `--text-secondary`  | #a6b8c5 | 8.80                  | 7.94                  | 6.95                  | 5.95                  |
-| `--text-tertiary`   | #91a5b4 | 7.06                  | 6.37                  | 5.57                  | 4.77                  |
-| `--accent`          | #8c9bff | 7.06                  | 6.37                  | 5.57                  | 4.77                  |
-| `--sev-critical`    | #ff5a4e | 5.84                  | 5.27                  | 4.61                  | 3.95                  |
-| `--sev-high`        | #ff9f43 | 8.81                  | 7.95                  | 6.95                  | 5.96                  |
-| `--sev-medium`      | #f2d04b | 11.90                 | 10.74                 | 9.39                  | 8.05                  |
-| `--sev-low`         | #6cc3d5 | 8.91                  | 8.04                  | 7.03                  | 6.02                  |
-| `--status-resolved` | #86bba0 | 8.24                  | 7.44                  | 6.50                  | 5.57                  |
-| `--success`         | #5ccf98 | 9.27                  | 8.37                  | 7.32                  | 6.27                  |
-| `--warning`         | #f0b85e | 10.03                 | 9.06                  | 7.92                  | 6.79                  |
-| `--danger`          | #ff7f8a | 7.41                  | 6.69                  | 5.85                  | 5.01                  |
-| `--border-strong`   | #5a7488 | 3.67                  | 3.31                  | 2.90                  | 2.48                  |
-| `--border-subtle`   | #25394a | 1.51                  | 1.36                  | 1.19                  | 1.02                  |
+| `--text-primary`    | #e7f2ff | 16.72                 | 15.19                 | 13.57                 | 11.47                 |
+| `--text-secondary`  | #a6b8c5 | 9.27                  | 8.42                  | 7.53                  | 6.36                  |
+| `--text-tertiary`   | #91a5b4 | 7.43                  | 6.75                  | 6.04                  | 5.10                  |
+| `--accent`          | #3185ff | 5.35                  | 4.86                  | 4.34                  | 3.67                  |
+| `--accent-ink`      | #5e9fff | 7.10                  | 6.45                  | 5.77                  | 4.88                  |
+| `--accent-2`        | #8b7cff | 5.79                  | 5.26                  | 4.70                  | 3.98                  |
+| `--signal`          | #35e7ff | 12.65                 | 11.49                 | 10.27                 | 8.68                  |
+| `--sev-critical`    | #ff426d | 5.64                  | 5.12                  | 4.58                  | 3.87                  |
+| `--sev-high`        | #ffad42 | 10.20                 | 9.26                  | 8.28                  | 7.00                  |
+| `--sev-medium`      | #f2d04b | 12.53                 | 11.38                 | 10.17                 | 8.60                  |
+| `--sev-low`         | #87a2c4 | 7.21                  | 6.55                  | 5.85                  | 4.95                  |
+| `--status-resolved` | #86bba0 | 8.68                  | 7.89                  | 7.05                  | 5.96                  |
+| `--success`         | #35e0a1 | 11.12                 | 10.10                 | 9.02                  | 7.63                  |
+| `--warning`         | #e2be7a | 10.71                 | 9.73                  | 8.70                  | 7.35                  |
+| `--danger`          | #ff8a7a | 8.27                  | 7.51                  | 6.71                  | 5.67                  |
+| `--border-strong`   | #5a7488 | 3.87                  | 3.51                  | 3.14                  | 2.65                  |
+| `--border-subtle`   | #1e3550 | 1.52                  | 1.38                  | 1.23                  | 1.04                  |
 
 Informational: a token is only held to a minimum on the surfaces listed below.
 
@@ -180,131 +183,146 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 
 | Foreground          | Background                                | Ratio | Minimum | Result                                                                                     |
 | ------------------- | ----------------------------------------- | ----- | ------- | ------------------------------------------------------------------------------------------ |
-| `--text-primary`    | `--surface-0`                             | 15.16 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--surface-1`                             | 13.68 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--surface-2`                             | 11.96 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--surface-3`                             | 10.25 | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--surface-0`                             | 8.80  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--surface-1`                             | 7.94  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--surface-2`                             | 6.95  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--surface-3`                             | 5.95  | 4.5     | pass                                                                                       |
-| `--text-tertiary`   | `--surface-0`                             | 7.06  | 4.5     | pass                                                                                       |
-| `--text-tertiary`   | `--surface-1`                             | 6.37  | 4.5     | pass                                                                                       |
-| `--text-tertiary`   | `--surface-2`                             | 5.57  | 4.5     | pass                                                                                       |
-| `--text-tertiary`   | `--surface-3`                             | 4.77  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--surface-0`                             | 8.24  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--surface-1`                             | 7.44  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--surface-2`                             | 6.50  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--surface-3`                             | 5.57  | 4.5     | pass                                                                                       |
-| `--accent`          | `--surface-0`                             | 7.06  | 4.5     | pass                                                                                       |
-| `--accent`          | `--surface-1`                             | 6.37  | 4.5     | pass                                                                                       |
-| `--accent`          | `--surface-2`                             | 5.57  | 4.5     | pass                                                                                       |
-| `--accent`          | `--surface-3`                             | 4.77  | 4.5     | pass                                                                                       |
-| `--on-accent`       | `--accent`                                | 7.06  | 4.5     | pass                                                                                       |
-| `--sev-critical`    | `--surface-0`                             | 5.84  | 4.5     | pass                                                                                       |
-| `--sev-critical`    | `--surface-1`                             | 5.27  | 4.5     | pass                                                                                       |
-| `--sev-critical`    | `--surface-2`                             | 4.61  | 4.5     | pass                                                                                       |
-| `--sev-high`        | `--surface-0`                             | 8.81  | 4.5     | pass                                                                                       |
-| `--sev-high`        | `--surface-1`                             | 7.95  | 4.5     | pass                                                                                       |
-| `--sev-high`        | `--surface-2`                             | 6.95  | 4.5     | pass                                                                                       |
-| `--sev-medium`      | `--surface-0`                             | 11.90 | 4.5     | pass                                                                                       |
-| `--sev-medium`      | `--surface-1`                             | 10.74 | 4.5     | pass                                                                                       |
-| `--sev-medium`      | `--surface-2`                             | 9.39  | 4.5     | pass                                                                                       |
-| `--sev-low`         | `--surface-0`                             | 8.91  | 4.5     | pass                                                                                       |
-| `--sev-low`         | `--surface-1`                             | 8.04  | 4.5     | pass                                                                                       |
-| `--sev-low`         | `--surface-2`                             | 7.03  | 4.5     | pass                                                                                       |
-| `--sev-critical`    | `--surface-3`                             | 3.95  | 4.5     | reported only: icon only on surface-3                                                      |
-| `--success`         | `--surface-1`                             | 8.37  | 4.5     | pass                                                                                       |
-| `--success`         | `--surface-2`                             | 7.32  | 4.5     | pass                                                                                       |
-| `--success`         | `--surface-3`                             | 6.27  | 4.5     | pass                                                                                       |
-| `--warning`         | `--surface-1`                             | 9.06  | 4.5     | pass                                                                                       |
-| `--warning`         | `--surface-2`                             | 7.92  | 4.5     | pass                                                                                       |
-| `--warning`         | `--surface-3`                             | 6.79  | 4.5     | pass                                                                                       |
-| `--danger`          | `--surface-1`                             | 6.69  | 4.5     | pass                                                                                       |
-| `--danger`          | `--surface-2`                             | 5.85  | 4.5     | pass                                                                                       |
-| `--danger`          | `--surface-3`                             | 5.01  | 4.5     | pass                                                                                       |
-| `--border-strong`   | `--surface-0`                             | 3.67  | 3       | pass                                                                                       |
-| `--border-strong`   | `--surface-1`                             | 3.31  | 3       | pass                                                                                       |
-| `--text-primary`    | `--camera-ground`                         | 16.27 | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--camera-ground`                         | 9.45  | 4.5     | pass                                                                                       |
-| `--success`         | `--camera-ground`                         | 9.96  | 3       | pass                                                                                       |
-| `--sev-critical`    | `--camera-ground`                         | 6.27  | 3       | pass                                                                                       |
-| `--text-primary`    | `--camera-off-a`                          | 15.69 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--camera-off-b`                          | 15.17 | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--camera-off-a`                          | 9.11  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--camera-off-b`                          | 8.81  | 4.5     | pass                                                                                       |
-| `map zone outline`  | `map ground`                              | 3.57  | 3       | pass                                                                                       |
-| `--text-secondary`  | `map ground`                              | 8.80  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-0`                             | 16.72 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-1`                             | 15.19 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-2`                             | 13.57 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--surface-3`                             | 11.47 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-0`                             | 9.27  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-1`                             | 8.42  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-2`                             | 7.53  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--surface-3`                             | 6.36  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-0`                             | 7.43  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-1`                             | 6.75  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-2`                             | 6.04  | 4.5     | pass                                                                                       |
+| `--text-tertiary`   | `--surface-3`                             | 5.10  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-0`                             | 8.68  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-1`                             | 7.89  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-2`                             | 7.05  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--surface-3`                             | 5.96  | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--surface-0`                             | 7.10  | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--surface-1`                             | 6.45  | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--surface-2`                             | 5.77  | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--surface-3`                             | 4.88  | 4.5     | pass                                                                                       |
+| `--signal`          | `--surface-0`                             | 12.65 | 4.5     | pass                                                                                       |
+| `--signal`          | `--surface-1`                             | 11.49 | 4.5     | pass                                                                                       |
+| `--signal`          | `--surface-2`                             | 10.27 | 4.5     | pass                                                                                       |
+| `--signal`          | `--surface-3`                             | 8.68  | 4.5     | pass                                                                                       |
+| `--accent`          | `--surface-0`                             | 5.35  | 3       | pass                                                                                       |
+| `--accent`          | `--surface-1`                             | 4.86  | 3       | pass                                                                                       |
+| `--accent`          | `--surface-2`                             | 4.34  | 3       | pass                                                                                       |
+| `--accent`          | `--surface-3`                             | 3.67  | 3       | pass                                                                                       |
+| `--accent-2`        | `--surface-0`                             | 5.79  | 3       | pass                                                                                       |
+| `--accent-2`        | `--surface-1`                             | 5.26  | 3       | pass                                                                                       |
+| `--accent-2`        | `--surface-2`                             | 4.70  | 3       | pass                                                                                       |
+| `--accent-2`        | `--surface-3`                             | 3.98  | 3       | pass                                                                                       |
+| `--on-accent`       | `--accent`                                | 5.35  | 4.5     | pass                                                                                       |
+| `--on-accent`       | `--accent-hover`                          | 6.44  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-0`                             | 5.64  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-1`                             | 5.12  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-2`                             | 4.58  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-0`                             | 10.20 | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-1`                             | 9.26  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--surface-2`                             | 8.28  | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-0`                             | 12.53 | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-1`                             | 11.38 | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--surface-2`                             | 10.17 | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-0`                             | 7.21  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-1`                             | 6.55  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--surface-2`                             | 5.85  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--surface-3`                             | 3.87  | 4.5     | reported only: icon only on surface-3                                                      |
+| `--success`         | `--surface-1`                             | 10.10 | 4.5     | pass                                                                                       |
+| `--success`         | `--surface-2`                             | 9.02  | 4.5     | pass                                                                                       |
+| `--success`         | `--surface-3`                             | 7.63  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-1`                             | 9.73  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-2`                             | 8.70  | 4.5     | pass                                                                                       |
+| `--warning`         | `--surface-3`                             | 7.35  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-1`                             | 7.51  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-2`                             | 6.71  | 4.5     | pass                                                                                       |
+| `--danger`          | `--surface-3`                             | 5.67  | 4.5     | pass                                                                                       |
+| `--border-strong`   | `--surface-0`                             | 3.87  | 3       | pass                                                                                       |
+| `--border-strong`   | `--surface-1`                             | 3.51  | 3       | pass                                                                                       |
+| `--text-primary`    | `--camera-ground`                         | 17.21 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-ground`                         | 9.55  | 4.5     | pass                                                                                       |
+| `--success`         | `--camera-ground`                         | 11.44 | 3       | pass                                                                                       |
+| `--sev-critical`    | `--camera-ground`                         | 5.80  | 3       | pass                                                                                       |
+| `--text-primary`    | `--camera-off-a`                          | 16.64 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--camera-off-b`                          | 16.08 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-off-a`                          | 9.23  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--camera-off-b`                          | 8.92  | 4.5     | pass                                                                                       |
+| `map zone outline`  | `map ground`                              | 3.76  | 3       | pass                                                                                       |
+| `--text-secondary`  | `map ground`                              | 9.27  | 4.5     | pass                                                                                       |
 | `map zone outline`  | `map boundary`                            | 3.40  | 3       | pass                                                                                       |
 | `--text-secondary`  | `map boundary`                            | 8.39  | 4.5     | pass                                                                                       |
-| `--accent`          | `map boundary`                            | 6.73  | 3       | pass                                                                                       |
-| `--accent`          | `map zone building`                       | 5.01  | 3       | pass                                                                                       |
-| `--accent`          | `map zone parking`                        | 5.58  | 3       | pass                                                                                       |
-| `--accent`          | `map zone gate`                           | 4.79  | 3       | pass                                                                                       |
-| `--accent`          | `map zone outdoor`                        | 5.54  | 3       | pass                                                                                       |
-| `--accent`          | `map zone sports`                         | 5.09  | 3       | pass                                                                                       |
-| `--accent`          | `map zone utility`                        | 5.95  | 3       | pass                                                                                       |
-| `--accent`          | `map zone water`                          | 6.00  | 3       | pass                                                                                       |
-| `--sev-critical`    | `--surface-3`                             | 3.95  | 3       | pass                                                                                       |
-| `--sev-high`        | `--surface-3`                             | 5.96  | 3       | pass                                                                                       |
-| `--sev-medium`      | `--surface-3`                             | 8.05  | 3       | pass                                                                                       |
-| `--sev-low`         | `--surface-3`                             | 6.02  | 3       | pass                                                                                       |
-| `--text-primary`    | `--sev-critical-bg` over `--surface-1`    | 11.48 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--sev-high-bg` over `--surface-1`        | 10.37 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--sev-medium-bg` over `--surface-1`      | 9.61  | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--sev-low-bg` over `--surface-1`         | 10.06 | 4.5     | pass                                                                                       |
+| `--accent`          | `map boundary`                            | 4.84  | 3       | pass                                                                                       |
+| `--accent`          | `map zone building`                       | 3.60  | 3       | pass                                                                                       |
+| `--accent`          | `map zone parking`                        | 4.01  | 3       | pass                                                                                       |
+| `--accent`          | `map zone gate`                           | 3.45  | 3       | pass                                                                                       |
+| `--accent`          | `map zone outdoor`                        | 3.98  | 3       | pass                                                                                       |
+| `--accent`          | `map zone sports`                         | 3.66  | 3       | pass                                                                                       |
+| `--accent`          | `map zone utility`                        | 4.28  | 3       | pass                                                                                       |
+| `--accent`          | `map zone water`                          | 4.31  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--surface-3`                             | 3.87  | 3       | pass                                                                                       |
+| `--sev-high`        | `--surface-3`                             | 7.00  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--surface-3`                             | 8.60  | 3       | pass                                                                                       |
+| `--sev-low`         | `--surface-3`                             | 4.95  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-bg` over `--surface-1`    | 13.13 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-high-bg` over `--surface-1`        | 11.40 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-medium-bg` over `--surface-1`      | 10.82 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-low-bg` over `--surface-1`         | 11.84 | 4.5     | pass                                                                                       |
 | `--sev-critical`    | `--sev-critical-bg` over `--surface-1`    | 4.43  | 3       | pass                                                                                       |
-| `--sev-high`        | `--sev-high-bg` over `--surface-1`        | 6.03  | 3       | pass                                                                                       |
-| `--sev-medium`      | `--sev-medium-bg` over `--surface-1`      | 7.55  | 3       | pass                                                                                       |
-| `--sev-low`         | `--sev-low-bg` over `--surface-1`         | 5.91  | 3       | pass                                                                                       |
-| `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 5.68  | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--sev-critical-hot-bg`                   | 10.99 | 4.5     | pass                                                                                       |
-| `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.24  | 3       | pass                                                                                       |
-| `--text-secondary`  | `--sev-critical-bg` over `--surface-1`    | 6.67  | 4.5     | pass                                                                                       |
-| `--warning`         | `--sev-critical-bg` over `--surface-1`    | 7.60  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--sev-critical-bg` over `--surface-1`    | 6.25  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--sev-high-bg` over `--surface-1`        | 6.02  | 4.5     | pass                                                                                       |
-| `--warning`         | `--sev-high-bg` over `--surface-1`        | 6.87  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--sev-high-bg` over `--surface-1`        | 5.64  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--sev-medium-bg` over `--surface-1`      | 5.58  | 4.5     | pass                                                                                       |
-| `--warning`         | `--sev-medium-bg` over `--surface-1`      | 6.36  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--sev-medium-bg` over `--surface-1`      | 5.23  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--sev-low-bg` over `--surface-1`         | 5.84  | 4.5     | pass                                                                                       |
-| `--warning`         | `--sev-low-bg` over `--surface-1`         | 6.66  | 4.5     | pass                                                                                       |
-| `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 5.47  | 4.5     | pass                                                                                       |
-| `--text-primary`    | `--accent-tint` over `--surface-1`        | 10.75 | 4.5     | pass                                                                                       |
-| `--accent`          | `--accent-tint` over `--surface-1`        | 5.01  | 3       | pass                                                                                       |
-| `--on-accent`       | `--sev-critical`                          | 5.84  | 3       | pass                                                                                       |
-| `--on-accent`       | `--sev-high`                              | 8.81  | 3       | pass                                                                                       |
-| `--on-accent`       | `--sev-medium`                            | 11.90 | 3       | pass                                                                                       |
-| `--on-accent`       | `--sev-low`                               | 8.91  | 3       | pass                                                                                       |
-| `--warning`         | `--warning-tint` over `--surface-1`       | 7.09  | 3       | pass                                                                                       |
-| `--danger`          | `--danger-tint` over `--surface-1`        | 5.56  | 3       | pass                                                                                       |
-| `--accent`          | `--tw-top`                                | 3.90  | 3       | pass                                                                                       |
-| `--accent`          | `--tw-ground`                             | 6.73  | 3       | pass                                                                                       |
-| `--sev-critical`    | `--tw-top`                                | 3.23  | 3       | pass                                                                                       |
-| `--sev-critical`    | `--tw-ground`                             | 5.57  | 3       | pass                                                                                       |
-| `--sev-high`        | `--tw-top`                                | 4.87  | 3       | pass                                                                                       |
-| `--sev-high`        | `--tw-ground`                             | 8.40  | 3       | pass                                                                                       |
-| `--sev-medium`      | `--tw-top`                                | 6.57  | 3       | pass                                                                                       |
+| `--sev-high`        | `--sev-high-bg` over `--surface-1`        | 6.95  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--sev-medium-bg` over `--surface-1`      | 8.11  | 3       | pass                                                                                       |
+| `--sev-low`         | `--sev-low-bg` over `--surface-1`         | 5.10  | 3       | pass                                                                                       |
+| `--status-resolved` | `--status-resolved-bg` over `--surface-1` | 6.08  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-hot-bg`                   | 12.63 | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--sev-critical-hot-bg`                   | 4.26  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-critical-bg` over `--surface-1`    | 7.28  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-critical-bg` over `--surface-1`    | 8.41  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-critical-bg` over `--surface-1`    | 6.82  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-high-bg` over `--surface-1`        | 6.32  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-high-bg` over `--surface-1`        | 7.30  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-high-bg` over `--surface-1`        | 5.92  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-medium-bg` over `--surface-1`      | 6.00  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-medium-bg` over `--surface-1`      | 6.93  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-medium-bg` over `--surface-1`      | 5.62  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--sev-low-bg` over `--surface-1`         | 6.57  | 4.5     | pass                                                                                       |
+| `--warning`         | `--sev-low-bg` over `--surface-1`         | 7.59  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--sev-low-bg` over `--surface-1`         | 6.15  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--accent-tint` over `--surface-1`        | 12.64 | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--accent-tint` over `--surface-1`        | 5.37  | 4.5     | pass                                                                                       |
+| `--accent-ink`      | `--accent-tint` over `--surface-2`        | 4.78  | 4.5     | pass                                                                                       |
+| `--accent`          | `--accent-tint` over `--surface-1`        | 4.04  | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-critical`                          | 5.64  | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-high`                              | 10.20 | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-medium`                            | 12.53 | 3       | pass                                                                                       |
+| `--on-accent`       | `--sev-low`                               | 7.21  | 3       | pass                                                                                       |
+| `--warning`         | `--warning-tint` over `--surface-1`       | 7.65  | 3       | pass                                                                                       |
+| `--danger`          | `--danger-tint` over `--surface-1`        | 6.23  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-top`                                | 3.02  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-ground`                             | 4.84  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--tw-top`                                | 3.18  | 3       | pass                                                                                       |
+| `--sev-critical`    | `--tw-ground`                             | 5.10  | 3       | pass                                                                                       |
+| `--sev-high`        | `--tw-top`                                | 5.76  | 3       | pass                                                                                       |
+| `--sev-high`        | `--tw-ground`                             | 9.23  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--tw-top`                                | 7.08  | 3       | pass                                                                                       |
 | `--sev-medium`      | `--tw-ground`                             | 11.34 | 3       | pass                                                                                       |
-| `--sev-low`         | `--tw-top`                                | 4.92  | 3       | pass                                                                                       |
-| `--sev-low`         | `--tw-ground`                             | 8.49  | 3       | pass                                                                                       |
-| `--accent`          | `--tw-hover-top`                          | 2.50  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
-| `--sev-critical`    | `--tw-alarm-top`                          | 2.32  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
-| `--sev-high`        | `--tw-alarm-top`                          | 3.50  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
-| `--sev-medium`      | `--tw-alarm-top`                          | 4.73  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
-| `--sev-low`         | `--tw-alarm-top`                          | 3.54  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-low`         | `--tw-top`                                | 4.07  | 3       | pass                                                                                       |
+| `--sev-low`         | `--tw-ground`                             | 6.52  | 3       | pass                                                                                       |
+| `--accent`          | `--tw-hover-top`                          | 2.15  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-critical`    | `--tw-alarm-top`                          | 2.37  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-high`        | `--tw-alarm-top`                          | 4.28  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-medium`      | `--tw-alarm-top`                          | 5.26  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
+| `--sev-low`         | `--tw-alarm-top`                          | 3.03  | 3       | reported only: between the part’s own faces; held on the ground and idle neighbours        |
 | `--tw-stale-edge`   | `--tw-stale-top`                          | 1.68  | 3       | reported only: dim on purpose; the dash, stopped motion and value ages carry stale         |
-| `--tw-stale-edge`   | `map ground`                              | 2.35  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
-| `--tw-stale-edge`   | `--surface-1`                             | 2.12  | 3       | reported only: dim on purpose; the dash and the words carry no data                        |
+| `--tw-stale-edge`   | `map ground`                              | 2.48  | 3       | reported only: dim on purpose; the dash carries no data, and the Assets tab says it too    |
+| `--tw-stale-edge`   | `--surface-1`                             | 2.25  | 3       | reported only: dim on purpose; the dash and the words carry no data                        |
 | `--text-secondary`  | `--tw-ground`                             | 8.39  | 4.5     | pass                                                                                       |
-| `--text-secondary`  | `--tw-top`                                | 4.86  | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--tw-top`                                | 5.24  | 4.5     | pass                                                                                       |
 | `--tw-edge`         | `--tw-ground`                             | 2.36  | 3       | reported only: decorative outline; the face tones carry the shape                          |
 | `--heat-0`          | `--tw-ground`                             | 1.22  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
 | `--heat-5`          | `--tw-ground`                             | 9.50  | 3       | reported only: lightness carries the value; the legend and the Assets tab carry the number |
-| `--text-primary`    | `--danger-tint` over `--surface-1`        | 11.37 | 4.5     | pass                                                                                       |
-| `--text-primary`    | `sign-in backdrop, brightest`             | 9.33  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--danger-tint` over `--surface-1`        | 12.59 | 4.5     | pass                                                                                       |
+| `--text-primary`    | `sign-in backdrop, brightest`             | 9.77  | 4.5     | pass                                                                                       |
 | `--text-secondary`  | `sign-in backdrop, brightest`             | 5.42  | 4.5     | pass                                                                                       |
 | `--text-tertiary`   | `sign-in backdrop, foot band`             | 5.40  | 4.5     | pass                                                                                       |
 
@@ -312,17 +330,17 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 
 | Copy                                                       | Value                                                          | Must equal                                                     | Result |
 | ---------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------- | ------ |
-| `mapColors.ground` (src/styles/tokens.ts)                  | #0c1821                                                        | #0c1821                                                        | match  |
-| `mapColors.severity.critical` (src/styles/tokens.ts)       | #ff5a4e                                                        | #ff5a4e                                                        | match  |
-| `mapColors.severity.high` (src/styles/tokens.ts)           | #ff9f43                                                        | #ff9f43                                                        | match  |
+| `mapColors.ground` (src/styles/tokens.ts)                  | #07111f                                                        | #07111f                                                        | match  |
+| `mapColors.severity.critical` (src/styles/tokens.ts)       | #ff426d                                                        | #ff426d                                                        | match  |
+| `mapColors.severity.high` (src/styles/tokens.ts)           | #ffad42                                                        | #ffad42                                                        | match  |
 | `mapColors.severity.medium` (src/styles/tokens.ts)         | #f2d04b                                                        | #f2d04b                                                        | match  |
-| `mapColors.severity.low` (src/styles/tokens.ts)            | #6cc3d5                                                        | #6cc3d5                                                        | match  |
-| `mapColors.surface1` (src/styles/tokens.ts)                | #13222d                                                        | #13222d                                                        | match  |
-| `mapColors.surface2` (src/styles/tokens.ts)                | #1a2d3a                                                        | #1a2d3a                                                        | match  |
-| `mapColors.surface3` (src/styles/tokens.ts)                | #223848                                                        | #223848                                                        | match  |
-| `mapColors.accent` (src/styles/tokens.ts)                  | #8c9bff                                                        | #8c9bff                                                        | match  |
-| `mapColors.onAccent` (src/styles/tokens.ts)                | #0c1821                                                        | #0c1821                                                        | match  |
-| `mapColors.textPrimary` (src/styles/tokens.ts)             | #e4edf3                                                        | #e4edf3                                                        | match  |
+| `mapColors.severity.low` (src/styles/tokens.ts)            | #87a2c4                                                        | #87a2c4                                                        | match  |
+| `mapColors.surface1` (src/styles/tokens.ts)                | #0d1c2d                                                        | #0d1c2d                                                        | match  |
+| `mapColors.surface2` (src/styles/tokens.ts)                | #12263b                                                        | #12263b                                                        | match  |
+| `mapColors.surface3` (src/styles/tokens.ts)                | #1a3250                                                        | #1a3250                                                        | match  |
+| `mapColors.accent` (src/styles/tokens.ts)                  | #3185ff                                                        | #3185ff                                                        | match  |
+| `mapColors.onAccent` (src/styles/tokens.ts)                | #07111f                                                        | #07111f                                                        | match  |
+| `mapColors.textPrimary` (src/styles/tokens.ts)             | #e7f2ff                                                        | #e7f2ff                                                        | match  |
 | `mapColors.textSecondary` (src/styles/tokens.ts)           | #a6b8c5                                                        | #a6b8c5                                                        | match  |
 | `mapColors.textTertiary` (src/styles/tokens.ts)            | #91a5b4                                                        | #91a5b4                                                        | match  |
 | `mapColors.staleEdge` (src/styles/tokens.ts)               | #4a555c                                                        | #4a555c                                                        | match  |
@@ -335,7 +353,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.blade` (src/styles/tokens.ts)                  | #4d6a80                                                        | #4d6a80                                                        | match  |
 | `twinColors.hub` (src/styles/tokens.ts)                    | #5a7488                                                        | #5a7488                                                        | match  |
 | `twinColors.screen` (src/styles/tokens.ts)                 | #2b3f66                                                        | #2b3f66                                                        | match  |
-| `twinColors.idle.top` (src/styles/tokens.ts)               | #2a4658                                                        | #2a4658                                                        | match  |
+| `twinColors.idle.top` (src/styles/tokens.ts)               | #274152                                                        | #274152                                                        | match  |
 | `twinColors.idle.south` (src/styles/tokens.ts)             | #1f3748                                                        | #1f3748                                                        | match  |
 | `twinColors.idle.east` (src/styles/tokens.ts)              | #172b3a                                                        | #172b3a                                                        | match  |
 | `twinColors.steel.top` (src/styles/tokens.ts)              | #435766                                                        | #435766                                                        | match  |
@@ -344,55 +362,55 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.concrete.top` (src/styles/tokens.ts)           | #363c41                                                        | #363c41                                                        | match  |
 | `twinColors.concrete.south` (src/styles/tokens.ts)         | #2b3034                                                        | #2b3034                                                        | match  |
 | `twinColors.concrete.east` (src/styles/tokens.ts)          | #22262a                                                        | #22262a                                                        | match  |
-| `twinColors.hover.top` (src/styles/tokens.ts)              | #47608a                                                        | #47608a                                                        | match  |
-| `twinColors.hover.south` (src/styles/tokens.ts)            | #40557f                                                        | #40557f                                                        | match  |
-| `twinColors.hover.east` (src/styles/tokens.ts)             | #3a4d75                                                        | #3a4d75                                                        | match  |
-| `twinColors.alarm.top` (src/styles/tokens.ts)              | #754d55                                                        | #754d55                                                        | match  |
-| `twinColors.alarm.south` (src/styles/tokens.ts)            | #6d434a                                                        | #6d434a                                                        | match  |
-| `twinColors.alarm.east` (src/styles/tokens.ts)             | #683b41                                                        | #683b41                                                        | match  |
+| `twinColors.hover.top` (src/styles/tokens.ts)              | #2a5586                                                        | #2a5586                                                        | match  |
+| `twinColors.hover.south` (src/styles/tokens.ts)            | #244e7f                                                        | #244e7f                                                        | match  |
+| `twinColors.hover.east` (src/styles/tokens.ts)             | #1f4675                                                        | #1f4675                                                        | match  |
+| `twinColors.alarm.top` (src/styles/tokens.ts)              | #73415b                                                        | #73415b                                                        | match  |
+| `twinColors.alarm.south` (src/styles/tokens.ts)            | #6d3b55                                                        | #6d3b55                                                        | match  |
+| `twinColors.alarm.east` (src/styles/tokens.ts)             | #68334c                                                        | #68334c                                                        | match  |
 | `twinColors.stale.top` (src/styles/tokens.ts)              | #2b3338                                                        | #2b3338                                                        | match  |
 | `twinColors.stale.south` (src/styles/tokens.ts)            | #22292e                                                        | #22292e                                                        | match  |
 | `twinColors.stale.east` (src/styles/tokens.ts)             | #1b2125                                                        | #1b2125                                                        | match  |
 | `twinColors.staleEdge` (src/styles/tokens.ts)              | #4a555c                                                        | #4a555c                                                        | match  |
-| `twinColors.heat[0]` (src/styles/tokens.ts)                | #1f2a4d                                                        | #1f2a4d                                                        | match  |
-| `twinColors.heat[1]` (src/styles/tokens.ts)                | #2b3a72                                                        | #2b3a72                                                        | match  |
-| `twinColors.heat[2]` (src/styles/tokens.ts)                | #3d4f99                                                        | #3d4f99                                                        | match  |
-| `twinColors.heat[3]` (src/styles/tokens.ts)                | #5868c4                                                        | #5868c4                                                        | match  |
-| `twinColors.heat[4]` (src/styles/tokens.ts)                | #7b8af0                                                        | #7b8af0                                                        | match  |
-| `twinColors.heat[5]` (src/styles/tokens.ts)                | #b3bdff                                                        | #b3bdff                                                        | match  |
+| `twinColors.heat[0]` (src/styles/tokens.ts)                | #132b50                                                        | #132b50                                                        | match  |
+| `twinColors.heat[1]` (src/styles/tokens.ts)                | #1c3d6f                                                        | #1c3d6f                                                        | match  |
+| `twinColors.heat[2]` (src/styles/tokens.ts)                | #22539c                                                        | #22539c                                                        | match  |
+| `twinColors.heat[3]` (src/styles/tokens.ts)                | #266cd5                                                        | #266cd5                                                        | match  |
+| `twinColors.heat[4]` (src/styles/tokens.ts)                | #5292f2                                                        | #5292f2                                                        | match  |
+| `twinColors.heat[5]` (src/styles/tokens.ts)                | #9bc3ff                                                        | #9bc3ff                                                        | match  |
 | `twinColors.ghostOpacity` (src/styles/tokens.ts)           | 0.18                                                           | 0.18                                                           | match  |
 | `twinColors.alarmMix` (src/styles/tokens.ts)               | 35%                                                            | 35%                                                            | match  |
 | `twinColors.xrayOpacity` (src/styles/tokens.ts)            | 0.14                                                           | 0.14                                                           | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)                 | 1800ms                                                         | 1800ms                                                         | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)                  | 1920px                                                         | 1920px                                                         | match  |
 | `breakpoints.wall4k` (src/styles/tokens.ts)                | 3200px                                                         | 3200px                                                         | match  |
-| `theme-color` (index.html)                                 | #13222d                                                        | #13222d                                                        | match  |
+| `theme-color` (index.html)                                 | #0d1c2d                                                        | #0d1c2d                                                        | match  |
 | `faviconMark` (src/styles/tokens.ts)                       | public/favicon.svg                                             | public/favicon.svg                                             | match  |
-| colours in public/favicon.svg                              | #0c1821, #8c9bff, #e4edf3                                      | #0c1821, #8c9bff, #e4edf3                                      | match  |
-| `--surface-0` (occ.css `:root`)                            | #0c1821                                                        | #0c1821                                                        | match  |
-| `--surface-1` (occ.css `:root`)                            | #13222d                                                        | #13222d                                                        | match  |
-| `--border-subtle` (occ.css `:root`)                        | #25394a                                                        | #25394a                                                        | match  |
+| colours in public/favicon.svg                              | #07111f, #3185ff, #e7f2ff                                      | #07111f, #3185ff, #e7f2ff                                      | match  |
+| `--surface-0` (occ.css `:root`)                            | #07111f                                                        | #07111f                                                        | match  |
+| `--surface-1` (occ.css `:root`)                            | #0d1c2d                                                        | #0d1c2d                                                        | match  |
+| `--border-subtle` (occ.css `:root`)                        | #1e3550                                                        | #1e3550                                                        | match  |
 | `--border-strong` (occ.css `:root`)                        | #5a7488                                                        | #5a7488                                                        | match  |
-| `--text-primary` (occ.css `:root`)                         | #e4edf3                                                        | #e4edf3                                                        | match  |
+| `--text-primary` (occ.css `:root`)                         | #e7f2ff                                                        | #e7f2ff                                                        | match  |
 | `--text-secondary` (occ.css `:root`)                       | #a6b8c5                                                        | #a6b8c5                                                        | match  |
 | `--text-tertiary` (occ.css `:root`)                        | #91a5b4                                                        | #91a5b4                                                        | match  |
-| `--accent` (occ.css `:root`)                               | #8c9bff                                                        | #8c9bff                                                        | match  |
-| `--accent-hover` (occ.css `:root`)                         | #a8b3ff                                                        | #a8b3ff                                                        | match  |
-| `--accent-tint` (occ.css `:root`)                          | rgb(140 155 255 / 0.14)                                        | rgb(140 155 255 / 0.14)                                        | match  |
-| `--on-accent` (occ.css `:root`)                            | #0c1821                                                        | #0c1821                                                        | match  |
-| `--danger` (occ.css `:root`)                               | #ff7f8a                                                        | #ff7f8a                                                        | match  |
-| `--warning` (occ.css `:root`)                              | #f0b85e                                                        | #f0b85e                                                        | match  |
-| `--success` (occ.css `:root`)                              | #5ccf98                                                        | #5ccf98                                                        | match  |
-| `--shadow-3` (occ.css `:root`)                             | 0 16px 40px rgb(0 0 0 / 0.5)                                   | 0 16px 40px rgb(0 0 0 / 0.5)                                   | match  |
+| `--accent` (occ.css `:root`)                               | #3185ff                                                        | #3185ff                                                        | match  |
+| `--accent-hover` (occ.css `:root`)                         | #4f96ff                                                        | #4f96ff                                                        | match  |
+| `--accent-tint` (occ.css `:root`)                          | rgb(49 133 255 / 0.14)                                         | rgb(49 133 255 / 0.14)                                         | match  |
+| `--on-accent` (occ.css `:root`)                            | #07111f                                                        | #07111f                                                        | match  |
+| `--danger` (occ.css `:root`)                               | #ff8a7a                                                        | #ff8a7a                                                        | match  |
+| `--warning` (occ.css `:root`)                              | #e2be7a                                                        | #e2be7a                                                        | match  |
+| `--success` (occ.css `:root`)                              | #35e0a1                                                        | #35e0a1                                                        | match  |
+| `--shadow-3` (occ.css `:root`)                             | 0 20px 48px rgb(0 0 0 / 0.6)                                   | 0 20px 48px rgb(0 0 0 / 0.6)                                   | match  |
 | `--radius-m` (occ.css `:root`)                             | 6px                                                            | 6px                                                            | match  |
 | `--radius-l` (occ.css `:root`)                             | 10px                                                           | 10px                                                           | match  |
 | `--font-ui` (occ.css `:root`)                              | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif | match  |
 | `--font-body` (occ.css `:root`)                            | 'Barlow', system-ui, sans-serif                                | 'Barlow', system-ui, sans-serif                                | match  |
 | `--focus-ring` (occ.css `:root`)                           | 2px solid var(--accent)                                        | 2px solid var(--accent)                                        | match  |
 | `--focus-offset` (occ.css `:root`)                         | 2px                                                            | 2px                                                            | match  |
-| the card, `--surface-1` at 96 % (occ.css)                  | rgb(19 34 45 / 0.96)                                           | rgb(19 34 45 / 0.96)                                           | match  |
-| the shade, `--surface-0` at 55 % (occ.css)                 | rgb(12 24 33 / 0.55)                                           | rgb(12 24 33 / 0.55)                                           | match  |
-| colours of the mark in template.ftl                        | #223848, #8c9bff, #e4edf3                                      | #223848, #8c9bff, #e4edf3                                      | match  |
+| the card, `--surface-1` at 96 % (occ.css)                  | rgb(13 28 45 / 0.96)                                           | rgb(13 28 45 / 0.96)                                           | match  |
+| the shade, `--surface-0` at 55 % (occ.css)                 | rgb(7 17 31 / 0.55)                                            | rgb(7 17 31 / 0.55)                                            | match  |
+| colours of the mark in template.ftl                        | #1a3250, #3185ff, #e7f2ff                                      | #1a3250, #3185ff, #e7f2ff                                      | match  |
 | `public/sign-in-backdrop.webp` (sha-256)                   | 628e3acbfdac                                                   | 628e3acbfdac                                                   | match  |
 | the poster the backdrop colours were measured on (sha-256) | 628e3acbfdac                                                   | 628e3acbfdac                                                   | match  |
 | the loop the backdrop colours were measured on (sha-256)   | a972581496aa                                                   | a972581496aa                                                   | match  |
