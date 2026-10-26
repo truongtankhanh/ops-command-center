@@ -94,6 +94,7 @@
   font-size: var(--type-l);
   line-height: var(--leading-l);
   color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .detail {

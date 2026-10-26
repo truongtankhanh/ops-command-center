@@ -24,9 +24,18 @@
 
 .who {
   display: grid;
+  min-width: 0;
 }
 
+/*
+ * Bounded, so a long display name cannot widen the header (V3-03.4); the full name is its `title` and the
+ * popover's identity line.
+ */
 .name {
+  max-width: calc(180px * var(--ui-scale));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
   font-size: var(--type-body);
@@ -116,14 +125,18 @@
   background: var(--border-subtle);
 }
 
-/* Frame 06's sound switch and the other preference switches, laid out like the ghost buttons. */
+/*
+ * Frame 06's sound switch and the other preference switches, laid out like the ghost buttons. The row grows
+ * instead of holding a fixed height: Inter makes "Sound for critical incidents" wider than the menu, and a
+ * label that carries meaning wraps rather than being cut or spilling out of its row (V3-03.4).
+ */
 .switchRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   width: 100%;
-  height: var(--control-m);
-  padding: 0 var(--space-4);
+  min-height: var(--control-m);
+  padding: var(--space-1-5) var(--space-4);
   border: 0;
   border-radius: var(--radius-m);
   background: none;

@@ -262,7 +262,8 @@
   --row-pad-y: var(--space-1);
   --list-gap: 0px;
   --header-pad-y: var(--space-1);
-  --kpi-height: calc(40px * var(--ui-scale));
+  /* 44 = `--leading-kpi` 28 + `--leading-xs` 16, the tile's content; 40 let the label cross the border. */
+  --kpi-height: calc(44px * var(--ui-scale));
   --strip-pad: var(--space-2);
   --strip-gap: var(--space-2);
   --section-pad-y: var(--space-3);

@@ -30,12 +30,14 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-  height: calc(26px * var(--ui-scale));
+  /* `min-height`, so a long zone name that has to break stays inside its chip (V3-03.4). */
+  min-height: calc(26px * var(--ui-scale));
   padding: 0 var(--space-2) 0 var(--space-1-5);
   border-radius: var(--radius-s);
   background: var(--surface-2);
   font-family: var(--font-ui);
   font-size: var(--type-m);
+  overflow-wrap: anywhere;
 }
 
 .chipIcon {
@@ -48,6 +50,8 @@
   font-size: var(--type-2xl);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-2xl);
+  /* One long token (an id, a URL) must not push the sheet wider (V3-03.4); the description has the same rule. */
+  overflow-wrap: anywhere;
 }
 
 /* Sections are separated by a 1 px inset line, not a border box (frame 02 `.sheet-section`). */

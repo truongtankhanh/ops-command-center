@@ -57,7 +57,10 @@ export function IncidentRow({
       <span className={styles.title}>
         <Icon glyph={incidentTypeIcon(incident.type)} size={14} className={styles.typeIcon} />
         <span className={styles.hidden}>{typeLabel(incident.type)}: </span>
-        {incident.title}
+        {/* `title` is the hover route to the full text; opening the sheet is the other. */}
+        <span className={styles.titleText} title={incident.title}>
+          {incident.title}
+        </span>
       </span>
       <time className={styles.age} dateTime={incident.reportedAt} data-late={late}>
         {late && <Icon glyph={Clock} size={14} />}
@@ -71,10 +74,16 @@ export function IncidentRow({
             <span className={styles.separator} aria-hidden="true">
               ·
             </span>
-            <span className={styles.zone}>{zone}</span>
+            <span className={styles.zone} title={zone}>
+              {zone}
+            </span>
           </>
         )}
-        {tag && <span className={styles.tag}>{tag}</span>}
+        {tag && (
+          <span className={styles.tag} title={tag}>
+            {tag}
+          </span>
+        )}
         <span className={styles.code}>{incident.code}</span>
       </span>
     </>

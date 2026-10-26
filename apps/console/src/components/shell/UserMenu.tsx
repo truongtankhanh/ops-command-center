@@ -53,7 +53,9 @@ export function UserMenu({ className }: { className?: string }) {
             {avatar}
           </span>
           <span className={styles.who}>
-            <span className={styles.name}>{user.displayName}</span>{' '}
+            <span className={styles.name} title={user.displayName}>
+              {user.displayName}
+            </span>{' '}
             {/* Explains why actions are missing; the API still refuses them (ADR-0011). */}
             <span className={styles.role}>
               {readOnly ? (
