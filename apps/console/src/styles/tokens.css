@@ -142,8 +142,8 @@
   --heat-4: #5292f2;
   --heat-5: #9bc3ff;
 
-  --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-ui: 'Inter Variable', system-ui, sans-serif;
+  --font-body: 'Inter Variable', system-ui, sans-serif;
 
   /*
    * Display mode (UI-17): every size token below is its laptop value (frames at 1440 px) times
@@ -168,7 +168,7 @@
   --leading-xl: calc(26px * var(--ui-scale));
   --leading-2xl: calc(28px * var(--ui-scale));
   --leading-3xl: calc(36px * var(--ui-scale));
-  /* Only the weights main.tsx bundles: Barlow 400/500, Barlow Semi Condensed 500/600. */
+  /* Inter Variable (main.tsx) covers 100–900; these are the three the console uses. */
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
