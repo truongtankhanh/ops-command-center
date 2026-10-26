@@ -300,7 +300,7 @@ pnpm ci:local                 # the whole workflow: verify job, then the images 
 It ends with a table of every step, its time, the commit tested and whether the working tree was clean. Two things differ from GitHub on purpose:
 
 - **e2e** runs against a throwaway Postgres container (`occ-ci-local-pg`, port 55432, database `ops_test`) through environment variables, so it never reads or changes `apps/api/.env.test`. Set `CI_LOCAL_PG_PORT` if that port is taken.
-- **The images job** runs under its own Compose project, `occ-ci-local`, with its own ports (`CI_LOCAL_COMPOSE_PG_PORT`, default 15433; `CI_LOCAL_COMPOSE_KC_PORT`, default 18082), so its `docker compose down -v` cannot touch the volumes of `pnpm docker:up`. The console's port 18080 is fixed by `docker/docker-compose.yml`: stop `pnpm docker:stack` first, or the job stops at its first step and says so.
+- **The images job** runs under its own Compose project, `occ-ci-local`, with its own ports (`CI_LOCAL_COMPOSE_PG_PORT`, default 25433; `CI_LOCAL_COMPOSE_KC_PORT`, default 28082), so its `docker compose down -v` cannot touch the volumes of `pnpm docker:up`. The console's port 18080 is fixed by `docker/docker-compose.yml`: stop `pnpm docker:stack` first, or the job stops at its first step and says so.
 
 #### Switching GitHub's CI off and on
 
