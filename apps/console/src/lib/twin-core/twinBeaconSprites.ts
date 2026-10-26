@@ -1,6 +1,6 @@
 import { severityRank } from '@occ/contracts';
 import { discRadiusOf, imageIdOf, MARKER_BOX, type MarkerForm } from '../map/mapImages';
-import { mapColors } from '../../styles/tokens';
+import { canvasFont, mapColors } from '../../styles/tokens';
 import type { Beacon } from './twinBeacons';
 import type { AtlasLayout, MarkerPlacement } from './twinMarkers';
 
@@ -42,7 +42,7 @@ export const PILL = {
   height: 18,
   padding: 7,
   gap: 8,
-  font: '600 11px "Barlow Semi Condensed", sans-serif',
+  font: canvasFont.beaconTag,
 } as const;
 
 /** A cell the atlas has to hold, and what draws it. The pill's width is the text's and is known when it is drawn. */

@@ -12,16 +12,16 @@ family is Inter (V3-03.1) and the type scale is the V3 one (V3-03.2, [Type scale
 | File                                     | Holds                                                                                                                                                                                                                                                                                              |
 | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/console/src/styles/tokens.css`     | Every token as a CSS custom property on `:root`. Modules read them with `var()` (ADR-0016 §2).                                                                                                                                                                                                     |
-| `apps/console/src/styles/tokens.ts`      | The literal copies for code that cannot read CSS: `mapColors` and `mapMotion` (MapLibre), `twinColors` (WebGL), `faviconMark`, and the `breakpoints` (UI-17).                                                                                                                                      |
+| `apps/console/src/styles/tokens.ts`      | The literal copies for code that cannot read CSS: `mapColors` and `mapMotion` (MapLibre), `twinColors` (WebGL), `canvasFont` (canvas text), `faviconMark`, and the `breakpoints` (UI-17).                                                                                                          |
 | `apps/console/index.html`, `favicon.svg` | Literal copies of `--surface-1` (`theme-color`) and of three colours in the favicon.                                                                                                                                                                                                               |
 | `docker/keycloak/themes/occ/login/`      | The sign-in theme: its own `:root` in `resources/css/occ.css` (colours, `--shadow-3`, `--radius-m` / `-l`, fonts, focus ring), two `rgb()` literals for the card and the shade, and the mark's colours in `template.ftl`. It loads before any console CSS, so it cannot `var()` into `tokens.css`. |
 
 A copy outside `tokens.css` is checked against it on every lint (below), so it cannot drift silently: a token change and
 its copies land in one change, and a new token with no pair in `scripts/contrast.ts` is unproven. The elevation tokens
 (`--shadow-1…3`, `--glow-edge`, `--glass-bg`, `--vignette`) are CSS only, so they have no copy in `tokens.ts`; the theme
-copies `--shadow-3` alone. One exception:
-the cluster count font on the map (`lib/map/mapImages.ts`, a copy of `--weight-semibold`, `--type-s` and `--font-ui`;
-see [icons.md](icons.md#map-glyphs)).
+copies `--shadow-3` alone. The two canvas fonts (`canvasFont`: the map's cluster count and the 3D beacon's tag) have
+their family list checked against `--font-ui`; their weight and size copy `--weight-semibold`, `--type-s` and
+`--type-2xs` and are not compared (see [icons.md](icons.md#map-glyphs)).
 
 ## Display modes and density (UI-17)
 
@@ -443,6 +443,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.alarmMix` (src/styles/tokens.ts)               | 35%                                     | 35%                                     | match  |
 | `twinColors.xrayOpacity` (src/styles/tokens.ts)            | 0.14                                    | 0.14                                    | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)                 | 1800ms                                  | 1800ms                                  | match  |
+| `canvasFont.clusterCount` family (src/styles/tokens.ts)    | Inter Variable, system-ui, sans-serif   | Inter Variable, system-ui, sans-serif   | match  |
+| `canvasFont.beaconTag` family (src/styles/tokens.ts)       | Inter Variable, system-ui, sans-serif   | Inter Variable, system-ui, sans-serif   | match  |
 | `breakpoints.wall` (src/styles/tokens.ts)                  | 1920px                                  | 1920px                                  | match  |
 | `breakpoints.wall4k` (src/styles/tokens.ts)                | 3200px                                  | 3200px                                  | match  |
 | `theme-color` (index.html)                                 | #0d1c2d                                 | #0d1c2d                                 | match  |

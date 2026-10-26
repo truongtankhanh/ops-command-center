@@ -240,8 +240,8 @@ in UI-08: `apps/console/src/lib/map/mapImages.ts`, ids in `lib/map/mapFeatures.t
    `tokens.css`, and checks `--on-accent` on each severity disc (3:1).
 6. **Cluster counts** (`cluster-count-1` … `cluster-count-9+`) are drawn on a canvas on demand, from the map's
    `styleimagemissing` event, which needs the image added synchronously. Their font is loaded before the map is
-   ready. It is a literal copy of `--weight-semibold`, `--type-s` and `--font-ui`, which the contrast script does not
-   check.
+   ready. It is `canvasFont.clusterCount` in `tokens.ts`: the family is checked against `--font-ui` by the contrast
+   script; the weight and size copy `--weight-semibold` and `--type-s` and are not compared.
 
 Rejected routes:
 
