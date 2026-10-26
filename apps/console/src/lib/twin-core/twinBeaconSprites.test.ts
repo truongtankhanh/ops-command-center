@@ -388,12 +388,12 @@ describe('paintRank', () => {
 });
 
 describe('beaconRadius', () => {
-  it('is the map’s step by severity, and the neutral 10 for a resolved beacon', () => {
+  it('is the map’s step by severity, and the smaller neutral 8 for a resolved beacon', () => {
     expect(beaconRadius(beacon({ severity: 'low' }))).toBe(10);
     expect(beaconRadius(beacon({ severity: 'medium' }))).toBe(10);
     expect(beaconRadius(beacon({ severity: 'high' }))).toBe(11);
     expect(beaconRadius(beacon({ severity: 'critical' }))).toBe(12);
-    expect(beaconRadius(beacon({ severity: 'critical', form: 'resolved' }))).toBe(10);
+    expect(beaconRadius(beacon({ severity: 'critical', form: 'resolved' }))).toBe(8);
   });
 });
 
