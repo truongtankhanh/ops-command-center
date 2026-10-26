@@ -186,8 +186,8 @@
   --space-8: calc(32px * var(--ui-scale));
 
   --radius-s: calc(4px * var(--ui-scale));
-  --radius-m: calc(6px * var(--ui-scale));
-  --radius-l: calc(10px * var(--ui-scale));
+  --radius-m: calc(8px * var(--ui-scale));
+  --radius-l: calc(12px * var(--ui-scale));
 
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -205,11 +205,13 @@
    * in px).
    */
   --sheet-width: calc(440px * var(--ui-scale));
-  /* The feed's column (frame 01), the toast column (frame 04) and the two button heights. */
+  /* The feed's column (frame 01), the toast column (frame 04) and the three control heights. */
   --feed-width: calc(360px * var(--ui-scale));
   --toast-width: calc(392px * var(--ui-scale));
   --control-m: calc(40px * var(--ui-scale));
   --control-s: calc(32px * var(--ui-scale));
+  /* Dense bars (V3); first used by V3-04.2. */
+  --control-dense: calc(36px * var(--ui-scale));
 
   /*
    * Density: the spacing compact density tightens (overridden below). Type sizes never change with

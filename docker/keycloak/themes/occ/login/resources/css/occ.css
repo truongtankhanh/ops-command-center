@@ -27,8 +27,8 @@
   --warning: #e2be7a;
   --success: #35e0a1;
   --shadow-3: 0 20px 48px rgb(0 0 0 / 0.6);
-  --radius-m: 6px;
-  --radius-l: 10px;
+  --radius-m: 8px;
+  --radius-l: 12px;
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;
   --focus-ring: 2px solid var(--accent);
