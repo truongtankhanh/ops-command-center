@@ -123,7 +123,7 @@ describe('beaconCells', () => {
       beacon({ form: 'resolved', severity: 'critical' }),
     ]);
 
-    expect(active).toMatchObject({ kind: 'base', hue: '#ff5a4e' });
+    expect(active).toMatchObject({ kind: 'base', hue: '#ff426d' });
     expect(resolved).toMatchObject({ kind: 'base', hue: '#91a5b4' });
   });
 
@@ -158,7 +158,7 @@ describe('beaconCells', () => {
     expect(pulses[0]).toMatchObject({
       width: PULSE_RING.box,
       height: PULSE_RING.box,
-      hue: '#ff5a4e',
+      hue: '#ff426d',
     });
   });
 

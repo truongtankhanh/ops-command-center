@@ -12,21 +12,21 @@
  */
 
 :root {
-  --surface-0: #0c1821;
-  --surface-1: #13222d;
-  --border-subtle: #25394a;
+  --surface-0: #07111f;
+  --surface-1: #0d1c2d;
+  --border-subtle: #1e3550;
   --border-strong: #5a7488;
-  --text-primary: #e4edf3;
+  --text-primary: #e7f2ff;
   --text-secondary: #a6b8c5;
   --text-tertiary: #91a5b4;
-  --accent: #8c9bff;
-  --accent-hover: #a8b3ff;
-  --accent-tint: rgb(140 155 255 / 0.14);
-  --on-accent: #0c1821;
-  --danger: #ff7f8a;
-  --warning: #f0b85e;
-  --success: #5ccf98;
-  --shadow-3: 0 16px 40px rgb(0 0 0 / 0.5);
+  --accent: #3185ff;
+  --accent-hover: #4f96ff;
+  --accent-tint: rgb(49 133 255 / 0.14);
+  --on-accent: #07111f;
+  --danger: #ff8a7a;
+  --warning: #e2be7a;
+  --success: #35e0a1;
+  --shadow-3: 0 20px 48px rgb(0 0 0 / 0.6);
   --radius-m: 6px;
   --radius-l: 10px;
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
@@ -101,7 +101,7 @@ html.login-pf body.occ-page {
   position: fixed;
   inset: 0;
   z-index: 2;
-  background: rgb(12 24 33 / 0.55);
+  background: rgb(7 17 31 / 0.55);
   pointer-events: none;
 }
 
@@ -133,7 +133,7 @@ body.occ-page .pf-v5-c-login__container {
   padding: 32px 36px 28px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-l);
-  background: rgb(19 34 45 / 0.96);
+  background: rgb(13 28 45 / 0.96);
   box-shadow: var(--shadow-3);
 }
 

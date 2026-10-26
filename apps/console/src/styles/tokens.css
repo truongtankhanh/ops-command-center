@@ -1,41 +1,59 @@
 /*
- * Night-shift palette: a dark harbour blue that stays calm over a 12-hour shift.
- * Saturated colour is reserved for severity, so colour always means something.
+ * Night-shift palette (V3, ADR-0022): a deep midnight blue that stays calm over a 12-hour shift.
+ * Severity is the only loud meaning: a hue never stands for two meanings, and the accent, the live
+ * cyan and the violet never borrow a severity hue. Values: docs/design/v3/brief.md (V3 values).
  * Which token goes on which surface, and the contrast each pair reaches: docs/design/tokens.md.
  */
 :root {
   /* Surfaces: 0 ground, map, inputs · 1 header, feed, sheet · 2 selected row, cards · 3 menu, toast, banner. */
-  --surface-0: #0c1821;
-  --surface-1: #13222d;
-  --surface-2: #1a2d3a;
-  --surface-3: #223848;
-  --camera-ground: #070f15;
+  --surface-0: #07111f;
+  --surface-1: #0d1c2d;
+  --surface-2: #12263b;
+  --surface-3: #1a3250;
+  --camera-ground: #050d18;
   /* Stripes of a camera frame with no picture: offline, stream unavailable, player pending (frame 06). */
-  --camera-off-a: #0a141b;
-  --camera-off-b: #0c1820;
+  --camera-off-a: #08121d;
+  --camera-off-b: #0a1624;
 
-  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
-  --shadow-2: 0 6px 16px rgb(0 0 0 / 0.35);
-  --shadow-3: 0 16px 40px rgb(0 0 0 / 0.5);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-2: 0 8px 20px rgb(0 0 0 / 0.5);
+  --shadow-3: 0 20px 48px rgb(0 0 0 / 0.6);
+  /*
+   * Neon is edge and signal, not fill (ADR-0022): the lit edge of the active tab, the selected button and
+   * the open panel. The 1 px ring is `--accent`, 3:1 on every surface. No component uses these three yet.
+   */
+  --glow-edge: 0 0 0 1px var(--accent), 0 0 12px rgb(49 133 255 / 0.45);
+  /* A panel at 90 %: legible even over a white pixel (brief, V3 values); blur is only for small floating overlays. */
+  --glass-bg: color-mix(in srgb, var(--surface-1) 90%, transparent);
+  /* The stage edge. Never over a control or a label. */
+  --vignette: radial-gradient(ellipse at center, transparent 58%, rgb(7 17 31 / 0.6) 100%);
 
   /* Subtle is decorative; strong marks input boundaries (≥ 3:1 on surface-0 and surface-1 only). */
-  --border-subtle: #25394a;
+  --border-subtle: #1e3550;
   --border-strong: #5a7488;
 
-  --text-primary: #e4edf3;
+  --text-primary: #e7f2ff;
   --text-secondary: #a6b8c5;
   --text-tertiary: #91a5b4;
 
-  --accent: #8c9bff;
-  --accent-hover: #a8b3ff;
-  --accent-tint: rgb(140 155 255 / 0.14);
-  --on-accent: #0c1821;
+  /* Interaction: the fill, graphics and the focus ring (3:1 on every surface). Never text: use `--accent-ink`. */
+  --accent: #3185ff;
+  /* The accent as text, or a glyph that must read as text (4.5:1 on every surface). */
+  --accent-ink: #5e9fff;
+  --accent-hover: #4f96ff;
+  --accent-tint: rgb(49 133 255 / 0.14);
+  --on-accent: #07111f;
+  /* Secondary data series and hover tint. Graphics only (3:1): it falls under 4.5:1 on surface-3. */
+  --accent-2: #8b7cff;
+  /* Live data: telemetry lines, the healthy device marker, the Live pill. Never a severity. */
+  --signal: #35e7ff;
 
   /* Critical text never sits on surface-3 (3.9:1): use the icon there. */
-  --sev-critical: #ff5a4e;
-  --sev-high: #ff9f43;
+  --sev-critical: #ff426d;
+  --sev-high: #ffad42;
   --sev-medium: #f2d04b;
-  --sev-low: #6cc3d5;
+  /* Neutral steel: Low is told apart by its glyph, its word and its place, never by hue (ADR-0022). */
+  --sev-low: #87a2c4;
   --sev-critical-bg: color-mix(in srgb, var(--sev-critical) 15%, transparent);
   --sev-high-bg: color-mix(in srgb, var(--sev-high) 15%, transparent);
   --sev-medium-bg: color-mix(in srgb, var(--sev-medium) 15%, transparent);
@@ -55,9 +73,9 @@
   --status-resolved-bg: color-mix(in srgb, var(--status-resolved) 14%, transparent);
 
   /* System feedback only (connection, banners, form errors) — never on an incident. */
-  --success: #5ccf98;
-  --warning: #f0b85e;
-  --danger: #ff7f8a;
+  --success: #35e0a1;
+  --warning: #e2be7a;
+  --danger: #ff8a7a;
   /* The sign-in screens' state circle (frames 09–11): a tint behind the glyph only. */
   --warning-tint: color-mix(in srgb, var(--warning) 12%, transparent);
   --danger-tint: color-mix(in srgb, var(--danger) 12%, transparent);
@@ -68,7 +86,8 @@
    * material, seen from the south-east and lit by one key light from the west-south-west
    * (twin/Lights.tsx); only severity is loud (brief § Principles 2).
    */
-  --tw-top: #2a4658;
+  /* Lightened to 3:1 against the V3 accent and critical edges (brief, V3 values); the rest wait for Phase 3. */
+  --tw-top: #274152;
   --tw-south: #1f3748;
   --tw-east: #172b3a;
   --tw-edge: #3e5a6e;
@@ -115,13 +134,13 @@
   --tw-ghost-opacity: 0.18;
   /* The zone labels of every building but the one in focus (V2-15.8). CSS only: no WebGL copy. */
   --tw-label-faded-opacity: 0.35;
-  /* Telemetry overlay: sequential in the accent's hue, never a severity hue. */
-  --heat-0: #1f2a4d;
-  --heat-1: #2b3a72;
-  --heat-2: #3d4f99;
-  --heat-3: #5868c4;
-  --heat-4: #7b8af0;
-  --heat-5: #b3bdff;
+  /* Telemetry overlay: sequential in the accent's hue (216°), never red, orange, yellow or cyan. */
+  --heat-0: #132b50;
+  --heat-1: #1c3d6f;
+  --heat-2: #22539c;
+  --heat-3: #266cd5;
+  --heat-4: #5292f2;
+  --heat-5: #9bc3ff;
 
   --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --font-body: 'Barlow', system-ui, sans-serif;
@@ -216,7 +235,7 @@
   /* The session-expired banner blocks every write, so it stays above everything. */
   --z-session: 50;
   /* Dims the page behind a modal dialog (ground hue). Only dims: no text is read against it. */
-  --scrim: rgb(5 12 17 / 0.6);
+  --scrim: rgb(3 8 15 / 0.6);
 
   color-scheme: dark;
 }

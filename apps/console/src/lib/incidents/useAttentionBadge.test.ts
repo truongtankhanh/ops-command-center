@@ -89,7 +89,7 @@ describe('useAttentionBadge', () => {
 
     expect(icon().startsWith(DATA_URL)).toBe(true);
     expect(decodedIcon()).toContain('viewBox="0 0 32 32"');
-    expect(decodedIcon()).toContain('#ff5a4e');
+    expect(decodedIcon()).toContain('#ff426d');
   });
 
   it('follows the count without stacking numbers in the title', async () => {

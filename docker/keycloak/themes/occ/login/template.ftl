@@ -170,7 +170,7 @@
   <div class="${properties.kcLoginContainer!}">
     <#-- occ: the console's mark, the realm's name and the site's name, in place of the text-only brand. -->
     <header id="kc-header" class="pf-v5-c-login__header occ-brand">
-      <svg class="occ-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="#223848"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e4edf3" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#8c9bff"></circle></svg>
+      <svg class="occ-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="#1a3250"></rect><circle cx="16" cy="16" r="9" fill="none" stroke="#e7f2ff" stroke-width="2"></circle><circle cx="16" cy="16" r="3.5" fill="#3185ff"></circle></svg>
       <div>
         <div id="kc-header-wrapper" class="pf-v5-c-brand">${kcSanitize(msg("loginTitleHtml",(realm.displayNameHtml!'')))?no_esc}</div>
         <span class="occ-site">${msg("occSiteName")}</span>

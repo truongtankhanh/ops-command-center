@@ -71,6 +71,9 @@ const MATRIX_ROWS = [
   '--text-secondary',
   '--text-tertiary',
   '--accent',
+  '--accent-ink',
+  '--accent-2',
+  '--signal',
   ...SEVERITIES,
   '--status-resolved',
   '--success',
@@ -85,6 +88,8 @@ const MAP: Record<string, string> = {
   'map boundary': mapColors.site.boundaryFill,
   // The sign-in page's backdrop under its 55 % shade (V2-20.5): the brightest pixel of any frame of the loop and
   // of the poster, and the brightest in the bottom tenth, where the foot stands. From `measure.ts`, not by eye.
+  // Measured under V2's shade `rgb(12 24 33)`; V3's `--surface-0` is darker, so both stay an upper bound until
+  // V3-19 re-renders the picture and measures again.
   'sign-in backdrop, brightest': '#2c3e4b',
   'sign-in backdrop, foot band': '#1f2f3a',
   ...Object.fromEntries(
@@ -95,12 +100,25 @@ const ZONE_FILLS = Object.keys(mapColors.zoneFill).map((kind) => `map zone ${kin
 
 // Which token sits on which surface: the surface rules in docs/design/brief.md.
 const PAIRS: Pair[] = [
+  // The accent is split (ADR-0022): `--accent` is the fill, graphics and the focus ring (3:1), and
+  // `--accent-ink` is the accent as text (4.5:1). `--signal` is live data and may be text; `--accent-2`
+  // is a series or tint colour, graphics only, because it falls under 4.5:1 on surface-3.
   ...cross(
-    ['--text-primary', '--text-secondary', '--text-tertiary', '--status-resolved', '--accent'],
+    [
+      '--text-primary',
+      '--text-secondary',
+      '--text-tertiary',
+      '--status-resolved',
+      '--accent-ink',
+      '--signal',
+    ],
     SURFACES,
     TEXT,
   ),
+  // `--glow-edge`'s 1 px ring is `--accent`, so this is also the lit edge's 3:1 on every surface.
+  ...cross(['--accent', '--accent-2'], SURFACES, UI),
   { fg: '--on-accent', bg: '--accent', min: TEXT },
+  { fg: '--on-accent', bg: '--accent-hover', min: TEXT },
   ...cross(SEVERITIES, SURFACES.slice(0, 3), TEXT),
   { fg: '--sev-critical', bg: '--surface-3', min: TEXT, reportOnly: 'icon only on surface-3' },
   ...cross(['--success', '--warning', '--danger'], SURFACES.slice(1), TEXT),
@@ -150,8 +168,10 @@ const PAIRS: Pair[] = [
       min: TEXT,
     })),
   ),
-  // The count on the selected feed tab.
+  // The count on the selected feed tab, and accent text on a selected row (surface-1 and surface-2).
   { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
+  { fg: '--accent-ink', bg: '--accent-tint', over: '--surface-1', min: TEXT },
+  { fg: '--accent-ink', bg: '--accent-tint', over: '--surface-2', min: TEXT },
   // The glyph of a pressed toggle (`Button` `aria-pressed`, frame 14's `3D / 2D` switch): the accent
   // on its own tint (a graphic, 3:1). The label stays `--text-primary`, the pair above.
   { fg: '--accent', bg: '--accent-tint', over: '--surface-1', min: UI },
@@ -230,8 +250,8 @@ const PAIRS: Pair[] = [
     min: UI,
     reportOnly: 'lightness carries the value; the legend and the Assets tab carry the number',
   })),
-  // V2-09.7 adds no new pair: the sparkline's line and dot (`--accent`) and its dashed limit and
-  // stale line (`--text-tertiary`) are the 4.5:1 pairs on every surface at the top of this list, and
+  // V2-09.7 adds no new pair: the sparkline's line and dot (`--accent`, a graphic: 3:1) and its dashed limit and
+  // stale line (`--text-tertiary`) are the pairs on every surface at the top of this list, and
   // its over-limit tint (`--sev-*`) is the severity pairs on `--surface-0` … `--surface-2`. It sits
   // on `--surface-1` (the sheet) and `--surface-2` (the incident evidence block); both clear the 3:1
   // a graphic needs (WCAG 1.4.11).
