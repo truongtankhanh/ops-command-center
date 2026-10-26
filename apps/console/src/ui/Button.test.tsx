@@ -52,6 +52,42 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toHaveAttribute('data-size', 'sm');
   });
 
+  it('marks the dense size', () => {
+    render(<Button size="dense">Filter</Button>);
+
+    expect(screen.getByRole('button', { name: 'Filter' })).toHaveAttribute('data-size', 'dense');
+  });
+
+  it('marks the variant and the dense size together', () => {
+    render(
+      <Button variant="primary" size="dense">
+        Apply
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Apply' });
+    expect(button).toHaveAttribute('data-variant', 'primary');
+    expect(button).toHaveAttribute('data-size', 'dense');
+  });
+
+  it.each(['true', 'false'] as const)('passes aria-pressed="%s" through', (pressed) => {
+    render(<Button aria-pressed={pressed === 'true'}>Pick on map</Button>);
+
+    expect(screen.getByRole('button', { name: 'Pick on map' })).toHaveAttribute(
+      'aria-pressed',
+      pressed,
+    );
+  });
+
+  it('passes aria-expanded="true" through', () => {
+    render(<Button aria-expanded>Report incident</Button>);
+
+    expect(screen.getByRole('button', { name: 'Report incident' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
   it('is disabled and busy while loading, keeping the label it is given', async () => {
     const onClick = vi.fn();
     render(

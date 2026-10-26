@@ -20,7 +20,8 @@
   --shadow-3: 0 20px 48px rgb(0 0 0 / 0.6);
   /*
    * Neon is edge and signal, not fill (ADR-0022): the lit edge of the active tab, the selected button and
-   * the open panel. The 1 px ring is `--accent`, 3:1 on every surface. No component uses these three yet.
+   * the open panel. The 1 px ring is `--accent`, 3:1 on every surface. `Button` draws it (pressed, expanded),
+   * `ui/Panel` draws `--glass-bg`; `--vignette` has no user yet.
    */
   --glow-edge: 0 0 0 1px var(--accent), 0 0 12px rgb(49 133 255 / 0.45);
   /* A panel at 90 %: legible even over a white pixel (brief, V3 values); blur is only for small floating overlays. */
@@ -219,7 +220,7 @@
   --toast-width: calc(392px * var(--ui-scale));
   --control-m: calc(40px * var(--ui-scale));
   --control-s: calc(32px * var(--ui-scale));
-  /* Dense bars (V3); first used by V3-04.2. */
+  /* Dense bars (V3): `Button size="dense"`. */
   --control-dense: calc(36px * var(--ui-scale));
 
   /*
