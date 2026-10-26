@@ -17,8 +17,8 @@ body {
   font-family: var(--font-body);
   font-size: var(--type-body);
   /*
-   * Unitless on purpose (= --leading-body at 15px): it scales for every element that sets only a
-   * font-size. A px value here would be inherited as is, e.g. 22px lines on 24px text.
+   * Unitless on purpose (≈ --leading-body at 14px): it scales for every element that sets only a
+   * font-size. A px value here would be inherited as is, e.g. 20px lines on 24px text.
    */
   line-height: 1.45;
   font-variant-numeric: tabular-nums;

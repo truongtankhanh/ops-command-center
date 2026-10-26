@@ -152,21 +152,30 @@
    */
   --ui-scale: 1;
 
+  /*
+   * Type scale (V3, ADR-0022 §5). 11 px is for secondary metadata only (timestamps, codes), never
+   * for something an operator acts on; 12 px stays the floor for everything else read from afar.
+   * No selector takes `--type-2xs` yet. `--type-kpi` is the count in a KPI tile.
+   */
+  --type-2xs: calc(11px * var(--ui-scale));
   --type-xs: calc(12px * var(--ui-scale));
   --type-s: calc(13px * var(--ui-scale));
   --type-m: calc(14px * var(--ui-scale));
-  --type-body: calc(15px * var(--ui-scale));
+  --type-body: calc(14px * var(--ui-scale));
   --type-l: calc(16px * var(--ui-scale));
   --type-xl: calc(20px * var(--ui-scale));
   --type-2xl: calc(24px * var(--ui-scale));
+  --type-kpi: calc(28px * var(--ui-scale));
   --type-3xl: calc(32px * var(--ui-scale));
+  --leading-2xs: calc(16px * var(--ui-scale));
   --leading-xs: calc(16px * var(--ui-scale));
   --leading-s: calc(18px * var(--ui-scale));
   --leading-m: calc(20px * var(--ui-scale));
-  --leading-body: calc(22px * var(--ui-scale));
+  --leading-body: calc(20px * var(--ui-scale));
   --leading-l: calc(22px * var(--ui-scale));
   --leading-xl: calc(26px * var(--ui-scale));
   --leading-2xl: calc(28px * var(--ui-scale));
+  --leading-kpi: calc(28px * var(--ui-scale));
   --leading-3xl: calc(36px * var(--ui-scale));
   /* Inter Variable (main.tsx) covers 100–900; these are the three the console uses. */
   --weight-regular: 400;
@@ -215,7 +224,8 @@
 
   /*
    * Density: the spacing compact density tightens (overridden below). Type sizes never change with
-   * it (13 px is the smallest text, brief), and no control drops under a 24 px target.
+   * it (12 px is the floor for text read from a distance, 11 px only for non-actionable metadata,
+   * ADR-0022), and no control drops under a 24 px target.
    */
   --row-pad-y: var(--space-2);
   --list-gap: var(--space-0-5);

@@ -5,7 +5,7 @@ The console's visual vocabulary: colour, type, spacing, radii, shadows, motion, 
 V3 ([ADR-0022](../adr/0022-console-visual-language.md), [V3 brief](v3/brief.md)) replaced the palette, the shadows and
 the radii; the chosen values and their reasons are in the brief's
 [V3 values](v3/brief.md#v3-values-settled-in-v3-021), the measured ratios are in the generated tables below. The type
-family is Inter (V3-03.1); the type scale is still V2's until V3-03.2.
+family is Inter (V3-03.1) and the type scale is the V3 one (V3-03.2, [Type scale](#type-scale)).
 
 ## Where they live
 
@@ -41,7 +41,8 @@ see [icons.md](icons.md#map-glyphs)).
 - **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
   (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
   overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--kpi-height`, `--strip-pad`,
-  `--strip-gap`, `--section-pad-y`. Type sizes never change with density (13 px is the smallest text, brief); on a
+  `--strip-gap`, `--section-pad-y`. Type sizes never change with density (12 px is the floor for text read from a distance, 11 px only for
+  non-actionable metadata, [Type scale](#type-scale)); on a
   touch screen (`pointer: coarse`) KPI tiles, feed rows and camera tile actions stay ≥ 44 px.
 - **The sheet's width in script.** `--sheet-inset` is registered with `@property` (`<length>`), so the map reads the
   stage's computed value in px (`CampusMap` `sheetInset()`) instead of a copy: it follows the mode and is 0 where the
@@ -49,6 +50,32 @@ see [icons.md](icons.md#map-glyphs)).
 - **Not scaled** (DN-6 of UI-17): what the map draws on its canvas — marker and cluster images, zone labels, layer
   widths — and the tooltip's placement distances in `MapTooltip.tsx` stay laptop-sized on a wall. The map's
   controls, legend and tooltip box do scale.
+
+## Type scale
+
+Written `calc(<px> * var(--ui-scale))` like every size token, so the wall modes scale it. The leading is the matching
+`--leading-*`; `body` sets the unitless `1.45` (≈ `--leading-body` at 14 px) for text that sets only a size.
+
+| Token         | Size | Leading | Use                                                                      |
+| ------------- | ---- | ------- | ------------------------------------------------------------------------ |
+| `--type-2xs`  | 11   | 16      | Secondary metadata only: timestamps, codes. No selector uses it yet      |
+| `--type-xs`   | 12   | 16      | The floor for text read from a distance: tags, key caps, zone labels     |
+| `--type-s`    | 13   | 18      | Dense rows and labels                                                    |
+| `--type-m`    | 14   | 20      | In-row text                                                              |
+| `--type-body` | 14   | 20      | Body text and control labels (`body` itself)                             |
+| `--type-l`    | 16   | 22      | Section titles                                                           |
+| `--type-xl`   | 20   | 26      | Dialog title, brand, header clock, large readings                        |
+| `--type-2xl`  | 24   | 28      | Panel titles: inspector, incident detail, report form, wall focus banner |
+| `--type-kpi`  | 28   | 28      | The count in a KPI tile (tabular figures; the tile is `--kpi-height`)    |
+| `--type-3xl`  | 32   | 36      | The twin callout's figure                                                |
+
+- **11 px is for metadata only** (ADR-0022 §5): timestamps and codes, never something an operator acts on. It adds no
+  contrast pair: the three text tokens already pass 4.5:1 on all four surfaces, so a selector that adopts it only needs
+  to name one of them. The first selectors arrive with V3-04.
+- **12 px is the floor for everything else** that is read from a distance. The V1 line "13 px is the smallest text" is
+  superseded ([V1 brief](brief.md#viewing-conditions)).
+- **The KPI count has its own step** because its size is not a heading: `--type-kpi` 28 px on a 28 px line keeps the
+  tile's content at 44 px, as the 24 px step did.
 
 ## Which surface, which token
 
