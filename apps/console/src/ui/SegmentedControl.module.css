@@ -75,9 +75,25 @@
 .input:checked + .face {
   border-color: var(--sev, var(--accent));
   background: color-mix(in srgb, var(--sev, var(--accent)) 15%, transparent);
-  box-shadow: inset 0 -3px 0 var(--sev, var(--accent));
   color: var(--text-primary);
   font-weight: var(--weight-semibold);
+}
+
+/*
+ * The lit edge of the checked option (ADR-0022 §4: neon is edge and signal, not fill). Only an option
+ * without a severity takes it: `--glow-edge` is the accent, and a glow never stands for severity nor
+ * does severity borrow the accent (docs/design/tokens.md, "One meaning per hue").
+ */
+.option:not([data-severity]) .input:checked + .face {
+  box-shadow: var(--glow-edge);
+}
+
+/*
+ * A checked severity option keeps its own hue: border and tint above, and in the row a bottom bar.
+ * The grid has no bar (frame 03's `.opt.is-checked`: border and tint only).
+ */
+.options:not([data-layout='grid']) .option[data-severity] .input:checked + .face {
+  box-shadow: inset 0 -3px 0 var(--sev);
 }
 
 /* The grid: three columns of tiles with the glyph above the label (frame 03's type grid). */
@@ -98,11 +114,6 @@
 /* Frame 09's `.type-grid.is-compact`: shorter tiles, so six categories fit above the type step. */
 .options[data-compact] .face {
   height: calc(54px * var(--ui-scale));
-}
-
-/* Frame 03's `.opt.is-checked`: accent border and tint, no bottom bar. */
-.options[data-layout='grid'] .input:checked + .face {
-  box-shadow: none;
 }
 
 /* A severity option's glyph keeps its hue; any other glyph turns accent with its option. */

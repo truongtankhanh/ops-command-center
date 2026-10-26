@@ -13,6 +13,17 @@ describe('SeverityBadge', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 
+  // Low has no hue of its own (a neutral steel), so the word and the glyph are what find it.
+  it('shows Low as the word and one decorative glyph, since its colour is neutral', () => {
+    const { container } = render(<SeverityBadge severity="low" />);
+
+    const badge = screen.getByText('Low');
+    expect(badge).toHaveAttribute('data-severity', 'low');
+    expect(container.querySelectorAll('svg')).toHaveLength(1);
+    expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
   it("keeps the caller's class", () => {
     render(<SeverityBadge severity="high" className="spaced" />);
 

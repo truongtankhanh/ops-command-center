@@ -117,9 +117,11 @@ From the brief's surface rules:
 - **Elevation and neon.** `--shadow-1…3` are the only drop shadows. `--glow-edge` (a 1 px `--accent` ring plus a soft
   halo) is the lit edge of the active tab, the selected button and the open panel, never every card. `--glass-bg` is a
   panel at 90 %, legible without blur; blur is for small floating overlays. `--vignette` darkens the stage edge and
-  never sits over a control or a label. `ui/Panel` uses `--glass-bg` and `--shadow-3`; `ui/Button` draws `--glow-edge`
-  while `aria-pressed` or `aria-expanded` is true (the 1 px ring is 3:1 on every surface; the halo is in no contrast
-  pair); no component uses `--vignette` yet.
+  never sits over a control or a label. `ui/Panel` uses `--glass-bg` and `--shadow-3`. `--glow-edge` is drawn by
+  `ui/Button` while `aria-pressed` or `aria-expanded` is true, by the selected `Tabs` tab (a 2 px bar on the list's
+  hairline, because the token is a ring plus a halo and would box the tab) and by a checked `SegmentedControl` option
+  without a severity; a severity option keeps its own hue, since a glow never stands for severity. The 1 px ring is 3:1
+  on every surface and the halo is in no contrast pair. No component uses `--vignette` yet.
 - **`Panel` is the one place a translucent surface is drawn** (`ui/Panel`, ADR-0022 §4). `flat` (the default) is
   `--surface-1` with a hairline `--border-subtle` and `--radius-l`; `floating` is `--glass-bg` (90 % `--surface-1`) with
   the same hairline and `--shadow-3`, for a small overlay over the stage. Neither carries a glow. Text on a `Panel` is

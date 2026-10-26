@@ -46,6 +46,14 @@ describe('icon maps', () => {
   ])('gives every %s its own glyph', (_domain, glyphs) => {
     expect(new Set(glyphs).size).toBe(glyphs.length);
   });
+
+  // Low is a neutral steel, like a resolved or acknowledged status: the glyph is what tells them apart.
+  it('never draws a severity with the glyph of a status', () => {
+    const statusGlyphs = new Set(INCIDENT_STATUSES.map(statusIcon));
+    for (const severity of INCIDENT_SEVERITIES) {
+      expect(statusGlyphs.has(severityIcon(severity))).toBe(false);
+    }
+  });
 });
 
 // The one pair that shares a glyph by design: both are a link being made, told apart by the label.
