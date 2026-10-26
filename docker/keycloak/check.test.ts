@@ -134,7 +134,7 @@ test('every file the template and the stylesheet name is in the theme', () => {
   // `css/styles.css` and `js/…` come from the parent theme: only what this theme ships is held to this.
   const ours = named.filter((file) => file.startsWith('img/campus-') || file.startsWith('fonts/'));
 
-  assert.ok(ours.length >= 6, 'expected the loop, the poster and four fonts to be named');
+  assert.ok(ours.length >= 3, 'expected the loop, the poster and the font to be named');
   assert.deepEqual(
     ours.filter((file) => !present.has(file)),
     [],

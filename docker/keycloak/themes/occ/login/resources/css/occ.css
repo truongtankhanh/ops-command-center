@@ -29,41 +29,21 @@
   --shadow-3: 0 20px 48px rgb(0 0 0 / 0.6);
   --radius-m: 8px;
   --radius-l: 12px;
-  --font-ui: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
-  --font-body: 'Barlow', system-ui, sans-serif;
+  --font-ui: 'Inter Variable', system-ui, sans-serif;
+  --font-body: 'Inter Variable', system-ui, sans-serif;
   --focus-ring: 2px solid var(--accent);
   --focus-offset: 2px;
   color-scheme: dark;
 }
 
-/* The console's fonts, from this theme (the console ships the same four files). Licence: fonts/LICENSE-OFL.txt. */
+/* The console's family, from this theme (the console loads the same one from @fontsource-variable/inter; this is its
+   latin subset). Licence: fonts/LICENSE-OFL.txt. */
 @font-face {
-  font-family: 'Barlow';
+  font-family: 'Inter Variable';
   font-style: normal;
   font-display: swap;
-  font-weight: 400;
-  src: url('../fonts/barlow-latin-400-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Barlow';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url('../fonts/barlow-latin-500-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Barlow Semi Condensed';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url('../fonts/barlow-semi-condensed-latin-500-normal.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'Barlow Semi Condensed';
-  font-style: normal;
-  font-display: swap;
-  font-weight: 600;
-  src: url('../fonts/barlow-semi-condensed-latin-600-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  src: url('../fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
 }
 
 /* ---- The page: the backdrop, the shade and the layers over them ------------------------------------------- */
