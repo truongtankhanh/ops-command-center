@@ -28,6 +28,12 @@
   font-size: var(--type-body);
 }
 
+/* Dense bars (V3, brief: 36 px beside the 40 px default); the font stays `md`'s. */
+.button[data-size='dense'] {
+  height: var(--control-dense);
+  padding: 0 var(--space-3);
+}
+
 .button[data-variant='primary'] {
   background: var(--accent);
   border-color: var(--accent);
@@ -73,22 +79,29 @@
 
 /*
  * A toggle that is on (frame 03's "Pick on map", `.btn-toggle`): accent tint and border, glyph in
- * the accent. Callers pass `aria-pressed`; there is no prop for it.
+ * the accent, and the lit edge (`--glow-edge`): neon is edge and signal, not fill (ADR-0022 §4).
+ * Callers pass `aria-pressed`; there is no prop for it. Every pressed `Button` is lit, the layer
+ * toggles included, so the stage can show several at once.
  */
 .button[aria-pressed='true'],
 .button[aria-pressed='true']:hover:not(:disabled) {
   border-color: var(--accent);
   background: var(--accent-tint);
   color: var(--text-primary);
+  box-shadow: var(--glow-edge);
 }
 
 .button[aria-pressed='true'] > svg {
   color: var(--accent);
 }
 
-/* A button that opens a panel shows it while the panel is open (Report incident). */
+/*
+ * A button that opens a panel shows it while the panel is open (Report incident): the lit edge, whose
+ * 1 px ring is `--accent`, 3:1 on every surface. On the accent fill of a `primary` button only the
+ * halo shows, which still marks it open.
+ */
 .button[aria-expanded='true'] {
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  box-shadow: var(--glow-edge);
 }
 
 .button:disabled {

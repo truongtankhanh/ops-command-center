@@ -5,7 +5,7 @@ import type { Glyph } from './icons';
 import { Kbd } from './Kbd';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'md' | 'sm';
+export type ButtonSize = 'md' | 'sm' | 'dense';
 
 /** `aria-keyshortcuts` takes key names; the hint shows the short label people know from keyboards. */
 const ARIA_KEY_NAME: Readonly<Record<string, string>> = { Esc: 'Escape' };
@@ -13,9 +13,14 @@ const ARIA_KEY_NAME: Readonly<Record<string, string>> = { Esc: 'Escape' };
 /**
  * The console's button (frame 00). `type` defaults to `"button"`; pass `type="submit"` in a form.
  *
- * - `data-variant` is set for every variant except the default `secondary`, and `data-size` only
- *   for `sm`: tests and later visual tests select on these attributes, never on class names
- *   (ADR-0016 §4).
+ * - `data-variant` is set for every variant except the default `secondary`, and `data-size` for
+ *   `sm` and `dense` only: tests and later visual tests select on these attributes, never on class
+ *   names (ADR-0016 §4).
+ * - Three heights, all scaled by `--ui-scale`: `md` (40 px, the default), `dense` (36 px, for dense
+ *   bars) and `sm` (32 px, for actions inside a row).
+ * - `aria-pressed` (a toggle that is on) and `aria-expanded` (the control of an open panel) are
+ *   drawn as the lit edge, `--glow-edge`; there is no prop for either, the caller passes the
+ *   attribute (ADR-0022 §4).
  * - `loading` disables the button and sets `aria-busy`; the caller keeps a label that says what is
  *   happening ("Reporting…"). There is no spinner: only arrival, selection and escalation animate.
  * - `icon` is drawn before the label and hidden from assistive tech, so the accessible name stays
@@ -55,7 +60,7 @@ export function Button({
       type={type}
       className={className ? `${styles.button} ${className}` : styles.button}
       data-variant={variant === 'secondary' ? undefined : variant}
-      data-size={size === 'sm' ? 'sm' : undefined}
+      data-size={size === 'md' ? undefined : size}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       aria-keyshortcuts={shortcut ? (ARIA_KEY_NAME[shortcut] ?? shortcut) : ariaKeyShortcuts}
