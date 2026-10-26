@@ -77,15 +77,34 @@
   color: var(--text-tertiary);
 }
 
+/* The type glyph beside the title's text; the text (`.titleText`) is what gives way, never the glyph. */
 .title {
+  display: flex;
+  align-items: flex-start;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
   font-size: var(--type-l);
   line-height: var(--leading-l);
+}
+
+.titleText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * The video wall's row has no pointer for a `title` and no click to open the sheet, so a long title wraps to two
+ * lines before the ellipsis (V3-03.4). `-webkit-box` is the one way to clamp lines; it holds the text alone, so
+ * the glyph beside it stays on the first line.
+ */
+.row[data-readonly='true'] .titleText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .row[data-status='resolved'] .title {
@@ -93,9 +112,9 @@
   font-weight: var(--weight-medium);
 }
 
+/* Centred on the first line: the leading less the glyph's 14 px, halved (4 px, times the scale). */
 .typeIcon {
-  margin-right: var(--space-1-5);
-  vertical-align: middle;
+  margin: var(--space-1) var(--space-1-5) 0 0;
   color: var(--text-secondary);
 }
 
@@ -136,9 +155,13 @@
   color: var(--text-tertiary);
 }
 
-/* The zone gives way first on a narrow feed (300 px at ≤ 1100 px); status and code stay whole. */
+/*
+ * The zone gives way on a narrow feed (300 px at ≤ 1100 px) but keeps a floor: Inter is wider than the family this
+ * was drawn for, and a zone cut to nothing says nothing (V3-03.4). Its full name is the `title`; status and code
+ * stay whole.
+ */
 .zone {
-  min-width: 0;
+  min-width: calc(48px * var(--ui-scale));
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -146,18 +169,24 @@
 /*
  * The category of an incident in the user's scope (frame 09 `.role-tag`). It keeps its own surface,
  * so a row's tint does not change its contrast (`--text-secondary` on `--surface-3`, a pair
- * `scripts/contrast.ts` checks). `flex: none`: the zone gives way first on a narrow feed.
+ * `scripts/contrast.ts` checks). It is the first to give way (with the full text as its `title`), so the
+ * status, the zone's floor and the code never push the row past the column. A block, not a flex box, so
+ * the ellipsis applies to its text; the line height centres the text in the 20 px pill.
  */
 .tag {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
+  flex: 0 1 auto;
+  display: block;
+  min-width: 0;
   height: calc(20px * var(--ui-scale));
   padding: 0 var(--space-1-5);
+  overflow: hidden;
   border-radius: var(--radius-s);
   background: var(--surface-3);
   font-family: var(--font-ui);
   font-size: var(--type-xs);
+  line-height: calc(20px * var(--ui-scale));
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-secondary);
 }
 

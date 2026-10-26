@@ -64,7 +64,7 @@ export function CameraTile({
   const zoneLine = [zoneName, link ? camera.code : null].filter(Boolean).join(' · ');
 
   return (
-    <figure className={styles.tile} data-linked={link}>
+    <figure className={styles.tile} data-linked={link} data-readonly={readOnly || undefined}>
       <CameraFeed camera={camera} readOnly={readOnly} />
 
       <div className={styles.top}>
@@ -116,8 +116,14 @@ export function CameraTile({
 
       <figcaption className={styles.caption}>
         <span className={styles.names}>
-          <span className={styles.name}>{camera.name}</span>
-          {!compact && zoneLine && <span className={styles.secondary}>{zoneLine}</span>}
+          <span className={styles.name} title={camera.name}>
+            {camera.name}
+          </span>
+          {!compact && zoneLine && (
+            <span className={styles.secondary} title={zoneLine}>
+              {zoneLine}
+            </span>
+          )}
         </span>
         {!compact && live && <CameraTime className={styles.secondary} />}
       </figcaption>

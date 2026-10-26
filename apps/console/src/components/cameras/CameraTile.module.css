@@ -142,13 +142,28 @@
   min-width: 0;
 }
 
+/*
+ * The two lines of text take the pointer back from `.caption` so their `title` can show on hover (V3-03.4); they
+ * are no wider than their text, so the rest of the picture still passes clicks through.
+ */
 .name {
+  justify-self: start;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: auto;
   font-size: var(--type-m);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-m);
+}
+
+/* The video wall's tile has no pointer for a `title`: a long name wraps to two lines before the ellipsis. */
+.tile[data-readonly] .name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }
 
 .secondary {
@@ -158,6 +173,13 @@
   color: var(--text-secondary);
   font-size: var(--type-xs);
   line-height: var(--leading-xs);
+}
+
+/* Only the zone line takes the pointer: the time (`CameraTime`) beside it shares the class and has no `title`. */
+.names .secondary {
+  justify-self: start;
+  max-width: 100%;
+  pointer-events: auto;
 }
 
 .hidden {
