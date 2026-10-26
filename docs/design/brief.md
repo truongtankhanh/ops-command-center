@@ -23,6 +23,9 @@ a design instead of inventing one per PR. Every later UI task links the frame it
 - Dark room, 12-hour shift: low overall luminance, no large bright areas, nothing that flickers.
 - Read from 1–2 m on a large display, and at arm's length on a laptop: condensed type for density, 13 px
   is the smallest text, numbers are tabular.
+  _Superseded in part by V3: [ADR-0022](../adr/0022-console-visual-language.md) and
+  [V3 brief § Type and components](v3/brief.md#type-and-components) (12 px is the floor, 11 px for non-actionable
+  metadata)._
 - Attention is split between the console, radio and phone: what needs action must be findable without
   reading, and must not rely on colour alone.
 

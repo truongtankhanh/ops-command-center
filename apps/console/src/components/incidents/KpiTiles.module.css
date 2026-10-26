@@ -36,8 +36,8 @@
 .count {
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
-  font-size: var(--type-2xl);
-  line-height: var(--leading-2xl);
+  font-size: var(--type-kpi);
+  line-height: var(--leading-kpi);
 }
 
 .label {
