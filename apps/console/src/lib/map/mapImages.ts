@@ -70,11 +70,15 @@ const GLYPH_SIZE: Record<IncidentSeverity, number> = {
   high: 13,
   critical: 14,
 };
-const RESOLVED = { radius: 10, glyph: 12 };
+/**
+ * Smaller than every severity step (10 to 12), because Low is a neutral ring now (ADR-0022) and an acknowledged Low
+ * and a resolved incident are otherwise the same disc: ground fill, a 3 px ring, the type glyph.
+ */
+const RESOLVED = { radius: 8, glyph: 10 };
 
 /**
  * The radius of the disc an incident marker draws, in CSS px: the severity's step for an active incident (10, 10, 11,
- * 12) and the neutral 10 for a resolved one. The 3D beacons place their rings and tags from it (V2-16.3).
+ * 12) and the smaller, neutral 8 for a resolved one. The 3D beacons place their rings and tags from it (V2-16.3).
  */
 export const discRadiusOf = (
   form: Extract<MarkerForm, { kind: 'incident' | 'resolved' }>,

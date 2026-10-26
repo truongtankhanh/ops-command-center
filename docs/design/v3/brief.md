@@ -183,6 +183,8 @@ V3-02.4 finds the places that use `--accent` as text (52 lines in 23 files at `0
 not tell Low from a quiet label, and is not asked to**: a Low item carries the info glyph, the word "Low" and its place
 in the severity order; its tile has a 15 % tint and a 45 % border, which a status chip (no tint, no severity glyph) has
 not. `--status-open` (`--text-primary`) and `--status-acknowledged` (`--text-secondary`) stay neutral as they are.
+On the map and in 3D, a resolved marker is drawn at radius 8 (was 10, glyph 10 instead of 12), because an acknowledged Low
+is also a neutral ring and would otherwise be the same disc (V3-02.4).
 
 **Warning and danger (resolved in writing).** Hue cannot separate them from the severities: `--warning` is 39° against
 `--sev-high` 34° and `--sev-medium` 48°, and no amber is both clear of High and clear of Medium. So `--warning` is
@@ -191,9 +193,9 @@ desaturated (46 % against High's 74 %), and the V1 rule is enforced by place and
 move: 7° (a warm coral) against `--sev-critical` 346° and `--sev-high` 34°, a gap of 21° and 27° (it was 9° from
 the new critical). Not measurable here: whether an operator tells the new `--warning` from High at 1–2 m. The operations lead
 looks at frame 00 before V3-02.2 merges (`unverified`).
-**Found while checking:** `scripts/contrast.ts` already pairs `--warning` with every `--sev-*-bg` ("a late age" on a
-feed row), so today a warning-coloured age sits on an incident row, against V1's rule. V3-02.4 should change that age to
-`--text-secondary` with a clock glyph (recommendation; the tech lead decides).
+**Found while checking (settled in V3-02.4):** `scripts/contrast.ts` pairs `--warning` with every `--sev-*-bg` for "a late
+age" on a feed row, so a warning-coloured age does sit on an incident row. It is told apart by shape: a clock glyph, a
+heavier weight and the hidden text "past attention time". **It stays in `--warning`.**
 
 **Heat ramp (open question 1, decided here): retuned to the accent's hue, V2's rule stays.**
 

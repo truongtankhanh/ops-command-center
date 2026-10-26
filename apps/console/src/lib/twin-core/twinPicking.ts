@@ -211,7 +211,8 @@ function allowed(ref: PickRef, scope: PickScope): boolean {
 
 /**
  * The extra reach of a beacon's target beyond its disc, in CSS pixels (V2-16.4): the disc grown by this much all
- * round. The smallest disc (10 px) then makes a 28 px target, above the 24 px of WCAG 2.5.8. `unverified`.
+ * round. The smallest disc, a resolved incident's 8 px, then makes a 24 px target: exactly the 24 px of WCAG 2.5.8,
+ * with no margin. `unverified`.
  */
 export const BEACON_HIT_PAD_PX = 4;
 

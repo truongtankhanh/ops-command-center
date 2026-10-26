@@ -57,7 +57,7 @@ describe('glyphStyle', () => {
   it('draws resolved incidents and offline cameras in the tertiary tone', () => {
     expect(glyphStyle({ kind: 'resolved', type: 'medical' })).toMatchObject({
       glyph: incidentTypeIcon('medical'),
-      size: 12,
+      size: 10,
       color: mapColors.textTertiary,
     });
     expect(glyphStyle({ kind: 'camera', online: false })).toMatchObject({
