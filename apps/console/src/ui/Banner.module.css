@@ -1,14 +1,21 @@
-/* Banner (frames 05 / 07 `.banner`): look only, the caller positions it. */
+/*
+ * Banner (frames 05 / 07 `.banner`): look only, the caller positions it. The surface (hairline, radius, glass,
+ * shadow) is the floating `ui/Panel` (V3-04.5); only the warning tone is the banner's own.
+ */
 
 .banner {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
-  border: 1px solid var(--warning);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
+}
+
+/*
+ * Only the colour: `Panel` draws the 1 px border. The extra attribute puts this above `Panel`'s own rule, so it does
+ * not depend on which stylesheet comes last. `--warning` on the glass is a checked graphic pair (`contrast.ts`).
+ */
+.banner[data-variant] {
+  border-color: var(--warning);
 }
 
 .icon {

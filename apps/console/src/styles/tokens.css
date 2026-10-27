@@ -5,7 +5,10 @@
  * Which token goes on which surface, and the contrast each pair reaches: docs/design/tokens.md.
  */
 :root {
-  /* Surfaces: 0 ground, map, inputs · 1 header, feed, sheet · 2 selected row, cards · 3 menu, toast, banner. */
+  /*
+   * Surfaces: 0 ground, map, inputs · 1 header, feed, sheet · 2 selected row, cards · 3 raised small parts (chip and
+   * segment fills, tooltips). The menu, toast, dialog and banner are floating `ui/Panel`s on `--glass-bg` (V3-04.5).
+   */
   --surface-0: #07111f;
   --surface-1: #0d1c2d;
   --surface-2: #12263b;
@@ -52,7 +55,7 @@
   /* The Live pill's fill (`ui/Pill`, tone `signal`): `--signal` text on it is a checked pair. */
   --signal-tint: color-mix(in srgb, var(--signal) 12%, transparent);
 
-  /* Critical text never sits on surface-3 (3.9:1): use the icon there. */
+  /* Critical text never sits on surface-3 (3.9:1) or on a floating panel's glass (3.84:1): use the icon there. */
   --sev-critical: #ff426d;
   --sev-high: #ffad42;
   --sev-medium: #f2d04b;

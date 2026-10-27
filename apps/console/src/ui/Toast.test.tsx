@@ -298,6 +298,8 @@ describe('ToastRegion', () => {
       expect(screen.getByText('Library · INC-000107 · just now')).toBeInTheDocument();
       expect(toastOf('Smoke detector')).toHaveAttribute('data-severity', 'critical');
       expect(toastOf('Saved')).not.toHaveAttribute('data-severity');
+      expect(toastOf('Smoke detector')).toHaveAttribute('data-variant', 'floating');
+      expect(toastOf('Saved')).toHaveAttribute('data-variant', 'floating');
     });
   });
 

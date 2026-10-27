@@ -2,6 +2,7 @@ import { type FocusEvent, useEffect, useRef, useState } from 'react';
 import { Button } from './Button';
 import { Icon } from './Icon';
 import { Check, X } from './icons';
+import { Panel } from './Panel';
 import styles from './Toast.module.css';
 import { dismissToast, type Toast, type ToastAction, TOAST_MS, useToasts } from './toasts';
 
@@ -78,6 +79,8 @@ function controlIn(toast: HTMLElement, control: ToastControl | undefined): HTMLE
  * With an `action`, it has frame 04's actions row (the action, the secondary action if there is one, then
  * Dismiss); without, UI-12's icon-only Dismiss button. An action runs after focus has left the toast, so whatever
  * it opens records a target that still exists as the place to return focus to; the toast goes after either.
+ *
+ * Its surface is the floating `Panel`; the severity border and ring are the toast's own.
  */
 function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLElement) => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -110,8 +113,9 @@ function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLEl
   const { action, secondaryAction } = toast;
 
   return (
-    <div
+    <Panel
       ref={ref}
+      variant="floating"
       className={styles.toast}
       data-toast=""
       data-severity={toast.severity}
@@ -159,6 +163,6 @@ function ToastItem({ toast, onLeave }: { toast: Toast; onLeave: (element: HTMLEl
           onClick={dismiss}
         />
       )}
-    </div>
+    </Panel>
   );
 }

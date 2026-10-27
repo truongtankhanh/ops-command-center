@@ -1,6 +1,7 @@
 /*
  * Frame 06 user menu, as a generic popover. The root positions the panel only; the trigger's
  * layout and size are the consumer's (`triggerClassName`), so no property is set on both sides.
+ * The panel's surface (border, radius, glass, shadow) is the floating `ui/Panel` (V3-04.5), not set here.
  */
 
 .root {
@@ -30,8 +31,4 @@
   width: calc(300px * var(--ui-scale));
   max-width: calc(100vw - 2 * var(--space-4));
   padding: var(--space-1-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
 }
