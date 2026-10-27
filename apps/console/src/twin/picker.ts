@@ -36,7 +36,8 @@ import {
  * geometry: the shells and the boxes are the merged meshes with their `ranges` tables, the models are the
  * instances' own merged static meshes and bound parts, so what is hit is exactly what is seen. A geometry gets
  * a `three-mesh-bvh` bounds tree the first time a mesh using it is registered, and only once, because the
- * instances of a class share their geometry.
+ * instances of a class share their geometry. The tree is built in indirect mode (`accelerate`) so that it never
+ * rewrites the index the tables and the draw groups are positional over.
  *
  * The camera markers and the incident beacons (V2-16.4) are sprites, so they are not meshes in the list: each is
  * projected with the camera of the pick and tested in screen space (`lib/twin-core/twinPicking.ts`). The beacons it is given
@@ -98,10 +99,19 @@ const GROUND = new Plane(new Vector3(0, 1, 0), 0);
 
 const isMesh = (node: Object3D): node is Mesh => (node as Mesh).isMesh === true;
 
-/** Gives `mesh` the accelerated raycast and its geometry a bounds tree, once however many meshes share it. */
+/**
+ * Gives `mesh` the accelerated raycast and its geometry a bounds tree, once however many meshes share it.
+ *
+ * The tree is **indirect**: it keeps its own order of the triangles and leaves the geometry's index as the builders
+ * wrote it. The default build sorts the triangles inside the index array itself, and then a hit's `faceIndex` is a
+ * position in the rewritten array, while everything else is positional over the original one: the pick tables
+ * (`entryAt`, `buildingTable`, `boxTable`) and the draw groups (`applyGroups`, `groupsForLooks`). With four or more
+ * buildings that named another building for a click (the Admin Building came out as the Innovation Hub) and left
+ * the spans of the draw groups holding other buildings' triangles. `twin/pickerTables.test.ts` pins it.
+ */
 function accelerate(mesh: Mesh): void {
   mesh.raycast = acceleratedRaycast;
-  mesh.geometry.boundsTree ??= new MeshBVH(mesh.geometry);
+  mesh.geometry.boundsTree ??= new MeshBVH(mesh.geometry, { indirect: true });
 }
 
 export function createPicker(): Picker {
