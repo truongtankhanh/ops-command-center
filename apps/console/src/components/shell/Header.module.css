@@ -5,6 +5,8 @@
  * `--header-height` is a minimum (V3-05.1): the tiles and the padding already make it in comfortable
  * density, so the brief's 64–72 px is that minimum plus whatever the tallest part needs; nothing
  * caps the top. Surface, hairline and shadow are the V3 elevation tokens, with no glow (ADR-0022).
+ * It is on the whole header, so once the header wraps (two rows, taller than 64 px) the minimum is
+ * inert: it only ever sets the height of a single row (V3-05.4).
  */
 .header {
   position: relative;
@@ -32,7 +34,11 @@
   margin-left: auto;
 }
 
-/* D8: the tiles take their own row (their four-column grid is in KpiTiles.module.css). */
+/*
+ * D8: the tiles take their own row (their four-column grid is in KpiTiles.module.css). This is the
+ * phone layout too: 8 px between the rows and 16 px between the items, and nothing tighter on
+ * purpose (V3-05.4 removed a 720 px rule that only repeated these values).
+ */
 @media (max-width: 1100px) {
   .header {
     flex-wrap: wrap;
@@ -42,12 +48,5 @@
   .header .kpis {
     order: 1;
     width: 100%;
-  }
-}
-
-@media (max-width: 720px) {
-  .header {
-    gap: var(--space-2) var(--space-4);
-    padding: var(--header-pad-y) var(--space-4);
   }
 }
