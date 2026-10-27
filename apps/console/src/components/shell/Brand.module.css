@@ -50,10 +50,16 @@
   line-height: var(--leading-xl);
 }
 
+/* Frame 01: the site is 12 px under the product in the header; the stacked sign-in brand keeps 14. */
 .site {
   margin: 0;
   color: var(--text-secondary);
   font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-xs);
+}
+
+.brand[data-size='lg'] .site {
   font-size: var(--type-m);
   line-height: var(--leading-s);
 }

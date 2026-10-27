@@ -1,4 +1,4 @@
-import type { Incident } from '@occ/contracts';
+import type { Incident, SitePlan } from '@occ/contracts';
 import { screen, within } from '@testing-library/react';
 import { queryKeys } from '../../api/queries';
 import { useConsole } from '../../store';
@@ -28,14 +28,25 @@ const incident = (id: string, overrides: Partial<Incident>): Incident => ({
   ...overrides,
 });
 
-function renderHeader(incidents: Incident[] = []) {
+const SITE_PLAN: SitePlan = {
+  id: 'p',
+  code: 'P',
+  name: 'Langbiang Tech Campus',
+  center: [0, 0],
+  features: [],
+};
+
+/** The site's name is the API's (V3-05.1): seeded by default, so the header makes no request for it. */
+function renderHeader(incidents: Incident[] = [], plan: SitePlan | null = SITE_PLAN) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incidents, incidents);
+  if (plan) client.setQueryData(queryKeys.sitePlan, plan);
   return renderWithQueryClient(<WallHeader screen={2} />, client);
 }
 
 describe('WallHeader', () => {
   beforeEach(() => resetStore(useConsole));
+  afterEach(() => vi.unstubAllGlobals());
 
   it('names the product once, as the page heading, with the site', () => {
     renderHeader();
@@ -44,6 +55,20 @@ describe('WallHeader', () => {
       screen.getByRole('heading', { level: 1, name: 'Ops Command Center' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Langbiang Tech Campus')).toBeInTheDocument();
+  });
+
+  it('draws no site line until the site plan has loaded', () => {
+    // The plan never arrives; nothing is shown in its place.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+    renderHeader([], null);
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Ops Command Center' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(SITE_PLAN.name)).toBeNull();
   });
 
   it('counts the active incidents by severity as the feed and the KPI tiles do', () => {

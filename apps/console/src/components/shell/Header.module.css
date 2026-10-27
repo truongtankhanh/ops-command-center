@@ -1,12 +1,17 @@
 /*
  * Frame 01 header. Positioned so its shadow paints over the workspace, but without a z-index: a
  * stacking context here would keep the user menu (--z-popover) under the incident sheet.
+ *
+ * `--header-height` is a minimum (V3-05.1): the tiles and the padding already make it in comfortable
+ * density, so the brief's 64–72 px is that minimum plus whatever the tallest part needs; nothing
+ * caps the top. Surface, hairline and shadow are the V3 elevation tokens, with no glow (ADR-0022).
  */
 .header {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-height: var(--header-height);
   padding: var(--header-pad-y) var(--space-4);
   background: var(--surface-1);
   box-shadow:

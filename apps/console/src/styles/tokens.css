@@ -237,6 +237,8 @@
   --row-pad-y: var(--space-2);
   --list-gap: var(--space-0-5);
   --header-pad-y: var(--space-2);
+  /* The header's minimum height (V3-05.1): the tiles and the padding already make 64, so only compact grows. */
+  --header-height: calc(64px * var(--ui-scale));
   --kpi-height: calc(48px * var(--ui-scale));
   --strip-pad: var(--space-3);
   --strip-gap: var(--space-3);
@@ -269,6 +271,8 @@
   --row-pad-y: var(--space-1);
   --list-gap: 0px;
   --header-pad-y: var(--space-1);
+  /* 52 = the padding and the tiles below, plus 4: a header a little taller than its content. */
+  --header-height: calc(56px * var(--ui-scale));
   /* 44 = `--leading-kpi` 28 + `--leading-xs` 16, the tile's content; 40 let the label cross the border. */
   --kpi-height: calc(44px * var(--ui-scale));
   --strip-pad: var(--space-2);

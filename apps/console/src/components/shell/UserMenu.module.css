@@ -12,10 +12,12 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: calc(34px * var(--ui-scale));
-  height: calc(34px * var(--ui-scale));
+  width: calc(32px * var(--ui-scale));
+  height: calc(32px * var(--ui-scale));
   border-radius: 50%;
   background: var(--surface-3);
+  /* Frame 01's ring. Decorative (the initials are `aria-hidden`), so no contrast pair is asked of it. */
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
   font-size: var(--type-m);

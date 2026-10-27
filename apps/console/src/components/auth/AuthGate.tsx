@@ -13,6 +13,12 @@ import { Brand } from '../shell/Brand';
 import { useWallReauth } from '../wall/useWallReauth';
 
 /**
+ * The site line of the sign-in screens. They show before there is a token, so there is no API to ask
+ * for the name (the header and the wall read `SitePlan.name`): this is the one site name `src` holds.
+ */
+const SIGN_IN_SITE = 'Langbiang Tech Campus';
+
+/**
  * Renders the console only once the operator is signed in with a role, so no query or socket
  * starts without a token, or with one the API would refuse (ADR-0011). Every other session state
  * gets a full-screen message instead.
@@ -134,7 +140,7 @@ function AuthScreen({
     <main className={styles.screen} aria-busy={busy}>
       <AuthBackdrop />
       <div className={styles.card}>
-        <Brand size="lg" />
+        <Brand size="lg" site={SIGN_IN_SITE} />
         <div className={styles.state}>
           <span className={styles.stateIcon} data-tone={tone}>
             <Icon glyph={glyph} size={22} className={busy ? styles.spin : undefined} />

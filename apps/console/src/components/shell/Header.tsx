@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { useSitePlan } from '../../api/queries';
 import { usePermission } from '../../auth/usePermission';
 import { useShortcut } from '../../lib/shell/useShortcut';
 import { useConsole } from '../../store';
@@ -13,10 +14,13 @@ import { UserMenu } from './UserMenu';
 
 /**
  * The app shell's header (frames 01, 04, 06). Each part reads its own slice of state, so the
- * clock's tick or a new count re-renders that part only, never the whole header.
+ * clock's tick or a new count re-renders that part only, never the whole header. The one read here
+ * is the site's name (`useSitePlan`, reference data that never goes stale), so the header renders
+ * once more when the plan arrives; until then, and if it never does, the brand has no site line.
  */
 export function Header() {
   const canReport = usePermission('incident:report');
+  const { data: plan } = useSitePlan();
   const reporting = useConsole((s) => s.reporting);
   const startReport = useConsole((s) => s.startReport);
   const keysOn = useConsole((s) => s.keyboardShortcuts);
@@ -30,7 +34,7 @@ export function Header() {
 
   return (
     <header className={styles.header}>
-      <Brand />
+      <Brand site={plan?.name} />
       <KpiTiles className={styles.kpis} />
       <div className={styles.conns}>
         <ConnectionPill />

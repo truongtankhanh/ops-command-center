@@ -4,11 +4,16 @@ import styles from './Brand.module.css';
  * Product identity (frames 01 and 08): mark, product name as the page's `h1`, and the site. `md`
  * sits in a row in the header; `lg` is stacked and centred on the sign-in screens.
  *
- * The site is text, not a control, until a site switcher exists. The mark is drawn inline so its
- * colours come from the tokens. `public/favicon.svg` draws the same mark on `--surface-0` instead
- * of `--surface-3`; `scripts/contrast.ts` checks its colours against the tokens.
+ * The site is text, not a control, until a site switcher exists (brief Q10). It is the caller's:
+ * the header and the wall pass the name the API serves (`SitePlan.name`), and the sign-in screens,
+ * which have no token and so no API, pass a static line. With none the line is not drawn, so a name
+ * that has not loaded (or failed) is never replaced by a stale one.
+ *
+ * The mark is drawn inline so its colours come from the tokens. `public/favicon.svg` draws the same
+ * mark on `--surface-0` instead of `--surface-3`; `scripts/contrast.ts` checks its colours against
+ * the tokens.
  */
-export function Brand({ size = 'md' }: { size?: 'md' | 'lg' }) {
+export function Brand({ size = 'md', site }: { size?: 'md' | 'lg'; site?: string }) {
   return (
     <div className={styles.brand} data-size={size === 'lg' ? 'lg' : undefined}>
       <svg className={styles.mark} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
@@ -18,7 +23,7 @@ export function Brand({ size = 'md' }: { size?: 'md' | 'lg' }) {
       </svg>
       <div>
         <h1 className={styles.name}>Ops Command Center</h1>
-        <p className={styles.site}>Langbiang Tech Campus</p>
+        {site && <p className={styles.site}>{site}</p>}
       </div>
     </div>
   );
