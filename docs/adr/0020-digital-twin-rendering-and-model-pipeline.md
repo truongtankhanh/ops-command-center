@@ -225,7 +225,12 @@ their author, checked in CI, and served by nginx as immutable files.
       geometry, share one tree. Bound parts get one too: it is built in the part's local space and holds for a part
       that moves. No tree is rebuilt per frame; disposal on a level change stays V2-19.6's. The raycast is not
       `firstHitOnly`: a merged mesh holds many things and the nearest may be out of scope (a faded box in front of
-      the isolated asset), so every crossing is named and `choose` filters.
+      the isolated asset), so every crossing is named and `choose` filters. **The tree is built in indirect mode**
+      (`{ indirect: true }`; found by 3d-click-wrong-building): the default build sorts the triangles inside the geometry's
+      own index, and a hit's `faceIndex` is then a position in the rewritten array, while the pick tables
+      (`buildingTable`, `boxTable`) and the draw groups (`groupsForLooks`) are positional over the index as the builders
+      wrote it. With the demo's twelve buildings that named the Innovation Hub for a click on the Admin Building.
+      An indirect tree keeps the index untouched, so the tables and the groups stay valid; `twin/pickerTables.test.ts` pins it.
     - **The scope** (`scopeOf`, from the store at the moment of the frame): at campus and building level buildings,
       assets and, while the Cameras layer is on, cameras (the faded buildings of building level stay pickable, so a
       click moves the focus); at asset and part level only the isolated asset and its parts; while a report location
