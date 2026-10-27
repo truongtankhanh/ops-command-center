@@ -1,5 +1,6 @@
 import type { TelemetryPillState } from '../../lib/telemetry/telemetryState';
 import { formatAge } from '../../lib/incidents/incidents';
+import { CONNECTION_LABEL, TELEMETRY_LABEL } from '../../lib/shell/connectionLabels';
 import { formatClockTime } from '../../lib/shared/time';
 import { useNow } from '../../lib/shared/useNow';
 import { useTelemetryStatus } from '../../realtime/telemetryStore';
@@ -12,24 +13,9 @@ import styles from './ConnectionPills.module.css';
 /*
  * The two connection pills (frames 01 and 05): events and telemetry. The header's and the video wall's (V2-21.3) both
  * draw them, so they live here; each reads its own slice of state. The pill itself is `ui/Pill`; here a state picks its
- * tone, and the state is still said by its word and glyph, never by the tone alone.
+ * tone, and the state is still said by its word and glyph, never by the tone alone. The words are
+ * `lib/shell/connectionLabels`, shared with the status bar's health (V3-06.1).
  */
-
-const CONNECTION_LABEL: Record<ConnectionState, string> = {
-  live: 'Live',
-  connecting: 'Connecting…',
-  reconnecting: 'Reconnecting…',
-  offline: 'Offline',
-};
-
-// The wording of V2-08.1; frames 01 and 05 draw `live` and `paused`.
-const TELEMETRY_LABEL: Record<TelemetryPillState, string> = {
-  connecting: 'Telemetry connecting…',
-  live: 'Telemetry',
-  paused: 'Telemetry paused',
-  reconnecting: 'Telemetry reconnecting…',
-  unavailable: 'Telemetry unavailable',
-};
 
 // A link being made is neutral (not yet good or bad news); a live one is `signal` (brief decision 5, not V2's green);
 // one that is down is `warning`. A `Record`, so a new state does not typecheck until it has a tone.
