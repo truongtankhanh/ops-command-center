@@ -193,7 +193,11 @@ const PAIRS: Pair[] = [
   ...SEVERITIES.map((sev) => ({ fg: '--on-accent', bg: sev, min: UI })),
   // The sign-in screens' state glyph on its tinted circle, on the `--surface-1` card (frames 09–11;
   // a graphic, 3:1). The busy circle is `--text-secondary` on `--surface-2`, a pair above.
-  { fg: '--warning', bg: '--warning-tint', over: '--surface-1', min: UI },
+  // `--warning` on its tint is also the text of a warning `Pill` (a lost link, on the header's
+  // `--surface-1`), so it is held to the text bar, which covers the glyph too. The Live pill is
+  // `--signal` on `--signal-tint`, the same way.
+  { fg: '--warning', bg: '--warning-tint', over: '--surface-1', min: TEXT },
+  { fg: '--signal', bg: '--signal-tint', over: '--surface-1', min: TEXT },
   { fg: '--danger', bg: '--danger-tint', over: '--surface-1', min: UI },
   // UI-14 adds no new pair: the toast's kicker, title and detail and its severity border are the
   // `--surface-3` pairs above; a fresh critical row keeps the fresh-row tint pairs; the user menu's

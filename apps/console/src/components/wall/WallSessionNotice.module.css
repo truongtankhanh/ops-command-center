@@ -1,4 +1,4 @@
-/* The connection pills' warning look (`ConnectionPills.module.css`, `offline`): a session that has not been renewed is not live. */
+/* The connection pills' warning look (`ui/Pill`, tone `warning`): a session that has not been renewed is not live. */
 .notice {
   display: inline-flex;
   flex: none;
