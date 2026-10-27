@@ -108,6 +108,9 @@ From the brief's surface rules:
 - **`--signal` is live data**: telemetry lines, the healthy device marker, the Live pill (`--signal` text on
   `--signal-tint`, a checked pair). Text-capable (4.5:1). It is never a severity, never interaction. `--accent-2` is a
   second data series and a hover tint: graphics only (3:1), never text, because it falls under 4.5:1 on `--surface-3`.
+  `ui/Sparkline` draws a series in `--signal` by default and in `--accent-2` as its second tone (`tone="secondary"`), both
+  held to 3:1 as graphics on the surfaces it sits on (`--surface-1`, `--surface-2`); a series over its limit is `--sev` and
+  a stale one is dashed `--text-tertiary`, and either wins over the tone.
 - **`Pill` has three tones** (`ui/Pill`): `neutral` (a link being made, not yet good or bad news), `signal` (live data:
   the Live pill, and the telemetry pill while readings arrive) and `warning` (events or readings not arriving; text on
   `--warning-tint` is a checked pair). The tone never carries the state alone: the word and the glyph do, and the caller
