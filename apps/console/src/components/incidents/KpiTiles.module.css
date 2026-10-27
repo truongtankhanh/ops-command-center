@@ -1,4 +1,11 @@
-/* Frame 01 severity KPI tiles; frame 04 for the escalated critical tile. No animation (UI-14). */
+/*
+ * Frame 01 severity KPI tiles; frame 05 for the escalated critical tile. No animation (UI-14).
+ *
+ * A tile at rest takes its severity's tint and border, the named `--sev-*-bg` / `-border` tokens of
+ * `ui/SeverityBadge` (V3-05.2). The border is decorative: the boundary is carried by the tint, the icon,
+ * the count and the word, and `scripts/contrast.ts` checks the tint pairs, not the border. The only neon
+ * in the header is the pressed tile's 1 px `--accent` edge (ADR-0022).
+ */
 
 .tiles {
   display: flex;
@@ -19,13 +26,9 @@
   padding: 0 var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
-  background: var(--surface-2);
+  background: transparent;
   text-align: left;
   cursor: pointer;
-}
-
-.tile:hover {
-  border-color: var(--border-strong);
 }
 
 .icon {
@@ -38,24 +41,59 @@
   font-weight: var(--weight-semibold);
   font-size: var(--type-kpi);
   line-height: var(--leading-kpi);
+  /* Explicit, so the figures do not depend on inheriting it from `body`. */
+  font-variant-numeric: tabular-nums;
 }
 
+/* 14 px on the 16 px line: the tile's content stays 44 px, as it was at 13 px (see `--kpi-height`). */
 .label {
   color: var(--text-secondary);
   font-family: var(--font-ui);
-  font-size: var(--type-s);
+  font-size: var(--type-m);
   line-height: var(--leading-xs);
 }
 
-/* Order matters inside this module: zero, then hot, then pressed, so selection always shows. */
+/*
+ * Order matters inside this module: severity, then zero, then hot, then pressed, so selection always
+ * shows. Every selector below is (0,2,0) except the zero tile's hover, so the order decides.
+ *
+ * There is no `critical` rule on purpose: a Critical tile with a count is always hot, and one without is
+ * always zero, so its tint would never be seen.
+ */
 
+.tile[data-severity='high'] {
+  background: var(--sev-high-bg);
+  border-color: var(--sev-high-border);
+}
+
+.tile[data-severity='medium'] {
+  background: var(--sev-medium-bg);
+  border-color: var(--sev-medium-border);
+}
+
+.tile[data-severity='low'] {
+  background: var(--sev-low-bg);
+  border-color: var(--sev-low-border);
+}
+
+/* Nothing to count: no tint, and the count and icon dim. The label never does. */
 .tile[data-zero='true'] {
   background: transparent;
+  border-color: var(--border-subtle);
 }
 
 .tile[data-zero='true'] .icon,
 .tile[data-zero='true'] .count {
   color: var(--text-tertiary);
+}
+
+/*
+ * The untinted tile has no severity border to lose, so it can brighten on hover (a tinted one does not).
+ * This selector is more specific than the pressed rule below, so it leaves a pressed tile out: pressing a
+ * zero tile must keep its blue edge under the pointer.
+ */
+.tile:not([data-readonly='true'], [aria-pressed='true'])[data-zero='true']:hover {
+  border-color: var(--border-strong);
 }
 
 .tile[data-hot='true'] {
@@ -68,15 +106,9 @@
   color: var(--text-primary);
 }
 
+/* The tile's own 1 px border turns blue: one pixel in all. A hot tile keeps its ring from the rule above. */
 .tile[aria-pressed='true'] {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
-.tile[data-hot='true'][aria-pressed='true'] {
-  box-shadow:
-    inset 0 0 0 1px var(--accent),
-    0 0 0 3px var(--sev-critical-hot-ring);
 }
 
 /* D8: on their own header row, four equal columns (the header moves the row; see Header.module.css). */
@@ -102,8 +134,4 @@
 /* The video wall's tiles (V2-21.3) are text: no pointer, no hover. */
 .tile[data-readonly='true'] {
   cursor: default;
-}
-
-.tile[data-readonly='true']:hover:not([data-hot='true']) {
-  border-color: var(--border-subtle);
 }

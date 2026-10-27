@@ -98,6 +98,11 @@ From the brief's surface rules:
 - The escalated critical KPI tile (frame 04) uses the same rule on `--sev-critical-hot-bg`, an opaque 18 % mix into
   `--surface-1` (the header): count and label in `--text-primary`, the hue on the icon, the border and the
   `--sev-critical-hot-ring` glow.
+- The other KPI tiles (V3-05.2) take the severity badge's tint and border over `--surface-1`: the count is `--text-primary`
+  and the label `--text-secondary`, both pairs above, and the hue is on the icon (3:1 as a graphic). The border is
+  decorative, as the badge's is. A tile with nothing to count has no tint, and its count and icon are `--text-tertiary` on
+  `--surface-1` (also a pair above); a Critical tile is therefore either hot or untinted. A pressed tile's edge is its own
+  1 px border in `--accent`, the one neon element of the header.
 - **One meaning per hue.** Severity is the only loud _meaning_ (ADR-0022): neon, the accent and live-data colour may
   glow, thinly and on purpose, but never stand for severity, and severity never borrows them. Status (`--status-*`) is
   neutral-based and never uses a severity hue.
