@@ -26,7 +26,7 @@ their family list checked against `--font-ui`; their weight and size copy `--wei
 ## Display modes and density (UI-17)
 
 - **One scale.** `--ui-scale` (`1` on `:root`) multiplies every size token: `--type-*`, `--leading-*`, `--space-*`,
-  `--radius-*`, `--sheet-width`, `--feed-width`, `--toast-width`, `--control-m` / `--control-s` / `--control-dense`, `--kpi-height`.
+  `--radius-*`, `--sheet-width`, `--feed-width`, `--toast-width`, `--control-m` / `--control-s` / `--control-dense`, `--header-height`, `--kpi-height`.
   Each is written as `calc(<laptop px> * var(--ui-scale))`, so at scale 1 every value is the one in the mockups
   (frames at 1440 px). Colours, shadows, motion, the focus ring and z-index do not scale.
 - **Modes by width**, named in `breakpoints` (`tokens.ts`): phone ≤ 720 px (a fallback: the map stacks above the
@@ -40,8 +40,8 @@ their family list checked against `--font-ui`; their weight and size copy `--wei
   `--control-s` 32 px (an action inside a row; the 24 px target floor holds). All of them scale with `--ui-scale`.
 - **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
   (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
-  overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--kpi-height`, `--strip-pad`,
-  `--strip-gap`, `--section-pad-y`. Type sizes never change with density (12 px is the floor for text read from a distance, 11 px only for
+  overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--header-height` (64 px, 56 px compact: the
+  header's minimum height), `--kpi-height`, `--strip-pad`, `--strip-gap`, `--section-pad-y`. Type sizes never change with density (12 px is the floor for text read from a distance, 11 px only for
   non-actionable metadata, [Type scale](#type-scale)); on a
   touch screen (`pointer: coarse`) KPI tiles, feed rows and camera tile actions stay ≥ 44 px.
 - **The sheet's width in script.** `--sheet-inset` is registered with `@property` (`<length>`), so the map reads the
@@ -216,7 +216,7 @@ focus ring. These may stay raw:
   are written as the laptop value times the scale, `calc(34px * var(--ui-scale))`, so they grow with the text on a
   wall; percentages, `ch` / `vh` and `999px` pill radii stay as they are. Shared sizes are tokens: `--sheet-width`
   (440 px, frame 02, until V3-09 resizes it; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
-  `--control-m` / `--control-s` / `--control-dense` (40 / 32 / 36 px, buttons, fields, the account menu's switches), `--kpi-height`. Icon
+  `--control-m` / `--control-s` / `--control-dense` (40 / 32 / 36 px, buttons, fields, the account menu's switches), `--header-height`, `--kpi-height`. Icon
   sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
   multiplies them by the scale — see [icons.md](icons.md).
 - MapLibre numbers in `CampusMap.tsx`, `lib/map/map*.ts`, `lib/map/geo.ts` and `lib/map/sitePlan.ts`: `line-width` and

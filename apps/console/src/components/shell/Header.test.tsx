@@ -1,4 +1,4 @@
-import type { Incident, IncidentSeverity, IncidentStatus } from '@occ/contracts';
+import type { Incident, IncidentSeverity, IncidentStatus, SitePlan } from '@occ/contracts';
 import type { QueryClient } from '@tanstack/react-query';
 import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -137,6 +137,31 @@ describe('Header', () => {
 
     expect(useConsole.getState().reporting).toBe(true);
     expect(useConsole.getState().selectedIncidentId).toBeNull();
+  });
+
+  // The site's name is the API's (`SitePlan.name`), read once (V3-05.1): nothing is drawn under the
+  // product name while the plan has not arrived, and the `fetch` stub above never lets it.
+  describe('site line', () => {
+    const plan: SitePlan = {
+      id: 'p',
+      code: 'P',
+      name: 'Langbiang Tech Campus',
+      center: [0, 0],
+      features: [],
+    };
+
+    it('is absent until the site plan has loaded', () => {
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Ops Command Center' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(plan.name)).toBeNull();
+    });
+
+    it("shows the plan's name under the product once it has loaded", async () => {
+      act(() => client.setQueryData(queryKeys.sitePlan, plan));
+
+      expect(await screen.findByText(plan.name)).toBeInTheDocument();
+    });
   });
 
   // TanStack Query tells its observers about `setQueryData` on a `setTimeout(0)`, so after seeding
