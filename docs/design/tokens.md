@@ -103,9 +103,13 @@ From the brief's surface rules:
   surface and never used as text. `--accent-ink` is the same hue lightened for anything that reads as text or a glyph
   standing in for text (4.5:1 on every surface). `--on-accent` stays dark: white on `--accent` is 3.54:1.
   `--accent-hover` is a hover fill only.
-- **`--signal` is live data**: telemetry lines, the healthy device marker, the Live pill. Text-capable (4.5:1). It is
-  never a severity, never interaction. `--accent-2` is a second data series and a hover tint: graphics only (3:1), never
-  text, because it falls under 4.5:1 on `--surface-3`.
+- **`--signal` is live data**: telemetry lines, the healthy device marker, the Live pill (`--signal` text on
+  `--signal-tint`, a checked pair). Text-capable (4.5:1). It is never a severity, never interaction. `--accent-2` is a
+  second data series and a hover tint: graphics only (3:1), never text, because it falls under 4.5:1 on `--surface-3`.
+- **`Pill` has three tones** (`ui/Pill`): `neutral` (a link being made, not yet good or bad news), `signal` (live data:
+  the Live pill, and the telemetry pill while readings arrive) and `warning` (events or readings not arriving; text on
+  `--warning-tint` is a checked pair). The tone never carries the state alone: the word and the glyph do, and the caller
+  puts `role="status"` on the word it wants announced.
 - **Low is neutral.** `--sev-low` is a steel (`#87a2c4`) and hue does not tell it from a quiet label. A Low item is
   found by its `Info` glyph, the word "Low", its place in the severity order and its 15 % tint with a 45 % border, which
   a status chip does not have. On the map and in 3D a resolved marker is drawn smaller than an acknowledged one, because
@@ -135,8 +139,8 @@ From the brief's surface rules:
   with the values `high` | `standard` | `low`: V3-18 sets it while the 3D view is mounted and removes it when it is not.
   `--panel-blur` is defined only under `:root[data-twin-tier='high']`, so a missing attribute, `standard` and `low` draw
   no blur. Nothing sets the attribute in Phase 1, so no panel is blurred yet; script never reads it.
-- System feedback (`--success`, `--warning`, `--danger`) appears only in the connection pill, banners, toasts and
-  form errors, never on an incident.
+- System feedback (`--success`, `--warning`, `--danger`) appears only in banners, toasts, form errors and the connection
+  pills' lost-link tone (`--warning`; a live link is `--signal`), never on an incident.
 - Layers, bottom to top: `--z-sheet`, `--z-banner`, `--z-popover`, `--z-toast`, `--z-dialog` (a modal confirmation,
   over `--scrim`), `--z-session`. The session-expired banner stays above a dialog, so signing in again is always
   reachable.
@@ -380,7 +384,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--on-accent`       | `--sev-high`                                   | 10.20 | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-medium`                                 | 12.53 | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-low`                                    | 7.21  | 3       | pass                                                                                       |
-| `--warning`         | `--warning-tint` over `--surface-1`            | 7.65  | 3       | pass                                                                                       |
+| `--warning`         | `--warning-tint` over `--surface-1`            | 7.65  | 4.5     | pass                                                                                       |
+| `--signal`          | `--signal-tint` over `--surface-1`             | 8.70  | 4.5     | pass                                                                                       |
 | `--danger`          | `--danger-tint` over `--surface-1`             | 6.23  | 3       | pass                                                                                       |
 | `--accent`          | `--tw-top`                                     | 3.02  | 3       | pass                                                                                       |
 | `--accent`          | `--tw-ground`                                  | 4.84  | 3       | pass                                                                                       |

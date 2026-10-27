@@ -49,6 +49,8 @@
   --accent-2: #8b7cff;
   /* Live data: telemetry lines, the healthy device marker, the Live pill. Never a severity. */
   --signal: #35e7ff;
+  /* The Live pill's fill (`ui/Pill`, tone `signal`): `--signal` text on it is a checked pair. */
+  --signal-tint: color-mix(in srgb, var(--signal) 12%, transparent);
 
   /* Critical text never sits on surface-3 (3.9:1): use the icon there. */
   --sev-critical: #ff426d;
@@ -78,7 +80,7 @@
   --success: #35e0a1;
   --warning: #e2be7a;
   --danger: #ff8a7a;
-  /* The sign-in screens' state circle (frames 09–11): a tint behind the glyph only. */
+  /* The sign-in screens' state circle (frames 09–11), and the warning pill's fill (`ui/Pill`, tone `warning`). */
   --warning-tint: color-mix(in srgb, var(--warning) 12%, transparent);
   --danger-tint: color-mix(in srgb, var(--danger) 12%, transparent);
 

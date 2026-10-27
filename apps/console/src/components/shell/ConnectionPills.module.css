@@ -1,42 +1,9 @@
-/* The connection pills (frames 01, 05), shared by the header and the video wall. */
-
-.pill {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-1-5);
-  height: calc(30px * var(--ui-scale));
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: 999px;
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-weight: var(--weight-semibold);
-  font-size: var(--type-m);
-  line-height: var(--leading-s);
-  white-space: nowrap;
-}
+/* The connection pills (frames 01, 05), shared by the header and the video wall. The pill itself is `ui/Pill`. */
 
 .pillState {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-}
-
-/* Connecting and reconnecting stay neutral: a link being made is not yet good or bad news. */
-.pill[data-state='live'] {
-  border-color: color-mix(in srgb, var(--success) 40%, transparent);
-  background: color-mix(in srgb, var(--success) 10%, transparent);
-  color: var(--success);
-}
-
-/* `paused` and `unavailable` are the telemetry pill's: readings are not coming, as `offline`. */
-.pill[data-state='offline'],
-.pill[data-state='paused'],
-.pill[data-state='unavailable'] {
-  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
-  color: var(--warning);
 }
 
 .age {

@@ -1,0 +1,34 @@
+/* Frame 00 pill: the connection pills (frames 01, 05) and any later status pill. Tones are attributes (ADR-0016 §4). */
+
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: calc(30px * var(--ui-scale));
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-m);
+  line-height: var(--leading-s);
+  white-space: nowrap;
+}
+
+/* `neutral` is the base: a link being made is not yet good or bad news. */
+
+/* Live data (brief decision 5: the Live pill is `--signal`, not V2's green; `--success` stays for system feedback). */
+.pill[data-tone='signal'] {
+  border-color: color-mix(in srgb, var(--signal) 40%, transparent);
+  background: var(--signal-tint);
+  color: var(--signal);
+}
+
+/* Events or readings are not coming. */
+.pill[data-tone='warning'] {
+  border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+  background: var(--warning-tint);
+  color: var(--warning);
+}
