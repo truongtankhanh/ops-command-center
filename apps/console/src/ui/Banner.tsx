@@ -2,12 +2,14 @@ import type { ReactNode } from 'react';
 import styles from './Banner.module.css';
 import { Icon } from './Icon';
 import type { Glyph } from './icons';
+import { Panel } from './Panel';
 
 /**
  * A system message that sits over the console (frames 05 / 07): session expired, live updates
- * paused. It always uses the warning tone. The caller places it (`className`) and picks how it is
- * announced. Use `alert` when the operator must act now, because it interrupts the screen reader.
- * Use `status` for information that clears by itself.
+ * paused. It always uses the warning tone: its surface is the floating `Panel`, and the warning
+ * border is the banner's own. The caller places it (`className`) and picks how it is announced.
+ * Use `alert` when the operator must act now, because it interrupts the screen reader. Use
+ * `status` for information that clears by itself.
  *
  * `children` is the bold message; `detail` an optional secondary line under it (what happens next).
  * Both sit inside the live element, so they are announced together.
@@ -31,13 +33,17 @@ export function Banner({
   children: ReactNode;
 }) {
   return (
-    <div role={role} className={className ? `${styles.banner} ${className}` : styles.banner}>
+    <Panel
+      variant="floating"
+      role={role}
+      className={className ? `${styles.banner} ${className}` : styles.banner}
+    >
       {icon && <Icon glyph={icon} size={20} className={styles.icon} />}
       <div className={styles.text}>
         <div className={styles.message}>{children}</div>
         {detail && <small className={styles.detail}>{detail}</small>}
       </div>
       {action}
-    </div>
+    </Panel>
   );
 }

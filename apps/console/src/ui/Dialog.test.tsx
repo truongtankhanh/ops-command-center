@@ -84,6 +84,7 @@ describe('Dialog', () => {
 
       expect(dialog()).toHaveAttribute('aria-modal', 'true');
       expect(dialog()).toHaveAccessibleDescription('It cannot be undone.');
+      expect(dialog()).toHaveAttribute('data-variant', 'floating');
     });
 
     it('is described by the element it names instead of its whole body', () => {

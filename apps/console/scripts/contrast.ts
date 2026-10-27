@@ -127,6 +127,17 @@ const PAIRS: Pair[] = [
     over: 'glass backdrop, worst case',
     min: TEXT,
   })),
+  // What the floating overlays (V3-04.5: popover, toast, dialog, banner) draw on the glass besides text: the
+  // toast's severity border, ring and icon tile, the banner's border and glyph, and the focus ring and lit edge.
+  // All are graphics (3:1), measured the same way. Critical is 3.84 here, under the text bar, so critical never
+  // reads as text on an overlay (the icon carries the hue). `--border-strong` is not listed: it is 2.64 on the
+  // glass, which is why a `secondary` `Button` stays off the overlays (`primary` or `ghost`).
+  ...[...SEVERITIES, '--warning', '--accent'].map((fg) => ({
+    fg,
+    bg: '--glass-bg',
+    over: 'glass backdrop, worst case',
+    min: UI,
+  })),
   // `--glow-edge`'s 1 px ring is `--accent`, so this is also the lit edge's 3:1 on every surface.
   ...cross(['--accent', '--accent-2'], SURFACES, UI),
   { fg: '--on-accent', bg: '--accent', min: TEXT },
@@ -199,9 +210,9 @@ const PAIRS: Pair[] = [
   { fg: '--warning', bg: '--warning-tint', over: '--surface-1', min: TEXT },
   { fg: '--signal', bg: '--signal-tint', over: '--surface-1', min: TEXT },
   { fg: '--danger', bg: '--danger-tint', over: '--surface-1', min: UI },
-  // UI-14 adds no new pair: the toast's kicker, title and detail and its severity border are the
-  // `--surface-3` pairs above; a fresh critical row keeps the fresh-row tint pairs; the user menu's
-  // sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).
+  // UI-14 adds no new pair: the toast's kicker, title and detail are the glass text pairs and its
+  // severity border the glass graphic pairs above (V3-04.5 moved it off `--surface-3`); a fresh critical
+  // row keeps the fresh-row tint pairs; the user menu's sound switch is `--text-secondary` on `--surface-0` (off) and `--on-accent` on `--accent` (on).
   // Digital twin (V2, frame 00), measured on the top face, the lightest of the three. The edge of a
   // hovered, selected or alarmed part bounds it against the ground and its idle neighbours, so those
   // pairs are held to 3:1; between the part's own faces it only draws the shape.

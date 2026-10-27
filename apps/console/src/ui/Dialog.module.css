@@ -1,4 +1,7 @@
-/* A modal confirmation (UI-11): no frame draws one, so it follows the menu / toast surfaces of frame 00. */
+/*
+ * A modal confirmation (UI-11): no frame draws one, so it takes the menu and toast surface, the floating `ui/Panel`
+ * (V3-04.5), which sets its hairline, radius, glass and shadow. Only the size and padding are set here.
+ */
 
 .scrim {
   position: fixed;
@@ -13,10 +16,6 @@
 .dialog {
   width: min(calc(400px * var(--ui-scale)), 100%);
   padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
 }
 
 /* Room for content such as the camera viewer (UI-13); scrolls inside the scrim on a short screen. */

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Panel } from './Panel';
 import styles from './Popover.module.css';
 
 /**
@@ -21,6 +22,7 @@ import styles from './Popover.module.css';
  *
  * The trigger's look (border, fill when open) is the popover's; its layout and size come from
  * `triggerClassName`. Give the trigger visible text; `triggerLabel` is for a trigger without any.
+ * The panel's surface is the floating `Panel`; the popover only places it.
  *
  * `children` may be a function that gets `close`: an item that opens something else (a dialog)
  * calls it first. It closes the panel and puts focus back on the trigger, so what opens next
@@ -106,7 +108,8 @@ export function Popover({
        * while open, so closed content is not in the DOM at all (e.g. no second copy of the user's
        * name for text queries to trip over).
        */}
-      <div
+      <Panel
+        variant="floating"
         id={panelId}
         role="group"
         aria-label={panelLabel}
@@ -114,7 +117,7 @@ export function Popover({
         className={panelClassName ? `${styles.panel} ${panelClassName}` : styles.panel}
       >
         {open && (typeof children === 'function' ? children(close) : children)}
-      </div>
+      </Panel>
     </div>
   );
 }

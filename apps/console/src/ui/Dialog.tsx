@@ -10,6 +10,7 @@ import {
 import { createPortal } from 'react-dom';
 import styles from './Dialog.module.css';
 import { focusLost } from './focus';
+import { Panel } from './Panel';
 
 const FOCUSABLE = [
   'a[href]',
@@ -34,6 +35,7 @@ const focusables = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLE
  *   Tab and Shift+Tab cycle inside the dialog.
  * - `size="wide"` gives room to content such as the camera viewer (UI-13); the default fits a
  *   confirmation.
+ * - The dialog's surface is the floating `Panel`; the scrim, size and focus behaviour are this component's.
  * - The body is the dialog's description, read out when it opens. For a long body (a list), pass
  *   `describedBy` with the id of the short part that describes it instead.
  * - Escape and a click on the scrim call `onCancel`. Every key pressed inside the dialog is stopped
@@ -115,8 +117,9 @@ export function Dialog({
 
   return createPortal(
     <div className={styles.scrim} onClick={onScrimClick}>
-      <div
+      <Panel
         ref={ref}
+        variant="floating"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -137,7 +140,7 @@ export function Dialog({
         <div ref={actionsRef} className={styles.actions}>
           {actions}
         </div>
-      </div>
+      </Panel>
     </div>,
     document.body,
   );

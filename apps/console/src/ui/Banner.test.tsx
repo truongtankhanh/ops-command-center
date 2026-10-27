@@ -13,6 +13,7 @@ describe('Banner', () => {
 
     const alert = screen.getByRole('alert');
     expect(alert).toHaveTextContent('Your session has expired.');
+    expect(alert).toHaveAttribute('data-variant', 'floating');
     expect(screen.getByRole('button', { name: 'Sign in again' })).toBeInTheDocument();
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });

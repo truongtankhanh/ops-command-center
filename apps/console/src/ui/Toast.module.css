@@ -28,16 +28,17 @@
   gap: var(--space-3);
   align-items: start;
   padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
   pointer-events: auto;
   animation: toast-in var(--duration-base) var(--ease-out);
 }
 
-/* A severity toast (frame 04): border, ring and icon tile in `--sev`; the text stays neutral. */
-.toast[data-severity] {
+/*
+ * A severity toast (frame 04): border, ring and icon tile in `--sev`; the text stays neutral. The surface, hairline,
+ * radius and `--shadow-3` are the floating `ui/Panel` (V3-04.5). The ring is a flat 3 px band, not `--glow-edge`.
+ * `[data-variant]` lifts this above `Panel`'s `box-shadow` (same specificity otherwise), so the result does not
+ * depend on which stylesheet comes last. `--sev` on the glass is a checked graphic pair (`contrast.ts`).
+ */
+.toast[data-severity][data-variant] {
   border-color: var(--sev);
   box-shadow:
     var(--shadow-3),

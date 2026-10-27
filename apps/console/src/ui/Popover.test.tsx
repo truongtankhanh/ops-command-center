@@ -31,6 +31,7 @@ describe('Popover', () => {
     const hidden = screen.getByRole('group', { hidden: true });
     expect(hidden).toHaveAttribute('aria-label', 'Account details');
     expect(hidden).toHaveAttribute('hidden');
+    expect(hidden).toHaveAttribute('data-variant', 'floating');
     expect(hidden).toHaveAttribute('id', trigger().getAttribute('aria-controls'));
     expect(screen.queryByRole('button', { name: 'Inside', hidden: true })).toBeNull();
   });

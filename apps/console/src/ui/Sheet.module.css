@@ -1,6 +1,7 @@
 /*
  * Frame 02's sheet: over the right of the stage (its containing block), the full stage height with
  * the camera strip (brief, approved decision 4). The map keeps its size and pads by the same width.
+ * It stays a flat `--surface-1` (V3-04.5): not a floating `Panel`, which is for the small overlays.
  */
 .sheet {
   position: absolute;
@@ -13,6 +14,8 @@
   width: min(var(--sheet-width), 100%);
   min-height: 0;
   overflow-y: auto;
+  /* Flush with the stage's top, right and bottom, so the left corners are the only ones that show. */
+  border-radius: var(--radius-l) 0 0 var(--radius-l);
   background: var(--surface-1);
   box-shadow:
     -1px 0 0 var(--border-subtle),
@@ -40,5 +43,7 @@
     position: fixed;
     inset: 0;
     width: 100%;
+    /* Full screen has no free edge. */
+    border-radius: 0;
   }
 }

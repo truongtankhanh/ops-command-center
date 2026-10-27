@@ -82,14 +82,16 @@ Written `calc(<px> * var(--ui-scale))` like every size token, so the wall modes 
 From the brief's surface rules:
 
 - `--surface-0`: ground, map, inputs. `--surface-1`: header, feed, sheet. `--surface-2`: selected row, cards, action
-  bar. `--surface-3`: menu, toast, banner. Camera tiles sit on `--camera-ground`; a frame with
+  bar. `--surface-3`: raised small parts (chip and segment fills, tooltips). The menu, toast, dialog and banner are
+  floating `Panel`s on `--glass-bg` (see the `Panel` bullet below). Camera tiles sit on `--camera-ground`; a frame with
   no picture (offline, stream unavailable, player pending) is striped `--camera-off-a` / `--camera-off-b`.
-- Text tokens pass 4.5:1 on every surface. Critical text never sits on `--surface-3` (below 4.5:1): use the icon there
-  and keep the label in `--text-primary`.
+- Text tokens pass 4.5:1 on every surface. Critical text never sits on `--surface-3` or on a floating panel's glass
+  (3.84:1 over the worst-case pixel, below 4.5:1): use the icon there and keep the label in `--text-primary`.
 - `--border-strong` marks input and control boundaries on `--surface-0` / `--surface-1` only (≥ 3:1).
   `--border-subtle` is decorative: structure comes from surfaces. So a `secondary` `Button` (its boundary is
-  `--border-strong`) sits only on `--surface-0` / `--surface-1`. On `--surface-2` / `--surface-3` (action bar, toast,
-  menu, banner) use `primary` or `ghost`, or add a checked pair first.
+  `--border-strong`) sits only on `--surface-0` / `--surface-1`. On `--surface-2` / `--surface-3` (action bar) and on a
+  floating `Panel` (toast, menu, dialog, banner; `--border-strong` is 2.64:1 on its glass) use `primary` or `ghost`, or add
+  a checked pair first.
 - A severity badge (`SeverityBadge`, and the checked option of a severity `SegmentedControl`) keeps its label in
   `--text-primary` on the `--sev-*-bg` tint. The hue is only on the icon, the tint and the border. The icon is held
   to 3:1 as a graphic, which is why critical (4.43:1 on its tint) passes.
@@ -132,6 +134,13 @@ From the brief's surface rules:
   held to the `--surface-1` pairs and, because the glass lets the backdrop through, to the same six text tokens on
   `--glass-bg` over a white pixel (the worst case: a bright camera picture), which `contrast.ts` checks below. The
   real backdrop is darker, so those ratios can only rise.
+- **The overlays are floating `Panel`s** (V3-04.5): the `Popover` panel (the user menu), the `Toast`, the `Dialog` and the
+  `Banner` draw their surface through `Panel variant="floating"` and keep only their placement and z-index. Two keep a
+  tone of their own on it: a severity `Toast` has a `--sev` border and a flat 3 px `--sev` ring (not `--glow-edge`), and
+  the `Banner` has a `--warning` border. What they draw on the glass besides text (the severity, `--warning` and
+  `--accent` graphics: borders, ring, icon tile, focus ring) is held to 3:1 over the same worst-case pixel, checked in
+  `contrast.ts` below. `Sheet` is not a `Panel`: it stays a flat `--surface-1` drawer at the sheet width, with the large
+  radius on its free (left) edge only and none when it fills the screen.
 - **The blur and the `data-twin-tier` contract.** A floating `Panel` blurs what is behind it (`--panel-blur`,
   `blur(10px)`, not scaled by `--ui-scale`) only when **all** of these hold: the browser supports `backdrop-filter`, the
   person has not asked for less transparency (`prefers-reduced-transparency: reduce`; a browser that does not know the
@@ -295,6 +304,12 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--status-resolved` | `--glass-bg` over `glass backdrop, worst case` | 5.92  | 4.5     | pass                                                                                       |
 | `--accent-ink`      | `--glass-bg` over `glass backdrop, worst case` | 4.84  | 4.5     | pass                                                                                       |
 | `--signal`          | `--glass-bg` over `glass backdrop, worst case` | 8.62  | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--glass-bg` over `glass backdrop, worst case` | 3.84  | 3       | pass                                                                                       |
+| `--sev-high`        | `--glass-bg` over `glass backdrop, worst case` | 6.95  | 3       | pass                                                                                       |
+| `--sev-medium`      | `--glass-bg` over `glass backdrop, worst case` | 8.55  | 3       | pass                                                                                       |
+| `--sev-low`         | `--glass-bg` over `glass backdrop, worst case` | 4.92  | 3       | pass                                                                                       |
+| `--warning`         | `--glass-bg` over `glass backdrop, worst case` | 7.30  | 3       | pass                                                                                       |
+| `--accent`          | `--glass-bg` over `glass backdrop, worst case` | 3.65  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-0`                                  | 5.35  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-1`                                  | 4.86  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-2`                                  | 4.34  | 3       | pass                                                                                       |
