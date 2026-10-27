@@ -149,7 +149,8 @@ describe('asset class glyphs', () => {
         ['cooling_tower', 'fume_hood', 'air_handler'], // air handling
         ['ups', 'transformer'], // electric supply
         ['standby_generator', 'switchgear'], // a power source or switching
-        ['precision_cooling', 'chiller', 'indoor_climate'], // temperature control or measurement
+        ['precision_cooling', 'chiller'], // temperature control
+        ['indoor_climate'], // the temperature sensor, apart from the cooling plants (V3-04.7)
         ['ups_battery'],
         ['lift'],
         ['barrier_arm'],
@@ -189,6 +190,47 @@ describe('asset class glyphs', () => {
       expect(assetClassIcon(code)).toBe(unknownIcon);
     },
   );
+});
+
+// The three classes of V3-A (V3-04.7). The codes are proposals until V3-A.1 fixes them, and the
+// catalogue does not hold them yet, so they are not in `ASSET_CLASS_CODES`: V3-A.5 moves them in and
+// pins the whole list at 19.
+const V3_CLASS_CODES = ['smoke_detector', 'access_controller', 'network_gateway'] as const;
+
+describe('V3 device class glyphs', () => {
+  const stateGlyphs = (['running', 'standby', 'nodata', 'offline'] as const).map(assetStateIcon);
+  const cameraGlyphs = [true, false].map(cameraIcon);
+
+  it('gives each of the three classes a glyph, never the generic one', () => {
+    for (const code of V3_CLASS_CODES) {
+      expect(assetClassIcon(code), code).not.toBe(unknownIcon);
+    }
+  });
+
+  it('draws the smoke detector, access controller, gateway and temperature sensor apart', () => {
+    const glyphs = [...V3_CLASS_CODES, 'indoor_climate'].map(assetClassIcon);
+    expect(new Set(glyphs).size).toBe(4);
+  });
+
+  it('gives the three classes a glyph that no catalogue class draws', () => {
+    const catalogue = new Set(ASSET_CLASS_CODES.map(assetClassIcon));
+    for (const code of V3_CLASS_CODES) {
+      expect(catalogue.has(assetClassIcon(code)), code).toBe(false);
+    }
+  });
+
+  it('never gives them, or the temperature sensor, the glyph of a state or of a camera', () => {
+    for (const code of [...V3_CLASS_CODES, 'indoor_climate']) {
+      expect(stateGlyphs, code).not.toContain(assetClassIcon(code));
+      expect(cameraGlyphs, code).not.toContain(assetClassIcon(code));
+    }
+  });
+
+  // The temperature sensor is `indoor_climate`, which has no class of its own in V3.
+  it('draws the temperature sensor apart from the cooling plants', () => {
+    expect(assetClassIcon('indoor_climate')).not.toBe(assetClassIcon('precision_cooling'));
+    expect(assetClassIcon('indoor_climate')).not.toBe(assetClassIcon('chiller'));
+  });
 });
 
 describe('asset state glyphs', () => {

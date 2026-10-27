@@ -38,6 +38,7 @@ import {
   HardHat,
   HeartPulse,
   Info,
+  KeyRound,
   type LucideIcon,
   OctagonAlert,
   Package,
@@ -45,12 +46,15 @@ import {
   Power,
   Radio,
   RefreshCw,
+  Router,
   ServerOff,
   ShieldUser,
+  Siren,
   SprayCan,
   SquareParking,
   Stethoscope,
   Thermometer,
+  ThermometerSun,
   Tornado,
   TreeDeciduous,
   Trees,
@@ -208,9 +212,13 @@ export const telemetryIcon = (state: TelemetryPillState) => TELEMETRY_ICONS[stat
 // An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
 // states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),
 // `Zap` electric supply (also `power_outage`), `Power` a power source or switching, `Thermometer`
-// temperature control or measurement; `ArrowUpDown`, `Fence`, `Droplet` and `Cylinder` are the glyph
-// of the incident type or zone kind that means the same (`lift_entrapment`, `gate`, `water_leak`,
-// `gas_leak`).
+// temperature control (the cooling plants); `ArrowUpDown`, `Fence`, `Droplet` and `Cylinder` are the
+// glyph of the incident type or zone kind that means the same (`lift_entrapment`, `gate`,
+// `water_leak`, `gas_leak`).
+//
+// Not shared: `ThermometerSun`, ambient temperature measurement (`indoor_climate`, the direction's
+// temperature sensor), so a sensor is not drawn as a cooling plant; and `Siren`, `KeyRound` and
+// `Router`, one class each (V3-04.7).
 //
 // A class code is open data (a newer API can send one this build lacks) and the contract has no list
 // of them, so unlike the maps above nothing fails `typecheck` for a class missing here: it draws
@@ -227,13 +235,18 @@ const ASSET_CLASS_ICONS = new Map<string, Glyph>([
   ['switchgear', Power],
   ['precision_cooling', Thermometer],
   ['chiller', Thermometer],
-  ['indoor_climate', Thermometer],
+  ['indoor_climate', ThermometerSun],
   ['lift', ArrowUpDown],
   ['barrier_arm', Fence],
   ['leak_sensor', Droplet],
   ['gas_detector', Cylinder],
   // Its headline point is the discharge pressure.
   ['booster_pump', Gauge],
+  // The three classes of V3-A, mapped ahead of the seed (V3-04.7). The codes are proposals until
+  // V3-A.1 fixes them; if one changes, this map follows or the class draws `unknownIcon`.
+  ['smoke_detector', Siren],
+  ['access_controller', KeyRound],
+  ['network_gateway', Router],
 ]);
 
 export const assetClassIcon = (classCode: string): Glyph =>
