@@ -1,8 +1,13 @@
 /*
  * Sparkline (V2 frames 03, 05, 10, 15; the mockups' `twin.css` `.spark`). State is an attribute:
- * `data-severity` for a series over its limit, `data-stale` for one that stopped (ADR-0016).
- * It sets its own `--sev` only through its own `data-severity`, never through an ancestor's: an
- * incident row's severity must not tint a reading that is within its limit.
+ * `data-severity` for a series over its limit, `data-stale` for one that stopped, `data-tone` for
+ * the second series (ADR-0016). It sets its own `--sev` only through its own `data-severity`,
+ * never through an ancestor's: an incident row's severity must not tint a reading that is within
+ * its limit.
+ *
+ * The line and the dot are `--signal` (live data, V3-04.6, brief § Inspector) and `--accent-2` for
+ * `data-tone='secondary'`; `--accent` is for interaction and is not used here. The rules below
+ * all have the same specificity, so their order is the contract: tone, then severity, then stale.
  */
 
 .spark {
@@ -16,7 +21,7 @@
 
 .line {
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--signal);
   stroke-width: 1.5;
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -29,7 +34,16 @@
 }
 
 .dot {
-  fill: var(--accent);
+  fill: var(--signal);
+}
+
+/* Before the severity and stale rules on purpose: they must win over the tone. */
+.spark[data-tone='secondary'] .line {
+  stroke: var(--accent-2);
+}
+
+.spark[data-tone='secondary'] .dot {
+  fill: var(--accent-2);
 }
 
 .spark[data-severity] .line {

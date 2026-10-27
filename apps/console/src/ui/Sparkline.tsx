@@ -9,6 +9,9 @@ import styles from './Sparkline.module.css';
 /** What `over` can tint the line with; the same four words as an incident's severity. */
 export type SparklineSeverity = 'critical' | 'high' | 'medium' | 'low';
 
+/** The series' hue: live data, or the second series on the same area (V3-04.6, brief § Inspector). */
+export type SparklineTone = 'signal' | 'secondary';
+
 /** SVG attributes need no more than a hundredth of a viewBox unit. */
 const round = (n: number): number => Math.round(n * 100) / 100;
 
@@ -23,15 +26,22 @@ const round = (n: number): number => Math.round(n * 100) / 100;
  * `over` is the severity of the rule the latest reading has passed: the caller decides that, it
  * knows the comparator. `stale` wins over `over` in CSS: a fault keeps its stale values grey.
  * The series is drawn as given and never extended to `to` (see `lib/telemetry/sparkline.ts`).
+ *
+ * `tone` is the hue of a series within its limit: `signal` (default, `--signal`, live data) or
+ * `secondary` (`--accent-2`, a second series on the same area). `data-tone` is set only for
+ * `secondary`, like `data-severity` and `data-stale`. `over` and `stale` win over either tone in
+ * CSS, and the tone alone never says anything the value beside the drawing does not.
  */
 export function Sparkline({
   stale = false,
   over,
+  tone = 'signal',
   className,
   ...series
 }: SparklineInput & {
   stale?: boolean;
   over?: SparklineSeverity;
+  tone?: SparklineTone;
   className?: string;
 }) {
   const { points, dot, limitY } = sparklineGeometry(series);
@@ -43,6 +53,7 @@ export function Sparkline({
       focusable="false"
       data-stale={stale ? true : undefined}
       data-severity={over}
+      data-tone={tone === 'secondary' ? 'secondary' : undefined}
     >
       {limitY !== null && (
         <line

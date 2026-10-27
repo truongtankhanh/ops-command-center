@@ -59,6 +59,48 @@ describe('Sparkline', () => {
     });
   });
 
+  describe('tone', () => {
+    it('carries no tone attribute by default, so the drawing is the live-data signal', () => {
+      expect(draw()).not.toHaveAttribute('data-tone');
+    });
+
+    it('carries none for an explicit signal either: only the second tone is marked', () => {
+      expect(draw({ tone: 'signal' })).not.toHaveAttribute('data-tone');
+    });
+
+    it('marks the second series', () => {
+      expect(draw({ tone: 'secondary' })).toHaveAttribute('data-tone', 'secondary');
+    });
+
+    it('keeps the tone beside severity and staleness, so CSS can let those win', () => {
+      const svg = draw({ tone: 'secondary', over: 'critical', stale: true });
+
+      expect(svg).toHaveAttribute('data-tone', 'secondary');
+      expect(svg).toHaveAttribute('data-severity', 'critical');
+      expect(svg).toHaveAttribute('data-stale');
+    });
+
+    it('draws the same line and dot in either tone', () => {
+      const plain = draw();
+      const polyline = plain.querySelector('polyline')?.getAttribute('points');
+      const dot = plain.querySelector('circle')?.getAttribute('cx');
+      const second = draw({ tone: 'secondary' });
+
+      expect(second.querySelector('polyline')?.getAttribute('points')).toBe(polyline);
+      expect(second.querySelector('circle')?.getAttribute('cx')).toBe(dot);
+    });
+
+    it('has no accessibility violation in the second tone', async () => {
+      const { container } = render(
+        <p>
+          71 °C <Sparkline {...series} limit={0.5} tone="secondary" />
+        </p>,
+      );
+
+      await expectNoAxeViolations(container);
+    });
+  });
+
   describe('parts', () => {
     it('draws the line and the dot of a series, and no limit without one', () => {
       const svg = draw();
