@@ -20,6 +20,7 @@ import {
   eventKindIcon,
   Fan,
   type Glyph,
+  healthIcon,
   incidentTypeIcon,
   severityIcon,
   statusIcon,
@@ -79,6 +80,19 @@ describe('telemetry glyphs', () => {
     expect(telemetryIcon('connecting')).toBe(connectionIcon('connecting'));
     expect(telemetryIcon('reconnecting')).toBe(connectionIcon('reconnecting'));
     expect(telemetryIcon('unavailable')).toBe(connectionIcon('offline'));
+  });
+});
+
+// The status bar's summary (V3-06.2). Its two glyphs are shared with another meaning on purpose, and written in
+// docs/design/icons.md: pinned here, so a slip that moves one fails.
+describe('health glyphs', () => {
+  it('gives healthy and degraded their own glyphs', () => {
+    expect(healthIcon('healthy')).not.toBe(healthIcon('degraded'));
+  });
+
+  it('shares the resolved status glyph and the high severity glyph, on purpose', () => {
+    expect(healthIcon('healthy')).toBe(statusIcon('resolved'));
+    expect(healthIcon('degraded')).toBe(severityIcon('high'));
   });
 });
 

@@ -83,6 +83,7 @@ import type {
   ZoneKind,
 } from '@occ/contracts';
 import type { AssetState } from '../lib/assets/assets';
+import type { SystemHealth } from '../lib/shell/systemHealth';
 import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import type { ConnectionState } from '../store';
 
@@ -208,6 +209,16 @@ const TELEMETRY_ICONS: Record<TelemetryPillState, Glyph> = {
 };
 
 export const telemetryIcon = (state: TelemetryPillState) => TELEMETRY_ICONS[state];
+
+// The status bar's summary (V3-06.2, frame 07). Both glyphs are shared on purpose with another meaning
+// (`CircleCheck` is a resolved status, `TriangleAlert` the High severity): the bar always says the sentence beside the
+// glyph and never draws it in a severity hue, and it sits in the foot, away from the incidents. Written in icons.md.
+const HEALTH_ICONS: Record<SystemHealth['level'], Glyph> = {
+  healthy: CircleCheck,
+  degraded: TriangleAlert,
+};
+
+export const healthIcon = (level: SystemHealth['level']) => HEALTH_ICONS[level];
 
 // An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
 // states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),

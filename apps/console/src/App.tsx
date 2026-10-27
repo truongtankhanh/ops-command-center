@@ -12,6 +12,7 @@ import { OfflineBanner } from './components/shell/OfflineBanner';
 import { ReportIncidentForm } from './components/incidents/ReportIncidentForm';
 import { ShortcutHelp } from './components/shell/ShortcutHelp';
 import { SidePanel } from './components/shell/SidePanel';
+import { StatusBar } from './components/shell/StatusBar';
 import { StageView } from './components/stage/StageView';
 import { TelemetryBanner } from './components/telemetry/TelemetryBanner';
 import { TelemetryWatchSet } from './components/telemetry/TelemetryWatchSet';
@@ -184,6 +185,8 @@ function Console() {
           </div>
         </main>
       </SheetHost>
+      {/* The third grid row (V3-06.2): outside the sheet's host and the stage's stacking context, for every role. */}
+      <StatusBar />
       {/* One viewer for the strip, the detail's tiles and the map's cameras; a modal over everything. */}
       <CameraViewer />
       <ShortcutHelp />

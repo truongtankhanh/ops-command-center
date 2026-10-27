@@ -564,6 +564,8 @@ describe('the console', () => {
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
+    // The status bar (V3-06.2): the foot of the console grid, outside `main`.
+    expect(screen.getByRole('contentinfo', { name: 'System status' })).toBeInTheDocument();
     // The side column holds both panels; the incident list is a region inside it.
     const side = screen.getByRole('complementary', { name: 'Incidents and assets' });
     expect(within(side).getByRole('region', { name: 'Incidents' })).toBeInTheDocument();
@@ -908,10 +910,11 @@ describe('the console', () => {
         renderConsole();
         holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, running: true } } });
 
-        // The reason is said twice on purpose: by the banner, and as the 3D option's own description,
-        // so nothing is lost once the banner is dismissed (`TwinFallbackBanner`).
+        // The reason is said three times on purpose: by the banner, as the 3D option's own description, so
+        // nothing is lost once the banner is dismissed (`TwinFallbackBanner`), and by the status bar's engine
+        // segment (V3-06.2). A device without WebGL 2 is not a fault, so the bar's summary stays "System healthy".
         const reason = "3D view isn't available on this device";
-        expect(screen.getAllByText(reason)).toHaveLength(2);
+        expect(screen.getAllByText(reason)).toHaveLength(3);
         const view = screen.getByRole('group', { name: 'View' });
         expect(within(view).getByRole('button', { name: '2D' })).toBeInTheDocument();
         expect(within(view).getByRole('button', { name: '3D' })).toHaveAccessibleDescription(
@@ -987,8 +990,9 @@ describe('the console', () => {
           const reason = TWIN_UNAVAILABLE_COPY['context-lost'].title;
           expect(screen.queryByRole('group', { name: /^3D view of/ })).toBeNull();
           expect(screen.getByRole('region', { name: 'Campus map' })).toBeInTheDocument();
-          // Said twice on purpose: by the banner and as the 3D option's own description.
-          expect(screen.getAllByText(reason)).toHaveLength(2);
+          // Said four times on purpose: by the banner, as the 3D option's own description, and by the status bar,
+          // whose summary is this fault (the first problem) and whose engine segment says it too (V3-06.2).
+          expect(screen.getAllByText(reason)).toHaveLength(4);
           expect(screen.getByRole('button', { name: '3D' })).toHaveAccessibleDescription(reason);
           await checkPage();
         });

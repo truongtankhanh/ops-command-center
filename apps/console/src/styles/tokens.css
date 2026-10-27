@@ -240,6 +240,8 @@
   /* The header's minimum height (V3-05.1): the tiles and the padding already make 64, so only compact grows. */
   --header-height: calc(64px * var(--ui-scale));
   --kpi-height: calc(48px * var(--ui-scale));
+  /* The status bar's fixed height (V3-06.2, brief § Layout). No compact override: compact shrinks the header and the strip first. */
+  --statusbar-height: calc(32px * var(--ui-scale));
   --strip-pad: var(--space-3);
   --strip-gap: var(--space-3);
   --section-pad-y: var(--space-4);
