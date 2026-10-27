@@ -42,6 +42,7 @@ in the contract, open data rather than a union, so a class this build lacks is e
 | `zoneKindIcon`                   | `building` / `parking` / `gate` / `outdoor` / `sports` / `utility` / `water`                                         | `Building2` / `SquareParking` / `Fence` / `Trees` / `Volleyball` / `UtilityPole` / `WavesHorizontal`                                                                  |
 | `actorKindIcon`                  | `user` / `system`                                                                                                    | `User` / `Cpu`                                                                                                                                                        |
 | `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                                   | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                                                                              |
+| `healthIcon`                     | the status bar's summary: `healthy` / `degraded`                                                                     | `CircleCheck` / `TriangleAlert` (both shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                                |
 | `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                                                                                  |
 | `assetClassIcon`                 | the 16 catalogue class codes and the 3 of V3-A, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))    | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ThermometerSun` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` / `Siren` / `KeyRound` / `Router` |
 | `assetStateIcon`                 | `running` / `standby` / `nodata` / `offline` (a fault uses `severityIcon`; `unknown` has no glyph)                   | `Activity` / `Pause` / `Clock` / `Clock`                                                                                                                              |
@@ -79,6 +80,15 @@ settled when they are wired.
 principle 2), so this is accepted. Rechecked in UI-16: still true everywhere in the DOM. The one place without a
 label is the map's cluster badge (10 px, below), where `medium` / `low` are told apart by the inner mark (the Low hue is a
 neutral steel, so the mark and the label carry it); the cluster's tooltip names the severity and the feed lists every incident.
+
+### The status bar's summary (V3-06.2)
+
+The bar's summary draws `CircleCheck` for "System healthy" and `TriangleAlert` for a degraded console, as frame 07 does. Both
+glyphs have another meaning elsewhere: `CircleCheck` is the `resolved` status and `TriangleAlert` the `high` severity. The share
+is deliberate and holds because the bar always says the sentence next to the glyph, draws it in `--text-primary` or `--warning`
+and never in a severity hue, and sits at the foot of the console, away from the incident list. The bar's segments reuse
+`connectionIcon` and `telemetryIcon` for the two links, and `Box` (3D view) or `MapIcon` (2D map, or 3D unavailable) for the
+engine.
 
 ### V2 values: frame deviations and choices (V2-02.2)
 

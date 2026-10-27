@@ -1,6 +1,11 @@
+/*
+ * Header, workspace, status bar (V3-06.2). The bar's row takes `--statusbar-height` from the stage, which gets it back
+ * when the camera strip collapses (V3-08). On a phone `.workspace` scrolls inside its own `1fr` row, so the bar stays at
+ * the foot of the viewport without `position: sticky`.
+ */
 .console {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto 1fr auto;
   height: 100%;
 }
 
