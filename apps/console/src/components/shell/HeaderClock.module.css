@@ -11,8 +11,11 @@
   font-weight: var(--weight-semibold);
   font-size: var(--type-xl);
   line-height: var(--leading-m);
+  /* Explicit, so the ticking digits keep one width and do not depend on inheriting it from `body` (V3-05.4). */
+  font-variant-numeric: tabular-nums;
 }
 
+/* 13 px, not the frame's 12: the wall's clock is read from a distance and 12 px is the floor (ADR-0022). */
 .clockDate {
   color: var(--text-secondary);
   font-size: var(--type-s);
