@@ -218,15 +218,19 @@ describe('Header', () => {
   });
 
   describe('connection', () => {
+    // The tone is a state's colour, never its only signal (the word and the glyph are). jsdom draws
+    // no colour, so this is where a state → tone slip shows: the maps are `CONNECTION_TONE` and
+    // `TELEMETRY_TONE` in `ConnectionPills.tsx`.
     it.each([
-      ['connecting', 'Connecting…'],
-      ['live', 'Live'],
-      ['reconnecting', 'Reconnecting…'],
-      ['offline', 'Offline'],
-    ] as const)('names the %s state', (connection, label) => {
+      ['connecting', 'Connecting…', 'neutral'],
+      ['live', 'Live', 'signal'],
+      ['reconnecting', 'Reconnecting…', 'neutral'],
+      ['offline', 'Offline', 'warning'],
+    ] as const)('names the %s state', (connection, label, tone) => {
       act(() => useConsole.setState({ connection }));
 
       expect(stateWord(label)).toBeInTheDocument();
+      expect(stateWord(label).parentElement).toHaveAttribute('data-tone', tone);
     });
 
     it('shows how long ago the live link last answered, outside the status region', () => {
@@ -280,21 +284,33 @@ describe('Header', () => {
 
     it('reads "connecting" until the first status is heard', () => {
       expect(stateWord('Telemetry connecting…')).toBeInTheDocument();
+      expect(stateWord('Telemetry connecting…').parentElement).toHaveAttribute(
+        'data-tone',
+        'neutral',
+      );
     });
 
     it.each([
-      ['live', 'Telemetry', { socket: 'live', upstream: 'live' }],
+      ['live', 'Telemetry', 'signal', { socket: 'live', upstream: 'live' }],
       [
         'paused',
         'Telemetry paused',
+        'warning',
         { socket: 'live', upstream: 'paused', upstreamSince: '2026-10-15T08:41:20.000Z' },
       ],
-      ['reconnecting', 'Telemetry reconnecting…', { socket: 'reconnecting', socketSince: 1 }],
-      ['unavailable', 'Telemetry unavailable', { socket: 'unavailable' }],
-    ] as const)('names the %s state', (state, label, patch) => {
+      [
+        'reconnecting',
+        'Telemetry reconnecting…',
+        'neutral',
+        { socket: 'reconnecting', socketSince: 1 },
+      ],
+      ['unavailable', 'Telemetry unavailable', 'warning', { socket: 'unavailable' }],
+    ] as const)('names the %s state', (state, label, tone, patch) => {
       setTelemetry(patch);
 
-      expect(stateWord(label).parentElement).toHaveAttribute('data-state', state);
+      const pill = stateWord(label).parentElement;
+      expect(pill).toHaveAttribute('data-state', state);
+      expect(pill).toHaveAttribute('data-tone', tone);
     });
 
     it('keeps the two pills apart: events down, telemetry live', () => {
