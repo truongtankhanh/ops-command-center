@@ -192,7 +192,7 @@ export function IncidentFeed() {
   );
 }
 
-/** Shaped like `IncidentRow` (tile, title, meta line), so the list does not jump when it arrives. */
+/** Shaped like `IncidentRow` (tile, title, chip line, foot line), so the list does not jump when it arrives. */
 function FeedSkeleton() {
   return (
     <div className={styles.list} aria-busy="true">
@@ -203,6 +203,7 @@ function FeedSkeleton() {
         <div key={row} className={styles.skeletonRow}>
           <Skeleton className={styles.skeletonTile} />
           <Skeleton className={styles.skeletonTitle} />
+          <Skeleton className={styles.skeletonChip} />
           <Skeleton className={styles.skeletonMeta} />
         </div>
       ))}

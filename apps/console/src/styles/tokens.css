@@ -47,6 +47,11 @@
   --accent-ink: #5e9fff;
   --accent-hover: #4f96ff;
   --accent-tint: rgb(49 133 255 / 0.14);
+  /*
+   * The selected feed row (V3-07.2): the accent tint over the raised surface. Opaque, so `contrast.ts` can name it as
+   * the surface under a severity chip.
+   */
+  --row-selected-bg: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
   --on-accent: #07111f;
   /* Secondary data series and hover tint. Graphics only (3:1): it falls under 4.5:1 on surface-3. */
   --accent-2: #8b7cff;
