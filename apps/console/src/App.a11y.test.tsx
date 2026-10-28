@@ -2102,9 +2102,11 @@ describe('the console', () => {
           await userEvent.keyboard('{ArrowLeft}');
           expect(rig.rotateBy).toHaveBeenCalledExactlyOnceWith(15);
 
-          // The Assets tab with the arrow (automatic activation), then its first asset with Enter.
-          await tabTo(() => document.activeElement?.getAttribute('role') === 'tab');
-          expect(document.activeElement).toHaveAccessibleName(/^Incidents/);
+          // The Assets tab with the arrow (automatic activation), then its first asset with Enter. The camera strip
+          // follows the stage and has a tab stop of its own (its filter), so the target is named, not the first tab.
+          await tabTo(
+            () => document.activeElement === screen.getByRole('tab', { name: /^Incidents/ }),
+          );
           await userEvent.keyboard('{ArrowRight}');
           expect(screen.getByRole('tab', { name: /^Assets/ })).toHaveAttribute(
             'aria-selected',

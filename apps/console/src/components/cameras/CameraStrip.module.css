@@ -1,14 +1,110 @@
 /*
- * Frame 01's camera strip under the map: one row, as many columns as tiles (`--strip-columns`, set
- * by the component from the display mode). Compact density tightens its padding and gap.
+ * Frame 13's camera strip under the map: a header row (title and count, the filter, the collapse button) over one
+ * row of tiles, as many columns as tiles (`--strip-columns`, set by the component from the display mode). Compact
+ * density tightens its padding and gap.
+ *
+ * The header is a grid of five columns: title, count, the filter (or "N offline" when collapsed), a free column for
+ * "View all" (V3-08.4) and the button. The children are placed by column, not by their order in the DOM, where the
+ * button comes first so that Tab reaches the control before the tiles it controls.
+ *
+ * `--strip-height` is a budget, not a fixed height (V3-08.2): what is left of it after the padding, the header and
+ * one gap is the tile's height, and the tile (16 : 9, `CameraTile`) is no wider than that implies. A narrow stage
+ * shrinks the tiles below it; a wide one leaves the end of the row empty, as the frame does.
  */
 .strip {
+  --strip-head: calc(28px * var(--ui-scale));
+  --strip-tile-height: calc(
+    var(--strip-height) - 2 * var(--strip-pad) - var(--strip-head) - var(--strip-gap)
+  );
   display: grid;
-  grid-template-columns: repeat(var(--strip-columns, 4), minmax(0, 1fr));
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  /* One row: the tiles' row is implicit, so a collapsed strip has no second row (and no gap for it). */
+  grid-template-rows: minmax(var(--strip-head), auto);
+  align-items: center;
   gap: var(--strip-gap);
   padding: var(--strip-pad) var(--space-4);
   box-shadow: inset 0 1px 0 var(--border-subtle);
   background: var(--surface-1);
+}
+
+/* Collapsed: the header row alone, 28 + 2 x 6 = 40 px. */
+.strip[data-collapsed] {
+  padding-block: var(--space-1-5);
+}
+
+.title {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+  font-size: var(--type-m);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-m);
+  white-space: nowrap;
+}
+
+.count {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+/* A word and a number, not a colour: a camera lost while the strip is collapsed. */
+.offline {
+  grid-column: 3;
+  grid-row: 1;
+  font-size: var(--type-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.toggle {
+  grid-column: 5;
+  grid-row: 1;
+  display: inline-grid;
+  place-items: center;
+  width: var(--strip-head);
+  height: var(--strip-head);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--surface-3);
+}
+
+/* Down while the tiles are shown, up once they are hidden (frame 13). The chevron turns without a transition. */
+.toggle[aria-expanded='false'] .chevron {
+  transform: rotate(180deg);
+}
+
+/* The chips' list sits in the header: no padding of its own, one row. Under the attribute rules of `Tabs`. */
+.strip .tabs[data-appearance='chips'] {
+  grid-column: 3;
+  grid-row: 1;
+  flex-wrap: nowrap;
+  padding: 0;
+}
+
+.panel {
+  grid-column: 1 / -1;
+}
+
+/* `display` only while shown, so the `hidden` attribute keeps hiding the row a collapsed strip leaves empty. */
+.tiles:not([hidden]) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(
+    var(--strip-columns, 4),
+    minmax(0, calc(var(--strip-tile-height) * 16 / 9))
+  );
+  justify-content: start;
+  gap: var(--strip-gap);
 }
 
 /* A tile while the camera list loads, shaped as `CameraTile`, so the strip keeps its height. */
@@ -17,7 +113,7 @@
   border-radius: var(--radius-m);
 }
 
-/* Retrying, failed or no cameras: one message across the strip instead of the tiles. */
+/* Retrying, failed, no cameras or none of the filter's: one message across the strip instead of the tiles. */
 .message {
   grid-column: 1 / -1;
   margin: 0;
@@ -33,8 +129,35 @@
   white-space: nowrap;
 }
 
+/* Touch screens: the button is a 44 px target, as the chips are (`Tabs`); the header row grows to fit. */
+@media (pointer: coarse) {
+  .toggle {
+    width: calc(44px * var(--ui-scale));
+    height: calc(44px * var(--ui-scale));
+  }
+}
+
+/* A tablet: two columns of tiles, which are as wide as the strip lets them (the budget is the laptop's). */
 @media (max-width: 1100px) {
-  .strip {
+  .tiles:not([hidden]) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-content: normal;
+  }
+}
+
+/* A phone: the title, count and button would not fit beside three chips, so the chips take a row of their own. */
+@media (max-width: 720px) {
+  .strip .tabs[data-appearance='chips'] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .offline {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .panel {
+    grid-row: 3;
   }
 }

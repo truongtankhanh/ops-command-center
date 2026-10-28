@@ -1,4 +1,4 @@
-import type { Asset, Camera, Incident, Zone } from '@occ/contracts';
+import type { Asset, Camera, Incident, StreamDescriptor, Zone } from '@occ/contracts';
 import { QueryClient } from '@tanstack/react-query';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -8,6 +8,7 @@ import { offsetM } from '../../lib/map/geo';
 import { useConsole } from '../../store';
 import {
   createTestQueryClient,
+  expectNoAxeViolations,
   renderWithQueryClient,
   resetStore,
   stubViewportWidth,
@@ -309,7 +310,8 @@ describe('CameraStrip', () => {
 
       renderStrip({ cameras: null });
 
-      expect(strip().querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
+      // The skeleton is a span; the header button's chevron is an `aria-hidden` svg and is not a tile.
+      expect(strip().querySelectorAll('span[aria-hidden="true"]')).toHaveLength(6);
     });
 
     it('keeps pinned cameras first on a wall', () => {
@@ -320,6 +322,305 @@ describe('CameraStrip', () => {
 
       expect(tileNames()).toHaveLength(6);
       expect(tileNames().slice(0, 2)).toEqual(['Camera 9', 'Camera 8']);
+    });
+  });
+
+  // V3-08.2: the header row (frame 13), the filter and the collapse button.
+  describe('header, filter and collapse', () => {
+    const STORAGE_KEY = 'occ.console.stripCollapsed';
+
+    /** Three online and two offline cameras; by code, an online camera comes before an offline one. */
+    const mixed = [
+      camera({ id: 'a', code: 'CAM-A', name: 'Atrium', online: true }),
+      camera({ id: 'b', code: 'CAM-B', name: 'Back gate', online: false }),
+      camera({ id: 'c', code: 'CAM-C', name: 'Canteen', online: true }),
+      camera({ id: 'd', code: 'CAM-D', name: 'Dock', online: false }),
+      camera({ id: 'e', code: 'CAM-E', name: 'East road', online: true }),
+    ];
+
+    /** An online camera needs a stream descriptor, or its tile asks for one and draws a canvas jsdom lacks. */
+    const hls = (cameraId: string): StreamDescriptor => ({
+      kind: 'hls',
+      cameraId,
+      label: cameraId,
+      url: 'https://video.example/live.m3u8',
+    });
+
+    function renderMixed(cameras: Camera[] = mixed) {
+      const client = createTestQueryClient();
+      for (const c of cameras) if (c.online) client.setQueryData(queryKeys.stream(c.id), hls(c.id));
+      return renderStrip({ cameras, client });
+    }
+
+    const heading = () => within(strip()).getByRole('heading', { name: 'Camera feeds' });
+    const tab = (name: string) => within(strip()).getByRole('tab', { name });
+    const toggle = (name: 'Hide cameras' | 'Show cameras') =>
+      within(strip()).getByRole('button', { name });
+    const tiles = () => within(strip()).queryAllByRole('figure');
+    const tileNames = () =>
+      tiles().map((tile) => tile.querySelector('figcaption')?.textContent ?? '');
+
+    beforeEach(() => localStorage.clear());
+
+    describe('the header', () => {
+      it('has the title, the number of cameras and the three filters with their counts', () => {
+        renderMixed();
+
+        expect(heading().nextElementSibling).toHaveTextContent('5');
+        expect(
+          within(strip()).getByRole('tablist', { name: 'Filter cameras' }),
+        ).toBeInTheDocument();
+        expect(tab('All 5')).toHaveAttribute('aria-selected', 'true');
+        expect(tab('Live 3')).toHaveAttribute('aria-selected', 'false');
+        expect(tab('Offline 2')).toHaveAttribute('aria-selected', 'false');
+      });
+
+      it('keeps the name "Cameras" for the region', () => {
+        renderMixed();
+
+        expect(strip()).toBe(screen.getByRole('region', { name: 'Cameras' }));
+      });
+
+      it('shows no count and no filter while the cameras load', () => {
+        renderStrip({ cameras: null });
+
+        expect(heading()).toBeInTheDocument();
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(heading().nextElementSibling).toBe(toggle('Hide cameras'));
+      });
+
+      it('shows no count and no filter when the cameras could not be loaded', async () => {
+        camerasAnswers = [() => apiError(500, 'Internal server error')];
+        renderStrip({ cameras: null });
+
+        expect(await screen.findByText('Cameras could not be loaded.')).toBeInTheDocument();
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(heading().nextElementSibling).toBe(toggle('Hide cameras'));
+      });
+
+      it('shows no count and no filter while too many requests are retried', async () => {
+        const client = new QueryClient({
+          defaultOptions: { queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay } },
+        });
+        camerasAnswers = [() => apiError(429, 'Too many requests')];
+        const { unmount } = renderStrip({ cameras: null, client });
+
+        await screen.findByText(RATE_LIMITED_RETRYING);
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(heading().nextElementSibling).toBe(toggle('Hide cameras'));
+
+        unmount();
+        await client.cancelQueries();
+      });
+
+      it('counts a site with no camera as 0 and offers nothing to filter', () => {
+        renderStrip({ cameras: [] });
+
+        expect(heading().nextElementSibling).toHaveTextContent('0');
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(screen.getByText('No cameras are set up on this site.')).toBeInTheDocument();
+      });
+    });
+
+    describe('the filter', () => {
+      it('lists every camera, online first, under All', () => {
+        renderMixed();
+
+        // Four tiles on a laptop; the fifth camera (Dock, offline) is the one left out.
+        expect(tileNames().map((name) => name.slice(0, 4))).toEqual([
+          'Atri',
+          'Cant',
+          'East',
+          'Back',
+        ]);
+      });
+
+      it('narrows the tiles to the online cameras under Live, and to the others under Offline', async () => {
+        renderMixed();
+
+        await userEvent.click(tab('Offline 2'));
+        expect(tab('Offline 2')).toHaveAttribute('aria-selected', 'true');
+        expect(tileNames()).toHaveLength(2);
+        expect(tileNames()[0]).toContain('Back gate');
+        expect(tileNames()[1]).toContain('Dock');
+
+        await userEvent.click(tab('Live 3'));
+        expect(tileNames()).toHaveLength(3);
+        expect(tileNames()[0]).toContain('Atrium');
+        expect(tileNames()[2]).toContain('East road');
+
+        await userEvent.click(tab('All 5'));
+        expect(tileNames()).toHaveLength(4);
+      });
+
+      it('keeps the counts of the whole list while a filter is chosen', async () => {
+        renderMixed();
+
+        await userEvent.click(tab('Offline 2'));
+
+        expect(tab('All 5')).toBeInTheDocument();
+        expect(tab('Live 3')).toBeInTheDocument();
+      });
+
+      it('moves with the arrow keys, as tabs do', async () => {
+        renderMixed();
+        await userEvent.click(tab('All 5'));
+
+        await userEvent.keyboard('{ArrowRight}');
+
+        expect(tab('Live 3')).toHaveAttribute('aria-selected', 'true');
+        expect(tab('Live 3')).toHaveFocus();
+        expect(tileNames()).toHaveLength(3);
+      });
+
+      it('keeps pinned cameras first within the filtered set, and drops a pin the filter excludes', async () => {
+        useConsole.setState({ pinnedCameraIds: ['a', 'd'] });
+        renderMixed();
+
+        expect(tileNames().map((name) => name.slice(0, 4))).toEqual([
+          'Atri',
+          'Dock',
+          'Cant',
+          'East',
+        ]);
+
+        await userEvent.click(tab('Offline 2'));
+
+        // Atrium is pinned but online: not in this set. Dock is pinned and first, Back gate follows.
+        expect(tileNames().map((name) => name.slice(0, 4))).toEqual(['Dock', 'Back']);
+      });
+
+      it('says so when no camera is of the kind chosen', async () => {
+        renderStrip({ cameras: manyCameras(3) });
+
+        await userEvent.click(tab('Live 0'));
+
+        expect(screen.getByText('No live cameras.')).toBeInTheDocument();
+        expect(tiles()).toHaveLength(0);
+        expect(tab('Live 0')).toHaveAttribute('aria-selected', 'true');
+      });
+
+      it('says so for the offline kind too', async () => {
+        renderMixed(mixed.filter((c) => c.online));
+
+        await userEvent.click(tab('Offline 0'));
+
+        expect(screen.getByText('No offline cameras.')).toBeInTheDocument();
+        expect(tiles()).toHaveLength(0);
+      });
+    });
+
+    describe('collapsing', () => {
+      it('has a button that says what it does and what it controls', () => {
+        renderMixed();
+
+        const button = toggle('Hide cameras');
+        expect(button).toHaveAttribute('aria-expanded', 'true');
+        expect(document.getElementById(button.getAttribute('aria-controls') ?? '')).not.toBeNull();
+      });
+
+      it('hides the tiles and the filter, keeps the header, and remembers the choice', async () => {
+        renderMixed();
+
+        await userEvent.click(toggle('Hide cameras'));
+
+        const button = toggle('Show cameras');
+        expect(button).toHaveAttribute('aria-expanded', 'false');
+        expect(tiles()).toHaveLength(0);
+        expect(screen.queryByRole('tablist')).toBeNull();
+        expect(heading()).toBeInTheDocument();
+        expect(heading().nextElementSibling).toHaveTextContent('5');
+        expect(useConsole.getState().stripCollapsed).toBe(true);
+        expect(localStorage.getItem(STORAGE_KEY)).toBe('true');
+        // Still there, empty, so what the button controls always exists.
+        const row = document.getElementById(button.getAttribute('aria-controls') ?? '');
+        expect(row).not.toBeNull();
+        expect(row).not.toBeVisible();
+        expect(row).toBeEmptyDOMElement();
+      });
+
+      it('keeps the button on focus when it collapses and when it expands', async () => {
+        renderMixed();
+
+        await userEvent.click(toggle('Hide cameras'));
+        expect(toggle('Show cameras')).toHaveFocus();
+
+        await userEvent.click(toggle('Show cameras'));
+        expect(toggle('Hide cameras')).toHaveFocus();
+      });
+
+      it('brings the tiles back with the filter that was chosen before', async () => {
+        renderMixed();
+        await userEvent.click(tab('Offline 2'));
+
+        await userEvent.click(toggle('Hide cameras'));
+        await userEvent.click(toggle('Show cameras'));
+
+        expect(tab('Offline 2')).toHaveAttribute('aria-selected', 'true');
+        expect(tileNames()).toHaveLength(2);
+        expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      });
+
+      it('starts collapsed when the store says so', () => {
+        useConsole.setState({ stripCollapsed: true });
+
+        renderMixed();
+
+        expect(toggle('Show cameras')).toHaveAttribute('aria-expanded', 'false');
+        expect(tiles()).toHaveLength(0);
+      });
+
+      it('shows how many cameras are offline while collapsed, so a loss is not hidden', () => {
+        useConsole.setState({ stripCollapsed: true });
+
+        renderMixed();
+
+        expect(within(strip()).getByText('2 offline')).toBeInTheDocument();
+      });
+
+      it('says nothing of offline cameras when expanded, when there are none, or before the list is loaded', () => {
+        const { unmount } = renderMixed();
+        expect(within(strip()).queryByText(/^\d+ offline$/)).toBeNull();
+        unmount();
+
+        useConsole.setState({ stripCollapsed: true });
+        const { unmount: again } = renderMixed(mixed.filter((c) => c.online));
+        expect(within(strip()).queryByText(/^\d+ offline$/)).toBeNull();
+        again();
+
+        renderStrip({ cameras: null });
+        expect(within(strip()).queryByText(/^\d+ offline$/)).toBeNull();
+      });
+
+      it('shows no placeholder while collapsed', () => {
+        useConsole.setState({ stripCollapsed: true });
+
+        renderStrip({ cameras: null });
+
+        expect(screen.queryByText('Loading cameras…')).toBeNull();
+        expect(toggle('Show cameras')).toBeInTheDocument();
+      });
+    });
+
+    describe('accessibility', () => {
+      it('has no axe violations, expanded', async () => {
+        renderMixed();
+
+        await expectNoAxeViolations();
+      });
+
+      it('has no axe violations, collapsed', async () => {
+        useConsole.setState({ stripCollapsed: true });
+        renderMixed();
+
+        await expectNoAxeViolations();
+      });
+
+      it('has no axe violations while the cameras load', async () => {
+        renderStrip({ cameras: null });
+
+        await expectNoAxeViolations();
+      });
     });
   });
 });
