@@ -1,10 +1,12 @@
 /*
  * Frame 18's `.wall`: the header, then the stage and the side column in the frame's 1240 : 680 split. The proportions
- * are of the window, not pixels, so a 4K screen is the same picture; type and spacing follow `--ui-scale`.
+ * are of the window, not pixels, so a 4K screen is the same picture; type and spacing follow `--ui-scale`. The foot is the
+ * status bar (V3-06.4), `--statusbar-height` at the wall's own scale (43.2 px at 1920 px, 86.4 px at 3840 px): the stage
+ * is shorter by that, not narrower, so the split holds.
  */
 .wall {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
   overflow: hidden;
   background: var(--surface-0);

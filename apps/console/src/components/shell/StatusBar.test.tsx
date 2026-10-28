@@ -257,6 +257,85 @@ describe('StatusBar', () => {
     );
   });
 
+  // V3-06.4: the video wall's foot. The console's sentence and segments, with nothing to press (`WallApp.test.tsx` mounts it there).
+  describe('read-only (the video wall)', () => {
+    const INTERACTIVE =
+      'button, a[href], input, select, textarea, summary, [tabindex], [role="button"]';
+
+    it('says what the console does, with nothing to press or tab to', () => {
+      allGood();
+      render(<StatusBar readOnly />);
+
+      expect(bar()).toHaveAttribute('data-level', 'healthy');
+      expect(summary()).toHaveTextContent('System healthy');
+      expect(segment('engine')).toHaveTextContent('3D 3D view');
+      expect(segment('events')).toHaveTextContent('Events Live');
+      expect(segment('telemetry')).toHaveTextContent('Telemetry Live');
+      expect(bar().querySelectorAll(INTERACTIVE)).toHaveLength(0);
+      expect(within(bar()).queryAllByRole('button')).toHaveLength(0);
+    });
+
+    it.each(ROLES)('offers no Settings to a %s', (role) => {
+      useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
+      allGood();
+      render(<StatusBar readOnly />);
+
+      expect(within(bar()).queryByRole('button', { name: 'Settings' })).toBeNull();
+      expect(summary()).toHaveTextContent('System healthy');
+    });
+
+    it("says a lost events link and paused telemetry in the console's words", () => {
+      allGood();
+      render(<StatusBar readOnly />);
+
+      act(() => useConsole.getState().setConnection('offline'));
+      holdTelemetry('paused');
+
+      expect(bar()).toHaveAttribute('data-level', 'degraded');
+      expect(summary()).toHaveTextContent(CONNECTION_LABEL.offline);
+      expect(segment('events')).toHaveTextContent(CONNECTION_LABEL.offline);
+      expect(segment('telemetry')).toHaveTextContent(TELEMETRY_LABEL.paused);
+    });
+
+    it('keeps the summary as the only live region', () => {
+      allGood();
+      render(<StatusBar readOnly />);
+
+      expect(within(bar()).getAllByRole('status')).toEqual([summary()]);
+    });
+
+    it("reads 3D view on a wall whatever 2D/3D choice is stored for the console's operators", () => {
+      allGood();
+      act(() => useConsole.setState({ wall: 2, view: '2d' }));
+      render(<StatusBar readOnly />);
+
+      expect(segment('engine')).toHaveTextContent('3D 3D view');
+      expect(segment('engine')).toHaveAttribute('data-state', 'ok');
+      expect(bar()).toHaveAttribute('data-level', 'healthy');
+    });
+
+    it('still says a 3D fault on a wall, in the fallback banner’s words', () => {
+      allGood();
+      act(() => useConsole.setState({ wall: 2 }));
+      render(<StatusBar readOnly />);
+
+      act(() => useConsole.getState().markTwinLost('too-slow'));
+
+      expect(bar()).toHaveAttribute('data-level', 'degraded');
+      expect(summary()).toHaveTextContent(TWIN_UNAVAILABLE_COPY['too-slow'].title);
+      expect(segment('engine')).toHaveAttribute('data-state', 'warn');
+    });
+
+    it('has no axe violations, healthy or degraded', async () => {
+      allGood();
+      render(<StatusBar readOnly />);
+      await expectNoAxeViolations();
+
+      act(() => useConsole.getState().setConnection('offline'));
+      await expectNoAxeViolations();
+    });
+  });
+
   // V3-06.3: the account menu's rows, in a popover that opens upward. The rows themselves are `SettingsSwitches.test.tsx`'s.
   describe('Settings', () => {
     const settingsButton = () => within(bar()).getByRole('button', { name: 'Settings' });
