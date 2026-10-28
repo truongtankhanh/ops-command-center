@@ -2,7 +2,13 @@ import type { IncidentCategory, IncidentSeverity, LngLat } from '@occ/contracts'
 import { create } from 'zustand';
 import type { ReportPreset } from './lib/assets/assetReport';
 import type { AssetFilter } from './lib/assets/assets';
-import { readPinnedCameras, togglePinned, writePinnedCameras } from './lib/cameras/cameras';
+import {
+  readPinnedCameras,
+  readStripCollapsed,
+  togglePinned,
+  writePinnedCameras,
+  writeStripCollapsed,
+} from './lib/cameras/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/incidents/criticalCue';
 import { type Density, readDensity, writeDensity } from './lib/shell/density';
 import type { FeedFilter } from './lib/incidents/incidents';
@@ -135,6 +141,12 @@ interface ConsoleState extends ReportLocation {
   viewerCameraId: string | null;
   /** Cameras pinned to the strip, in pin order; remembered in this browser. */
   pinnedCameraIds: readonly string[];
+  /**
+   * The camera strip shows only its header row (V3-08.1). Expanded by default; remembered in this browser. On a video
+   * wall it is never collapsed and nothing is written: a wall's window is not a person's preference. The strip's
+   * filter is not here: it is local to the component, a view of the list.
+   */
+  stripCollapsed: boolean;
   /** A sound plays when a critical incident arrives. Off by default; remembered in this browser. */
   criticalSound: boolean;
   /**
@@ -276,6 +288,8 @@ interface ConsoleState extends ReportLocation {
    * the cameras that exist now, so pins of removed cameras are dropped (`togglePinned`).
    */
   toggleCameraPin(cameraId: string, knownIds: readonly string[]): void;
+  /** Collapses or expands the camera strip and remembers it; does nothing on a wall (V3-08.1). */
+  setStripCollapsed(collapsed: boolean): void;
   setCriticalSound(on: boolean): void;
   setKeyboardShortcuts(on: boolean): void;
   openShortcutHelp(): void;
@@ -330,6 +344,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   noteDrafts: {},
   viewerCameraId: null,
   pinnedCameraIds: readPinnedCameras(),
+  // A wall's strip is never collapsed (V3-08.1), whatever was stored: the choice is the operators' consoles', and stays in storage.
+  stripCollapsed: WALL === null && readStripCollapsed(),
   // A wall makes no sound (ADR-0020, V2-21.1): nobody can unlock audio there, and the preference stays as stored.
   criticalSound: WALL === null && readCriticalSound(),
   keyboardShortcuts: readKeyboardShortcuts(),
@@ -491,6 +507,12 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     const pinnedCameraIds = togglePinned(get().pinnedCameraIds, cameraId, knownIds);
     writePinnedCameras(pinnedCameraIds);
     set({ pinnedCameraIds });
+  },
+  setStripCollapsed: (collapsed) => {
+    // Reads the state's `wall`, the value `WALL` gave it, so the guard is the same here and testable without a fresh module.
+    if (get().wall !== null) return;
+    writeStripCollapsed(collapsed);
+    set({ stripCollapsed: collapsed });
   },
   setCriticalSound: (on) => {
     writeCriticalSound(on);
