@@ -147,10 +147,11 @@ const PAIRS: Pair[] = [
   ...cross(['--success', '--warning', '--danger'], SURFACES.slice(1), TEXT),
   ...cross(['--border-strong'], SURFACES.slice(0, 2), UI),
   // Camera tiles and viewer (`CameraTile`, `CameraFeed`): the pills and caption over the picture are a
-  // 75–90 % `--camera-ground`, measured as the solid ground; the LIVE dot is a graphic next to its
-  // label. A frame with no picture is striped `--camera-off-a` / `-b`.
+  // 75–90 % `--camera-ground`, measured as the solid ground; the LIVE dot (`--signal`, V3-08.3) is a graphic next to
+  // its label, and the OFFLINE pill's ring and word are `--text-secondary`, a pair above. A frame with no picture is
+  // striped `--camera-off-a` / `-b`.
   ...cross(['--text-primary', '--text-secondary'], ['--camera-ground'], TEXT),
-  { fg: '--success', bg: '--camera-ground', min: UI },
+  { fg: '--signal', bg: '--camera-ground', min: UI },
   // The over-budget bar under a developer HUD value (V2-19.4): a graphic on the panel, `--text-primary` keeps the text.
   { fg: '--sev-critical', bg: '--camera-ground', min: UI },
   ...cross(['--text-primary', '--text-secondary'], ['--camera-off-a', '--camera-off-b'], TEXT),

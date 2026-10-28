@@ -602,6 +602,20 @@ describe('CameraStrip', () => {
       });
     });
 
+    // V3-08.3: an offline tile says Offline in the strip, where the header's Offline tab says it too.
+    describe('the tile', () => {
+      it("says Offline on an offline camera's tile without confusing the header's tab", () => {
+        renderMixed();
+
+        // One offline camera is among the four tiles shown (Back gate); its pill is hidden from assistive tech.
+        const pills = within(strip())
+          .getAllByText('Offline')
+          .filter((element) => element.getAttribute('aria-hidden') === 'true');
+        expect(pills).toHaveLength(1);
+        expect(tab('Offline 2')).toBeInTheDocument();
+      });
+    });
+
     describe('accessibility', () => {
       it('has no axe violations, expanded', async () => {
         renderMixed();

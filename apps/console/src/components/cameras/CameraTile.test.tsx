@@ -5,7 +5,12 @@ import type { ComponentProps } from 'react';
 import { queryKeys } from '../../api/queries';
 import { getAccessToken } from '../../auth/session';
 import { useConsole } from '../../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
+import {
+  createTestQueryClient,
+  expectNoAxeViolations,
+  renderWithQueryClient,
+  resetStore,
+} from '../../test-utils';
 import { CameraTile } from './CameraTile';
 
 // The session module is tested on its own; here it only decides which token the client sends.
@@ -265,6 +270,94 @@ describe('CameraTile', () => {
 
       expect(screen.getByText('INC-000042')).toBeInTheDocument();
       expect(button('Open CAM-L01 in the viewer')).toBeInTheDocument();
+    });
+  });
+
+  // V3-08.3 (frame 13): the OFFLINE pill, in LIVE's place on the strip's tile only; the buttons in a row.
+  describe('the restyled chrome', () => {
+    const offlineCamera = () => [camera({ online: false })];
+    const unavailable = () =>
+      new Response(JSON.stringify({ statusCode: 500, message: 'boom' }), { status: 500 });
+
+    it("says Offline on a strip tile whose camera is offline, beside the notice's own words", () => {
+      renderTile({}, { cameras: offlineCamera(), streams: false });
+
+      const pill = screen.getByText('Offline');
+      expect(pill).toHaveAttribute('aria-hidden', 'true');
+      expect(screen.getByText('No signal')).toBeInTheDocument();
+      expect(screen.getByText('Camera offline')).toBeInTheDocument();
+      expect(screen.getByText('CAM-L01')).toBeInTheDocument();
+      expect(screen.queryByText('LIVE')).toBeNull();
+    });
+
+    it('says LIVE, and not Offline, on a live tile', () => {
+      renderTile();
+
+      expect(screen.getByText('LIVE')).toBeInTheDocument();
+      expect(screen.queryByText('Offline')).toBeNull();
+    });
+
+    it('does not call an online camera whose stream is unavailable offline', async () => {
+      fetchMock.mockResolvedValueOnce(unavailable());
+      renderTile({}, { streams: false });
+
+      expect(await screen.findByText('Stream unavailable')).toBeInTheDocument();
+      expect(screen.queryByText('Offline')).toBeNull();
+      expect(screen.queryByText('LIVE')).toBeNull();
+    });
+
+    it("leaves the sheet's compact tile and the wall's read-only tile as they were", () => {
+      const compact = renderTile(
+        { variant: 'compact' },
+        { cameras: offlineCamera(), streams: false },
+      );
+      expect(screen.queryByText('Offline')).toBeNull();
+      expect(screen.getByText('CAM-L01')).toBeInTheDocument();
+      compact.unmount();
+
+      renderTile({ readOnly: true }, { cameras: offlineCamera(), streams: false });
+      expect(screen.queryByText('Offline')).toBeNull();
+      expect(screen.getByText('No signal')).toBeInTheDocument();
+    });
+
+    it('keeps the pinned badge beside the pill on a pinned offline tile', () => {
+      const unpinned = renderTile({}, { cameras: offlineCamera(), streams: false });
+      const glyphs = unpinned.container.querySelectorAll('svg').length;
+      unpinned.unmount();
+
+      useConsole.setState({ pinnedCameraIds: ['c1'] });
+      const pinned = renderTile({}, { cameras: offlineCamera(), streams: false });
+
+      expect(screen.getByText('Offline')).toBeInTheDocument();
+      // The badge is one more glyph; the pin button's PinOff replaces its Pin.
+      expect(pinned.container.querySelectorAll('svg')).toHaveLength(glyphs + 1);
+      expect(button('Unpin CAM-L01')).toBeInTheDocument();
+    });
+
+    it('keeps both actions in the Tab order, named, with the full-strip hint on the disabled pin', async () => {
+      useConsole.setState({ pinnedCameraIds: ['c2', 'c3', 'c4', 'c5'] });
+      renderTile({}, { cameras: numbered(5) });
+
+      await userEvent.tab();
+      expect(button('Open CAM-01 in the viewer')).toHaveFocus();
+      await userEvent.tab();
+      const pin = button('Pin CAM-01 to the strip');
+      expect(pin).toHaveFocus();
+      expect(pin).toHaveAttribute('aria-disabled', 'true');
+      expect(pin).toHaveAccessibleDescription(STRIP_FULL);
+    });
+
+    it('has no axe violations on a live tile, an offline tile and a linked tile', async () => {
+      const live = renderTile();
+      await expectNoAxeViolations();
+      live.unmount();
+
+      const offline = renderTile({}, { cameras: offlineCamera(), streams: false });
+      await expectNoAxeViolations();
+      offline.unmount();
+
+      renderTile({ link: 'asset' });
+      await expectNoAxeViolations();
     });
   });
 });

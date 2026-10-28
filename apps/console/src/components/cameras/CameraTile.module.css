@@ -1,12 +1,15 @@
 /*
- * Frame 01 / 02 / 06 camera tile (`.cam*` in the mockups). The pills and caption sit on a 75–90 %
+ * Frame 01 / 02 / 06 / 13 camera tile (`.cam*` in the mockups). The pills and caption sit on a 75–90 %
  * `--camera-ground` over the picture; their text is checked on the solid ground (scripts/contrast.ts).
+ * V3-08.3: a hairline border, the LIVE dot in `--signal`, an OFFLINE pill, and the two actions in a row so they
+ * clear the caption in the strip's small tile (at most about 188 x 106 px, `CameraStrip.module.css`).
  */
 .tile {
   --pill-height: calc(20px * var(--ui-scale));
   position: relative;
   aspect-ratio: 16 / 9;
   margin: 0;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
   overflow: hidden;
   background: var(--camera-ground);
@@ -65,7 +68,23 @@
   width: calc(7px * var(--ui-scale));
   height: calc(7px * var(--ui-scale));
   border-radius: 50%;
-  background: var(--success);
+  background: var(--signal);
+}
+
+/*
+ * OFFLINE, in LIVE's place (strip tile only): the same weight and spacing, in `--text-secondary`, and a ring where LIVE
+ * has a filled dot, so the two differ by shape and by word, not by colour alone. Both are pairs on `--camera-ground`
+ * that `scripts/contrast.ts` already holds.
+ */
+.pill[data-state='offline'] {
+  color: var(--text-secondary);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+}
+
+.pill[data-state='offline'] .dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 calc(1.5px * var(--ui-scale)) currentColor;
 }
 
 .tag {
@@ -75,14 +94,15 @@
 }
 
 /*
- * Open in the viewer / pin, under the top-right pill. Hidden by opacity, not `display` or
- * `visibility`, so they stay in the Tab order and appear as soon as one takes focus.
+ * Open in the viewer / pin, in a row under the top-right pill, clear of the caption's time and the end of its name.
+ * Hidden by opacity, not `display` or `visibility`, so they stay in the Tab order and appear as soon as one takes
+ * focus.
  */
 .actions {
   position: absolute;
   top: calc(var(--space-2) * 2 + var(--pill-height));
   right: var(--space-2);
-  display: grid;
+  display: flex;
   gap: var(--space-1);
   opacity: 0;
 }
@@ -129,7 +149,7 @@
   justify-content: space-between;
   align-items: flex-end;
   gap: var(--space-2);
-  padding: var(--space-5) var(--space-3) var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-2);
   background: linear-gradient(
     transparent,
     color-mix(in srgb, var(--camera-ground) 90%, transparent)
