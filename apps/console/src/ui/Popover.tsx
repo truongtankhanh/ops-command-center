@@ -22,7 +22,9 @@ import styles from './Popover.module.css';
  *
  * The trigger's look (border, fill when open) is the popover's; its layout and size come from
  * `triggerClassName`. Give the trigger visible text; `triggerLabel` is for a trigger without any.
- * The panel's surface is the floating `Panel`; the popover only places it.
+ * The panel's surface is the floating `Panel`; the popover only places it: under the trigger by default,
+ * or over it with `placement="above"` for a trigger at the foot of the screen (the status bar's Settings,
+ * V3-06.3), where a panel below would leave the viewport. Only `above` is written as an attribute.
  *
  * `children` may be a function that gets `close`: an item that opens something else (a dialog)
  * calls it first. It closes the panel and puts focus back on the trigger, so what opens next
@@ -33,6 +35,7 @@ export function Popover({
   triggerLabel,
   triggerClassName,
   panelLabel,
+  placement = 'below',
   className,
   panelClassName,
   children,
@@ -41,6 +44,7 @@ export function Popover({
   triggerLabel?: string;
   triggerClassName?: string;
   panelLabel: string;
+  placement?: 'below' | 'above';
   className?: string;
   panelClassName?: string;
   children: ReactNode | ((close: () => void) => ReactNode);
@@ -113,6 +117,7 @@ export function Popover({
         id={panelId}
         role="group"
         aria-label={panelLabel}
+        data-placement={placement === 'above' ? 'above' : undefined}
         hidden={!open}
         className={panelClassName ? `${styles.panel} ${panelClassName}` : styles.panel}
       >

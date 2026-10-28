@@ -1,6 +1,9 @@
 import { ROLES } from '@occ/contracts';
 import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useSession } from '../../auth/store';
+import type * as CriticalCue from '../../lib/incidents/criticalCue';
+import { unlockAudio } from '../../lib/incidents/criticalCue';
 import { CONNECTION_LABEL, TELEMETRY_LABEL } from '../../lib/shell/connectionLabels';
 import { initialTelemetryState, type TelemetryPillState } from '../../lib/telemetry/telemetryState';
 import { TWIN_UNAVAILABLE_COPY } from '../../lib/twin-core/twinCapability';
@@ -8,6 +11,13 @@ import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
 import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../../test-utils';
 import { StatusBar } from './StatusBar';
+
+// jsdom has no Web Audio; the sound preference itself is stored by the real module (as `Header.test.tsx`).
+vi.mock('../../lib/incidents/criticalCue', async (importOriginal) => ({
+  ...(await importOriginal<typeof CriticalCue>()),
+  unlockAudio: vi.fn(),
+  playCriticalCue: vi.fn(),
+}));
 
 /** The telemetry pill's state, from the two facts it is derived from (`telemetryPillState`). */
 function holdTelemetry(pill: TelemetryPillState) {
@@ -217,11 +227,15 @@ describe('StatusBar', () => {
   });
 
   describe('what it leaves out', () => {
-    it('draws no action, no FPS and no bare number', () => {
+    it('draws one action, Settings, and no FPS or bare number', () => {
       allGood();
       render(<StatusBar />);
 
-      for (const role of ['button', 'link', 'switch', 'checkbox', 'menuitem'] as const) {
+      // The segments are text; the only control is the Settings button, and its switches are in the closed panel.
+      expect(within(bar()).getAllByRole('button')).toEqual([
+        within(bar()).getByRole('button', { name: 'Settings' }),
+      ]);
+      for (const role of ['link', 'switch', 'checkbox', 'menuitem'] as const) {
         expect(within(bar()).queryAllByRole(role), role).toHaveLength(0);
       }
       const text = bar().textContent ?? '';
@@ -241,6 +255,118 @@ describe('StatusBar', () => {
         expect(segment('events')).toHaveTextContent('Events Live');
       },
     );
+  });
+
+  // V3-06.3: the account menu's rows, in a popover that opens upward. The rows themselves are `SettingsSwitches.test.tsx`'s.
+  describe('Settings', () => {
+    const settingsButton = () => within(bar()).getByRole('button', { name: 'Settings' });
+    const panel = () => screen.queryByRole('group', { name: 'Settings' });
+    const open = () => userEvent.click(settingsButton());
+
+    beforeEach(() => {
+      localStorage.clear();
+      vi.mocked(unlockAudio).mockReset().mockResolvedValue(true);
+      allGood();
+    });
+
+    it('is closed at first, with no switch on the page', () => {
+      render(<StatusBar />);
+
+      expect(settingsButton()).toHaveAttribute('aria-expanded', 'false');
+      expect(panel()).toBeNull();
+      expect(screen.queryAllByRole('switch')).toHaveLength(0);
+    });
+
+    it('opens to the three switches and the help button, upward', async () => {
+      render(<StatusBar />);
+
+      await open();
+
+      expect(settingsButton()).toHaveAttribute('aria-expanded', 'true');
+      const group = within(panel()!);
+      expect(group.getAllByRole('switch').map((node) => node.textContent)).toEqual([
+        'Sound for critical incidents',
+        'Single-key shortcuts',
+        'Compact layout',
+      ]);
+      expect(group.getByRole('button', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+      expect(panel()).toHaveAttribute('data-placement', 'above');
+    });
+
+    it("changes the same state as the account menu's switches", async () => {
+      render(<StatusBar />);
+      await open();
+      const group = within(panel()!);
+
+      await userEvent.click(group.getByRole('switch', { name: 'Sound for critical incidents' }));
+      await userEvent.click(group.getByRole('switch', { name: 'Single-key shortcuts' }));
+      await userEvent.click(group.getByRole('switch', { name: 'Compact layout' }));
+
+      expect(useConsole.getState().criticalSound).toBe(true);
+      expect(useConsole.getState().keyboardShortcuts).toBe(false);
+      expect(useConsole.getState().density).toBe('compact');
+      expect(group.getByRole('switch', { name: 'Compact layout' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+    });
+
+    it('closes on Escape and gives focus back to the Settings button', async () => {
+      render(<StatusBar />);
+      await open();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(panel()).toBeNull();
+      expect(settingsButton()).toHaveFocus();
+    });
+
+    it('opens the shortcuts help from the panel, closed first, focus on the Settings button', async () => {
+      render(<StatusBar />);
+      await open();
+
+      await userEvent.click(within(panel()!).getByRole('button', { name: 'Keyboard shortcuts' }));
+
+      expect(useConsole.getState().shortcutHelpOpen).toBe(true);
+      expect(panel()).toBeNull();
+      expect(settingsButton()).toHaveFocus();
+    });
+
+    it('shows the help key only while the single-key shortcuts are on', async () => {
+      render(<StatusBar />);
+      await open();
+      const help = () => within(panel()!).getByRole('button', { name: 'Keyboard shortcuts' });
+      expect(help()).toHaveAttribute('aria-keyshortcuts', '?');
+
+      await userEvent.click(within(panel()!).getByRole('switch', { name: 'Single-key shortcuts' }));
+
+      expect(help()).not.toHaveAttribute('aria-keyshortcuts');
+    });
+
+    it.each(ROLES)('is offered to a %s: these are display preferences', async (role) => {
+      useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
+      render(<StatusBar />);
+
+      await open();
+
+      expect(within(panel()!).getAllByRole('switch')).toHaveLength(3);
+    });
+
+    it('leaves the summary as the only live region while it is open', async () => {
+      render(<StatusBar />);
+
+      await open();
+
+      expect(within(bar()).getAllByRole('status')).toEqual([summary()]);
+    });
+
+    it('has no axe violations open', async () => {
+      render(<StatusBar />);
+
+      await open();
+
+      await expectNoAxeViolations();
+    });
   });
 
   it('has no axe violations, healthy or degraded', async () => {

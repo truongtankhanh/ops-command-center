@@ -6,8 +6,11 @@ import {
   type Glyph,
   healthIcon,
   MapIcon,
+  SlidersHorizontal,
   telemetryIcon,
 } from '../../ui/icons';
+import { Popover } from '../../ui/Popover';
+import { SettingsSwitches } from './SettingsSwitches';
 import styles from './StatusBar.module.css';
 import { useSystemHealth } from './useSystemHealth';
 
@@ -19,12 +22,14 @@ import { useSystemHealth } from './useSystemHealth';
  * - **One live region.** The summary is the only `role="status"`, mounted for good so a change is announced; the
  *   segments are plain text. The pill and the banner announce the same change in their own words (a state, a
  *   consequence), the bar says the overall sentence: three short messages, not a repeat of one.
- * - **No number that is not a count the console already shows**, no FPS (a developer figure, `?debug=twin`) and no
- *   action: nothing here is a button. A segment says its state in a word and a glyph, never by colour alone.
- * - **Same bar for every role**: reading the state is not an action on the site.
- * - **Seams.** The settings entry (V3-06.3) sits right of `.segments` (which takes the free width), the alarm-load
- *   segment (V3-21.2) after the telemetry one, and the engine's tier word (V3-18) in the engine segment's text; none is
- *   drawn yet.
+ * - **No number that is not a count the console already shows**, no FPS (a developer figure, `?debug=twin`). The
+ *   only action is Settings (V3-06.3); the segments are text. A segment says its state in a word and a glyph, never
+ *   by colour alone.
+ * - **Same bar for every role**: reading the state is not an action on the site, and the settings are display
+ *   preferences.
+ * - **Seams.** Settings sits right of `.segments` (which takes the free width); the alarm-load segment (V3-21.2)
+ *   goes after the telemetry one, and the engine's tier word (V3-18) in the engine segment's text; neither is drawn
+ *   yet. The video wall's bar (V3-06.4) leaves `SettingsEntry` out.
  */
 export function StatusBar() {
   const { health, connection, telemetry, drawing3d } = useSystemHealth();
@@ -41,7 +46,32 @@ export function StatusBar() {
         <Segment id="events" segment={events} glyph={connectionIcon(connection)} />
         <Segment id="telemetry" segment={readings} glyph={telemetryIcon(telemetry)} />
       </div>
+      <SettingsEntry />
     </footer>
+  );
+}
+
+/**
+ * The display and sound preferences, the account menu's rows (`SettingsSwitches`, V3-06.3), in a popover that opens
+ * upward: the bar is at the foot of the screen. The help entry closes the popover first, so the help dialog returns
+ * focus to this button.
+ */
+function SettingsEntry() {
+  return (
+    <Popover
+      placement="above"
+      panelLabel="Settings"
+      className={styles.settings}
+      triggerClassName={styles.settingsTrigger}
+      trigger={
+        <>
+          <Icon glyph={SlidersHorizontal} size={14} />
+          Settings
+        </>
+      }
+    >
+      {(close) => <SettingsSwitches close={close} />}
+    </Popover>
   );
 }
 
