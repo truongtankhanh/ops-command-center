@@ -1,6 +1,8 @@
 import type { Incident } from '@occ/contracts';
-import { act, screen } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import { queryKeys } from '../../api/queries';
+import { initialTelemetryState } from '../../lib/telemetry/telemetryState';
+import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
 import {
   createTestQueryClient,
@@ -66,6 +68,7 @@ describe('WallApp', () => {
   beforeEach(() => {
     stubTwinAvailable();
     resetStore(useConsole);
+    resetStore(useTelemetryStore);
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
       writable: true,
@@ -167,6 +170,44 @@ describe('WallApp', () => {
     expect(
       container.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]'),
     ).toHaveLength(0);
+  });
+
+  it('ends in the status bar, read-only: after the main, with nothing to press or tab to (V3-06.4)', () => {
+    renderWall();
+
+    const bar = screen.getByRole('contentinfo', { name: 'System status' });
+    expect(
+      screen.getByRole('main').compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(bar).getByRole('status')).toHaveTextContent('System healthy');
+    expect(
+      bar.querySelectorAll(
+        'button, a[href], input, select, textarea, summary, [tabindex], [role="button"]',
+      ),
+    ).toHaveLength(0);
+    expect(within(bar).queryAllByRole('button')).toHaveLength(0);
+  });
+
+  it('says a lost events link and paused telemetry in the bar (V3-06.4)', () => {
+    renderWall();
+
+    act(() => {
+      useConsole.getState().setConnection('offline');
+      useTelemetryStore.setState({
+        view: {
+          state: { ...initialTelemetryState, socket: 'live', upstream: 'paused' },
+          series: new Map(),
+        },
+      });
+    });
+
+    const bar = screen.getByRole('contentinfo', { name: 'System status' });
+    expect(bar).toHaveAttribute('data-level', 'degraded');
+    expect(within(bar).getByRole('status')).toHaveTextContent('Offline');
+    expect(bar.querySelector('[data-segment="events"]')).toHaveTextContent('Events Offline');
+    expect(bar.querySelector('[data-segment="telemetry"]')).toHaveTextContent(
+      'Telemetry Telemetry paused',
+    );
   });
 
   it("sets the wall's scale on <html> while it is mounted", () => {

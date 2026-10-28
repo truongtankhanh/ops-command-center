@@ -23,15 +23,18 @@ import { useSystemHealth } from './useSystemHealth';
  *   segments are plain text. The pill and the banner announce the same change in their own words (a state, a
  *   consequence), the bar says the overall sentence: three short messages, not a repeat of one.
  * - **No number that is not a count the console already shows**, no FPS (a developer figure, `?debug=twin`). The
- *   only action is Settings (V3-06.3); the segments are text. A segment says its state in a word and a glyph, never
- *   by colour alone.
+ *   only action is Settings (V3-06.3), and only on the console; the segments are text. A segment says its state in a
+ *   word and a glyph, never by colour alone.
  * - **Same bar for every role**: reading the state is not an action on the site, and the settings are display
  *   preferences.
  * - **Seams.** Settings sits right of `.segments` (which takes the free width); the alarm-load segment (V3-21.2)
  *   goes after the telemetry one, and the engine's tier word (V3-18) in the engine segment's text; neither is drawn
- *   yet. The video wall's bar (V3-06.4) leaves `SettingsEntry` out.
+ *   yet.
+ *
+ * `readOnly` (the video wall's foot, V3-06.4) draws the same sentence and segments with `SettingsEntry` left out, so the
+ * bar has nothing to press or tab to, as `KpiTiles`'s: nobody at a wall can use a control.
  */
-export function StatusBar() {
+export function StatusBar({ readOnly = false }: { readOnly?: boolean }) {
   const { health, connection, telemetry, drawing3d } = useSystemHealth();
   const { engine, events, telemetry: readings } = health.segments;
   return (
@@ -46,7 +49,7 @@ export function StatusBar() {
         <Segment id="events" segment={events} glyph={connectionIcon(connection)} />
         <Segment id="telemetry" segment={readings} glyph={telemetryIcon(telemetry)} />
       </div>
-      <SettingsEntry />
+      {!readOnly && <SettingsEntry />}
     </footer>
   );
 }
