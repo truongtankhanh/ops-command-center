@@ -69,3 +69,59 @@
   background: var(--accent-tint);
   color: var(--accent-ink);
 }
+
+/*
+ * `appearance="chips"` (frame 01 `.chip`, V3-07.4): the filter row under another lit-bar row, so the column has one.
+ * Pill chips on the 4 px grid, wrapping on a narrow column. The lit bar and the list's hairline are off; the selected
+ * chip is the accent's edge, tint and ink (`--accent-ink` on `--accent-tint`, a checked pair) against a subtle edge
+ * and no fill, and `aria-selected` says it to assistive tech, the lit-state language of `FilterChip` and a pressed
+ * `Button`. Both states are semibold so selecting never resizes a chip. The count is a plain number: the chip is the
+ * pill, and a pill inside it would stack two tints. 12 px for the label and the count, the floor for actionable text.
+ * Every rule is under the attribute, so the default look (and `AssetFeed`'s tabs) cannot change.
+ */
+.list[data-appearance='chips'] {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: none;
+}
+
+.list[data-appearance='chips'] .tab {
+  height: calc(28px * var(--ui-scale));
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font-size: var(--type-xs);
+}
+
+.list[data-appearance='chips'] .tab:hover {
+  background: var(--surface-2);
+}
+
+/* After the hover rule, so a selected chip keeps its tint under the pointer. */
+.list[data-appearance='chips'] .tab[aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+}
+
+.list[data-appearance='chips'] .tab[aria-selected='true']::after {
+  content: none;
+}
+
+.list[data-appearance='chips'] .count,
+.list[data-appearance='chips'] .tab[aria-selected='true'] .count {
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  font-size: var(--type-xs);
+  color: inherit;
+}
+
+/* Touch screens: a chip stays a 44 px target (the rows' rule, `IncidentRow`). */
+@media (pointer: coarse) {
+  .list[data-appearance='chips'] .tab {
+    min-height: calc(44px * var(--ui-scale));
+  }
+}

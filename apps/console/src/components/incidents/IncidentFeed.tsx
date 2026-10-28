@@ -145,6 +145,7 @@ export function IncidentFeed() {
         tabs={tabs}
         value={filter}
         onChange={setFilter}
+        appearance="chips"
         panelClassName={styles.panel}
       >
         {(severity || category) && (
@@ -179,7 +180,7 @@ export function IncidentFeed() {
         )}
         {isPending ? (
           isRateLimited(failureReason) ? (
-            <RateLimited />
+            <RateLimited className={styles.rateLimited} />
           ) : (
             <FeedSkeleton />
           )
@@ -189,6 +190,7 @@ export function IncidentFeed() {
             fallback="Incidents could not be loaded."
             isFetching={isFetching}
             onRetry={() => void refetch()}
+            className={styles.state}
           />
         ) : visible.length === 0 ? (
           <FeedEmpty
@@ -263,10 +265,17 @@ function FeedEmpty({
   onClearSeverity: () => void;
   onClearCategory: () => void;
 }) {
-  if (searching) return <EmptyState icon={Search}>{message}</EmptyState>;
+  if (searching) {
+    return (
+      <EmptyState icon={Search} className={styles.state}>
+        {message}
+      </EmptyState>
+    );
+  }
   if (bySeverity || byCategory) {
     return (
       <EmptyState
+        className={styles.state}
         action={
           <>
             {bySeverity && <Button onClick={onClearSeverity}>Show all severities</Button>}
@@ -278,5 +287,5 @@ function FeedEmpty({
       </EmptyState>
     );
   }
-  return <EmptyState>{message}</EmptyState>;
+  return <EmptyState className={styles.state}>{message}</EmptyState>;
 }
