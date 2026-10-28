@@ -1367,6 +1367,63 @@ describe('useConsole', () => {
     });
   });
 
+  // V3-08.1: the camera strip's collapsed state, remembered in this browser (the filter is the component's own).
+  describe('strip collapsed', () => {
+    const KEY = 'occ.console.stripCollapsed';
+    const stored = () => localStorage.getItem(KEY);
+
+    beforeEach(() => localStorage.clear());
+    afterEach(() => {
+      vi.resetModules();
+      localStorage.clear();
+    });
+
+    const freshStore = async () => (await import('./store')).useConsole;
+
+    it('starts expanded', () => {
+      expect(useConsole.getInitialState().stripCollapsed).toBe(false);
+    });
+
+    it('collapses and remembers it in this browser', () => {
+      state().setStripCollapsed(true);
+
+      expect(state().stripCollapsed).toBe(true);
+      expect(stored()).toBe('true');
+    });
+
+    it('expands again and forgets it', () => {
+      state().setStripCollapsed(true);
+      state().setStripCollapsed(false);
+
+      expect(state().stripCollapsed).toBe(false);
+      expect(stored()).toBeNull();
+    });
+
+    it('leaves the tab, the filters and the side panel alone', () => {
+      useConsole.setState({ filter: 'resolved', severity: 'high', sidePanel: 'assets' });
+
+      state().setStripCollapsed(true);
+
+      expect(state().filter).toBe('resolved');
+      expect(state().severity).toBe('high');
+      expect(state().sidePanel).toBe('assets');
+    });
+
+    it('starts collapsed in a store created after it was remembered', async () => {
+      localStorage.setItem(KEY, 'true');
+      vi.resetModules();
+
+      expect((await freshStore()).getState().stripCollapsed).toBe(true);
+    });
+
+    it('starts expanded when what was stored is not "true"', async () => {
+      localStorage.setItem(KEY, 'collapsed');
+      vi.resetModules();
+
+      expect((await freshStore()).getState().stripCollapsed).toBe(false);
+    });
+  });
+
   // The store reads the window once, when its module is created, so these load it afresh (V2-21.2).
   describe('wall mode', () => {
     afterEach(() => {
@@ -1407,6 +1464,48 @@ describe('useConsole', () => {
       expect(wall.getState().criticalSound).toBe(false);
       // The stored choice is left as it was: it is the operators' consoles', not the wall's.
       expect(localStorage.getItem('occ.console.criticalSound')).toBe('true');
+    });
+
+    // V3-08.1: a wall's window is not a person's preference, so its strip is never collapsed and never writes.
+    it('keeps the camera strip expanded, whatever was stored for the console', async () => {
+      localStorage.setItem('occ.console.stripCollapsed', 'true');
+      history.replaceState(null, '', '/?wall=1');
+      vi.resetModules();
+
+      const wall = await freshStore();
+
+      expect(wall.getState().stripCollapsed).toBe(false);
+      // The stored choice is left as it was: it is the operators' consoles', not the wall's.
+      expect(localStorage.getItem('occ.console.stripCollapsed')).toBe('true');
+    });
+
+    it('does not collapse the camera strip, and writes nothing', async () => {
+      history.replaceState(null, '', '/?wall=1');
+      vi.resetModules();
+      const wall = await freshStore();
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      const removeItem = vi.spyOn(Storage.prototype, 'removeItem');
+
+      wall.getState().setStripCollapsed(true);
+      wall.getState().setStripCollapsed(false);
+
+      expect(wall.getState().stripCollapsed).toBe(false);
+      expect(setItem).not.toHaveBeenCalled();
+      expect(removeItem).not.toHaveBeenCalled();
+      expect(localStorage.getItem('occ.console.stripCollapsed')).toBeNull();
+      setItem.mockRestore();
+      removeItem.mockRestore();
+    });
+
+    it('does not clear what the console remembered when a wall asks to expand', async () => {
+      localStorage.setItem('occ.console.stripCollapsed', 'true');
+      history.replaceState(null, '', '/?wall=1');
+      vi.resetModules();
+      const wall = await freshStore();
+
+      wall.getState().setStripCollapsed(false);
+
+      expect(localStorage.getItem('occ.console.stripCollapsed')).toBe('true');
     });
   });
   // The 3D view's drag tool (V3-29): a session choice, Orbit by default, left alone by the level ladder.

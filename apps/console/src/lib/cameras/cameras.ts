@@ -31,6 +31,7 @@ export function wallStripSize(mode: DisplayMode): number {
 }
 
 const PINNED_KEY = 'occ.console.pinnedCameras';
+const STRIP_COLLAPSED_KEY = 'occ.console.stripCollapsed';
 
 /**
  * What the strip puts first after the pins: the selected incident's zone, or the selected asset
@@ -234,5 +235,27 @@ export function writePinnedCameras(ids: readonly string[]): void {
     localStorage.setItem(PINNED_KEY, JSON.stringify(ids));
   } catch {
     // Not remembered: the pins still hold until the page reloads.
+  }
+}
+
+/**
+ * Whether the camera strip is collapsed to its header row in this browser (V3-08.1). Only `'true'` is stored, so the
+ * default is expanded, and cleared, unavailable or unknown storage gives it back (the format of the critical sound
+ * preference). The strip's filter is not remembered: it is a view of the list.
+ */
+export function readStripCollapsed(): boolean {
+  try {
+    return localStorage.getItem(STRIP_COLLAPSED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function writeStripCollapsed(collapsed: boolean): void {
+  try {
+    if (collapsed) localStorage.setItem(STRIP_COLLAPSED_KEY, 'true');
+    else localStorage.removeItem(STRIP_COLLAPSED_KEY);
+  } catch {
+    // Not remembered: the choice still holds until the page reloads.
   }
 }

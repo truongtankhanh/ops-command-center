@@ -8,6 +8,7 @@ import {
   PIN_LIMIT,
   prioritise,
   readPinnedCameras,
+  readStripCollapsed,
   type StripSubject,
   stripCameras,
   stripSize,
@@ -16,6 +17,7 @@ import {
   wallStripSize,
   wallSubject,
   writePinnedCameras,
+  writeStripCollapsed,
 } from './cameras';
 import { offsetM } from '../map/geo';
 
@@ -426,6 +428,59 @@ describe('pinned camera storage', () => {
     });
 
     expect(() => writePinnedCameras(['a'])).not.toThrow();
+  });
+});
+
+// V3-08.1: only "collapsed" is stored, so the default is expanded and anything unreadable gives it back.
+describe('strip collapsed storage', () => {
+  const KEY = 'occ.console.stripCollapsed';
+  const blocked = () => {
+    throw new Error('Storage is disabled');
+  };
+
+  beforeEach(() => localStorage.clear());
+  afterEach(() => vi.restoreAllMocks());
+
+  it('reads back what it wrote, and removes the key when expanded', () => {
+    writeStripCollapsed(true);
+
+    expect(readStripCollapsed()).toBe(true);
+    expect(localStorage.getItem(KEY)).toBe('true');
+
+    writeStripCollapsed(false);
+
+    expect(readStripCollapsed()).toBe(false);
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+
+  it('is expanded when nothing is stored', () => {
+    expect(readStripCollapsed()).toBe(false);
+  });
+
+  it.each([
+    ['the word collapsed', 'collapsed'],
+    ['a number', '1'],
+    ['false', 'false'],
+    ['an empty string', ''],
+    ['JSON', '{"collapsed":true}'],
+  ])('is expanded when %s is stored', (_name, stored) => {
+    localStorage.setItem(KEY, stored);
+
+    expect(readStripCollapsed()).toBe(false);
+  });
+
+  it('is expanded when storage cannot be read', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+
+    expect(readStripCollapsed()).toBe(false);
+  });
+
+  it('keeps going when storage cannot be written or cleared', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(blocked);
+
+    expect(() => writeStripCollapsed(true)).not.toThrow();
+    expect(() => writeStripCollapsed(false)).not.toThrow();
   });
 });
 
