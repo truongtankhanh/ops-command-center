@@ -261,6 +261,38 @@ describe('AssetRow', () => {
     });
   });
 
+  // V3-07.5: the row is drawn on three lines (name and reading, state pill, class and code), but it is read in
+  // one order, which the grid placement must not depend on. The text is checked in document order.
+  describe('the reading order', () => {
+    it('reads name, reading, state and code', () => {
+      holdAssets({ 'CT-01': entry({ fanSpeedRpm: 1420 }) });
+
+      render(<Row state="running" />);
+
+      expect(row().textContent).toMatch(/Cooling tower 1.*1,420 rpm.*Running.*CT-01/);
+    });
+
+    it("reads a fault's severity before its state, and the state before the code", () => {
+      holdAssets({ 'CT-01': entry({ fanSpeedRpm: 1420 }) });
+
+      render(<Row state="fault" incident={incident} />);
+
+      expect(row().textContent).toMatch(
+        /Cooling tower 1.*High severity, Fault · INC-000108.*CT-01/,
+      );
+    });
+
+    it('reads the raw class of an unknown class before the code', () => {
+      const mystery = asset({
+        class: { ...asset().class, code: 'mystery_pump', name: 'Mystery pump' },
+      });
+
+      render(<Row asset={mystery} state="running" />);
+
+      expect(row().textContent).toMatch(/Running.*mystery_pump.*CT-01/);
+    });
+  });
+
   describe('selection and hover', () => {
     it('marks the selected asset with aria-current', () => {
       useConsole.setState({ selectedAssetCode: 'CT-01' });
