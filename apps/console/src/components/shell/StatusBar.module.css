@@ -1,8 +1,10 @@
 /*
  * Frames 01 and 07's status bar: the third row of the console grid (App.module.css). A fixed height and one line, so the
- * stage never resizes when a word changes. No z-index: the sheet, the banners and the toasts live inside the stage, and
- * the session banner is fixed at the top, so nothing overlaps the bar. Only pairs that `scripts/contrast.ts` already
- * checks on `--surface-1` are used (`--text-primary`, `--text-secondary`, `--text-tertiary`, `--warning`).
+ * stage never resizes when a word changes. It does not clip (V3-06.3): the Settings panel opens over it and the
+ * trigger's focus ring is drawn outside it; only `.segments` clips, where the engine text ends in an ellipsis.
+ * No z-index: the sheet, the banners and the toasts live inside the stage, and the session banner is fixed at the top,
+ * so nothing overlaps the bar. Only pairs that `scripts/contrast.ts` already checks on `--surface-1` are used
+ * (`--text-primary`, `--text-secondary`, `--text-tertiary`, `--warning`).
  */
 .bar {
   display: flex;
@@ -10,7 +12,6 @@
   gap: var(--space-3);
   height: var(--statusbar-height);
   padding: 0 var(--space-4);
-  overflow: hidden;
   background: var(--surface-1);
   box-shadow: 0 -1px 0 var(--border-subtle);
   color: var(--text-secondary);
@@ -47,6 +48,7 @@
   align-items: center;
   gap: var(--space-4);
   min-width: 0;
+  overflow: hidden;
 }
 
 .segment {
@@ -80,6 +82,31 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The Settings entry (V3-06.3); `margin-left: auto` keeps it at the right end when the segments are hidden. */
+.settings {
+  flex: none;
+  margin-left: auto;
+}
+
+/*
+ * 24 px, the target floor: the focus ring (2 px, offset 2 px) then fits inside the 32 px bar. The `Popover`'s own trigger
+ * rule sets the border and the open fill.
+ */
+.settingsTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  height: calc(24px * var(--ui-scale));
+  padding: 0 var(--space-2);
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.settingsTrigger:hover,
+.settingsTrigger[aria-expanded='true'] {
+  color: var(--text-primary);
 }
 
 /* Phones (breakpoints in styles/tokens.ts): the summary only; the header's pills keep the two links. */

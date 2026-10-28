@@ -32,3 +32,9 @@
   max-width: calc(100vw - 2 * var(--space-4));
   padding: var(--space-1-5);
 }
+
+/* Over the trigger instead of under it (V3-06.3): the status bar is at the foot of the screen. */
+.panel[data-placement='above'] {
+  top: auto;
+  bottom: calc(100% + var(--space-2));
+}

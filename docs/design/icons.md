@@ -88,7 +88,7 @@ glyphs have another meaning elsewhere: `CircleCheck` is the `resolved` status an
 is deliberate and holds because the bar always says the sentence next to the glyph, draws it in `--text-primary` or `--warning`
 and never in a severity hue, and sits at the foot of the console, away from the incident list. The bar's segments reuse
 `connectionIcon` and `telemetryIcon` for the two links, and `Box` (3D view) or `MapIcon` (2D map, or 3D unavailable) for the
-engine.
+engine. Its Settings entry (V3-06.3) draws `SlidersHorizontal`, used nowhere else.
 
 ### V2 values: frame deviations and choices (V2-02.2)
 

@@ -324,6 +324,7 @@ export {
   Scan,
   Search,
   Shield,
+  SlidersHorizontal,
   Thermometer,
   Volume2,
   X,

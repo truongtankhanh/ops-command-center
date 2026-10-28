@@ -46,6 +46,17 @@ describe('Popover', () => {
     expect(trigger()).toHaveFocus();
   });
 
+  // The status bar's Settings (V3-06.3) opens over its trigger; the default stays under it, with no attribute.
+  it('places the panel under its trigger by default and over it with placement="above"', () => {
+    const { unmount } = renderPopover();
+    expect(screen.getByRole('group', { hidden: true })).not.toHaveAttribute('data-placement');
+    unmount();
+
+    renderPopover({ placement: 'above' });
+
+    expect(screen.getByRole('group', { hidden: true })).toHaveAttribute('data-placement', 'above');
+  });
+
   it('closes on a second click', async () => {
     renderPopover();
 
