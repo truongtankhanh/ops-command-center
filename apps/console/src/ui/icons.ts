@@ -312,6 +312,7 @@ export {
   Eye,
   Fan,
   Flag,
+  Funnel,
   Hand,
   House,
   Info,

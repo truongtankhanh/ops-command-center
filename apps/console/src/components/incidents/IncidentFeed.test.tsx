@@ -80,6 +80,7 @@ describe('IncidentFeed', () => {
     useConsole.setState({
       filter: 'active',
       severity: null,
+      category: null,
       selectedIncidentId: null,
       reporting: false,
       fresh: new Set(),
@@ -197,6 +198,221 @@ describe('IncidentFeed', () => {
       renderFeed();
 
       expect(screen.queryByRole('button', { name: 'Clear severity filter' })).toBeNull();
+    });
+  });
+
+  // V3-07.3: the category filter beside the search box.
+  describe('category filter', () => {
+    const mixed: Incident[] = [
+      {
+        ...base,
+        id: 'sec',
+        title: 'Door forced open',
+        type: 'intrusion',
+        status: 'open',
+        severity: 'high',
+      },
+      {
+        ...base,
+        id: 'fire',
+        title: 'Smoke detector',
+        type: 'fire_alarm',
+        status: 'open',
+        severity: 'critical',
+      },
+      {
+        ...base,
+        id: 'water',
+        title: 'Pipe burst',
+        type: 'water_leak',
+        status: 'acknowledged',
+        severity: 'medium',
+      },
+      {
+        ...base,
+        id: 'old',
+        title: 'Old break-in',
+        type: 'intrusion',
+        status: 'resolved',
+        severity: 'low',
+      },
+    ];
+    const filterButton = () => screen.getByRole('button', { name: 'Filter by category' });
+    const choose = async (name: string) => {
+      await userEvent.click(filterButton());
+      await userEvent.click(screen.getByRole('button', { name }));
+    };
+
+    it('opens a panel of the six categories from the button beside the search box', async () => {
+      renderFeed(mixed);
+      expect(filterButton()).toHaveAttribute('aria-expanded', 'false');
+
+      await userEvent.click(filterButton());
+
+      const panel = screen.getByRole('group', { name: 'Filter incidents by category' });
+      for (const name of [
+        'Security',
+        'Fire & safety',
+        'Medical',
+        'Facilities',
+        'Environment',
+        'Traffic',
+      ]) {
+        expect(within(panel).getByRole('button', { name })).toHaveAttribute(
+          'aria-pressed',
+          'false',
+        );
+      }
+    });
+
+    it('lists only the incidents of the chosen category, with a chip and the tab counts following', async () => {
+      renderFeed(mixed);
+      expect(screen.getByRole('tab', { name: 'Active 3' })).toBeInTheDocument();
+
+      await choose('Security');
+
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(screen.queryByText('Smoke detector')).not.toBeInTheDocument();
+      expect(screen.queryByText('Pipe burst')).not.toBeInTheDocument();
+      expect(screen.getByText('Security only')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Active 1' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Resolved 1' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'All 2' })).toBeInTheDocument();
+    });
+
+    it('closes the panel after a choice and leaves focus on the button', async () => {
+      renderFeed(mixed);
+
+      await choose('Facilities');
+
+      expect(screen.queryByRole('group', { name: 'Filter incidents by category' })).toBeNull();
+      expect(filterButton()).toHaveFocus();
+      expect(useConsole.getState().category).toBe('facilities');
+    });
+
+    it('restores the list when the same category is chosen again', async () => {
+      renderFeed(mixed);
+      await choose('Security');
+
+      await choose('Security');
+
+      expect(useConsole.getState().category).toBeNull();
+      expect(screen.getByText('Smoke detector')).toBeInTheDocument();
+      expect(screen.queryByText('Security only')).not.toBeInTheDocument();
+    });
+
+    it('restores the list from Clear in the panel', async () => {
+      renderFeed(mixed);
+      await choose('Security');
+
+      await userEvent.click(filterButton());
+      await userEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+      expect(useConsole.getState().category).toBeNull();
+      expect(screen.getByText('Pipe burst')).toBeInTheDocument();
+    });
+
+    it('clears from the chip and puts focus on the filter button', async () => {
+      renderFeed(mixed);
+      await choose('Security');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear category filter' }));
+
+      expect(useConsole.getState().category).toBeNull();
+      expect(screen.queryByText('Security only')).not.toBeInTheDocument();
+      expect(screen.getByText('Smoke detector')).toBeInTheDocument();
+      expect(filterButton()).toHaveFocus();
+    });
+
+    it('shows both chips when a severity is on too, and clears each on its own', async () => {
+      useConsole.setState({ severity: 'high' });
+      renderFeed(mixed);
+      await choose('Security');
+
+      expect(screen.getByText('High only')).toBeInTheDocument();
+      expect(screen.getByText('Security only')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Clear severity filter' }));
+      expect(screen.getByText('Security only')).toBeInTheDocument();
+      expect(screen.queryByText('High only')).not.toBeInTheDocument();
+    });
+
+    it('lists a type this console does not know until a category is chosen', async () => {
+      const odd = {
+        ...base,
+        id: 'odd',
+        title: 'Odd report',
+        type: 'not_in_contract' as Incident['type'],
+        status: 'open',
+        severity: 'high',
+      } as const;
+      renderFeed([...mixed, odd]);
+      expect(screen.getByText('Odd report')).toBeInTheDocument();
+
+      await choose('Security');
+
+      expect(screen.queryByText('Odd report')).not.toBeInTheDocument();
+    });
+
+    it('says which category has nothing to show, and offers every category', async () => {
+      useConsole.setState({ category: 'traffic' });
+      renderFeed(mixed);
+      expect(screen.getByText('No active Traffic incidents.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Show all severities' })).toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show all categories' }));
+
+      expect(useConsole.getState().category).toBeNull();
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(filterButton()).toHaveFocus();
+    });
+
+    it('offers both ways back when a severity and a category are on', () => {
+      useConsole.setState({ severity: 'low', category: 'traffic' });
+
+      renderFeed(mixed);
+
+      expect(screen.getByText('No active low Traffic incidents.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show all severities' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Show all categories' })).toBeInTheDocument();
+    });
+
+    it('names the category in a search that finds nothing, with no second way back', async () => {
+      useConsole.setState({ category: 'fire_safety' });
+      renderFeed(mixed);
+
+      await userEvent.type(screen.getByRole('searchbox', { name: 'Search incidents' }), 'door');
+
+      expect(
+        screen.getByText('No active Fire & safety incidents match "door".'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Show all categories' })).toBeNull();
+    });
+
+    it('keeps the search text and the / shortcut when a category is chosen', async () => {
+      renderFeed(mixed);
+      const search = screen.getByRole('searchbox', { name: 'Search incidents' });
+      await userEvent.type(search, 'door');
+
+      await choose('Security');
+
+      expect(search).toHaveValue('door');
+      await userEvent.keyboard('/');
+      expect(search).toHaveFocus();
+    });
+
+    it("narrows a technician's Mine to handle as well", async () => {
+      useSession.getState().signedIn({ displayName: 'Demo Technician', roles: ['technician'] });
+      renderFeed(mixed);
+      await userEvent.click(screen.getByRole('tab', { name: /^Mine to handle/ }));
+      expect(screen.getByText('Pipe burst')).toBeInTheDocument();
+
+      await choose('Security');
+
+      expect(screen.queryByText('Pipe burst')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('No Security incidents to handle in Facilities or Environment.'),
+      ).toBeInTheDocument();
     });
   });
 

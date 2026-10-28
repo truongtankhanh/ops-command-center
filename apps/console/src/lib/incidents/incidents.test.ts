@@ -35,6 +35,7 @@ import {
   isKnownType,
   isPastAttention,
   lifecycleSteps,
+  matchesCategory,
   matchesFilter,
   matchesQuery,
   matchesSeverity,
@@ -272,6 +273,26 @@ describe('matchesSeverity', () => {
   });
 });
 
+describe('matchesCategory', () => {
+  it('matches every incident without a category filter, an unknown type included', () => {
+    for (const type of [...INCIDENT_TYPES, UNKNOWN_TYPE]) {
+      expect(matchesCategory(incident({ type }), null)).toBe(true);
+    }
+  });
+
+  it.each(INCIDENT_CATEGORIES)('matches only the types of %s', (selected) => {
+    for (const type of INCIDENT_TYPES) {
+      expect(matchesCategory(incident({ type }), selected)).toBe(categoryOf(type) === selected);
+    }
+  });
+
+  it('hides a type this console does not know once a category is chosen', () => {
+    for (const selected of INCIDENT_CATEGORIES) {
+      expect(matchesCategory(incident({ type: UNKNOWN_TYPE }), selected)).toBe(false);
+    }
+  });
+});
+
 describe('feedEmptyMessage', () => {
   it("keeps the feed's texts without a severity", () => {
     expect(feedEmptyMessage('active', null)).toBe(
@@ -299,6 +320,39 @@ describe('feedEmptyMessage', () => {
 
   it('ignores a blank search', () => {
     expect(feedEmptyMessage('active', null, '   ')).toBe(feedEmptyMessage('active', null));
+  });
+
+  describe('with a category', () => {
+    it.each([
+      ['active', null, 'No active Security incidents.'],
+      ['active', 'high', 'No active high Security incidents.'],
+      ['resolved', 'critical', 'No resolved critical Security incidents.'],
+      ['all', null, 'No Security incidents recorded yet.'],
+    ] as const)('names it on the %s tab with severity %s', (filter, severity, expected) => {
+      expect(feedEmptyMessage(filter, severity, '', [], 'security')).toBe(expected);
+    });
+
+    it('names it in the search message, after the severity', () => {
+      expect(feedEmptyMessage('active', null, 'gate', [], 'fire_safety')).toBe(
+        'No active Fire & safety incidents match "gate".',
+      );
+      expect(feedEmptyMessage('all', 'low', 'gate', [], 'traffic')).toBe(
+        'No low Traffic incidents match "gate".',
+      );
+    });
+
+    it('names it on "Mine to handle", before the categories of the scope', () => {
+      expect(
+        feedEmptyMessage('mine', 'high', '', ['facilities', 'environment'], 'facilities'),
+      ).toBe('No high Facilities incidents to handle in Facilities or Environment.');
+      expect(feedEmptyMessage('mine', null, '', [], 'medical')).toBe(
+        'No Medical incidents to handle.',
+      );
+    });
+
+    it('changes no text without one', () => {
+      expect(feedEmptyMessage('active', null, '', [], null)).toBe(feedEmptyMessage('active', null));
+    });
   });
 
   describe('mine', () => {

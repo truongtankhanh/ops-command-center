@@ -7,10 +7,18 @@
   min-height: 0;
 }
 
-/* Placement only: the search box draws itself (`FeedSearch`). Frame 01 `.feed-top`. */
-.search {
+/* Frame 01 `.feed-top`: the search box and the category filter's button side by side (V3-07.3). */
+.top {
   flex: none;
+  display: flex;
+  gap: var(--space-2);
   margin: var(--space-3) var(--space-3) var(--space-1);
+}
+
+/* Placement only: the search box draws itself (`FeedSearch`); it takes what the button leaves. */
+.search {
+  flex: 1;
+  min-width: 0;
 }
 
 /* The tab panel holds the list, which scrolls inside the feed's column. */
@@ -21,11 +29,18 @@
   min-height: 0;
 }
 
-/* Placement only: the active severity filter, above the list it filters (`FilterChip`). */
+/* The active filters, above the list they filter: the severity chip, then the category chip, wrapping on a narrow column. */
+.chips {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3);
+}
+
+/* Placement only (`FilterChip`). */
 .chip {
   flex: none;
-  align-self: flex-start;
-  margin: var(--space-2) var(--space-3);
 }
 
 /* Rows are cards (`IncidentRow`), so the list pads them away from the column edge. */

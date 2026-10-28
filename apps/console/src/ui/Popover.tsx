@@ -1,6 +1,7 @@
 import {
   type FocusEvent,
   type ReactNode,
+  type Ref,
   useCallback,
   useEffect,
   useId,
@@ -26,6 +27,9 @@ import styles from './Popover.module.css';
  * or over it with `placement="above"` for a trigger at the foot of the screen (the status bar's Settings,
  * V3-06.3), where a panel below would leave the viewport. Only `above` is written as an attribute.
  *
+ * `triggerRef` gives the trigger button to a consumer that must put focus back on it from outside the panel, such as
+ * a chip that clears what the panel set (the feed's category filter, V3-07.3).
+ *
  * `children` may be a function that gets `close`: an item that opens something else (a dialog)
  * calls it first. It closes the panel and puts focus back on the trigger, so what opens next
  * records the trigger, which stays in the page, as the place to return focus to.
@@ -34,6 +38,7 @@ export function Popover({
   trigger,
   triggerLabel,
   triggerClassName,
+  triggerRef,
   panelLabel,
   placement = 'below',
   className,
@@ -43,6 +48,7 @@ export function Popover({
   trigger: ReactNode;
   triggerLabel?: string;
   triggerClassName?: string;
+  triggerRef?: Ref<HTMLButtonElement>;
   panelLabel: string;
   placement?: 'below' | 'above';
   className?: string;
@@ -97,6 +103,7 @@ export function Popover({
       onBlur={onBlur}
     >
       <button
+        ref={triggerRef}
         id={triggerId}
         type="button"
         className={triggerClassName ? `${styles.trigger} ${triggerClassName}` : styles.trigger}
