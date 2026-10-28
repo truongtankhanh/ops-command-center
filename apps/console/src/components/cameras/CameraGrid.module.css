@@ -1,0 +1,32 @@
+/*
+ * Frame 13d: the dialog of every camera (V3-08.4). `ui/Dialog` sets the surface, the scrim and the title; this sets the
+ * grid. A column is no narrower than the strip's tile is wide (188 px), so the tile's chrome (V3-08.3) behaves as it
+ * was tuned there at its smallest; spare room grows the tiles, a narrow window gives fewer columns, and a short window
+ * scrolls inside the dialog.
+ */
+
+/* Read by assistive tech, not drawn: the dialog's description. The chips already show the counts. */
+.summary {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The chips keep `Tabs`' own padding; this only leaves room between them and the tiles. */
+.tabs {
+  margin-bottom: var(--space-2);
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(188px * var(--ui-scale)), 1fr));
+  gap: var(--space-3);
+}
+
+/* No camera of the kind chosen, or none on the site. */
+.message {
+  margin: 0;
+}
