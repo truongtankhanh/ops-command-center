@@ -92,7 +92,7 @@
 
 @media (max-width: 1100px) {
   .workspace {
-    grid-template-columns: calc(300px * var(--ui-scale)) 1fr;
+    grid-template-columns: calc(320px * var(--ui-scale)) 1fr;
   }
 }
 

@@ -43,6 +43,7 @@ in the contract, open data rather than a union, so a class this build lacks is e
 | `actorKindIcon`                  | `user` / `system`                                                                                                    | `User` / `Cpu`                                                                                                                                                        |
 | `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                                   | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                                                                              |
 | `healthIcon`                     | the status bar's summary: `healthy` / `degraded`                                                                     | `CircleCheck` / `TriangleAlert` (both shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                                |
+| `sidePanelIcon`                  | the side column's tabs: `incidents` / `assets`                                                                       | `TriangleAlert` / `Box` (both shared on purpose, see [below](#the-side-panels-tabs-v3-071))                                                                           |
 | `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                                                                                  |
 | `assetClassIcon`                 | the 16 catalogue class codes and the 3 of V3-A, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))    | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ThermometerSun` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` / `Siren` / `KeyRound` / `Router` |
 | `assetStateIcon`                 | `running` / `standby` / `nodata` / `offline` (a fault uses `severityIcon`; `unknown` has no glyph)                   | `Activity` / `Pause` / `Clock` / `Clock`                                                                                                                              |
@@ -89,6 +90,14 @@ is deliberate and holds because the bar always says the sentence next to the gly
 and never in a severity hue, and sits at the foot of the console, away from the incident list. The bar's segments reuse
 `connectionIcon` and `telemetryIcon` for the two links, and `Box` (3D view) or `MapIcon` (2D map, or 3D unavailable) for the
 engine. Its Settings entry (V3-06.3) draws `SlidersHorizontal`, used nowhere else.
+
+### The side panel's tabs (V3-07.1)
+
+The side column's switch draws `TriangleAlert` before "Incidents" and `Box` before "Assets", as frame 01 does. Both glyphs have another
+meaning elsewhere: `TriangleAlert` is the `high` severity and the degraded health, `Box` is the 3D view and an asset drawn without a
+model. The share is deliberate and holds because a tab always carries its word and its count beside the glyph, draws it in the tab's
+text colour (`--text-secondary`, `--text-primary` when selected) and never in a severity hue, and it names a place to look, not a state.
+`sidePanelIcon` is pinned in `icons.test.ts`.
 
 ### V2 values: frame deviations and choices (V2-02.2)
 

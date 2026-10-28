@@ -14,6 +14,7 @@ import {
   actorKindIcon,
   assetClassIcon,
   assetStateIcon,
+  Box,
   cameraIcon,
   categoryIcon,
   connectionIcon,
@@ -23,6 +24,7 @@ import {
   healthIcon,
   incidentTypeIcon,
   severityIcon,
+  sidePanelIcon,
   statusIcon,
   telemetryIcon,
   Thermometer,
@@ -93,6 +95,19 @@ describe('health glyphs', () => {
   it('shares the resolved status glyph and the high severity glyph, on purpose', () => {
     expect(healthIcon('healthy')).toBe(statusIcon('resolved'));
     expect(healthIcon('degraded')).toBe(severityIcon('high'));
+  });
+});
+
+// The side column's tabs (V3-07.1). Their glyphs are shared with another meaning on purpose, and written in
+// docs/design/icons.md: pinned here, so a slip that moves one fails.
+describe('side panel glyphs', () => {
+  it('gives the two tabs their own glyphs', () => {
+    expect(sidePanelIcon('incidents')).not.toBe(sidePanelIcon('assets'));
+  });
+
+  it('shares the high severity glyph and the box, on purpose', () => {
+    expect(sidePanelIcon('incidents')).toBe(severityIcon('high'));
+    expect(sidePanelIcon('assets')).toBe(Box);
   });
 });
 
