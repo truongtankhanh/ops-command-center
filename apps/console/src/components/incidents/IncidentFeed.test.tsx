@@ -607,6 +607,15 @@ describe('IncidentFeed', () => {
       expect(screen.queryByText('Door forced open')).toBeNull();
     });
 
+    it('shows five placeholder rows, the length of a short shift', () => {
+      renderUncached();
+
+      // The placeholders have no role or text (they are `aria-hidden` blocks), so they are counted as the busy
+      // list's children: the hidden status and `SKELETON_ROWS` (5, in `IncidentFeed.tsx`) rows.
+      const busy = screen.getByText('Loading incidents…').parentElement;
+      expect(busy?.children).toHaveLength(1 + 5);
+    });
+
     it('says the list could not be loaded, and retries', async () => {
       incidentAnswers = [() => apiError(500, 'Internal server error'), () => json(incidents)];
       renderUncached();

@@ -14,6 +14,10 @@ import styles from './Tabs.module.css';
  * A tab with a `count` shows it after its label, and the count is part of the tab's accessible
  * name ("Active 4"), so assistive tech hears the number the screen shows.
  *
+ * `appearance` is only the look: `'bar'` (default) marks the selected tab with a lit bar, `'chips'`
+ * draws each tab as a chip (frame 01's filter row) for a row that sits under another lit-bar row, so
+ * the column keeps one. Markup, roles and keys are the same in both.
+ *
  * Renders the list and the panel as siblings; place them with `className` / `panelClassName`.
  */
 export function Tabs<T extends string>({
@@ -21,6 +25,7 @@ export function Tabs<T extends string>({
   tabs,
   value,
   onChange,
+  appearance = 'bar',
   className,
   panelClassName,
   children,
@@ -29,6 +34,7 @@ export function Tabs<T extends string>({
   tabs: readonly { value: T; label: string; count?: number }[];
   value: T;
   onChange: (value: T) => void;
+  appearance?: 'bar' | 'chips';
   className?: string;
   panelClassName?: string;
   children: ReactNode;
@@ -58,6 +64,7 @@ export function Tabs<T extends string>({
       <div
         role="tablist"
         aria-label={label}
+        data-appearance={appearance === 'chips' ? 'chips' : undefined}
         className={className ? `${styles.list} ${className}` : styles.list}
         onKeyDown={onKeyDown}
       >

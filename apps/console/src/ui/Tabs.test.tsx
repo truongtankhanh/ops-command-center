@@ -180,4 +180,66 @@ describe('Tabs', () => {
 
     await expectNoAxeViolations();
   });
+
+  // V3-07.4: the chips are a look, so everything above holds for them too.
+  describe('as chips', () => {
+    const COUNTED: { value: Letter; label: string; count: number }[] = [
+      { value: 'a', label: 'Alpha', count: 3 },
+      { value: 'b', label: 'Beta', count: 0 },
+      { value: 'c', label: 'Gamma', count: 12 },
+    ];
+
+    function ChipHarness() {
+      const [value, setValue] = useState<Letter>('a');
+      return (
+        <Tabs label="Letters" tabs={COUNTED} value={value} onChange={setValue} appearance="chips">
+          <button type="button">In the panel</button>
+        </Tabs>
+      );
+    }
+
+    it('marks the tab list as chips, and leaves the default list unmarked', () => {
+      const { unmount } = render(<ChipHarness />);
+      expect(screen.getByRole('tablist', { name: 'Letters' })).toHaveAttribute(
+        'data-appearance',
+        'chips',
+      );
+      unmount();
+
+      render(<Harness />);
+      expect(screen.getByRole('tablist', { name: 'Letters' })).not.toHaveAttribute(
+        'data-appearance',
+      );
+    });
+
+    it('keeps the roles, the counts in the names and the selection', async () => {
+      render(<ChipHarness />);
+
+      expect(screen.getAllByRole('tab')).toHaveLength(3);
+      expect(tab('Alpha 3')).toHaveAttribute('aria-selected', 'true');
+      expect(tab('Gamma 12')).toHaveAttribute('aria-selected', 'false');
+      expect(screen.getByRole('tabpanel', { name: 'Alpha 3' })).toBeInTheDocument();
+
+      await userEvent.click(tab('Beta 0'));
+      expect(tab('Beta 0')).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('keeps one Tab stop and the arrow keys, wrapping at the end', async () => {
+      render(<ChipHarness />);
+
+      expect(tab('Alpha 3')).toHaveAttribute('tabindex', '0');
+      expect(tab('Beta 0')).toHaveAttribute('tabindex', '-1');
+
+      await userEvent.click(tab('Gamma 12'));
+      await userEvent.keyboard('{ArrowRight}');
+      expect(tab('Alpha 3')).toHaveFocus();
+      expect(tab('Alpha 3')).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('has no axe violations', async () => {
+      render(<ChipHarness />);
+
+      await expectNoAxeViolations();
+    });
+  });
 });
