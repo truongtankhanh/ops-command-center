@@ -2,6 +2,8 @@ import { type KeyboardEvent, type ReactNode, useId, useRef } from 'react';
 import { useAssets, useIncidents } from '../../api/queries';
 import { isActive } from '../../lib/incidents/incidents';
 import { type SidePanelTab, useConsole } from '../../store';
+import { Icon } from '../../ui/Icon';
+import { sidePanelIcon } from '../../ui/icons';
 import { nextTabIndex } from '../../ui/tabNavigation';
 import styles from './SidePanel.module.css';
 
@@ -14,7 +16,8 @@ const TABS: readonly { value: SidePanelTab; label: string }[] = [
  * The side column (frame 01): a two-tab switch, "Incidents {active}" and "Assets {catalogue}", over
  * the panel it selects. The switch is the WAI-ARIA tabs pattern with automatic activation, like
  * `ui/Tabs`: one Tab stop on the selected tab, ← / → (wrapping), Home and End move and select.
- * `ui/Tabs` itself has one panel for all its tabs, so this keeps its own list.
+ * `ui/Tabs` itself has one panel for all its tabs, so this keeps its own list, drawn with the same
+ * rules (V3-07.1): a glyph, the word and the count in each tab, the selected one marked by a lit bar.
  *
  * **Both panels stay mounted**, the inactive one `hidden`, so the incident feed keeps its search
  * text, its roving focus and its live handling while the assets are shown. A panel arrives as a
@@ -72,6 +75,7 @@ export function SidePanel({ incidents, assets }: { incidents: ReactNode; assets:
               tabIndex={panel === tab.value ? 0 : -1}
               onClick={() => setPanel(tab.value)}
             >
+              <Icon glyph={sidePanelIcon(tab.value)} size={16} />
               {tab.label}
               {/* The space keeps the accessible name "Incidents 8", not "Incidents8". */}
               {count !== undefined && (

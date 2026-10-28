@@ -1,7 +1,10 @@
 /*
- * The side column (frame 01): the surface and the right border the incident feed used to draw,
- * the Incidents / Assets switch, and the two panels (`SidePanel`). The panels draw their own
- * content; this only places them.
+ * The side column (frame 01): the surface and the right border the incident feed used to draw, the Incidents / Assets
+ * switch, and the two panels (`SidePanel`). The panels draw their own content; this only places them.
+ *
+ * The column is flat, edge to edge in its grid cell: `--surface-1` and the `--border-subtle` hairline are the flat `Panel`'s
+ * values without its radius, which would show corners against the stage. Frame 01 draws the sidebar as an inset rounded
+ * card; the feeds' margins and `--feed-width` assume this column instead (V3-07.1).
  */
 .side {
   position: relative;
@@ -12,27 +15,27 @@
   background: var(--surface-1);
 }
 
-/* Frame 01 `.panel-switch`: two equal tabs in a recessed track, the selected one raised. */
+/*
+ * The switch, in the V3 tab look of `ui/Tabs` (V3-04.3), written out here because `Tabs` has one panel for all its tabs
+ * and this column keeps both mounted. Natural-width tabs on a hairline, left-aligned: the right side is left for the
+ * List | Table switch of frame 01 (V3-24). No `overflow: hidden`, so the focus ring and the bar's glow are not clipped.
+ */
 .switch {
   flex: none;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: var(--space-1);
-  margin: var(--space-3) var(--space-3) var(--space-1);
-  padding: calc(3px * var(--ui-scale));
-  border-radius: var(--radius-m);
-  background: var(--surface-0);
-  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  padding: 0 var(--space-3);
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
 }
 
 .tab {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-1-5);
-  height: calc(32px * var(--ui-scale));
+  height: calc(44px * var(--ui-scale));
+  padding: 0 var(--space-3);
   border: 0;
-  border-radius: var(--radius-s);
   background: none;
   font-family: var(--font-ui);
   font-weight: var(--weight-semibold);
@@ -41,20 +44,33 @@
   cursor: pointer;
 }
 
-.tab:hover {
-  color: var(--text-primary);
-}
-
-/* A raised face as well as colour, so the selection never rests on colour alone. */
+.tab:hover,
 .tab[aria-selected='true'] {
-  background: var(--surface-2);
   color: var(--text-primary);
-  box-shadow:
-    var(--shadow-1),
-    inset 0 0 0 1px var(--border-subtle);
 }
 
-/* The count, as in `ui/Tabs`; the same quiet pill in both states. */
+/*
+ * The lit edge of the selected tab (ADR-0022 §4: neon is edge and signal, not fill): a 2 px bar on the hairline with
+ * `--glow-edge`, which is a ring plus a halo and so goes on a thin bar, not on the tab. The bar and the brighter label
+ * are what say "selected", so the selection never rests on colour alone.
+ */
+.tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: var(--space-2);
+  bottom: 0;
+  left: var(--space-2);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: var(--glow-edge);
+}
+
+/*
+ * The count: the same rules as `ui/Tabs`'s (a second copy; extract it when a third appears). `--type-s`, not `--type-2xs`:
+ * a count inside a button is not non-actionable metadata. On the selected tab it takes the accent (`--accent-ink` on
+ * `--accent-tint`, a checked pair).
+ */
 .count {
   display: inline-grid;
   place-items: center;
@@ -64,7 +80,12 @@
   border-radius: 999px;
   background: var(--surface-3);
   font-size: var(--type-s);
-  color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.tab[aria-selected='true'] .count {
+  background: var(--accent-tint);
+  color: var(--accent-ink);
 }
 
 /* A panel fills the column under the switch; the feed inside scrolls. */

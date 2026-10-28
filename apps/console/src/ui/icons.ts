@@ -12,6 +12,7 @@ import {
   Ban,
   Battery,
   Biohazard,
+  Box,
   Building2,
   Car,
   CarFront,
@@ -85,7 +86,7 @@ import type {
 import type { AssetState } from '../lib/assets/assets';
 import type { SystemHealth } from '../lib/shell/systemHealth';
 import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
-import type { ConnectionState } from '../store';
+import type { ConnectionState, SidePanelTab } from '../store';
 
 /** A drawable glyph. Consumers use this type, never the icon set's own. */
 export type Glyph = LucideIcon;
@@ -219,6 +220,16 @@ const HEALTH_ICONS: Record<SystemHealth['level'], Glyph> = {
 };
 
 export const healthIcon = (level: SystemHealth['level']) => HEALTH_ICONS[level];
+
+// The side column's two tabs (V3-07.1, frame 01). Both glyphs are shared on purpose with another meaning
+// (`TriangleAlert` is the High severity and the degraded health, `Box` the 3D view and an asset drawn without a model):
+// a tab always carries its word and its count beside the glyph and never draws it in a severity hue. Written in icons.md.
+const SIDE_PANEL_ICONS: Record<SidePanelTab, Glyph> = {
+  incidents: TriangleAlert,
+  assets: Box,
+};
+
+export const sidePanelIcon = (tab: SidePanelTab) => SIDE_PANEL_ICONS[tab];
 
 // An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
 // states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),

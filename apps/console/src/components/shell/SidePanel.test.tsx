@@ -133,6 +133,14 @@ describe('SidePanel', () => {
       expect(tab('Assets 0')).toBeInTheDocument();
     });
 
+    it('draws a decorative glyph in each tab without changing its name (V3-07.1)', () => {
+      render(stubs);
+
+      for (const name of ['Incidents 2', 'Assets 4']) {
+        expect(tab(name).querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+      }
+    });
+
     it('is a single Tab stop, on the selected tab', () => {
       render(stubs);
 
