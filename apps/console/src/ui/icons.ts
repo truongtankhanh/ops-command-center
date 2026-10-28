@@ -317,6 +317,7 @@ export {
   House,
   Info,
   Keyboard,
+  LayoutGrid,
   LoaderCircle,
   Lock,
   LogOut,

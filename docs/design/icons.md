@@ -56,7 +56,8 @@ the technician's out-of-scope footer on the incident sheet (frame 11, V2-03.7; t
 for the report form (frame 03, UI-12) `MapPin` (the "Pick on map" toggle and the pin hint), `Crosshair` (the map hint
 while picking) and `Check` (the success toast; not `CircleCheck`, which means "resolved"), and for the camera
 tiles and viewer (frame 01, UI-13) `Maximize2` (open a camera in the viewer, the frame's `#i-expand`), `Maximize` (the
-viewer's Fullscreen button), `Pin` / `PinOff` (pin a camera to the strip / unpin it, and the pinned badge), and for
+viewer's Fullscreen button), `Pin` / `PinOff` (pin a camera to the strip / unpin it, and the pinned badge), `LayoutGrid` (the strip's "View all" button,
+which opens the dialog of every camera; frame 13), and for
 the loading, error and session states (frames 05, 07–11, UI-15) `CircleX` (anything that could not be loaded or
 stopped working, and the failed sign-in), `Shield` (no access: the account has no role), `Lock` (insecure context, and
 the session-expired banner) and `LoaderCircle` (the signing-in / signing-out spinner). Frame 09 draws the failed

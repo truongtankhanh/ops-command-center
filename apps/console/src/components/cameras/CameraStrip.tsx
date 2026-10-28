@@ -11,10 +11,12 @@ import { cameraLink, stripCameras, stripSize, stripSubject } from '../../lib/cam
 import { useDisplayMode } from '../../lib/shell/useDisplayMode';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
+import { Button } from '../../ui/Button';
 import { Icon } from '../../ui/Icon';
-import { ChevronDown } from '../../ui/icons';
+import { ChevronDown, LayoutGrid } from '../../ui/icons';
 import { Skeleton } from '../../ui/Skeleton';
 import { Tabs } from '../../ui/Tabs';
+import { CameraGrid } from './CameraGrid';
 import styles from './CameraStrip.module.css';
 import { CameraTile } from './CameraTile';
 import { LoadFailed, RateLimited } from '../shell/LoadStates';
@@ -34,6 +36,11 @@ import { LoadFailed, RateLimited } from '../shell/LoadStates';
  * remembered per browser): the tiles are not rendered, so no stream runs behind a hidden strip, and
  * the header keeps "N offline" so a camera lost while collapsed is not hidden. Nothing in the
  * header is a count until the list is loaded: a 0 shown while loading would be a guess.
+ *
+ * "View all" (V3-08.4) opens `CameraGrid`, a dialog of every camera, so the strip stays a shortlist.
+ * Like the counts it exists only for a loaded, non-empty list, and it stays while the strip is
+ * collapsed, since it needs no tile. Whether the dialog is open is this component's state, not the
+ * store's: nothing else reads it.
  */
 export function CameraStrip() {
   const { data: cameras, error, failureReason, isPending, isFetching, refetch } = useCameras();
@@ -48,6 +55,7 @@ export function CameraStrip() {
   const setCollapsed = useConsole((s) => s.setStripCollapsed);
   // Held here, above the tiles, so collapsing and expanding keeps the choice.
   const [filter, setFilter] = useState<CameraFilter>('all');
+  const [viewingAll, setViewingAll] = useState(false);
   const rowId = useId();
   const incidentZoneId = incidents.find((i) => i.id === selectedId)?.zoneId;
   const asset =
@@ -109,6 +117,17 @@ export function CameraStrip() {
       >
         <Icon glyph={ChevronDown} size={16} className={styles.chevron} />
       </button>
+      {counts && counts.all > 0 && (
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={LayoutGrid}
+          className={styles.viewAll}
+          onClick={() => setViewingAll(true)}
+        >
+          View all
+        </Button>
+      )}
       {!collapsed && counts && counts.all > 0 ? (
         <Tabs
           label="Filter cameras"
@@ -138,6 +157,9 @@ export function CameraStrip() {
         <div id={rowId} className={styles.tiles} hidden={collapsed}>
           {!collapsed && placeholder}
         </div>
+      )}
+      {viewingAll && cameras && (
+        <CameraGrid cameras={cameras} subject={subject} onClose={() => setViewingAll(false)} />
       )}
     </section>
   );

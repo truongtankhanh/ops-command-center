@@ -637,4 +637,109 @@ describe('CameraStrip', () => {
       });
     });
   });
+
+  // V3-08.4: the header's button that opens the dialog of every camera (`CameraGrid`, tested on its own).
+  describe('View all', () => {
+    const viewAll = () => within(strip()).queryByRole('button', { name: 'View all' });
+    const grid = () => screen.getByRole('dialog', { name: 'All cameras' });
+
+    beforeEach(() => localStorage.clear());
+
+    it('is in the header of a loaded list', () => {
+      renderStrip({ cameras: manyCameras(7) });
+
+      expect(viewAll()).toBeInTheDocument();
+    });
+
+    it('stays while the strip is collapsed, since it needs no tile', () => {
+      useConsole.setState({ stripCollapsed: true });
+
+      renderStrip({ cameras: manyCameras(7) });
+
+      expect(viewAll()).toBeInTheDocument();
+      expect(within(strip()).queryAllByRole('figure')).toHaveLength(0);
+    });
+
+    it('is not there while the cameras load', () => {
+      renderStrip({ cameras: null });
+
+      expect(viewAll()).toBeNull();
+    });
+
+    it('is not there when the cameras could not be loaded', async () => {
+      camerasAnswers = [() => apiError(500, 'Internal server error')];
+      renderStrip({ cameras: null });
+
+      expect(await screen.findByText('Cameras could not be loaded.')).toBeInTheDocument();
+      expect(viewAll()).toBeNull();
+    });
+
+    it('is not there while too many requests are retried', async () => {
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay } },
+      });
+      camerasAnswers = [() => apiError(429, 'Too many requests')];
+      const { unmount } = renderStrip({ cameras: null, client });
+
+      await screen.findByText(RATE_LIMITED_RETRYING);
+      expect(viewAll()).toBeNull();
+
+      unmount();
+      await client.cancelQueries();
+    });
+
+    it('is not there for a site with no camera', () => {
+      renderStrip({ cameras: [] });
+
+      expect(viewAll()).toBeNull();
+    });
+
+    it('opens a dialog of every camera, where the strip shows four', async () => {
+      renderStrip({ cameras: manyCameras(7) });
+      expect(within(strip()).getAllByRole('figure')).toHaveLength(4);
+
+      await userEvent.click(viewAll()!);
+
+      expect(within(grid()).getAllByRole('figure')).toHaveLength(7);
+      expect(within(strip()).getAllByRole('figure')).toHaveLength(4);
+    });
+
+    it('closes on Escape and gives focus back to the button', async () => {
+      renderStrip({ cameras: manyCameras(7) });
+      await userEvent.click(viewAll()!);
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      await waitFor(() => expect(viewAll()).toHaveFocus());
+    });
+
+    it("ties the dialog's tiles to the selected incident, as the strip's are", async () => {
+      useConsole.setState({ selectedIncidentId: 'i1' });
+      renderStrip({ cameras: manyCameras(7), incidents: [incidentInLibrary] });
+
+      await userEvent.click(viewAll()!);
+
+      // Every camera is in the Library, the incident's zone.
+      expect(within(grid()).getAllByText('In zone')).toHaveLength(7);
+    });
+
+    it('comes after the collapse button and before the filter in the Tab order', async () => {
+      renderStrip({ cameras: manyCameras(7) });
+      within(strip()).getByRole('button', { name: 'Hide cameras' }).focus();
+
+      await userEvent.tab();
+      expect(viewAll()).toHaveFocus();
+
+      await userEvent.tab();
+      expect(within(strip()).getByRole('tab', { name: 'All 7' })).toHaveFocus();
+    });
+
+    it('has no axe violations with the dialog open', async () => {
+      renderStrip({ cameras: manyCameras(7) });
+      await userEvent.click(viewAll()!);
+
+      await expectNoAxeViolations();
+    });
+  });
 });

@@ -3,8 +3,8 @@
  * row of tiles, as many columns as tiles (`--strip-columns`, set by the component from the display mode). Compact
  * density tightens its padding and gap.
  *
- * The header is a grid of five columns: title, count, the filter (or "N offline" when collapsed), a free column for
- * "View all" (V3-08.4) and the button. The children are placed by column, not by their order in the DOM, where the
+ * The header is a grid of five columns: title, count, the filter (or "N offline" when collapsed), "View all"
+ * (V3-08.4, which opens the dialog of every camera) and the collapse button. The children are placed by column, not by their order in the DOM, where the
  * button comes first so that Tab reaches the control before the tiles it controls.
  *
  * `--strip-height` is a budget, not a fixed height (V3-08.2): what is left of it after the padding, the header and
@@ -78,6 +78,13 @@
   background: var(--surface-3);
 }
 
+/* Opens the dialog of every camera (V3-08.4); next to the collapse button, in the column the chips leave free. */
+.viewAll {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+}
+
 /* Down while the tiles are shown, up once they are hidden (frame 13). The chevron turns without a transition. */
 .toggle[aria-expanded='false'] .chevron {
   transform: rotate(180deg);
@@ -129,10 +136,15 @@
   white-space: nowrap;
 }
 
-/* Touch screens: the button is a 44 px target, as the chips are (`Tabs`); the header row grows to fit. */
+/* Touch screens: the buttons are 44 px targets, as the chips are (`Tabs`); the header row grows to fit. */
 @media (pointer: coarse) {
   .toggle {
     width: calc(44px * var(--ui-scale));
+    height: calc(44px * var(--ui-scale));
+  }
+
+  /* Three classes' worth, to beat `Button`'s own `[data-size='sm']` height whatever the order of the sheets. */
+  .strip .viewAll[data-size='sm'] {
     height: calc(44px * var(--ui-scale));
   }
 }
