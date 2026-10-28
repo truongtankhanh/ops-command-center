@@ -41,7 +41,9 @@ their family list checked against `--font-ui`; their weight and size copy `--wei
 - **Density.** Comfortable (default) or compact, chosen in the account menu and remembered per browser
   (`occ.console.density`). Compact sets `data-density="compact"` on `<html>` (so portalled dialogs follow) and
   overrides the density tokens: `--row-pad-y`, `--list-gap`, `--header-pad-y`, `--header-height` (64 px, 56 px compact: the
-  header's minimum height), `--kpi-height`, `--strip-pad`, `--strip-gap`, `--section-pad-y`. Type sizes never change with density (12 px is the floor for text read from a distance, 11 px only for
+  header's minimum height), `--kpi-height`, `--strip-height` (170 px, 150 px compact: the camera strip's height
+  budget, which the strip sizes its tiles to fit rather than a fixed height), `--strip-pad`, `--strip-gap`,
+  `--section-pad-y`. Type sizes never change with density (12 px is the floor for text read from a distance, 11 px only for
   non-actionable metadata, [Type scale](#type-scale)); on a
   touch screen (`pointer: coarse`) KPI tiles, feed rows and camera tile actions stay ≥ 44 px.
 - **The sheet's width in script.** `--sheet-inset` is registered with `@property` (`<length>`), so the map reads the

@@ -4,6 +4,16 @@ import type { Camera } from '@occ/contracts';
 export type CameraFilter = 'all' | 'live' | 'offline';
 
 /**
+ * Every filter, in tab order, with the word its tab shows. "Live" is `camera.online` (see `countCameras`), so the
+ * label promises no more than "online".
+ */
+export const CAMERA_FILTERS: readonly { value: CameraFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'live', label: 'Live' },
+  { value: 'offline', label: 'Offline' },
+];
+
+/**
  * How many cameras each filter lists, from one pass over the list, so `live + offline` is always `all`.
  * "Live" is `camera.online`, which is all the contract says about a camera's health: an online camera whose stream
  * is unavailable (`feedState`) still counts as live, so a label must not promise more than "online".

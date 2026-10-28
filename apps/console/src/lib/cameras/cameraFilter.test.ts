@@ -1,5 +1,5 @@
 import type { Camera } from '@occ/contracts';
-import { type CameraFilter, countCameras, filterCameras } from './cameraFilter';
+import { CAMERA_FILTERS, type CameraFilter, countCameras, filterCameras } from './cameraFilter';
 
 const cam = (code: string, online: boolean): Camera => ({
   id: code,
@@ -88,5 +88,20 @@ describe('filterCameras', () => {
     for (const list of [mixed, [], [cam('C1', true)], [cam('C1', false)]]) {
       expect(filterCameras(list, filter)).toHaveLength(countCameras(list)[filter]);
     }
+  });
+});
+
+describe('CAMERA_FILTERS', () => {
+  it('lists the three filters in tab order, with the words their tabs show', () => {
+    expect(CAMERA_FILTERS).toEqual([
+      { value: 'all', label: 'All' },
+      { value: 'live', label: 'Live' },
+      { value: 'offline', label: 'Offline' },
+    ]);
+  });
+
+  it.each(FILTERS)('has one entry for %s, and countCameras has a count for it', (filter) => {
+    expect(CAMERA_FILTERS.filter(({ value }) => value === filter)).toHaveLength(1);
+    expect(countCameras([])).toHaveProperty(filter);
   });
 });
