@@ -36,9 +36,12 @@ interface AssetRowProps {
 }
 
 /**
- * One asset in the Assets list (frames 02 and 05): its class glyph, name, first headline reading,
- * state and code. State and severity are words and glyphs as well as colour, and a stale value is
- * dimmed *and* says "No data · 1 min", so nothing rests on colour alone. A click or Enter / Space
+ * One asset in the Assets list: its class glyph, name, first headline reading, state and code, in the
+ * incident row's grid (`IncidentRow`: a 40 px tile and three lines; no frame draws this row, V3-07.5).
+ * Line 1 is the name and the reading, line 2 the state pill, line 3 the raw class (a class this build
+ * does not know) and the code. State and severity are words and glyphs as well as colour, and a stale
+ * value is dimmed *and* says "No data · 1 min", so nothing rests on colour alone. The DOM order is the
+ * reading order (name, reading, state, class, code), whatever line each is drawn on. A click or Enter / Space
  * selects the asset (a second one deselects, as an incident row does); hovering it sets
  * `hoveredAssetCode` for the map to follow (V2-10.4), and the map's own hover over the marker
  * highlights the row the same way (`data-hovered`, no scroll, no focus). Keyboard focus does not
@@ -103,22 +106,22 @@ export const AssetRow = memo(function AssetRow({
       onMouseLeave={() => hoverAsset(null)}
     >
       <span className={styles.tile}>
-        <Icon glyph={classGlyph} size={18} />
+        <Icon glyph={classGlyph} size={20} />
       </span>
       <span className={styles.name}>{asset.name}</span>
       <span className={styles.value} data-stale={stale}>
         {value ?? '—'}
       </span>
-      <span className={styles.meta}>
-        {text !== null && (
-          <span className={styles.state} data-state={state}>
-            {stateGlyph && <Icon glyph={stateGlyph} size={14} />}
-            {state === 'fault' && incident && (
-              <span className={styles.hidden}>{severityLabel(incident.severity)} severity, </span>
-            )}
-            {text}
-          </span>
-        )}
+      {text !== null && (
+        <span className={styles.state} data-state={state}>
+          {stateGlyph && <Icon glyph={stateGlyph} size={14} />}
+          {state === 'fault' && incident && (
+            <span className={styles.hidden}>{severityLabel(incident.severity)} severity, </span>
+          )}
+          {text}
+        </span>
+      )}
+      <span className={styles.foot}>
         {rawClass !== null && <span className={styles.rawClass}>{rawClass}</span>}
         <span className={styles.code}>{asset.code}</span>
       </span>

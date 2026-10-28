@@ -31,7 +31,10 @@
   margin: var(--space-2) var(--space-3);
 }
 
-/* Frame 05 `.feed-notice`: the rows are the last known state, not live. */
+/*
+ * The rows are the last known state, not live. No frame draws this strip: it is the incident feed's `--surface-2` strip
+ * with a hairline (V3-07.4), so the two panels match.
+ */
 .notice {
   flex: none;
   display: flex;
@@ -39,6 +42,7 @@
   gap: var(--space-2);
   margin: var(--space-2) var(--space-3) 0;
   padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
   background: var(--surface-2);
   font-size: var(--type-s);
@@ -99,7 +103,19 @@
   padding: 0;
 }
 
-/* Loading: a row's glyph tile, name and meta line, so nothing jumps when data arrives. */
+/*
+ * Nothing to list, could not load, too many requests (`EmptyState`, `LoadFailed`, `RateLimited`): the primitive's
+ * `--space-8` top and bottom would push the first rows off a short column, so the panel asks for less, as the incident
+ * feed does. The element in the selector lifts it over the primitive's own padding whichever stylesheet loads last;
+ * `RateLimited`'s class lands on its wrapper, and the padding belongs to the message inside it.
+ */
+p.state,
+div.state,
+.rateLimited > p {
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Loading: a row's glyph tile, name, state pill and code, so nothing jumps when data arrives. */
 .skeletonList {
   display: grid;
   align-content: start;
@@ -109,24 +125,37 @@
   flex: 1;
 }
 
+/*
+ * As tall as an `AssetRow` (V3-07.5): its three tracks (name `--leading-l`, the 20 px pill, code `--leading-s`), gap,
+ * padding and 1 px border, so 86 px by arithmetic, following compact density and `--ui-scale`. The bars keep their own
+ * heights and are centred in their tracks.
+ */
 .skeletonRow {
   display: grid;
-  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr);
+  grid-template-rows: var(--leading-l) calc(20px * var(--ui-scale)) var(--leading-s);
+  align-items: center;
   gap: var(--space-1) var(--space-3);
   padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+  border: 1px solid transparent;
 }
 
 .skeletonTile {
-  grid-row: span 2;
-  width: calc(34px * var(--ui-scale));
-  height: calc(34px * var(--ui-scale));
+  grid-row: span 3;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
   border-radius: var(--radius-m);
 }
 
 .skeletonName {
   width: 65%;
   height: calc(16px * var(--ui-scale));
-  margin-top: var(--space-0-5);
+}
+
+/* The state pill is 20 px high and about as wide as its glyph and word. */
+.skeletonState {
+  width: 30%;
+  height: calc(20px * var(--ui-scale));
 }
 
 .skeletonMeta {

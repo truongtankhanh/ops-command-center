@@ -249,11 +249,12 @@ export function AssetFeed() {
         tabs={tabs}
         value={filter}
         onChange={setFilter}
+        appearance="chips"
         panelClassName={styles.panel}
       >
         {isPending ? (
           isRateLimited(failureReason) ? (
-            <RateLimited />
+            <RateLimited className={styles.rateLimited} />
           ) : (
             <AssetSkeleton />
           )
@@ -263,9 +264,10 @@ export function AssetFeed() {
             fallback="Assets could not be loaded."
             isFetching={isFetching}
             onRetry={() => void refetch()}
+            className={styles.state}
           />
         ) : catalogue.length === 0 ? (
-          <EmptyState>No assets are set up on this site.</EmptyState>
+          <EmptyState className={styles.state}>No assets are set up on this site.</EmptyState>
         ) : (
           <>
             {zoneId !== null && (
@@ -288,9 +290,11 @@ export function AssetFeed() {
             {visible.length === 0 ? (
               // A search gets the search glyph and no action: its own box has "Clear search".
               terms.length > 0 ? (
-                <EmptyState icon={Search}>{emptyMessage}</EmptyState>
+                <EmptyState icon={Search} className={styles.state}>
+                  {emptyMessage}
+                </EmptyState>
               ) : (
-                <EmptyState>{emptyMessage}</EmptyState>
+                <EmptyState className={styles.state}>{emptyMessage}</EmptyState>
               )
             ) : (
               <ul className={styles.list} onKeyDown={onListKeyDown}>
@@ -382,7 +386,7 @@ function GroupHeader({
   );
 }
 
-/** Shaped like frame 02's row (glyph tile, name and value, state and code), so nothing jumps. */
+/** Shaped like `AssetRow` (tile, name, state pill, code) and as tall as it, so nothing jumps. */
 function AssetSkeleton() {
   return (
     <div className={styles.skeletonList} aria-busy="true">
@@ -393,6 +397,7 @@ function AssetSkeleton() {
         <div key={row} className={styles.skeletonRow}>
           <Skeleton className={styles.skeletonTile} />
           <Skeleton className={styles.skeletonName} />
+          <Skeleton className={styles.skeletonState} />
           <Skeleton className={styles.skeletonMeta} />
         </div>
       ))}

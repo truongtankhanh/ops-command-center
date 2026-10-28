@@ -13,7 +13,12 @@ import { useSession } from '../../auth/store';
 import { initialTelemetryState, type TelemetryState } from '../../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
-import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
+import {
+  createTestQueryClient,
+  expectNoAxeViolations,
+  renderWithQueryClient,
+  resetStore,
+} from '../../test-utils';
 import { AssetFeed } from './AssetFeed';
 
 // No token in these cases; the API client only asks for one.
@@ -185,6 +190,21 @@ describe('AssetFeed', () => {
       expect(screen.getByRole('tablist', { name: 'Filter assets' })).toBeInTheDocument();
     });
 
+    // V3-07.5: the filter row is chips, as the incident feed's, so the column has one lit-bar row.
+    it('draws the filter tabs as chips, with the same names and counts', () => {
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      expect(screen.getByRole('tablist', { name: 'Filter assets' })).toHaveAttribute(
+        'data-appearance',
+        'chips',
+      );
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+        'All 3',
+        'Faults 1',
+        'No data 2',
+      ]);
+    });
+
     it('counts each filter tab, in the tab name', () => {
       renderWithQueryClient(<AssetFeed />, seeded());
 
@@ -278,6 +298,18 @@ describe('AssetFeed', () => {
       const row = within(rowNamed(/Cooling tower 2/));
       expect(row.getByText('No data')).toBeInTheDocument();
       expect(row.getByText('—')).toBeInTheDocument();
+    });
+
+    // V3-07.5: the rows carry a state pill beside the class tile; a fault, a stale and a running row together.
+    it('has no axe violations, with a fault, a stale and a running row listed', async () => {
+      hold({
+        'CT-01': { values: { running: true, fanSpeedRpm: 1420 } },
+        'CT-02': { agoMs: 65_000, values: { running: true, fanSpeedRpm: 1420 } },
+        'LKS-B3': { values: { running: true, fanSpeedRpm: 900 } },
+      });
+      renderWithQueryClient(<AssetFeed />, seeded());
+
+      await expectNoAxeViolations();
     });
 
     it('lists exactly the faults in Faults, with the incident code, and the count matches', async () => {
@@ -620,6 +652,15 @@ describe('AssetFeed', () => {
       expect(loading).toHaveAttribute('role', 'status');
       expect(loading.parentElement).toHaveAttribute('aria-busy', 'true');
       expect(screen.getByRole('tab', { name: 'All' })).toBeInTheDocument();
+    });
+
+    it('shows five placeholder rows, the incident feed’s length', () => {
+      renderWithQueryClient(<AssetFeed />, unseeded());
+
+      // The placeholders have no role or text (they are `aria-hidden` blocks), so they are counted as the busy
+      // list's children: the hidden status and `SKELETON_ROWS` (5, in `AssetFeed.tsx`) rows.
+      const busy = screen.getByText('Loading assets…').parentElement;
+      expect(busy?.children).toHaveLength(1 + 5);
     });
 
     it('says the catalogue could not be loaded, and retries', async () => {
