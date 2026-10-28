@@ -19,9 +19,10 @@ const LINK_TAG: Readonly<Record<CameraLink, string>> = {
 };
 
 /**
- * A camera with the chrome of frames 01 / 02 / 03 / 06: LIVE, the code or a tag, a pinned badge,
- * the name, zone and time, and two actions shown on hover or focus — open in the viewer and pin to
- * the strip. `compact` is the detail sheet's tile: LIVE and the name only (frames 02 / 06).
+ * A camera with the chrome of frames 01 / 02 / 03 / 06 / 13: LIVE (or OFFLINE, on the strip's tile
+ * only), the code or a tag, a pinned badge, the name, zone and time, and two actions shown on hover
+ * or focus — open in the viewer and pin to the strip. `compact` is the detail sheet's tile: LIVE and
+ * the name only (frames 02 / 06).
  */
 export function CameraTile({
   camera,
@@ -55,7 +56,10 @@ export function CameraTile({
   const fullHintId = useId();
 
   const compact = variant === 'compact';
-  const live = feedState(camera.online, stream) === 'stream';
+  const state = feedState(camera.online, stream);
+  const live = state === 'stream';
+  // A camera that is online but whose stream cannot be had is not offline: the notice says so.
+  const offline = state === 'offline';
   const zoneName = zones.find((z) => z.id === camera.zoneId)?.name;
   const knownIds = cameras.map((c) => c.id);
   const pinned = pinnedIds.includes(camera.id);
@@ -70,6 +74,7 @@ export function CameraTile({
       <div className={styles.top}>
         <span className={styles.badges}>
           {live && <LivePill />}
+          {offline && !compact && !readOnly && <OfflinePill />}
           {!compact && !readOnly && pinned && (
             <span className={styles.pill} aria-hidden="true">
               <Icon glyph={Pin} size={14} />
@@ -128,6 +133,20 @@ export function CameraTile({
         {!compact && live && <CameraTime className={styles.secondary} />}
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * Frame 13's OFFLINE pill, in LIVE's place on the strip's tile: the word and a ring where LIVE has a filled dot, so
+ * the state is not told by colour alone. Hidden from assistive tech because the "no picture" notice under it already
+ * says "No signal" and "Camera offline"; it is for the eye, as the pinned badge is.
+ */
+function OfflinePill() {
+  return (
+    <span className={styles.pill} data-state="offline" aria-hidden="true">
+      <i className={styles.dot} aria-hidden="true" />
+      Offline
+    </span>
   );
 }
 

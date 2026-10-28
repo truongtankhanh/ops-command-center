@@ -360,7 +360,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--border-strong`   | `--surface-1`                                  | 3.51  | 3       | pass                                                                                       |
 | `--text-primary`    | `--camera-ground`                              | 17.21 | 4.5     | pass                                                                                       |
 | `--text-secondary`  | `--camera-ground`                              | 9.55  | 4.5     | pass                                                                                       |
-| `--success`         | `--camera-ground`                              | 11.44 | 3       | pass                                                                                       |
+| `--signal`          | `--camera-ground`                              | 13.02 | 3       | pass                                                                                       |
 | `--sev-critical`    | `--camera-ground`                              | 5.80  | 3       | pass                                                                                       |
 | `--text-primary`    | `--camera-off-a`                               | 16.64 | 4.5     | pass                                                                                       |
 | `--text-primary`    | `--camera-off-b`                               | 16.08 | 4.5     | pass                                                                                       |
