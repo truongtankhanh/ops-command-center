@@ -66,6 +66,14 @@ export const matchesSeverity = (incident: Incident, severity: IncidentSeverity |
   severity === null || incident.severity === severity;
 
 /**
+ * `null` is no category filter: every incident matches. With one chosen, a type this console does not know
+ * (no category) is hidden: reading fails open only while nothing is filtered, the opposite of "Mine to handle",
+ * which fails closed (`matchesFilter`).
+ */
+export const matchesCategory = (incident: Incident, category: IncidentCategory | null): boolean =>
+  category === null || categoryOfType(incident.type) === category;
+
+/**
  * Folds text for search: case- and accent-insensitive, so "chay" finds "Cháy". `đ` has no NFD
  * decomposition, so it is mapped by hand.
  */
@@ -113,17 +121,21 @@ const EMPTY_MESSAGES: Record<Exclude<FeedFilter, 'mine'>, string> = {
 };
 
 /**
- * What the feed says when nothing matches its tab, severity filter and search. `scope` is the
+ * What the feed says when nothing matches its tab, severity filter, category filter and search. `scope` is the
  * user's categories, named by "Mine to handle" ("Nothing to handle in Facilities or Environment
- * right now."); without one the message names none.
+ * right now."); without one the message names none. The chosen `category` is named after the severity
+ * ("No active high Fire & safety incidents."), and without one every message is what it was.
  */
 export function feedEmptyMessage(
   filter: FeedFilter,
   severity: IncidentSeverity | null,
   query = '',
   scope: readonly IncidentCategory[] = NO_SCOPE,
+  category: IncidentCategory | null = null,
 ): string {
-  const level = severity ? `${severityLabel(severity).toLowerCase()} ` : '';
+  const level = `${severity ? `${severityLabel(severity).toLowerCase()} ` : ''}${
+    category ? `${categoryLabel(category)} ` : ''
+  }`;
   const where = scope.length > 0 ? ` in ${categoriesLabel(scope, 'or')}` : '';
   const search = query.trim();
   if (search !== '') {
@@ -131,7 +143,7 @@ export function feedEmptyMessage(
     const tab = filter === 'all' ? '' : `${filter} `;
     return `No ${tab}${level}incidents match "${search}".`;
   }
-  if (severity === null) {
+  if (severity === null && category === null) {
     return filter === 'mine' ? `Nothing to handle${where} right now.` : EMPTY_MESSAGES[filter];
   }
   switch (filter) {

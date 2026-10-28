@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, createRef } from 'react';
 import { expectNoAxeViolations } from '../test-utils';
 import { Popover } from './Popover';
 
@@ -184,6 +184,13 @@ describe('Popover', () => {
     renderPopover({ trigger: <span aria-hidden="true">•</span>, triggerLabel: 'Open account' });
 
     expect(screen.getByRole('button', { name: 'Open account' })).toBeInTheDocument();
+  });
+
+  it('hands its trigger button to triggerRef', () => {
+    const triggerRef = createRef<HTMLButtonElement>();
+    renderPopover({ triggerRef });
+
+    expect(triggerRef.current).toBe(trigger());
   });
 
   // UI-16: closed, the panel `aria-controls` points at is hidden and empty; open, it is a named group.

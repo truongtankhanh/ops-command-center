@@ -16,9 +16,12 @@
   pointer-events: none;
 }
 
-/* Higher specificity than `Field`'s `.control` (ADR-0016 §5): room for the glyph and the slot. */
+/*
+ * Higher specificity than `Field`'s `.control` (ADR-0016 §5): room for the glyph and the slot. The height is
+ * `Field`'s own, `--control-m`, so the box lines up with the filter button beside it (V3-07.3).
+ */
 .search .input {
-  height: calc(38px * var(--ui-scale));
+  height: var(--control-m);
   padding-right: calc(var(--space-8) + var(--space-1));
   padding-left: calc(var(--space-8) + var(--space-0-5));
 }

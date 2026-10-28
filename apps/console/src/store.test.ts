@@ -608,6 +608,36 @@ describe('useConsole', () => {
     });
   });
 
+  describe('category filter', () => {
+    it('starts with every category', () => {
+      expect(state().category).toBeNull();
+    });
+
+    it('chooses one category, and null clears it', () => {
+      state().setCategory('security');
+      expect(state().category).toBe('security');
+
+      state().setCategory('traffic');
+      expect(state().category).toBe('traffic');
+
+      state().setCategory(null);
+      expect(state().category).toBeNull();
+    });
+
+    // Unlike a severity tile, the popover is not a shortcut to the active tab or to the incidents panel.
+    it('leaves the tab, the severity and the side panel as they were', () => {
+      state().toggleSeverity('high');
+      state().setFilter('all');
+      state().setSidePanel('assets');
+
+      state().setCategory('medical');
+
+      expect(state().filter).toBe('all');
+      expect(state().severity).toBe('high');
+      expect(state().sidePanel).toBe('assets');
+    });
+  });
+
   describe('severity filter', () => {
     it('filters by a severity and shows the active tab, which the KPI tiles count', () => {
       state().setFilter('resolved');

@@ -4,12 +4,14 @@ import { isRateLimited } from '../../api/client';
 import { useIncidents, useZones } from '../../api/queries';
 import { useRoles } from '../../auth/usePermission';
 import {
+  categoryLabel,
   categoryTag,
   countByFilter,
   feedEmptyMessage,
   feedFiltersFor,
   handlingScope,
   hasLimitedScope,
+  matchesCategory,
   matchesFilter,
   matchesQuery,
   matchesSeverity,
@@ -26,9 +28,10 @@ import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { FilterChip } from '../../ui/FilterChip';
 import { Icon } from '../../ui/Icon';
-import { Clock, Search, severityIcon } from '../../ui/icons';
+import { categoryIcon, Clock, Search, severityIcon } from '../../ui/icons';
 import { Skeleton } from '../../ui/Skeleton';
 import { Tabs } from '../../ui/Tabs';
+import { CategoryFilter } from './CategoryFilter';
 import { FeedSearch } from './FeedSearch';
 import styles from './IncidentFeed.module.css';
 import { IncidentRow } from './IncidentRow';
@@ -45,6 +48,8 @@ export function IncidentFeed() {
   const roles = useRoles();
   const severity = useConsole((s) => s.severity);
   const clearSeverity = useConsole((s) => s.clearSeverity);
+  const category = useConsole((s) => s.category);
+  const setCategory = useConsole((s) => s.setCategory);
   const offlineSince = useConsole((s) => s.offlineSince);
   const selectedId = useConsole((s) => s.selectedIncidentId);
   const now = useNow();
@@ -54,6 +59,7 @@ export function IncidentFeed() {
   const visiblePanel = useConsole((s) => s.sidePanel === 'incidents');
   const feedRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const categoryButtonRef = useRef<HTMLButtonElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const focusSearch = useCallback(() => {
@@ -72,10 +78,11 @@ export function IncidentFeed() {
 
   const zoneName = new Map(zones.map((z: Zone) => [z.id, z.name]));
   const terms = searchTerms(query);
-  // Severity and search apply to every tab, so the tab counts use them too: each count is the
+  // Severity, category and search apply to every tab, so the tab counts use them too: each count is the
   // number of rows that tab would list.
   const matches = (incident: Incident) =>
     matchesSeverity(incident, severity) &&
+    matchesCategory(incident, category) &&
     matchesQuery(incident, terms, zoneName.get(incident.zoneId));
   // Data first: a failed background refetch keeps the list (TanStack keeps it), so only a list that
   // never arrived counts as not loaded.
@@ -117,9 +124,18 @@ export function IncidentFeed() {
     feedRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   };
 
+  // Clearing removes the chip and its focused button: focus goes to the filter button, which stays (V3-07.3).
+  const onClearCategory = () => {
+    setCategory(null);
+    categoryButtonRef.current?.focus();
+  };
+
   return (
     <section ref={feedRef} id="incident-feed" className={styles.feed} aria-label="Incidents">
-      <FeedSearch value={query} onChange={setQuery} ref={searchRef} className={styles.search} />
+      <div className={styles.top}>
+        <FeedSearch value={query} onChange={setQuery} ref={searchRef} className={styles.search} />
+        <CategoryFilter category={category} onChange={setCategory} triggerRef={categoryButtonRef} />
+      </div>
       {/* Always mounted: screen readers announce a change in an existing live region. */}
       <p role="status" className={styles.hidden}>
         {matchStatus}
@@ -131,15 +147,28 @@ export function IncidentFeed() {
         onChange={setFilter}
         panelClassName={styles.panel}
       >
-        {severity && (
-          <FilterChip
-            glyph={severityIcon(severity)}
-            label={`${severityLabel(severity)} only`}
-            clearLabel="Clear severity filter"
-            onClear={onClearSeverity}
-            data-severity={severity}
-            className={styles.chip}
-          />
+        {(severity || category) && (
+          <div className={styles.chips}>
+            {severity && (
+              <FilterChip
+                glyph={severityIcon(severity)}
+                label={`${severityLabel(severity)} only`}
+                clearLabel="Clear severity filter"
+                onClear={onClearSeverity}
+                data-severity={severity}
+                className={styles.chip}
+              />
+            )}
+            {category && (
+              <FilterChip
+                glyph={categoryIcon(category)}
+                label={`${categoryLabel(category)} only`}
+                clearLabel="Clear category filter"
+                onClear={onClearCategory}
+                className={styles.chip}
+              />
+            )}
+          </div>
         )}
         {/* Frame 05: while the live link is down, the list may be stale; the stage's banner says so. */}
         {loaded && offlineSince !== null && (
@@ -163,10 +192,12 @@ export function IncidentFeed() {
           />
         ) : visible.length === 0 ? (
           <FeedEmpty
-            message={feedEmptyMessage(filter, severity, query, scope)}
+            message={feedEmptyMessage(filter, severity, query, scope, category)}
             searching={query.trim() !== ''}
-            filtered={severity !== null}
+            bySeverity={severity !== null}
+            byCategory={category !== null}
             onClearSeverity={onClearSeverity}
+            onClearCategory={onClearCategory}
           />
         ) : (
           <ul className={styles.list} onKeyDown={onListKeyDown}>
@@ -213,25 +244,36 @@ function FeedSkeleton() {
 
 /**
  * Nothing to list (Q4): the message always says why. A search gets the search glyph and no action:
- * the search box's own "Clear search" sits right above it. Otherwise a severity filter offers to
- * show every severity. Only the search gets a glyph: the severity and status glyphs mean something
- * else in this console.
+ * the search box's own "Clear search" sits right above it. Otherwise each filter that is on offers to
+ * show everything again: every severity, every category, or both buttons when both are on. Only the
+ * search gets a glyph: the severity and status glyphs mean something else in this console.
  */
 function FeedEmpty({
   message,
   searching,
-  filtered,
+  bySeverity,
+  byCategory,
   onClearSeverity,
+  onClearCategory,
 }: {
   message: string;
   searching: boolean;
-  filtered: boolean;
+  bySeverity: boolean;
+  byCategory: boolean;
   onClearSeverity: () => void;
+  onClearCategory: () => void;
 }) {
   if (searching) return <EmptyState icon={Search}>{message}</EmptyState>;
-  if (filtered) {
+  if (bySeverity || byCategory) {
     return (
-      <EmptyState action={<Button onClick={onClearSeverity}>Show all severities</Button>}>
+      <EmptyState
+        action={
+          <>
+            {bySeverity && <Button onClick={onClearSeverity}>Show all severities</Button>}
+            {byCategory && <Button onClick={onClearCategory}>Show all categories</Button>}
+          </>
+        }
+      >
         {message}
       </EmptyState>
     );

@@ -1,0 +1,67 @@
+/*
+ * The feed's category filter (frame 01 `.ibtn`): a square button beside the search box, and the panel of options under
+ * it. The panel's surface and position are the `Popover`'s.
+ */
+
+/*
+ * Frame 01 draws the button as a bordered control on `--surface-0`, like the search box; `Popover`'s own `.trigger`
+ * leaves the border transparent until hover. `[type='button']` raises this over it (the way `FeedSearch` raises over
+ * `Field`, ADR-0016 §5) without an `!important`, and the hover / open fill stays `Popover`'s idea of it.
+ */
+.trigger[type='button'] {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-m);
+  height: var(--control-m);
+  padding: 0;
+  border-color: var(--border-strong);
+  background: var(--surface-0);
+  color: var(--text-secondary);
+}
+
+.trigger[type='button']:hover,
+.trigger[type='button'][aria-expanded='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.glyph {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+/* A category is chosen: the glyph takes the accent (a graphic, 3:1 on every surface) and a dot; the chip names it. */
+.glyph[data-active='true'] {
+  color: var(--accent);
+}
+
+.dot {
+  position: absolute;
+  top: calc(-2px * var(--ui-scale));
+  right: calc(-3px * var(--ui-scale));
+  width: calc(6px * var(--ui-scale));
+  height: calc(6px * var(--ui-scale));
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.options {
+  display: grid;
+  gap: var(--space-0-5);
+}
+
+/* Full-width rows, glyph and label from the left. */
+.option {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.separator {
+  height: 1px;
+  margin: var(--space-1-5) 0;
+  border: 0;
+  background: var(--border-subtle);
+}

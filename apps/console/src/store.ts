@@ -1,4 +1,4 @@
-import type { IncidentSeverity, LngLat } from '@occ/contracts';
+import type { IncidentCategory, IncidentSeverity, LngLat } from '@occ/contracts';
 import { create } from 'zustand';
 import type { ReportPreset } from './lib/assets/assetReport';
 import type { AssetFilter } from './lib/assets/assets';
@@ -69,6 +69,8 @@ interface ConsoleState extends ReportLocation {
   filter: FeedFilter;
   /** Feed filter by severity, set from the header's KPI tiles; `null` shows every severity. */
   severity: IncidentSeverity | null;
+  /** Feed filter by category, set from the search row's filter button (V3-07.3); `null` shows every category. Not remembered. */
+  category: IncidentCategory | null;
   connection: ConnectionState;
   /**
    * Last sign of life from the live connection (connect, heartbeat or incident event), in epoch ms.
@@ -210,6 +212,8 @@ interface ConsoleState extends ReportLocation {
    */
   toggleSeverity(severity: IncidentSeverity): void;
   clearSeverity(): void;
+  /** Chooses the one category the feed lists, or `null` for all. It leaves the tab, the severity and the panel as they are. */
+  setCategory(category: IncidentCategory | null): void;
   setSidePanel(tab: SidePanelTab): void;
   /**
    * Opens `code` in the inspector, which closes the selected incident and the report form (and
@@ -308,6 +312,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   selectedIncidentId: null,
   filter: 'active',
   severity: null,
+  category: null,
   connection: 'connecting',
   lastEventAt: null,
   offlineSince: null,
@@ -375,6 +380,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
         : { severity, filter: 'active', sidePanel: 'incidents' },
     ),
   clearSeverity: () => set({ severity: null }),
+  setCategory: (category) => set({ category }),
   setSidePanel: (sidePanel) => set({ sidePanel }),
   selectAsset: (code: string | null, focusZoneId: string | null = null) =>
     set((state) =>
