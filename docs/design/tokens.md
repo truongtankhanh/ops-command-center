@@ -81,8 +81,8 @@ Written `calc(<px> * var(--ui-scale))` like every size token, so the wall modes 
 
 From the brief's surface rules:
 
-- `--surface-0`: ground, map, inputs. `--surface-1`: header, feed, sheet. `--surface-2`: selected row, cards, action
-  bar. `--surface-3`: raised small parts (chip and segment fills, tooltips). The menu, toast, dialog and banner are
+- `--surface-0`: ground, map, inputs. `--surface-1`: header, feed, sheet. `--surface-2`: hovered row, cards, action
+  bar (the selected feed row is `--row-selected-bg`, its tint). `--surface-3`: raised small parts (chip and segment fills, tooltips). The menu, toast, dialog and banner are
   floating `Panel`s on `--glass-bg` (see the `Panel` bullet below). Camera tiles sit on `--camera-ground`; a frame with
   no picture (offline, stream unavailable, player pending) is striped `--camera-off-a` / `--camera-off-b`.
 - Text tokens pass 4.5:1 on every surface. Critical text never sits on `--surface-3` or on a floating panel's glass
@@ -98,6 +98,10 @@ From the brief's surface rules:
 - The escalated critical KPI tile (frame 04) uses the same rule on `--sev-critical-hot-bg`, an opaque 18 % mix into
   `--surface-1` (the header): count and label in `--text-primary`, the hue on the icon, the border and the
   `--sev-critical-hot-ring` glow.
+- The selected feed row (V3-07.2) sits on `--row-selected-bg`, an opaque 14 % mix of `--accent` into `--surface-2`, with
+  an accent edge and a 3 px accent bar and no glow. Its text, the accent edge and the compact severity chip on it
+  (the chip's tint over this surface, and over a hovered row's `--surface-2`) are checked pairs. A fresh row's tint under
+  the chip's own tint is translucent over translucent and cannot be named; the label stays `--text-primary`.
 - The other KPI tiles (V3-05.2) take the severity badge's tint and border over `--surface-1`: the count is `--text-primary`
   and the label `--text-secondary`, both pairs above, and the hue is on the icon (3:1 as a graphic). The border is
   decorative, as the badge's is. A tile with nothing to count has no tint, and its count and icon are `--text-tertiary` on
@@ -402,6 +406,27 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--text-primary`    | `--accent-tint` over `--surface-1`             | 12.64 | 4.5     | pass                                                                                       |
 | `--accent-ink`      | `--accent-tint` over `--surface-1`             | 5.37  | 4.5     | pass                                                                                       |
 | `--accent-ink`      | `--accent-tint` over `--surface-2`             | 4.78  | 4.5     | pass                                                                                       |
+| `--text-primary`    | `--row-selected-bg`                            | 11.24 | 4.5     | pass                                                                                       |
+| `--text-secondary`  | `--row-selected-bg`                            | 6.23  | 4.5     | pass                                                                                       |
+| `--warning`         | `--row-selected-bg`                            | 7.20  | 4.5     | pass                                                                                       |
+| `--status-resolved` | `--row-selected-bg`                            | 5.84  | 4.5     | pass                                                                                       |
+| `--accent`          | `--row-selected-bg`                            | 3.59  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-bg` over `--row-selected-bg`   | 10.07 | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--sev-critical-bg` over `--row-selected-bg`   | 3.40  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-high-bg` over `--row-selected-bg`       | 8.56  | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--sev-high-bg` over `--row-selected-bg`       | 5.22  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-medium-bg` over `--row-selected-bg`     | 8.08  | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--sev-medium-bg` over `--row-selected-bg`     | 6.05  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-low-bg` over `--row-selected-bg`        | 8.80  | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--sev-low-bg` over `--row-selected-bg`        | 3.79  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-critical-bg` over `--surface-2`         | 11.82 | 4.5     | pass                                                                                       |
+| `--sev-critical`    | `--sev-critical-bg` over `--surface-2`         | 3.99  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-high-bg` over `--surface-2`             | 10.13 | 4.5     | pass                                                                                       |
+| `--sev-high`        | `--sev-high-bg` over `--surface-2`             | 6.18  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-medium-bg` over `--surface-2`           | 9.59  | 4.5     | pass                                                                                       |
+| `--sev-medium`      | `--sev-medium-bg` over `--surface-2`           | 7.19  | 3       | pass                                                                                       |
+| `--text-primary`    | `--sev-low-bg` over `--surface-2`              | 10.50 | 4.5     | pass                                                                                       |
+| `--sev-low`         | `--sev-low-bg` over `--surface-2`              | 4.53  | 3       | pass                                                                                       |
 | `--accent`          | `--accent-tint` over `--surface-1`             | 4.04  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-critical`                               | 5.64  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-high`                                   | 10.20 | 3       | pass                                                                                       |

@@ -21,11 +21,11 @@
   min-width: 0;
 }
 
-/* A row while the incidents load, as tall as a row. */
+/* A row while the incidents load, as tall as a row (three lines: 86 px by arithmetic, V3-07.2). */
 .skeleton {
   flex: none;
   width: 100%;
-  height: calc(54px * var(--ui-scale));
+  height: calc(86px * var(--ui-scale));
   border-radius: var(--radius-m);
 }
 

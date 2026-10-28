@@ -17,6 +17,14 @@
   color: var(--text-primary);
 }
 
+/* The feed row's chip (V3-07.2): shorter and tighter, the colours unchanged. `--type-s`, not `--type-2xs`: it sits inside a button. */
+.badge[data-size='s'] {
+  gap: var(--space-1);
+  height: calc(20px * var(--ui-scale));
+  padding: 0 var(--space-1-5) 0 var(--space-1);
+  font-size: var(--type-s);
+}
+
 /* `--sev` comes from `data-severity` (base.css). */
 .icon {
   color: var(--sev);

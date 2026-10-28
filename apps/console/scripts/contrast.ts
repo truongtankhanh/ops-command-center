@@ -195,6 +195,23 @@ const PAIRS: Pair[] = [
   { fg: '--text-primary', bg: '--accent-tint', over: '--surface-1', min: TEXT },
   { fg: '--accent-ink', bg: '--accent-tint', over: '--surface-1', min: TEXT },
   { fg: '--accent-ink', bg: '--accent-tint', over: '--surface-2', min: TEXT },
+  // The feed row's selected surface (V3-07.2, `--row-selected-bg`, opaque): the title, the meta and foot lines, a late age
+  // and a resolved status read on it as text; the accent edge and bar are graphics. The severity chip (`SeverityBadge`
+  // size `s`) keeps its label in `--text-primary` and the hue on the glyph, on its tint over the selected surface and over
+  // the hovered one (`--surface-2`), which the tile alone never needed (a graphic). Not expressible: a fresh row's tint
+  // under the chip's own tint (translucent over translucent, about 28 % together); `--text-primary` stays far above the bar.
+  ...['--text-primary', '--text-secondary', '--warning', '--status-resolved'].map((fg) => ({
+    fg,
+    bg: '--row-selected-bg',
+    min: TEXT,
+  })),
+  { fg: '--accent', bg: '--row-selected-bg', min: UI },
+  ...['--row-selected-bg', '--surface-2'].flatMap((under) =>
+    SEVERITIES.flatMap((sev) => [
+      { fg: '--text-primary', bg: `${sev}-bg`, over: under, min: TEXT },
+      { fg: sev, bg: `${sev}-bg`, over: under, min: UI },
+    ]),
+  ),
   // The glyph of a pressed toggle (`Button` `aria-pressed`, frame 14's `3D / 2D` switch): the accent
   // on its own tint (a graphic, 3:1). The label stays `--text-primary`, the pair above.
   { fg: '--accent', bg: '--accent-tint', over: '--surface-1', min: UI },

@@ -55,18 +55,18 @@
   color: var(--text-secondary);
 }
 
-/* Loading: a row's tile, title and meta line (`IncidentRow`), so nothing jumps when data arrives. */
+/* Loading: a row's tile, title, chip line and foot line (`IncidentRow`), so nothing jumps when data arrives. */
 .skeletonRow {
   display: grid;
-  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr);
   gap: var(--space-1) var(--space-3);
   padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
 }
 
 .skeletonTile {
-  grid-row: span 2;
-  width: calc(34px * var(--ui-scale));
-  height: calc(34px * var(--ui-scale));
+  grid-row: span 3;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
   border-radius: var(--radius-m);
 }
 
@@ -76,8 +76,15 @@
   margin-top: var(--space-0-5);
 }
 
+/* The chip is 20 px high and about as wide as its word and glyph. */
+.skeletonChip {
+  width: 40%;
+  height: calc(20px * var(--ui-scale));
+  border-radius: var(--radius-s);
+}
+
 .skeletonMeta {
-  width: 45%;
+  width: 55%;
   height: calc(12px * var(--ui-scale));
 }
 

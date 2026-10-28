@@ -8,14 +8,22 @@ import {
 } from '../../lib/incidents/incidents';
 import { useConsole } from '../../store';
 import { Icon } from '../../ui/Icon';
-import { Clock, incidentTypeIcon, severityIcon } from '../../ui/icons';
+import { Clock, incidentTypeIcon } from '../../ui/icons';
+import { SeverityBadge } from '../../ui/SeverityBadge';
 import { StatusChip } from '../../ui/StatusChip';
 import styles from './IncidentRow.module.css';
 
 /**
- * One incident in the feed (frame 01). Severity, type and a late age are drawn as icons and colour
- * for scanning; each also has text for assistive tech, so none of them rests on colour alone.
- * A click toggles the selection.
+ * One incident in the feed (frames 01 and 02). The tile shows the incident's type in the severity's hue; the
+ * severity is drawn as the chip's glyph and word, and said once to assistive tech by one hidden text node. The type
+ * and a late age also have text for assistive tech, so none of them rests on colour alone. A click toggles the
+ * selection.
+ *
+ * The chip and its hidden text come right after the tile in the DOM, and the grid moves the chip to the second line,
+ * so the row reads as it always did: "{Severity} severity, {Type}: {title}, {age}, {status}, {zone}, {code}". The
+ * chip is decorative and the words are one text node, not "Critical" next to " severity": an accessible name trims
+ * each element's text, so two elements would read "Criticalseverity". The row is one button with nothing focusable
+ * inside, so its reading order may differ from its drawing order.
  *
  * `tag` is the category the feed marks for a user who acts on some categories only (frame 09), so
  * "Mine to handle" can be seen in the other tabs too. It is plain text, read with the row.
@@ -51,11 +59,11 @@ export function IncidentRow({
   const body = (
     <>
       <span className={styles.tile}>
-        <Icon glyph={severityIcon(incident.severity)} size={18} />
-        <span className={styles.hidden}>{severityLabel(incident.severity)} severity, </span>
+        <Icon glyph={incidentTypeIcon(incident.type)} size={20} />
       </span>
+      <SeverityBadge severity={incident.severity} size="s" decorative className={styles.severity} />
+      <span className={styles.hidden}>{severityLabel(incident.severity)} severity, </span>
       <span className={styles.title}>
-        <Icon glyph={incidentTypeIcon(incident.type)} size={14} className={styles.typeIcon} />
         <span className={styles.hidden}>{typeLabel(incident.type)}: </span>
         {/* `title` is the hover route to the full text; opening the sheet is the other. */}
         <span className={styles.titleText} title={incident.title}>
@@ -67,17 +75,12 @@ export function IncidentRow({
         {formatAge(incident.reportedAt, now)}
         {late && <span className={styles.hidden}>, past attention time</span>}
       </time>
-      <span className={styles.meta}>
-        <StatusChip status={incident.status} className={styles.status} />
+      <StatusChip status={incident.status} className={styles.status} />
+      <span className={styles.foot}>
         {zone && (
-          <>
-            <span className={styles.separator} aria-hidden="true">
-              ·
-            </span>
-            <span className={styles.zone} title={zone}>
-              {zone}
-            </span>
-          </>
+          <span className={styles.zone} title={zone}>
+            {zone}
+          </span>
         )}
         {tag && (
           <span className={styles.tag} title={tag}>
