@@ -1,0 +1,146 @@
+/*
+ * The device information card (V3-09.3; frames 02 and 04, the mockups' `.card`, `.ch`, `.kv`). The
+ * section carries the sheet-section spacing and top rule, so a content only drops it in beside the
+ * other sections. State is an attribute: `aria-expanded` on the header, `data-state` and
+ * `data-severity` on the status pill (read through the global `--sev`, base.css).
+ */
+
+.section {
+  padding: var(--section-pad-y) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+.card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  color: var(--text-primary);
+}
+
+/* The whole header row is the control; the focus ring is the global one (base.css). */
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.toggle[aria-expanded='false'] .chevron {
+  transform: rotate(-90deg);
+}
+
+/* A turn is motion; a user who asked for none gets the same state without it. */
+@media (prefers-reduced-motion: no-preference) {
+  .chevron {
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: calc(96px * var(--ui-scale)) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1-5) var(--space-2);
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-xs);
+}
+
+/* `display: grid` above would beat the `hidden` attribute. */
+.rows[hidden] {
+  display: none;
+}
+
+.rows dt {
+  color: var(--text-tertiary);
+}
+
+.rows dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A device ID is read character by character. */
+.rows dd[data-row='code'] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Device state: glyph and word, neutral; only a fault's glyph takes `--sev` (the asset head's pill). */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: calc(26px * var(--ui-scale));
+  padding: 0 var(--space-2) 0 var(--space-1-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-s);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.pill[data-state='running'],
+.pill[data-state='fault'] {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.pill[data-state='fault'] svg {
+  color: var(--sev);
+}
+
+/* No hue: the catalogue has no battery threshold, so the figure beside the bar is the reading. */
+.battery {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.bar {
+  display: block;
+  width: calc(88px * var(--ui-scale));
+  height: calc(6px * var(--ui-scale));
+  border-radius: calc(3px * var(--ui-scale));
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--text-secondary);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

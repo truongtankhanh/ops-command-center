@@ -1,0 +1,129 @@
+/*
+ * The live data tiles (V3-09.3; frames 02 and 04, the mockups' `.tiles3`, `.lt`). The section is
+ * `ui/SheetSection`. State is an attribute: `data-stale` on a tile and on the freshness text,
+ * `data-severity` on a tile that is over its rule (read through the global `--sev`, base.css),
+ * `data-direction` on the delta.
+ */
+
+.list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list > li {
+  min-width: 0;
+}
+
+.tile {
+  display: grid;
+  align-content: start;
+  gap: var(--space-0-5);
+  height: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+}
+
+/* No data: the tile keeps its place and says it is not live (frame 04b). */
+.tile[data-stale='true'] {
+  border-style: dashed;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+  font-size: var(--type-xs);
+  line-height: var(--leading-xs);
+  color: var(--text-tertiary);
+}
+
+/* Live data is `--signal`; a reading past its rule takes the rule's severity (Principle 3). */
+.value {
+  font-family: var(--font-ui);
+  font-size: var(--type-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-xl);
+  font-variant-numeric: tabular-nums;
+  color: var(--signal);
+  white-space: nowrap;
+}
+
+.unit {
+  font-size: var(--type-2xs);
+  font-weight: var(--weight-regular);
+  color: var(--text-secondary);
+}
+
+.tile[data-severity] .value {
+  color: var(--sev);
+}
+
+/* After the severity rule on purpose: a stale value is dimmed whatever it was (frame 05). */
+.tile[data-stale='true'] .value {
+  color: var(--text-tertiary);
+  font-weight: var(--weight-medium);
+}
+
+/* Neutral whatever the direction: a rise is not a severity. The words and the glyph say which. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0-5);
+  font-family: var(--font-ui);
+  font-size: var(--type-2xs);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-2xs);
+  color: var(--text-secondary);
+}
+
+.delta[data-direction='flat'],
+.delta[data-direction='none'] {
+  color: var(--text-tertiary);
+}
+
+/* A fixed cell, so the tiles line up whether or not one has a chart. */
+.chart {
+  display: block;
+  height: calc(28px * var(--ui-scale));
+  margin-top: var(--space-1);
+}
+
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* Shape and word say it; the dot only adds the colour (success live, warning stale). */
+.dot {
+  width: calc(7px * var(--ui-scale));
+  height: calc(7px * var(--ui-scale));
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.freshness[data-stale='true'] .dot {
+  background: var(--warning);
+}
+
+/* Read by assistive tech, not drawn: that a value is over its limit is not left to its colour. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
