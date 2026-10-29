@@ -34,6 +34,19 @@ function measure(value: number, unit: string | null): string {
 }
 
 /**
+ * A change in a reading as the live tile writes it (V3-09.3): the signed figure at the display
+ * precision and no unit, because the value beside it already carries the unit: "+3.2", "−1.2"
+ * (U+2212, a real minus). A change that rounds to 0 is "0", never "+0.0" or "-0": the same 0.05 as
+ * `FLAT_BELOW` in `readingDelta.ts`, which is why a flat change never reaches this with a sign.
+ */
+export function formatDelta(amount: number): string {
+  if (!Number.isFinite(amount)) return String(amount);
+  const magnitude = figure(Math.abs(amount));
+  if (magnitude === '0') return magnitude;
+  return `${amount > 0 ? '+' : '−'}${magnitude}`;
+}
+
+/**
  * A reading as an operator reads it. The word table first (`leakDetected` → "Wet"), then by the
  * point's kind: a number with its unit, a boolean as "Yes" / "No", an enum in sentence case. A value
  * whose type disagrees with its kind is drawn as it came: the console shows what the API sent.

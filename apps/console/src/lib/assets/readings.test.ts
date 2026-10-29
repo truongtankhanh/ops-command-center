@@ -1,5 +1,5 @@
 import type { Asset, TelemetryPoint, TelemetryValue } from '@occ/contracts';
-import { formatReading, limitLine, readingParts, statePointOf } from './readings';
+import { formatDelta, formatReading, limitLine, readingParts, statePointOf } from './readings';
 
 type PointShape = Pick<TelemetryPoint, 'key' | 'kind' | 'unit'>;
 
@@ -243,5 +243,26 @@ describe('statePointOf', () => {
 
   it('does not read a class off the object prototype', () => {
     expect(statePointOf(asset('constructor'))).toBeNull();
+  });
+});
+
+describe('formatDelta (V3-09.3)', () => {
+  it.each<[string, number, string]>([
+    ['a rise has a plus', 3.2, '+3.2'],
+    ['a fall has a real minus (U+2212)', -1.2, '−1.2'],
+    ['at most one fraction digit', 3.24, '+3.2'],
+    ['a thousands separator, as a reading has', 1420, '+1,420'],
+    ['a whole number keeps no fraction', 5, '+5'],
+    ['a small rise that rounds to zero is "0", not "+0.0"', 0.04, '0'],
+    ['a small fall that rounds to zero is "0", not "-0"', -0.04, '0'],
+    ['exactly zero', 0, '0'],
+    ['negative zero', -0, '0'],
+  ])('%s', (_name, amount, expected) => {
+    expect(formatDelta(amount)).toBe(expected);
+  });
+
+  it('writes a value that is not finite as it came, as a reading does', () => {
+    expect(formatDelta(Number.NaN)).toBe('NaN');
+    expect(formatDelta(Number.POSITIVE_INFINITY)).toBe('Infinity');
   });
 });
