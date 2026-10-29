@@ -144,6 +144,10 @@ const metric = (label: string) => screen.getByText(label).nextElementSibling as 
 const lifecycleSteps = () =>
   within(screen.getByRole('list', { name: 'Lifecycle' })).getAllByRole('listitem');
 
+/** Whether `after` comes later in the document than `before`. */
+const follows = (before: HTMLElement, after: HTMLElement) =>
+  Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
+
 describe('IncidentDetail', () => {
   beforeEach(() => {
     resetStore(useSession);
@@ -174,7 +178,7 @@ describe('IncidentDetail', () => {
   describe('head', () => {
     beforeEach(() => signInAs('operator'));
 
-    // The details are the inspector frame's only tab (V3-09.1); the others come with V3-09.4.
+    // The details are the inspector frame's only tab (V3-09.1); Related and Telemetry come with V3-09.5 and V3-09.6.
     it('draws no tab list while the details are its only tab', () => {
       renderDetail();
 
@@ -183,15 +187,56 @@ describe('IncidentDetail', () => {
       expect(screen.queryByRole('tabpanel')).toBeNull();
     });
 
-    it('shows severity, type and zone as badges, not a status chip', () => {
-      renderDetail();
+    // Frame 02's header: the severity, how long ago, the status and the type, as words with glyphs.
+    it('shows the severity, how long ago it was reported, the status and the type as chips', () => {
+      renderDetail(detail({ reportedAt: minutesAgo(14) }));
 
       expect(screen.getByText('High')).toBeInTheDocument();
+      expect(screen.getByText('14m ago')).toHaveAttribute('datetime');
+      expect(screen.getByText('Open')).toBeInTheDocument();
       expect(screen.getByText('Intrusion')).toBeInTheDocument();
-      expect(screen.getByText('Library')).toBeInTheDocument();
-      // The lifecycle stepper carries the status.
+    });
+
+    it('says an acknowledged incident is being handled', () => {
+      renderDetail(
+        detail({
+          status: 'acknowledged',
+          reportedAt: minutesAgo(20),
+          acknowledgedAt: minutesAgo(15),
+        }),
+      );
+
+      expect(screen.getByText('Being handled')).toBeInTheDocument();
       expect(screen.queryByText('Open')).toBeNull();
-      expect(screen.queryByText('Being handled')).toBeNull();
+    });
+
+    it('names the code and then the zone under the title', () => {
+      renderDetail();
+
+      const title = screen.getByRole('heading', { name: 'Door forced open' });
+      const code = screen.getByText('INC-000042');
+      const zoneName = screen.getByText('Library');
+      expect(follows(title, code)).toBe(true);
+      expect(follows(code, zoneName)).toBe(true);
+    });
+
+    it('names the code alone while the zones are not known', () => {
+      renderDetail(detail(), []);
+
+      expect(screen.getByText('INC-000042')).toBeInTheDocument();
+      expect(screen.queryByText('Library')).toBeNull();
+    });
+
+    it('draws the lifecycle in the body, not in the header', () => {
+      renderDetail();
+
+      const title = screen.getByRole('heading', { name: 'Door forced open' });
+      // heading → its block → the top row → the header (`InspectorHeader`).
+      const header = title.parentElement?.parentElement?.parentElement as HTMLElement;
+      const stepper = screen.getByRole('list', { name: 'Lifecycle' });
+      expect(within(header).queryByRole('list', { name: 'Lifecycle' })).toBeNull();
+      expect(follows(header, stepper)).toBe(true);
+      expect(follows(stepper, screen.getByText('Reported by'))).toBe(true);
     });
 
     it.each([
@@ -204,16 +249,10 @@ describe('IncidentDetail', () => {
       expect(screen.getByText('Reported by').nextElementSibling).toHaveTextContent(label);
     });
 
-    it('shows the incident category on a chip between the type and the zone', () => {
+    it('shows the incident category on a chip after the type', () => {
       renderDetail();
 
-      const follows = (before: HTMLElement, after: HTMLElement) =>
-        Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const type = screen.getByText('Intrusion');
-      const category = screen.getByText('Security');
-      const zoneChip = screen.getByText('Library');
-      expect(follows(type, category)).toBe(true);
-      expect(follows(category, zoneChip)).toBe(true);
+      expect(follows(screen.getByText('Intrusion'), screen.getByText('Security'))).toBe(true);
     });
 
     it("shows the category of the incident's own type", () => {
@@ -487,8 +526,6 @@ describe('IncidentDetail', () => {
       const facts = screen.getByText('Reported by');
       const evidence = screen.getByRole('heading', { name: 'Why it was raised' });
       const timeline = screen.getByRole('heading', { name: 'Timeline' });
-      const follows = (before: HTMLElement, after: HTMLElement) =>
-        Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
       expect(follows(facts, evidence)).toBe(true);
       expect(follows(evidence, timeline)).toBe(true);
       expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
@@ -510,6 +547,64 @@ describe('IncidentDetail', () => {
       expect(screen.queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
       // The note stays where the operator can read it.
       expect(screen.getByText('Checked on site')).toBeInTheDocument();
+    });
+
+    describe('the device', () => {
+      it('puts the device card and the live tiles after the evidence and before the timeline', () => {
+        renderTelemetry(raisedByRule());
+
+        const evidence = screen.getByRole('heading', { name: 'Why it was raised' });
+        const card = screen.getByRole('region', { name: 'Device information' });
+        const tiles = screen.getByRole('heading', { name: 'Live data' });
+        const timeline = screen.getByRole('heading', { name: 'Timeline' });
+        expect(follows(screen.getByText('Reported by'), evidence)).toBe(true);
+        expect(follows(evidence, card)).toBe(true);
+        expect(follows(card, tiles)).toBe(true);
+        expect(follows(tiles, timeline)).toBe(true);
+        // The device is the asset's, not the zone's.
+        expect(card).toHaveTextContent('Cooling tower 1');
+        expect(card).toHaveTextContent('CT-01');
+      });
+
+      it('shows no device card, no tiles and no placeholder for an operator’s incident', () => {
+        renderDetail();
+
+        expect(screen.queryByRole('region', { name: 'Device information' })).toBeNull();
+        expect(screen.queryByRole('heading', { name: 'Live data' })).toBeNull();
+        expect(screen.queryByText('Loading device…')).toBeNull();
+        expect(getCalls().some(([url]) => String(url).includes('/assets'))).toBe(false);
+      });
+
+      it('keeps the card and draws no live tiles once the incident is resolved', () => {
+        renderTelemetry(
+          raisedByRule({ status: 'resolved', resolvedAt: '2026-10-01T09:00:00.000Z' }),
+        );
+
+        expect(screen.getByRole('region', { name: 'Device information' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Live data' })).toBeNull();
+      });
+
+      it('says it is loading while the catalogue is, and draws nothing for it after', () => {
+        renderTelemetry(raisedByRule(), { withCatalogue: false });
+
+        expect(screen.getByText('Loading device…')).toHaveAttribute('role', 'status');
+        expect(screen.queryByRole('region', { name: 'Device information' })).toBeNull();
+      });
+
+      it('is the same for a viewer, who only reads', () => {
+        signInAs('viewer');
+        renderTelemetry(raisedByRule());
+
+        expect(screen.getByRole('region', { name: 'Device information' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Live data' })).toBeInTheDocument();
+      });
+
+      it('never changes the status of the incident by opening it', () => {
+        renderTelemetry(raisedByRule());
+
+        expect(postCalls()).toHaveLength(0);
+        expect(screen.getByText('Open')).toBeInTheDocument();
+      });
     });
 
     it('leaves the response footer as it is for each role', () => {

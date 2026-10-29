@@ -1,31 +1,9 @@
-/* Frame 02's `.sheet-head`: code and Close, badges, title, then the lifecycle (own module). */
-.head {
-  padding: var(--section-pad-y) var(--space-5);
-}
+/*
+ * The incident sheet's Details tab (frame 02). The header is `ui/InspectorHeader`; what stays here is
+ * the look of the chips it is given (type, category, source, age) and the sections of the body.
+ */
 
-.toprow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.code {
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--type-body);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.02em;
-}
-
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1-5);
-  margin-top: var(--space-3);
-}
-
-/* Type and zone, beside the severity badge and as tall as it (frame 02 `.chip`). */
+/* Type, category and source, beside the severity badge and as tall as it (frame 02 `.chip`). */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -44,14 +22,15 @@
   color: var(--text-secondary);
 }
 
-.title {
-  margin: var(--space-3) 0 0;
+/* How long ago it was reported: a glyph and the words, in the header's chip row. */
+.age {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-family: var(--font-ui);
-  font-size: var(--type-2xl);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-2xl);
-  /* One long token (an id, a URL) must not push the sheet wider (V3-03.4); the description has the same rule. */
-  overflow-wrap: anywhere;
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 /* Sections are separated by a 1 px inset line, not a border box (frame 02 `.sheet-section`). */
@@ -110,7 +89,7 @@
   margin: 0;
 }
 
-/* Loading: the sizes of the loaded head and timeline, so nothing jumps when data arrives. */
+/* Loading: the sizes of the loaded header and body, so nothing jumps when data arrives. */
 .skeletonCode {
   width: calc(96px * var(--ui-scale));
   height: calc(18px * var(--ui-scale));
@@ -121,15 +100,19 @@
   height: calc(26px * var(--ui-scale));
 }
 
+/* The first block of the header's chip row: it takes 80 % of the row, so the badges wrap under it. */
 .skeletonTitle {
-  width: 80%;
+  flex: 0 0 80%;
   height: calc(28px * var(--ui-scale));
-  margin-top: var(--space-3);
+}
+
+/* The body's skeleton: the sheet-section spacing round the stepper, the metrics and the timeline. */
+.bodySkeleton {
+  padding: var(--section-pad-y) var(--space-5);
 }
 
 .skeletonStepper {
   height: calc(44px * var(--ui-scale));
-  margin-top: var(--space-4);
 }
 
 .skeletonMetrics {
