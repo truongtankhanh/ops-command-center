@@ -1,0 +1,24 @@
+/*
+ * The device section's loading state (V3-09.4): the sheet-section spacing and the height of the
+ * loaded card, so nothing jumps when the asset arrives. The card and the tiles bring their own look.
+ */
+
+.skeleton {
+  padding: var(--section-pad-y) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+.skeletonCard {
+  height: calc(168px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

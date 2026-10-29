@@ -3,19 +3,23 @@ import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from '
 import { ApiRequestError, isRateLimited } from '../../api/client';
 import { useAssets, useCameras, useIncident, useZones } from '../../api/queries';
 import { incidentCameras } from '../../lib/cameras/cameras';
-import { categoryLabel, categoryOfType, typeLabel } from '../../lib/incidents/incidents';
+import { categoryLabel, categoryOfType, formatAgo, typeLabel } from '../../lib/incidents/incidents';
+import { useNow } from '../../lib/shared/useNow';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
 import { Button } from '../../ui/Button';
 import { EmptyState } from '../../ui/EmptyState';
 import { focusLost } from '../../ui/focus';
 import { Icon } from '../../ui/Icon';
-import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../../ui/icons';
+import { actorKindIcon, categoryIcon, Clock, incidentTypeIcon } from '../../ui/icons';
 import { InspectorFrame } from '../../ui/InspectorFrame';
+import { InspectorHeader } from '../../ui/InspectorHeader';
 import { SeverityBadge } from '../../ui/SeverityBadge';
 import { Skeleton } from '../../ui/Skeleton';
+import { StatusChip } from '../../ui/StatusChip';
 import { CameraTile } from '../cameras/CameraTile';
 import styles from './IncidentDetail.module.css';
+import { IncidentDevice } from './IncidentDevice';
 import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
@@ -24,11 +28,12 @@ import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /**
  * The incident in the sheet (frames 02 / 06). One `InspectorFrame` (so one `Sheet`) holds the
- * loading, failed and loaded states, with the head, the body and the footer as its slots, so the
- * data arriving never moves focus. The body is the frame's only tab for now, so no tab list is
- * drawn (V3-09.4 adds the others). The note being written lives in the store (`noteDrafts`):
- * leaving for another incident or the report form keeps it, and only Close or a sent note clears
- * it.
+ * loading, failed and loaded states, with the header, the body and the footer as its slots, so the
+ * data arriving never moves focus. The header is the shared `InspectorHeader` (V3-09.4); the body
+ * is the **Details** tab, the frame's only tab for now, so no tab list is drawn (Related and
+ * Telemetry come with V3-09.5 and V3-09.6, and the Timeline moves out then). The note being
+ * written lives in the store (`noteDrafts`): leaving for another incident or the report form keeps
+ * it, and only Close or a sent note clears it.
  *
  * Once the incident is resolved — here or by someone else — the response footer goes. If focus was
  * in it, focus moves to the sheet, so Escape still reaches it. (An acknowledge keeps the footer:
@@ -95,9 +100,7 @@ export function IncidentDetail({ id }: { id: string }) {
         ) : loading ? (
           <DetailSkeleton closeButton={closeButton} />
         ) : (
-          <div className={styles.head}>
-            <TopRow closeButton={closeButton} />
-          </div>
+          <InspectorHeader closeButton={closeButton} />
         )
       }
       tabsLabel="Incident sections"
@@ -107,7 +110,9 @@ export function IncidentDetail({ id }: { id: string }) {
           label: 'Details',
           content: incident ? (
             <DetailContent incident={incident} />
-          ) : loading ? null : isPending ? (
+          ) : loading ? (
+            <DetailBodySkeleton />
+          ) : isPending ? (
             <RateLimited />
           ) : error instanceof ApiRequestError && error.status === 404 ? (
             <EmptyState>This incident no longer exists.</EmptyState>
@@ -127,31 +132,33 @@ export function IncidentDetail({ id }: { id: string }) {
   );
 }
 
-function TopRow({ code, closeButton }: { code?: ReactNode; closeButton: ReactNode }) {
+/** The header laid out like the loaded one (the body's skeleton is `DetailBodySkeleton`). */
+function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
   return (
-    <div className={styles.toprow}>
-      <span className={styles.code}>{code}</span>
-      {closeButton}
-    </div>
+    <InspectorHeader
+      subtitle={<Skeleton className={styles.skeletonCode} />}
+      closeButton={closeButton}
+    >
+      <Skeleton className={styles.skeletonTitle} />
+      {/* Severity, age, status and type: the common loaded row. */}
+      <Skeleton className={styles.skeletonBadge} />
+      <Skeleton className={styles.skeletonBadge} />
+      <Skeleton className={styles.skeletonBadge} />
+      <Skeleton className={styles.skeletonBadge} />
+    </InspectorHeader>
   );
 }
 
-/** Laid out like the loaded head and timeline, so nothing jumps when the incident arrives. */
-function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
+/**
+ * Laid out like the lifecycle and the timeline, so nothing jumps when the incident arrives. It
+ * announces the loading once for the whole sheet (the header's blocks are decorative).
+ */
+function DetailBodySkeleton() {
   return (
-    <div className={styles.head} aria-busy="true">
+    <div className={styles.bodySkeleton} aria-busy="true">
       <p role="status" className={styles.hidden}>
         Loading incident…
       </p>
-      <TopRow code={<Skeleton className={styles.skeletonCode} />} closeButton={closeButton} />
-      <div className={styles.badges}>
-        {/* Severity, type, category and zone: the common loaded head. */}
-        <Skeleton className={styles.skeletonBadge} />
-        <Skeleton className={styles.skeletonBadge} />
-        <Skeleton className={styles.skeletonBadge} />
-        <Skeleton className={styles.skeletonBadge} />
-      </div>
-      <Skeleton className={styles.skeletonTitle} />
       <Skeleton className={styles.skeletonStepper} />
       <div className={styles.skeletonMetrics}>
         <Skeleton className={styles.skeletonMetric} />
@@ -180,7 +187,12 @@ function reporterLabel(source: Detail['source']): string {
   return 'Operator';
 }
 
-/** The head of the sheet: code and Close, the badges, the title and the lifecycle. */
+/**
+ * The header of the sheet (frame 02): the type's icon in a tile of the severity's hue, the title, the
+ * code and the zone, Close, then the chips: severity, how long ago it was reported, the status (the
+ * stepper in the body says the same in full), the type, the category and the source. The type and
+ * the status are words as well as glyphs, so the tile is decorative.
+ */
 function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: ReactNode }) {
   const { data: zones = [] } = useZones();
   const zone = zones.find((z) => z.id === incident.zoneId);
@@ -188,40 +200,66 @@ function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: 
   const category = categoryOfType(incident.type);
 
   return (
-    <div className={styles.head}>
-      <TopRow code={incident.code} closeButton={closeButton} />
-      <div className={styles.badges}>
-        <SeverityBadge severity={incident.severity} />
+    <InspectorHeader
+      tile={<Icon glyph={incidentTypeIcon(incident.type)} size={22} />}
+      severity={incident.severity}
+      title={incident.title}
+      subtitle={
+        <>
+          <span>{incident.code}</span>
+          {zone && (
+            <>
+              <span aria-hidden="true">·</span>
+              <span>{zone.name}</span>
+            </>
+          )}
+        </>
+      }
+      closeButton={closeButton}
+    >
+      <SeverityBadge severity={incident.severity} />
+      <IncidentAge reportedAt={incident.reportedAt} />
+      <StatusChip status={incident.status} form="pill" />
+      <span className={styles.chip}>
+        <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
+        {typeLabel(incident.type)}
+      </span>
+      {category !== null && (
         <span className={styles.chip}>
-          <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
-          {typeLabel(incident.type)}
+          <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
+          {categoryLabel(category)}
         </span>
-        {category !== null && (
-          <span className={styles.chip}>
-            <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
-            {categoryLabel(category)}
-          </span>
-        )}
-        {zone && (
-          <span className={styles.chip}>
-            <Icon glyph={zoneKindIcon(zone.kind)} size={16} className={styles.chipIcon} />
-            {zone.name}
-          </span>
-        )}
-        {incident.source === 'telemetry' && (
-          <span className={styles.chip}>
-            <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
-            Telemetry rule
-          </span>
-        )}
-      </div>
-      <h2 className={styles.title}>{incident.title}</h2>
-      <IncidentLifecycle incident={incident} />
-    </div>
+      )}
+      {incident.source === 'telemetry' && (
+        <span className={styles.chip}>
+          <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
+          Telemetry rule
+        </span>
+      )}
+    </InspectorHeader>
   );
 }
 
-/** What the sheet's only tab holds: the description, the evidence, the timeline and the cameras. */
+/**
+ * How long ago the incident was reported. Its own component so the clock (`useNow`, every 15 s,
+ * the stepper's cadence) renders this chip and not the header around it.
+ */
+function IncidentAge({ reportedAt }: { reportedAt: string }) {
+  const now = useNow();
+  return (
+    <span className={styles.age}>
+      <Icon glyph={Clock} size={14} />
+      <span className={styles.hidden}>Reported </span>
+      <time dateTime={reportedAt}>{formatAgo(reportedAt, now)}</time>
+    </span>
+  );
+}
+
+/**
+ * What the Details tab holds, in the order of frame 02: the lifecycle, the description and who
+ * reported it, the evidence and the device (a telemetry incident), the timeline (until it gets its
+ * own tab, V3-09.5) and the cameras.
+ */
 function DetailContent({ incident }: { incident: Detail }) {
   const { data: zones = [] } = useZones();
   const zone = zones.find((z) => z.id === incident.zoneId);
@@ -230,6 +268,10 @@ function DetailContent({ incident }: { incident: Detail }) {
 
   return (
     <>
+      <div className={styles.section}>
+        <IncidentLifecycle incident={incident} />
+      </div>
+
       <div className={styles.section}>
         {incident.description && <p className={styles.description}>{incident.description}</p>}
         <dl className={styles.facts}>
@@ -243,6 +285,11 @@ function DetailContent({ incident }: { incident: Detail }) {
 
       {/* Frame 10: the evidence comes before the history. Only a telemetry rule leaves evidence. */}
       {incident.source === 'telemetry' && <IncidentEvidence incident={incident} />}
+
+      {/* The device the rule watched: only a telemetry incident has one (an operator's asks for no asset). */}
+      {incident.source === 'telemetry' && incident.assetId && (
+        <IncidentDevice incident={incident} />
+      )}
 
       <section className={styles.section}>
         <h3>Timeline</h3>

@@ -1,9 +1,8 @@
-/* Frame 02's `.stepper` and `.metrics`, under the incident title. */
+/* Frame 02's `.stepper` and `.metrics`, the first section of the Details tab (the sheet-section spacing is the section's). */
 
 .lifecycle {
   display: grid;
   gap: var(--space-3);
-  margin-top: var(--space-4);
 }
 
 .stepper {

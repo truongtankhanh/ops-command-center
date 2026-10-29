@@ -1,0 +1,71 @@
+/*
+ * The inspector's header (V3-09.4; frame 02 `.ph` and `.pm`): the tile, the title and the line under
+ * it, Close, then the chips. State is an attribute: `data-severity` on the tile (read through the
+ * global `--sev`, base.css). The look of a chip is the caller's.
+ */
+
+.header {
+  padding: var(--section-pad-y) var(--space-5);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* A neutral tile; a severity tile takes the hue on its glyph, its border and a faint fill. */
+.tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+.tile[data-severity] {
+  border-color: var(--sev);
+  background: color-mix(in srgb, var(--sev) 15%, transparent);
+  color: var(--sev);
+}
+
+/* Takes the width the tile and Close leave, so Close stays in the corner with no title. */
+.heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-2xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-2xl);
+  /* One long token (an id, a URL) must not push the sheet wider (V3-03.4). */
+  overflow-wrap: anywhere;
+}
+
+.subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-1-5);
+  margin: var(--space-0-5) 0 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin-top: var(--space-3);
+}
