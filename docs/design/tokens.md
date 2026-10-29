@@ -226,7 +226,7 @@ focus ring. These may stay raw:
   `vh` lengths, and the geometry of drawn graphics (lifecycle stepper dot and rail, legend samples). Since UI-17 they
   are written as the laptop value times the scale, `calc(34px * var(--ui-scale))`, so they grow with the text on a
   wall; percentages, `ch` / `vh` and `999px` pill radii stay as they are. Shared sizes are tokens: `--sheet-width`
-  (440 px, frame 02, until V3-09 resizes it; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
+  (360 px, frame 02; full-screen `100%` at ≤ 720 px), `--feed-width` (360 px), `--toast-width` (392 px),
   `--control-m` / `--control-s` / `--control-dense` (40 / 32 / 36 px, buttons, fields, the account menu's switches), `--header-height`, `--kpi-height`. Icon
   sizes (14 / 16 / 18 / 20 / 22 px, the `Icon` `size` prop) are laptop values the same way: `Icon.module.css`
   multiplies them by the scale — see [icons.md](icons.md).

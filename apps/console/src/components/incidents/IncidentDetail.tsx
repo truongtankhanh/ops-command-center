@@ -11,8 +11,8 @@ import { EmptyState } from '../../ui/EmptyState';
 import { focusLost } from '../../ui/focus';
 import { Icon } from '../../ui/Icon';
 import { actorKindIcon, categoryIcon, incidentTypeIcon, zoneKindIcon } from '../../ui/icons';
+import { InspectorFrame } from '../../ui/InspectorFrame';
 import { SeverityBadge } from '../../ui/SeverityBadge';
-import { Sheet } from '../../ui/Sheet';
 import { Skeleton } from '../../ui/Skeleton';
 import { CameraTile } from '../cameras/CameraTile';
 import styles from './IncidentDetail.module.css';
@@ -23,10 +23,12 @@ import { IncidentTimeline } from './IncidentTimeline';
 import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
 /**
- * The incident in the sheet (frames 02 / 06). One `Sheet` holds the loading, failed and loaded
- * states, so the data arriving never moves focus. The note being written lives in the store
- * (`noteDrafts`): leaving for another incident or the report form keeps it, and only Close or a
- * sent note clears it.
+ * The incident in the sheet (frames 02 / 06). One `InspectorFrame` (so one `Sheet`) holds the
+ * loading, failed and loaded states, with the head, the body and the footer as its slots, so the
+ * data arriving never moves focus. The body is the frame's only tab for now, so no tab list is
+ * drawn (V3-09.4 adds the others). The note being written lives in the store (`noteDrafts`):
+ * leaving for another incident or the report form keeps it, and only Close or a sent note clears
+ * it.
  *
  * Once the incident is resolved — here or by someone else — the response footer goes. If focus was
  * in it, focus moves to the sheet, so Escape still reaches it. (An acknowledge keeps the footer:
@@ -76,26 +78,36 @@ export function IncidentDetail({ id }: { id: string }) {
     </Button>
   );
 
+  const loading = !incident && isPending && !isRateLimited(failureReason);
+
   return (
-    <Sheet
+    <InspectorFrame
       ref={sheetRef}
       label={incident ? `Incident ${incident.code}` : 'Incident'}
-      onClose={close}
+      onEscape={close}
       keepOpen={hasDraft}
       keptMessage={NOTE_KEPT}
       onEscapeKept={keepNote}
-    >
-      {/* Data first: a failed background refetch keeps the incident on screen (TanStack keeps it). */}
-      {incident ? (
-        <DetailBody incident={incident} kept={kept} closeButton={closeButton} />
-      ) : isPending && !isRateLimited(failureReason) ? (
-        <DetailSkeleton closeButton={closeButton} />
-      ) : (
-        <>
+      // Data first: a failed background refetch keeps the incident on screen (TanStack keeps it).
+      header={
+        incident ? (
+          <DetailHead incident={incident} closeButton={closeButton} />
+        ) : loading ? (
+          <DetailSkeleton closeButton={closeButton} />
+        ) : (
           <div className={styles.head}>
             <TopRow closeButton={closeButton} />
           </div>
-          {isPending ? (
+        )
+      }
+      tabsLabel="Incident sections"
+      tabs={[
+        {
+          value: 'details',
+          label: 'Details',
+          content: incident ? (
+            <DetailContent incident={incident} />
+          ) : loading ? null : isPending ? (
             <RateLimited />
           ) : error instanceof ApiRequestError && error.status === 404 ? (
             <EmptyState>This incident no longer exists.</EmptyState>
@@ -106,10 +118,12 @@ export function IncidentDetail({ id }: { id: string }) {
               isFetching={isFetching}
               onRetry={() => void refetch()}
             />
-          )}
-        </>
-      )}
-    </Sheet>
+          ),
+        },
+      ]}
+      // Last drawn content of the sheet: the footer sticks to its bottom.
+      foot={incident ? <IncidentResponse incident={incident} kept={kept} /> : undefined}
+    />
   );
 }
 
@@ -166,55 +180,56 @@ function reporterLabel(source: Detail['source']): string {
   return 'Operator';
 }
 
-function DetailBody({
-  incident,
-  kept,
-  closeButton,
-}: {
-  incident: Detail;
-  kept: boolean;
-  closeButton: ReactNode;
-}) {
+/** The head of the sheet: code and Close, the badges, the title and the lifecycle. */
+function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: ReactNode }) {
   const { data: zones = [] } = useZones();
   const zone = zones.find((z) => z.id === incident.zoneId);
-  const reporter =
-    incident.source === 'simulator' || incident.source === 'telemetry' ? 'system' : 'user';
   // A type this console does not know has no category to show (ADR-0021, rolling deploys).
   const category = categoryOfType(incident.type);
 
   return (
-    <>
-      <div className={styles.head}>
-        <TopRow code={incident.code} closeButton={closeButton} />
-        <div className={styles.badges}>
-          <SeverityBadge severity={incident.severity} />
+    <div className={styles.head}>
+      <TopRow code={incident.code} closeButton={closeButton} />
+      <div className={styles.badges}>
+        <SeverityBadge severity={incident.severity} />
+        <span className={styles.chip}>
+          <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
+          {typeLabel(incident.type)}
+        </span>
+        {category !== null && (
           <span className={styles.chip}>
-            <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
-            {typeLabel(incident.type)}
+            <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
+            {categoryLabel(category)}
           </span>
-          {category !== null && (
-            <span className={styles.chip}>
-              <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
-              {categoryLabel(category)}
-            </span>
-          )}
-          {zone && (
-            <span className={styles.chip}>
-              <Icon glyph={zoneKindIcon(zone.kind)} size={16} className={styles.chipIcon} />
-              {zone.name}
-            </span>
-          )}
-          {incident.source === 'telemetry' && (
-            <span className={styles.chip}>
-              <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
-              Telemetry rule
-            </span>
-          )}
-        </div>
-        <h2 className={styles.title}>{incident.title}</h2>
-        <IncidentLifecycle incident={incident} />
+        )}
+        {zone && (
+          <span className={styles.chip}>
+            <Icon glyph={zoneKindIcon(zone.kind)} size={16} className={styles.chipIcon} />
+            {zone.name}
+          </span>
+        )}
+        {incident.source === 'telemetry' && (
+          <span className={styles.chip}>
+            <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
+            Telemetry rule
+          </span>
+        )}
       </div>
+      <h2 className={styles.title}>{incident.title}</h2>
+      <IncidentLifecycle incident={incident} />
+    </div>
+  );
+}
 
+/** What the sheet's only tab holds: the description, the evidence, the timeline and the cameras. */
+function DetailContent({ incident }: { incident: Detail }) {
+  const { data: zones = [] } = useZones();
+  const zone = zones.find((z) => z.id === incident.zoneId);
+  const reporter =
+    incident.source === 'simulator' || incident.source === 'telemetry' ? 'system' : 'user';
+
+  return (
+    <>
       <div className={styles.section}>
         {incident.description && <p className={styles.description}>{incident.description}</p>}
         <dl className={styles.facts}>
@@ -240,9 +255,6 @@ function DetailBody({
       ) : (
         <ZoneCameras incident={incident} zoneName={zone?.name} />
       )}
-
-      {/* Last drawn content of the sheet: the footer sticks to its bottom. */}
-      <IncidentResponse incident={incident} kept={kept} />
     </>
   );
 }
