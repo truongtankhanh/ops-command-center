@@ -1550,6 +1550,55 @@ describe('CampusMap', () => {
     });
   });
 
+  // V3-08.5: the stage's `1fr` row takes the height of a collapsed strip. jsdom has no layout, so these say what
+  // must not happen: the map is not rebuilt and its view does not move; the canvas only follows its box.
+  describe('under the camera strip (V3-08.5)', () => {
+    // The store writes the strip's choice through to `localStorage`.
+    afterEach(() => localStorage.clear());
+
+    it('keeps the same map and its view when the strip collapses and expands', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      act(() => useConsole.getState().select('a'));
+      map.easeTo.mockClear();
+      map.fitBounds.mockClear();
+
+      act(() => useConsole.getState().setStripCollapsed(true));
+      act(() => useConsole.getState().setStripCollapsed(false));
+
+      expect(fake.maps).toHaveLength(1);
+      expect(map.remove).not.toHaveBeenCalled();
+      expect(map.easeTo).not.toHaveBeenCalled();
+      expect(map.fitBounds).not.toHaveBeenCalled();
+    });
+
+    it('follows the box the strip leaves with a resize and nothing else', async () => {
+      let onResize: (() => void) | undefined;
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          constructor(callback: () => void) {
+            onResize = callback;
+          }
+          observe() {}
+          disconnect() {}
+        },
+      );
+      const { map } = await renderMap([incident({ id: 'a' })], { zones: [zone()] });
+      act(() => useConsole.getState().select('a'));
+      map.easeTo.mockClear();
+      map.fitBounds.mockClear();
+      map.resize.mockClear();
+
+      act(() => useConsole.getState().setStripCollapsed(true));
+      // The browser reports the taller box once the strip's row is shorter.
+      act(() => onResize!());
+
+      expect(map.resize).toHaveBeenCalledTimes(1);
+      expect(map.easeTo).not.toHaveBeenCalled();
+      expect(map.fitBounds).not.toHaveBeenCalled();
+    });
+  });
+
   describe('on a video wall (V2-21.9)', () => {
     const OTHER: [number, number] = [108.443, 11.954];
 

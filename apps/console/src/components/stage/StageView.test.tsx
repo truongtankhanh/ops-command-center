@@ -382,6 +382,33 @@ describe('StageView', () => {
       });
     });
   });
+
+  // V3-08.5: collapsing the camera strip gives the stage's `1fr` row its height (App.module.css). The stage does not
+  // read the strip's state, so it must neither be drawn again nor rebuilt; jsdom has no layout to assert more.
+  describe('with the camera strip (V3-08.5)', () => {
+    it('does not draw the 2D map again when the strip collapses', () => {
+      renderStage();
+      vi.mocked(CampusMap).mockClear();
+
+      act(() => useConsole.getState().setStripCollapsed(true));
+
+      expect(CampusMap).not.toHaveBeenCalled();
+    });
+
+    it('keeps the 3D stage, and does not ask for its chunk again, when the strip collapses and expands', async () => {
+      renderStage();
+      show3d();
+      const stage = await screen.findByText('3D stage');
+      const evaluated = twin.evaluated;
+
+      act(() => useConsole.getState().setStripCollapsed(true));
+      act(() => useConsole.getState().setStripCollapsed(false));
+
+      expect(screen.getByText('3D stage')).toBe(stage);
+      expect(screen.getByRole('region', { name: 'Campus 3D view' })).toBeInTheDocument();
+      expect(twin.evaluated).toBe(evaluated);
+    });
+  });
 });
 
 // V2-21.6: the video wall mounts the same lazy stage, through the same import, with nothing to press.

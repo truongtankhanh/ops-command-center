@@ -1,7 +1,7 @@
 /*
- * Header, workspace, status bar (V3-06.2). The bar's row takes `--statusbar-height` from the stage, which gets it back
- * when the camera strip collapses (V3-08). On a phone `.workspace` scrolls inside its own `1fr` row, so the bar stays at
- * the foot of the viewport without `position: sticky`.
+ * Header, workspace, status bar (V3-06.2). The bar's row takes `--statusbar-height` from the stage; collapsing the camera
+ * strip (V3-08) gives the stage back more than that (see `.stage`). On a phone `.workspace` scrolls inside its own `1fr`
+ * row, so the bar stays at the foot of the viewport without `position: sticky`.
  */
 .console {
   display: grid;
@@ -18,6 +18,17 @@
 /*
  * The containing block of the incident / report sheet, which lies over its right side (map and
  * camera strip). `--sheet-inset` tells the map's controls and legend how much of the stage it covers.
+ *
+ * The rows are `1fr auto` (V3-08.5): the strip's row is as tall as the strip is, so collapsing it (V3-08.2) hands the
+ * difference to the map or the 3D scene in the same frame and expanding takes it back. The header, the side panel, the
+ * status bar and the sheet are other rows or columns and do not move. The `1fr` cell is the only thing that follows:
+ * `CampusMap` resizes its canvas and keeps the centre, and the 3D canvas is sized to its parent, with the console's
+ * `Rig` keeping the view when the stage changes shape.
+ *
+ * There is no transition, on purpose. A row of `auto` does not animate; fixed row lengths would be wrong wherever the
+ * strip is not `--strip-height` tall (a tablet, a phone, a coarse pointer, the loading, failed and empty messages); the
+ * map and the canvas would resize on every frame of it; and the console animates only arrival, selection and
+ * escalation. A collapse is the operator's own act, so it is instant, with or without `prefers-reduced-motion`.
  */
 .stage {
   position: relative;
