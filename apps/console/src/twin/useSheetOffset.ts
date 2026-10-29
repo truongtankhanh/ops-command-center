@@ -5,7 +5,7 @@ import { viewOffset } from '../lib/twin-core/twinCamera';
 
 /**
  * How much of the stage's right side the open sheet covers, in px: the stage's `--sheet-inset`, which
- * `tokens.css` registers as a length so `getComputedStyle` returns it in px (`"440px"`), and which is `0px`
+ * `tokens.css` registers as a length so `getComputedStyle` returns it in px (`"360px"`), and which is `0px`
  * while no sheet is open and on a phone, where the sheet covers the whole screen. `CampusMap` reads it the
  * same way. Any element inside the stage will do: the property is inherited.
  */

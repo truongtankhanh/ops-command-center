@@ -221,11 +221,11 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   /*
-   * The incident / report sheet over the stage (frame 02). The map pads by the stage's
-   * `--sheet-inset`, which is this width while the sheet is open (registered below, so it reads
-   * in px).
+   * The inspector / report sheet over the stage (frame 02: 360 px, accepted as Q5 on 2026-10-22; it was
+   * 440 px). The map pads by the stage's `--sheet-inset`, which is this width while the sheet is open
+   * (registered below, so it reads in px).
    */
-  --sheet-width: calc(440px * var(--ui-scale));
+  --sheet-width: calc(360px * var(--ui-scale));
   /* The feed's column (frame 01), the toast column (frame 04) and the three control heights. */
   --feed-width: calc(360px * var(--ui-scale));
   --toast-width: calc(392px * var(--ui-scale));

@@ -401,6 +401,17 @@ describe('AssetInspector', () => {
   describe('live', () => {
     beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
 
+    // The readings are the inspector frame's only tab (V3-09.1); the others come with V3-09.8.
+    it('draws no tab list while the details are its only tab', () => {
+      renderInspector({ incidents: [] });
+
+      expect(
+        screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('tablist')).toBeNull();
+      expect(screen.queryByRole('tabpanel')).toBeNull();
+    });
+
     it('names the sheet and shows the head and the badges', () => {
       renderInspector({ incidents: [] });
 

@@ -1,0 +1,12 @@
+/*
+ * The inspector's tab panel (V3-09.1). A flex column like the sheet it sits in, so a content that was a
+ * direct child of the sheet (sections laid out one under the other) lays out the same inside the panel.
+ * `min-width: 0` lets a long unbroken token wrap in the 360 px sheet instead of widening the panel.
+ * The tab list is `Tabs`' own look (a lit bar on a hairline): the frame adds nothing to it, and it is
+ * drawn only when there are two or more tabs.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

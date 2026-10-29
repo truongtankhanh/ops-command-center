@@ -174,6 +174,15 @@ describe('IncidentDetail', () => {
   describe('head', () => {
     beforeEach(() => signInAs('operator'));
 
+    // The details are the inspector frame's only tab (V3-09.1); the others come with V3-09.4.
+    it('draws no tab list while the details are its only tab', () => {
+      renderDetail();
+
+      expect(screen.getByRole('heading', { name: 'Door forced open' })).toBeInTheDocument();
+      expect(screen.queryByRole('tablist')).toBeNull();
+      expect(screen.queryByRole('tabpanel')).toBeNull();
+    });
+
     it('shows severity, type and zone as badges, not a status chip', () => {
       renderDetail();
 
