@@ -14,6 +14,7 @@ import { queryKeys } from '../../api/queries';
 import { getAccessToken, renewSession } from '../../auth/session';
 import { useSession } from '../../auth/store';
 import { offsetM } from '../../lib/map/geo';
+import { initialTelemetryState } from '../../lib/telemetry/telemetryState';
 import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
 import { createTestQueryClient, renderWithQueryClient, resetStore } from '../../test-utils';
@@ -188,7 +189,7 @@ describe('IncidentDetail', () => {
   describe('head', () => {
     beforeEach(() => signInAs('operator'));
 
-    // Telemetry comes with V3-09.6, between Related and Timeline.
+    // Telemetry joins them for a telemetry incident with a readable asset (V3-09.6, below).
     it('offers Details, Related and Timeline once the incident is loaded, on Details', () => {
       renderDetail();
 
@@ -633,15 +634,22 @@ describe('IncidentDetail', () => {
 
     /**
      * The catalogue and the asset are cached too, so the block is drawn at once. `withCatalogue:
-     * false` leaves the catalogue unloaded, which the camera section then waits for.
+     * false` leaves the catalogue unloaded, which the camera section then waits for; `withDetail:
+     * false` leaves the asset's detail to the (pending, or the case's) request.
      */
     function renderTelemetry(
       incident: Detail,
       {
         cameras = [],
         withCatalogue = true,
+        withDetail = true,
         incidents = [],
-      }: { cameras?: Camera[]; withCatalogue?: boolean; incidents?: Detail[] } = {},
+      }: {
+        cameras?: Camera[];
+        withCatalogue?: boolean;
+        withDetail?: boolean;
+        incidents?: Detail[];
+      } = {},
     ) {
       const client = createTestQueryClient();
       client.setQueryData(queryKeys.incident(incident.id), incident);
@@ -649,7 +657,7 @@ describe('IncidentDetail', () => {
       client.setQueryData(queryKeys.incidents, incidents);
       client.setQueryData(queryKeys.cameras, cameras);
       if (withCatalogue) client.setQueryData(queryKeys.assets, [TOWER]);
-      client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
+      if (withDetail) client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
       return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
     }
 
@@ -852,6 +860,202 @@ describe('IncidentDetail', () => {
       expect(
         within(panel).getByRole('heading', { name: 'Cameras covering it · 2' }),
       ).toBeInTheDocument();
+    });
+
+    // V3-09.6: the Telemetry tab, offered from the data (a telemetry incident whose asset can be read).
+    describe('the Telemetry tab', () => {
+      const tabNames = () =>
+        within(screen.getByRole('tablist', { name: 'Incident sections' }))
+          .getAllByRole('tab')
+          .map((tab) => tab.textContent);
+      const telemetryTab = () => screen.queryByRole('tab', { name: 'Telemetry' });
+      const RECEIVED = '2026-10-01T08:00:00.000Z';
+      /** The asset's reading as the store holds it, with the API's clock `afterMs` after it. */
+      const holdReading = (afterMs: number) =>
+        act(() =>
+          useTelemetryStore.setState({
+            view: {
+              state: {
+                ...initialTelemetryState,
+                serverClock: { at: Date.parse(RECEIVED) + afterMs, mono: performance.now() },
+                assets: {
+                  [TOWER.code]: {
+                    online: true,
+                    receivedAt: RECEIVED,
+                    headline: { motorTempC: 92 },
+                    values: { motorTempC: 92 },
+                    keyReceivedAt: {},
+                  },
+                },
+              },
+              series: new Map(),
+            },
+          }),
+        );
+      /** Answers the asset's detail with `status` and holds everything else. */
+      const answerAssetWith = (status: number) =>
+        fetchMock.mockImplementation((url) =>
+          String(url).includes('/assets/CT-01')
+            ? Promise.resolve(apiError(status, 'No'))
+            : new Promise<Response>(() => {}),
+        );
+
+      it('sits between Related and Timeline, and Details stays the open tab', () => {
+        renderTelemetry(raisedByRule());
+
+        // The device is the one thing related here: no other incident and no camera.
+        expect(tabNames()).toEqual(['Details', 'Related 1', 'Telemetry', 'Timeline']);
+        expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        expect(telemetryTab()).not.toHaveAttribute('aria-selected', 'true');
+      });
+
+      it('is not offered for an operator’s or a simulator’s incident', () => {
+        const { unmount } = renderDetail();
+        expect(telemetryTab()).toBeNull();
+        unmount();
+
+        renderDetail(detail({ source: 'simulator' }));
+        expect(telemetryTab()).toBeNull();
+      });
+
+      it('is not offered while the catalogue is on its way, nor for an asset it lacks', () => {
+        const { unmount } = renderTelemetry(raisedByRule(), { withCatalogue: false });
+        expect(telemetryTab()).toBeNull();
+        unmount();
+
+        renderTelemetry(raisedByRule({ assetId: 'asset-gone' }));
+        expect(telemetryTab()).toBeNull();
+        expect(screen.queryByText(/could not be loaded/)).toBeNull();
+      });
+
+      it('is offered with a skeleton while the asset is read, then draws its readings', async () => {
+        const { client } = renderTelemetry(raisedByRule(), { withDetail: false });
+
+        await openTab('Telemetry');
+        expect(screen.getByText('Loading readings…')).toHaveAttribute('role', 'status');
+
+        act(() => client.setQueryData(queryKeys.asset(TOWER.code), TOWER));
+
+        const panel = await screen.findByRole('tabpanel', { name: 'Telemetry' });
+        expect(await within(panel).findByRole('heading', { name: 'Live readings' })).toBeVisible();
+        expect(screen.queryByText('Loading readings…')).toBeNull();
+      });
+
+      it.each([
+        ['is gone (404)', 404],
+        ['cannot be read', 500],
+      ])(
+        'takes the tab away, with no error of its own, when the asset %s',
+        async (_name, status) => {
+          answerAssetWith(status);
+          renderTelemetry(raisedByRule(), { withDetail: false });
+
+          await waitFor(() => expect(telemetryTab()).toBeNull());
+          expect(tabNames()).toEqual(['Details', 'Related 1', 'Timeline']);
+          expect(screen.queryByRole('alert')).toBeNull();
+        },
+      );
+
+      it('lists the headline and the ruled points of the asset, live', async () => {
+        renderTelemetry(raisedByRule());
+
+        await openTab('Telemetry');
+
+        const panel = screen.getByRole('tabpanel', { name: 'Telemetry' });
+        expect(within(panel).getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+        expect(within(panel).getByText('Motor temperature')).toBeInTheDocument();
+        // Details' device tiles are not in this panel: one tab's content is mounted at a time.
+        expect(within(panel).queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
+      });
+
+      it('says "Last readings" for a stale asset', async () => {
+        holdReading(72_000);
+        renderTelemetry(raisedByRule());
+
+        await openTab('Telemetry');
+
+        const panel = screen.getByRole('tabpanel', { name: 'Telemetry' });
+        expect(within(panel).getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(within(panel).getByText('1 min 12 s old')).toBeInTheDocument();
+      });
+
+      it('stays for a resolved incident, as "Last readings" with no live line', async () => {
+        holdReading(400);
+        renderTelemetry(
+          raisedByRule({ status: 'resolved', resolvedAt: '2026-10-01T09:00:00.000Z' }),
+        );
+
+        await openTab('Telemetry');
+
+        const panel = screen.getByRole('tabpanel', { name: 'Telemetry' });
+        expect(within(panel).getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(within(panel).queryByText(/^Updated/)).toBeNull();
+      });
+
+      it('turns into "Last readings" when the incident is resolved while it is open', async () => {
+        holdReading(400);
+        const incident = raisedByRule();
+        const { client } = renderTelemetry(incident);
+        await openTab('Telemetry');
+        expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+
+        act(() =>
+          client.setQueryData(queryKeys.incident(incident.id), {
+            ...incident,
+            status: 'resolved',
+            resolvedAt: '2026-10-01T09:00:00.000Z',
+            version: incident.version + 1,
+          }),
+        );
+
+        expect(await screen.findByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'Telemetry' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+      });
+
+      it('falls back to Details when the open tab goes away', async () => {
+        const { client } = renderTelemetry(raisedByRule());
+        await openTab('Telemetry');
+        expect(screen.getByRole('tab', { name: 'Telemetry' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+
+        // The catalogue no longer has the asset.
+        act(() => client.setQueryData(queryKeys.assets, []));
+
+        await waitFor(() => expect(telemetryTab()).toBeNull());
+        expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
+        expect(screen.getByRole('tabpanel', { name: 'Details' })).toBeInTheDocument();
+      });
+
+      it('keeps the response foot, and the status, on the tab', async () => {
+        renderTelemetry(raisedByRule());
+
+        await openTab('Telemetry');
+
+        expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+        expect(postCalls()).toHaveLength(0);
+        expect(screen.getByText('Open')).toBeInTheDocument();
+      });
+
+      it('is the same for a viewer, who only reads', async () => {
+        signInAs('viewer');
+        renderTelemetry(raisedByRule());
+
+        await openTab('Telemetry');
+
+        expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+        expect(screen.getByRole('note')).toHaveTextContent('View only');
+      });
     });
 
     describe('opening the asset', () => {

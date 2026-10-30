@@ -30,6 +30,15 @@ const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
  * why. No per-point age is drawn: the API sends changed keys only, so a steady key's age would
  * read "old" on a healthy device (V2-08.3).
  *
+ * `ended` is the other way for readings not to be live: not an outage but a watch that stopped on
+ * purpose (a resolved incident's Telemetry tab, V3-09.6). The console watches an asset only while
+ * something needs it, and when the watch stops the series are dropped and the headline is all the
+ * store keeps, so a "live" look would be false. With `ended` the eyebrow reads "Last readings", the
+ * rows are dimmed as a stale row is, no sparkline is drawn (a dropped series would otherwise be
+ * redrawn as a single live point) and there is no freshness line (the age of an unfed reading says
+ * nothing to rely on) and no outage hint (no chart is drawn for it to explain). It wins over
+ * `stale`; absent or `false` it changes nothing.
+ *
  * `serverNow` is read once by the caller and passed down. The freshness text sits outside any live
  * region, so it does not announce every second.
  */
@@ -39,6 +48,7 @@ export function AssetReadings({
   entry,
   serverNow,
   stale,
+  ended = false,
 }: {
   assetCode: string;
   rows: InspectorRows;
@@ -47,10 +57,12 @@ export function AssetReadings({
   /** The API's time now; `null` until the first overview. */
   serverNow: number | null;
   stale: boolean;
+  /** The readings are no longer being fed because the thing that watched them is over. */
+  ended?: boolean;
 }) {
   const age =
     entry !== undefined && serverNow !== null ? readingAgeMs(entry.receivedAt, serverNow) : null;
-  const freshness = freshnessText(age, stale);
+  const freshness = ended ? null : freshnessText(age, stale);
   const row = (item: InspectorRow) => (
     <ReadingRow
       key={item.point.key}
@@ -59,13 +71,14 @@ export function AssetReadings({
       entry={entry}
       serverNow={serverNow}
       stale={stale}
+      ended={ended}
     />
   );
 
   return (
     <section className={styles.section} aria-labelledby="asset-readings-title">
       <div className={styles.head}>
-        <h3 id="asset-readings-title">{stale ? 'Last readings' : 'Live readings'}</h3>
+        <h3 id="asset-readings-title">{stale || ended ? 'Last readings' : 'Live readings'}</h3>
         {freshness !== null && (
           <span className={styles.freshness} data-stale={stale ? 'true' : undefined}>
             <span className={styles.dot} aria-hidden="true" />
@@ -80,7 +93,9 @@ export function AssetReadings({
           <ul className={styles.list}>{rows.more.map(row)}</ul>
         </details>
       )}
-      {stale && <Hint icon={Clock}>Charts stop at the last reading; the gap is the outage.</Hint>}
+      {stale && !ended && (
+        <Hint icon={Clock}>Charts stop at the last reading; the gap is the outage.</Hint>
+      )}
     </section>
   );
 }
@@ -91,12 +106,14 @@ function ReadingRow({
   entry,
   serverNow,
   stale,
+  ended,
 }: {
   assetCode: string;
   row: InspectorRow;
   entry: AssetTelemetryState | undefined;
   serverNow: number | null;
   stale: boolean;
+  ended: boolean;
 }) {
   const { point, rule } = row;
   // Reads only its own key's series: a stored reference that changes when this key is re-posted.
@@ -106,7 +123,8 @@ function ReadingRow({
   const latest = encodedLatest(point, value);
   // A number and a boolean have a series; an enum has none (the engine has no `enumValues`), and
   // a kind from a newer API is shown as its value only.
-  const drawable = point.kind === 'number' || point.kind === 'boolean';
+  // An ended watch has no series to draw, and `drawnSeries` would add a live-looking point to none.
+  const drawable = !ended && (point.kind === 'number' || point.kind === 'boolean');
   const live = !stale && serverNow !== null;
   const drawn = useMemo(
     () =>
@@ -119,7 +137,11 @@ function ReadingRow({
   const ruleLine = rule === null ? null : limitLine(rule, point);
 
   return (
-    <li className={styles.row} data-stale={stale ? 'true' : undefined} data-severity={over}>
+    <li
+      className={styles.row}
+      data-stale={stale || ended ? 'true' : undefined}
+      data-severity={over}
+    >
       <span className={styles.label}>
         <span className={styles.name}>{point.label}</span>
         {ruleLine !== null && <span className={styles.rule}>{ruleLine}</span>}
