@@ -4,7 +4,7 @@
 ![Node 24](https://img.shields.io/badge/node-24-339933?logo=nodedotjs&logoColor=white)
 ![NestJS 12](https://img.shields.io/badge/NestJS-12-E0234E?logo=nestjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+![License: PolyForm Strict 1.0.0](https://img.shields.io/badge/license-PolyForm%20Strict%201.0.0-blue)
 
 A real-time operations console for a campus security and facilities team: live incidents on a site map, camera tiles next to every incident, and an auditable response workflow — one screen that answers _what is happening, where, and who is handling it_.
 
@@ -324,4 +324,4 @@ M1 delivers the full loop with synthetic data. Since then, OIDC sign-in with rol
 
 ## License
 
-[MIT](LICENSE) © Trương Tấn Khánh
+[PolyForm Strict 1.0.0](LICENSE) © Trương Tấn Khánh — source-available for noncommercial use; modification and redistribution are not permitted.

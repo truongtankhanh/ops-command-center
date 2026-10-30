@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Demo device simulator: plays the seeded assets over MQTT for the telemetry Compose profile (ADR-0019).",
-  "license": "MIT",
+  "license": "PolyForm-Strict-1.0.0",
   "type": "module",
   "files": [
     "dist"

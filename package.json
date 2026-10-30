@@ -2,7 +2,7 @@
   "name": "ops-command-center",
   "private": true,
   "description": "Real-time operations command center: live incidents, campus map and camera tiles — NestJS + React monorepo.",
-  "license": "MIT",
+  "license": "PolyForm-Strict-1.0.0",
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=24"

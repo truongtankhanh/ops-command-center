@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Ops API — incidents, zones, cameras, real-time events.",
-  "license": "MIT",
+  "license": "PolyForm-Strict-1.0.0",
   "files": [
     "dist"
   ],

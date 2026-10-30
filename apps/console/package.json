@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Operator console — live incidents on a campus map with camera tiles.",
-  "license": "MIT",
+  "license": "PolyForm-Strict-1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
