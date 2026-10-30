@@ -1,0 +1,104 @@
+/*
+ * The incident sheet's Related tab (V3-09.5; frame 03a). Sections are separated by a 1 px inset line
+ * and headed by an eyebrow, as the Details tab's are (`IncidentDetail.module.css`); the incident
+ * rows, the camera tiles and the buttons bring their own look.
+ */
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+/* Frame 02 `.eyebrow`. */
+.section h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.rows {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two compact tiles to a row, as on the Details tab. */
+.cameras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* The evidence's asset link in small: tile, name and place, then the button. */
+.device {
+  display: grid;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-1);
+}
+
+.deviceTile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.deviceText {
+  display: grid;
+  min-width: 0;
+}
+
+/* Wrapped, not cut off: the name is what tells two cooling towers apart in a 360 px sheet. */
+.deviceName {
+  font-family: var(--font-ui);
+  font-size: var(--type-l);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.deviceDetail {
+  font-size: var(--type-m);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* Loading: the sheet-section spacing round two rows and the camera pair. */
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+}
+
+.skeletonRow {
+  height: calc(64px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+.skeletonCamera {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

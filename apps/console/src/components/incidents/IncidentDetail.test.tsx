@@ -119,6 +119,8 @@ function renderDetail(
   if (incidents) client.setQueryData(queryKeys.incidents, incidents);
   // No camera: CameraTile would request a stream and draw on a canvas jsdom does not have.
   client.setQueryData(queryKeys.cameras, []);
+  // The Related tab reads the catalogue too; cached, it asks for nothing (and eats no queued answer).
+  client.setQueryData(queryKeys.assets, []);
   return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
 }
 
@@ -127,6 +129,9 @@ function renderUncached(id = detail().id) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, [zone]);
   client.setQueryData(queryKeys.cameras, []);
+  // The lists the Related tab reads are cached, so no request of theirs takes a queued answer.
+  client.setQueryData(queryKeys.incidents, []);
+  client.setQueryData(queryKeys.assets, []);
   return renderWithQueryClient(<IncidentDetail id={id} />, client);
 }
 
@@ -135,8 +140,13 @@ function renderWithoutCameras(incident = detail()) {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.incident(incident.id), incident);
   client.setQueryData(queryKeys.zones, [zone]);
+  client.setQueryData(queryKeys.incidents, []);
+  client.setQueryData(queryKeys.assets, []);
   return renderWithQueryClient(<IncidentDetail id={incident.id} />, client);
 }
+
+/** Chooses a tab of the sheet ("Timeline"; "Related" with its count is matched by a pattern). */
+const openTab = (name: string | RegExp) => userEvent.click(screen.getByRole('tab', { name }));
 
 /** The value next to a metric's label ("Open for", "Time to acknowledge"). */
 const metric = (label: string) => screen.getByText(label).nextElementSibling as HTMLElement;
@@ -178,13 +188,17 @@ describe('IncidentDetail', () => {
   describe('head', () => {
     beforeEach(() => signInAs('operator'));
 
-    // The details are the inspector frame's only tab (V3-09.1); Related and Telemetry come with V3-09.5 and V3-09.6.
-    it('draws no tab list while the details are its only tab', () => {
+    // Telemetry comes with V3-09.6, between Related and Timeline.
+    it('offers Details, Related and Timeline once the incident is loaded, on Details', () => {
       renderDetail();
 
       expect(screen.getByRole('heading', { name: 'Door forced open' })).toBeInTheDocument();
-      expect(screen.queryByRole('tablist')).toBeNull();
-      expect(screen.queryByRole('tabpanel')).toBeNull();
+      const tabs = within(screen.getByRole('tablist', { name: 'Incident sections' })).getAllByRole(
+        'tab',
+      );
+      expect(tabs.map((tab) => tab.textContent)).toEqual(['Details', 'Related 0', 'Timeline']);
+      expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tabpanel', { name: 'Details' })).toBeInTheDocument();
     });
 
     // Frame 02's header: the severity, how long ago, the status and the type, as words with glyphs.
@@ -366,18 +380,153 @@ describe('IncidentDetail', () => {
     });
   });
 
+  // V3-09.5: the sheet is Details, Related and Timeline once the incident is there.
+  describe('tabs', () => {
+    beforeEach(() => signInAs('operator'));
+
+    it('draws no tab list while the incident loads', () => {
+      renderUncached();
+
+      expect(screen.getByText('Loading incident…')).toHaveAttribute('role', 'status');
+      expect(screen.queryByRole('tablist')).toBeNull();
+    });
+
+    it('draws no tab list for an incident that no longer exists', async () => {
+      getAnswers = [() => apiError(404, 'Not found')];
+
+      renderUncached();
+
+      expect(await screen.findByText('This incident no longer exists.')).toBeInTheDocument();
+      expect(screen.queryByRole('tablist')).toBeNull();
+    });
+
+    it('gives the Details back as they were after another tab', async () => {
+      renderDetail();
+
+      await openTab('Timeline');
+      expect(screen.queryByText('Reported by')).toBeNull();
+      await openTab('Details');
+
+      expect(screen.getByText('Reported by')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Cameras in Library' })).toBeInTheDocument();
+    });
+
+    // The foot is outside the panel: a tab change never touches the note or the actions.
+    it.each(['Related', 'Timeline'])('keeps the response foot on %s', async (name) => {
+      renderDetail();
+
+      await openTab(new RegExp(`^${name}`));
+
+      expect(screen.getByRole('form', RESPONSE)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Acknowledge' })).toBeInTheDocument();
+    });
+
+    it('keeps the note being written when the tab changes', async () => {
+      renderDetail();
+      await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'Checking the door');
+
+      await openTab('Timeline');
+
+      expect(screen.getByLabelText(NOTE_LABEL)).toHaveValue('Checking the door');
+    });
+
+    describe('Related', () => {
+      it('counts the other active incidents of the zone and lists them', async () => {
+        renderDetail(detail(), [zone], [detail({ id: 'incident-2', title: 'Smoke in the lab' })]);
+
+        expect(screen.getByRole('tab', { name: 'Related 1' })).toBeInTheDocument();
+        await openTab(/^Related/);
+
+        expect(screen.getByRole('heading', { name: 'Incidents · 1' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Smoke in the lab/ })).toBeInTheDocument();
+      });
+
+      it('says nothing else is related when the lists arrived and held nothing', async () => {
+        renderDetail();
+
+        expect(screen.getByRole('tab', { name: 'Related 0' })).toBeInTheDocument();
+        await openTab(/^Related/);
+
+        expect(screen.getByText('Nothing else is related to this incident.')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: /^Incidents/ })).toBeNull();
+      });
+
+      // Never a 0 that is a guess: no number, and no claim of "nothing", until the lists are there.
+      it('draws no number while the incident list has not arrived', async () => {
+        const { client } = renderDetail(detail(), [zone], null);
+
+        expect(screen.getByRole('tab', { name: 'Related' })).toBeInTheDocument();
+        await openTab('Related');
+        expect(screen.getByText('Loading related items…')).toHaveAttribute('role', 'status');
+        expect(screen.queryByText('Nothing else is related to this incident.')).toBeNull();
+
+        act(() => client.setQueryData(queryKeys.incidents, []));
+
+        expect(await screen.findByRole('tab', { name: 'Related 0' })).toBeInTheDocument();
+        expect(screen.getByText('Nothing else is related to this incident.')).toBeInTheDocument();
+      });
+
+      it('says the items could not be loaded, and draws no number, when a list failed', async () => {
+        camerasAnswer = () => apiError(500, 'Internal server error');
+        renderWithoutCameras();
+        expect(await screen.findByText('Cameras could not be loaded.')).toBeInTheDocument();
+
+        expect(screen.getByRole('tab', { name: 'Related' })).toBeInTheDocument();
+        await openTab('Related');
+
+        expect(screen.getByText('Related items could not be loaded.')).toBeInTheDocument();
+        expect(screen.queryByText('Nothing else is related to this incident.')).toBeNull();
+      });
+    });
+  });
+
   describe('timeline', () => {
     beforeEach(() => signInAs('operator'));
 
-    it('shows who caused each timeline entry', () => {
+    // The history has a tab of its own (V3-09.5); Details no longer carries it.
+    it('keeps the history out of Details and in the Timeline tab', async () => {
       renderDetail();
+
+      expect(screen.queryByText('Demo Operator')).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'Timeline' })).toBeNull();
+
+      await openTab('Timeline');
+
+      expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('tabpanel', { name: 'Timeline' })).toContainElement(
+        screen.getByText('Demo Operator'),
+      );
+      // The tab names the panel: the list has no heading of its own.
+      expect(screen.queryByRole('heading', { name: 'Timeline' })).toBeNull();
+    });
+
+    it('lists every event in order', async () => {
+      renderDetail();
+
+      await openTab('Timeline');
+
+      const entries = within(screen.getByRole('tabpanel', { name: 'Timeline' })).getAllByRole(
+        'listitem',
+      );
+      expect(entries).toHaveLength(2);
+      expect(entries[0]).toHaveTextContent('Demo Operator');
+      expect(entries[1]).toHaveTextContent('Simulator');
+    });
+
+    it('shows who caused each timeline entry', async () => {
+      renderDetail();
+      await openTab('Timeline');
 
       expect(screen.getByText('Demo Operator')).toBeInTheDocument();
       expect(screen.getByText('Simulator')).toBeInTheDocument();
     });
 
-    it('marks system entries apart from people', () => {
+    it('marks system entries apart from people', async () => {
       renderDetail();
+      await openTab('Timeline');
 
       // The attribute styles system actors; their names already say they are not people.
       expect(screen.getByText('Simulator').closest('li')).toHaveAttribute(
@@ -390,14 +539,17 @@ describe('IncidentDetail', () => {
       );
     });
 
-    it("never shows an actor's subject", () => {
+    it("never shows an actor's subject", async () => {
       renderDetail();
+      await openTab('Timeline');
 
+      // The names are there (the tab is open), the subjects are not.
+      expect(screen.getByText('Demo Operator')).toBeInTheDocument();
       expect(screen.queryByText(OPERATOR_SUBJECT)).toBeNull();
       expect(screen.queryByText('simulator')).toBeNull();
     });
 
-    it('shows when each entry happened, in clock and relative time', () => {
+    it('shows when each entry happened, in clock and relative time', async () => {
       const reportedAt = minutesAgo(14);
       const acknowledgedAt = new Date().toISOString();
       renderDetail(
@@ -408,6 +560,7 @@ describe('IncidentDetail', () => {
           ],
         }),
       );
+      await openTab('Timeline');
 
       const reported = screen.getByText('Demo Operator').closest('li')!.querySelector('time');
       expect(reported).toHaveAttribute('datetime', reportedAt);
@@ -484,12 +637,16 @@ describe('IncidentDetail', () => {
      */
     function renderTelemetry(
       incident: Detail,
-      { cameras = [], withCatalogue = true }: { cameras?: Camera[]; withCatalogue?: boolean } = {},
+      {
+        cameras = [],
+        withCatalogue = true,
+        incidents = [],
+      }: { cameras?: Camera[]; withCatalogue?: boolean; incidents?: Detail[] } = {},
     ) {
       const client = createTestQueryClient();
       client.setQueryData(queryKeys.incident(incident.id), incident);
       client.setQueryData(queryKeys.zones, [zone]);
-      client.setQueryData(queryKeys.incidents, []);
+      client.setQueryData(queryKeys.incidents, incidents);
       client.setQueryData(queryKeys.cameras, cameras);
       if (withCatalogue) client.setQueryData(queryKeys.assets, [TOWER]);
       client.setQueryData(queryKeys.asset(TOWER.code), TOWER);
@@ -518,49 +675,61 @@ describe('IncidentDetail', () => {
       signInAs('operator');
     });
 
-    it('names the source on a chip and puts the evidence between the facts and the timeline', () => {
+    it('names the source on a chip and puts the evidence after the facts', () => {
       renderTelemetry(raisedByRule());
 
-      // The chip in the head, and the timeline's actor, which carries the same words.
-      expect(screen.getAllByText('Telemetry rule')).toHaveLength(2);
+      // The chip in the head; the timeline's actor, which carries the same words, is on its own tab.
+      expect(screen.getAllByText('Telemetry rule')).toHaveLength(1);
       const facts = screen.getByText('Reported by');
       const evidence = screen.getByRole('heading', { name: 'Why it was raised' });
-      const timeline = screen.getByRole('heading', { name: 'Timeline' });
       expect(follows(facts, evidence)).toBe(true);
-      expect(follows(evidence, timeline)).toBe(true);
       expect(screen.getByText('Motor over-temperature')).toBeInTheDocument();
       expect(screen.getByText('Limit 85 °C · clears below 80 °C')).toBeInTheDocument();
     });
 
+    it('names the system as the actor of the first entry in the Timeline tab', async () => {
+      renderTelemetry(raisedByRule());
+
+      await openTab('Timeline');
+
+      // The chip in the head and the entry's actor: the same words, the system's.
+      expect(screen.getAllByText('Telemetry rule')).toHaveLength(2);
+      expect(
+        screen.getByText('Telemetry rule', { selector: 'li *' }).closest('li'),
+      ).toHaveAttribute('data-actor-kind', 'system');
+    });
+
+    // The Related tab reads the catalogue (cached here), but an operator's incident has no asset to look up.
     it('shows neither the chip nor the block for an operator’s incident, and asks for no asset', () => {
       renderDetail();
 
       expect(screen.queryByText('Telemetry rule')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
-      expect(getCalls().some(([url]) => String(url).includes('/assets'))).toBe(false);
+      expect(getCalls().some(([url]) => /\/assets\/[^/?]/.test(String(url)))).toBe(false);
     });
 
-    it('keeps the chip but draws no block when the note is not evidence', () => {
+    it('keeps the chip but draws no block when the note is not evidence', async () => {
       renderTelemetry(raisedByRule({ timeline: [{ ...telemetryEvent, note: 'Checked on site' }] }));
 
-      expect(screen.getAllByText('Telemetry rule')).toHaveLength(2);
+      expect(screen.getAllByText('Telemetry rule')).toHaveLength(1);
       expect(screen.queryByRole('heading', { name: 'Why it was raised' })).toBeNull();
-      // The note stays where the operator can read it.
+      // The note stays where the operator can read it: in the Timeline tab.
+      await openTab('Timeline');
       expect(screen.getByText('Checked on site')).toBeInTheDocument();
     });
 
     describe('the device', () => {
-      it('puts the device card and the live tiles after the evidence and before the timeline', () => {
+      it('puts the device card and the live tiles after the evidence and before the cameras', () => {
         renderTelemetry(raisedByRule());
 
         const evidence = screen.getByRole('heading', { name: 'Why it was raised' });
         const card = screen.getByRole('region', { name: 'Device information' });
         const tiles = screen.getByRole('heading', { name: 'Live data' });
-        const timeline = screen.getByRole('heading', { name: 'Timeline' });
+        const cameras = screen.getByRole('heading', { name: /^Cameras/ });
         expect(follows(screen.getByText('Reported by'), evidence)).toBe(true);
         expect(follows(evidence, card)).toBe(true);
         expect(follows(card, tiles)).toBe(true);
-        expect(follows(tiles, timeline)).toBe(true);
+        expect(follows(tiles, cameras)).toBe(true);
         // The device is the asset's, not the zone's.
         expect(card).toHaveTextContent('Cooling tower 1');
         expect(card).toHaveTextContent('CT-01');
@@ -572,7 +741,7 @@ describe('IncidentDetail', () => {
         expect(screen.queryByRole('region', { name: 'Device information' })).toBeNull();
         expect(screen.queryByRole('heading', { name: 'Live data' })).toBeNull();
         expect(screen.queryByText('Loading device…')).toBeNull();
-        expect(getCalls().some(([url]) => String(url).includes('/assets'))).toBe(false);
+        expect(getCalls().some(([url]) => /\/assets\/[^/?]/.test(String(url)))).toBe(false);
       });
 
       it('keeps the card and draws no live tiles once the incident is resolved', () => {
@@ -663,6 +832,28 @@ describe('IncidentDetail', () => {
       expect(screen.getByRole('heading', { name: 'Cameras in Library' })).toBeInTheDocument();
     });
 
+    // V3-09.5: the count is the rows the tab lists, and the device is one of them.
+    it('counts the other incidents, the device and the cameras on the Related tab', async () => {
+      renderTelemetry(raisedByRule(), {
+        incidents: [detail({ id: 'incident-2', title: 'Smoke in the lab' })],
+        cameras: [
+          camera('CAM-Z', 'Library door', zone.id),
+          camera('CAM-Y', 'Library hall', zone.id),
+        ],
+      });
+
+      // One incident, the device and two cameras.
+      expect(screen.getByRole('tab', { name: 'Related 4' })).toBeInTheDocument();
+      await openTab(/^Related/);
+
+      const panel = screen.getByRole('tabpanel', { name: /^Related/ });
+      expect(within(panel).getByRole('heading', { name: 'Incidents · 1' })).toBeInTheDocument();
+      expect(within(panel).getByRole('heading', { name: 'Device' })).toBeInTheDocument();
+      expect(
+        within(panel).getByRole('heading', { name: 'Cameras covering it · 2' }),
+      ).toBeInTheDocument();
+    });
+
     describe('opening the asset', () => {
       /** What `App` does with the sheet: the incident, or the inspector, whichever is selected. */
       function Sheets() {
@@ -679,10 +870,11 @@ describe('IncidentDetail', () => {
         );
       }
 
-      function renderSheets(incident: Detail) {
+      function renderSheets(incident: Detail, others: Detail[] = []) {
         const client = createTestQueryClient();
         client.setQueryData(queryKeys.incident(incident.id), incident);
-        client.setQueryData(queryKeys.incidents, [incident]);
+        for (const other of others) client.setQueryData(queryKeys.incident(other.id), other);
+        client.setQueryData(queryKeys.incidents, [incident, ...others]);
         client.setQueryData(queryKeys.zones, [zone]);
         client.setQueryData(queryKeys.cameras, []);
         client.setQueryData(queryKeys.assets, [TOWER]);
@@ -714,6 +906,33 @@ describe('IncidentDetail', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Open asset CT-01' }));
 
         expect(await screen.findByRole('complementary', { name: 'Asset CT-01' })).toHaveFocus();
+      });
+
+      it('opens the asset from the Related tab too', async () => {
+        renderSheets(raisedByRule());
+        await openTab(/^Related/);
+
+        const panel = screen.getByRole('tabpanel', { name: /^Related/ });
+        await userEvent.click(within(panel).getByRole('button', { name: 'Open asset CT-01' }));
+
+        expect(await screen.findByRole('complementary', { name: 'Asset CT-01' })).toHaveFocus();
+      });
+
+      // Reading, not acting: a related incident replaces this one and opens on its own Details.
+      it('opens a related incident in the same place, on its Details, with the sheet focused', async () => {
+        const other = detail({ id: 'incident-2', code: 'INC-000043', title: 'Smoke in the lab' });
+        renderSheets(raisedByRule(), [other]);
+        await openTab(/^Related/);
+
+        await userEvent.click(screen.getByRole('button', { name: /Smoke in the lab/ }));
+
+        const sheet = await screen.findByRole('complementary', { name: 'Incident INC-000043' });
+        expect(sheet).toHaveFocus();
+        expect(screen.queryByRole('complementary', { name: 'Incident INC-000042' })).toBeNull();
+        expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        );
       });
     });
 
@@ -823,7 +1042,7 @@ describe('IncidentDetail', () => {
       );
     });
 
-    it('offers a viewer a view-only footer instead of a response', () => {
+    it('offers a viewer a view-only footer instead of a response', async () => {
       signInAs('viewer');
 
       renderDetail();
@@ -837,9 +1056,10 @@ describe('IncidentDetail', () => {
       expect(note).toHaveTextContent(
         'Acknowledging and resolving need the operator or supervisor role.',
       );
-      // Reading is still allowed.
-      expect(screen.getByRole('heading', { name: 'Timeline' })).toBeInTheDocument();
+      // Reading is still allowed: the history, and the foot stays while it is open.
+      await openTab('Timeline');
       expect(screen.getByText('Demo Operator')).toBeInTheDocument();
+      expect(screen.getByRole('note')).toHaveTextContent('View only');
     });
 
     it('offers an operator both actions on a type this console does not know', () => {
@@ -896,7 +1116,7 @@ describe('IncidentDetail', () => {
       expect(screen.getByRole('button', { name: 'Resolve' })).toBeInTheDocument();
     });
 
-    it('ends an out-of-scope incident in a note, not in the response form', () => {
+    it('ends an out-of-scope incident in a note, not in the response form', async () => {
       renderDetail(detail({ type: 'intrusion' }));
 
       expect(screen.queryByRole('form', RESPONSE)).toBeNull();
@@ -909,8 +1129,9 @@ describe('IncidentDetail', () => {
       expect(note).toHaveTextContent('You can follow this one and report new incidents.');
       // The viewer's footer says something else, and is not this one.
       expect(note).not.toHaveTextContent('View only');
-      // Reading is still allowed.
-      expect(screen.getByRole('heading', { name: 'Timeline' })).toBeInTheDocument();
+      // Reading is still allowed: the history can be opened.
+      await openTab('Timeline');
+      expect(screen.getByText('Demo Operator')).toBeInTheDocument();
     });
 
     it.each<[Detail['type'], string]>([
@@ -1486,11 +1707,17 @@ describe('IncidentDetail', () => {
           }),
         );
       renderDetail(detail({ timeline: [reported] }));
+      await openTab('Timeline');
       expect(screen.queryByText('Demo Operator')).toBeNull();
 
       await userEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
 
       expect(await screen.findByText('Demo Operator')).toBeInTheDocument();
+      // The frame stays mounted through the change: the tab the reader is on is still the open one.
+      expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
       expect(postCalls()).toHaveLength(1);
       expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/acknowledge');
     });

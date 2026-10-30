@@ -32,8 +32,8 @@ export interface InspectorTab<T extends string = string> {
  *   Escape are not always the same step (the asset inspector's Escape first closes a part's
  *   callout, Close ends the inspector). `onEscape` is only what `Sheet` calls for Escape.
  * - **It does not pin anything yet:** the `Sheet` still scrolls as a whole and the foot is sticky
- *   in it, as before (V3-09.1). Pinning the header and the tab list belongs with the first
- *   content that has more than one tab.
+ *   in it, as before (V3-09.1). The incident sheet is the first content with several tabs
+ *   (V3-09.5) and does not pin either: pinning the header and the tab list is a follow-up task.
  *
  * Render the frame once per content, in every state (loading, failed, loaded), and vary its slots:
  * a second frame in another branch would remount the `Sheet` and move focus when the data arrives.
