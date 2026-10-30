@@ -1,0 +1,25 @@
+/*
+ * The Telemetry tab's loading state (V3-09.6): the sheet-section spacing round a few reading rows,
+ * so nothing jumps when the asset arrives. The loaded look is `AssetReadings.module.css`'s.
+ */
+
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+}
+
+.skeletonRow {
+  height: calc(40px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

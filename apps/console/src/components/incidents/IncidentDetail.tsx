@@ -4,6 +4,7 @@ import { ApiRequestError, isRateLimited } from '../../api/client';
 import { useAssets, useCameras, useIncident, useZones } from '../../api/queries';
 import { incidentCameras } from '../../lib/cameras/cameras';
 import { categoryLabel, categoryOfType, formatAgo, typeLabel } from '../../lib/incidents/incidents';
+import { useIncidentTelemetry } from '../../lib/incidents/useIncidentTelemetry';
 import { useRelatedOfIncident } from '../../lib/incidents/useRelatedOfIncident';
 import { useNow } from '../../lib/shared/useNow';
 import { useConsole } from '../../store';
@@ -25,6 +26,7 @@ import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
 import { IncidentRelated } from './IncidentRelated';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
+import { IncidentTelemetry } from './IncidentTelemetry';
 import { IncidentTimeline } from './IncidentTimeline';
 import { LoadFailed, RateLimited } from '../shell/LoadStates';
 
@@ -33,14 +35,17 @@ import { LoadFailed, RateLimited } from '../shell/LoadStates';
  * loading, failed and loaded states, with the header, the body and the footer as its slots, so the
  * data arriving never moves focus. The header is the shared `InspectorHeader` (V3-09.4); the body
  * is three tabs once the incident is loaded (V3-09.5): **Details**, **Related** (with its count)
- * and **Timeline**. Before that, or when the incident cannot be had, **Details** is the only tab
- * and no tab list is drawn. Telemetry comes with V3-09.6, between Related and Timeline. The foot is
- * outside the panel, so a tab change never touches the note or the actions. The note being
- * written lives in the store (`noteDrafts`): leaving for another incident or the report form keeps
- * it, and only Close or a sent note clears it.
+ * and **Timeline**, and a fourth, **Telemetry**, between Related and Timeline for a telemetry
+ * incident whose asset can be read (V3-09.6). Before that, or when the incident cannot be had,
+ * **Details** is the only tab and no tab list is drawn. The foot is outside the panel, so a tab
+ * change never touches the note or the actions. The note being written lives in the store
+ * (`noteDrafts`): leaving for another incident or the report form keeps it, and only Close or a
+ * sent note clears it.
  *
- * The Related list is read here, above the frame, because its count is part of the tab: the tab
- * gets the same object (`useRelatedOfIncident`), so the badge and the rows cannot disagree.
+ * The Related list and the Telemetry asset are read here, above the frame, because the count and
+ * the very existence of a tab are part of the `tabs` the frame gets: the tab gets the same object
+ * (`useRelatedOfIncident`, `useIncidentTelemetry`), so the badge and the rows cannot disagree. If
+ * the open tab goes away (the asset can no longer be read) the frame falls back to Details.
  *
  * Once the incident is resolved — here or by someone else — the response footer goes. If focus was
  * in it, focus moves to the sheet, so Escape still reaches it. (An acknowledge keeps the footer:
@@ -92,6 +97,7 @@ export function IncidentDetail({ id }: { id: string }) {
 
   const loading = !incident && isPending && !isRateLimited(failureReason);
   const related = useRelatedOfIncident(incident);
+  const telemetry = useIncidentTelemetry(incident);
 
   const detailsContent = incident ? (
     <DetailContent incident={incident} />
@@ -115,25 +121,32 @@ export function IncidentDetail({ id }: { id: string }) {
   // Only an incident that is there has anything to relate or to date: the other states are the
   // Details tab alone, which draws no tab list.
   if (incident) {
-    tabs.push(
-      {
-        value: 'related',
-        label: 'Related',
-        // Never a 0 that is a guess: no count until every list it is made from has arrived.
-        ...(related.status === 'ready' ? { count: related.related.count } : {}),
-        content: <IncidentRelated state={related} />,
-      },
-      {
-        value: 'timeline',
-        label: 'Timeline',
-        // The tab names the panel, so the list needs no heading of its own.
-        content: (
-          <div className={styles.section}>
-            <IncidentTimeline timeline={incident.timeline} />
-          </div>
-        ),
-      },
-    );
+    tabs.push({
+      value: 'related',
+      label: 'Related',
+      // Never a 0 that is a guess: no count until every list it is made from has arrived.
+      ...(related.status === 'ready' ? { count: related.related.count } : {}),
+      content: <IncidentRelated state={related} />,
+    });
+    // Offered from the data (V3-09.6): a telemetry incident whose asset the catalogue has and the
+    // API can read. Any other incident, and an asset that is gone, has no such tab and no error.
+    if (telemetry.status !== 'none') {
+      tabs.push({
+        value: 'telemetry',
+        label: 'Telemetry',
+        content: <IncidentTelemetry incident={incident} state={telemetry} />,
+      });
+    }
+    tabs.push({
+      value: 'timeline',
+      label: 'Timeline',
+      // The tab names the panel, so the list needs no heading of its own.
+      content: (
+        <div className={styles.section}>
+          <IncidentTimeline timeline={incident.timeline} />
+        </div>
+      ),
+    });
   }
 
   return (
@@ -162,8 +175,8 @@ export function IncidentDetail({ id }: { id: string }) {
   );
 }
 
-/** The tabs of the incident sheet; Telemetry joins between Related and Timeline in V3-09.6. */
-type SheetTab = 'details' | 'related' | 'timeline';
+/** The tabs of the incident sheet; Telemetry, when offered, sits between Related and Timeline. */
+type SheetTab = 'details' | 'related' | 'telemetry' | 'timeline';
 
 /** The header laid out like the loaded one (the body's skeleton is `DetailBodySkeleton`). */
 function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
@@ -184,8 +197,10 @@ function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
 
 /**
  * Laid out like the tab list and the lifecycle, so nothing jumps when the incident arrives (the tab
- * list is drawn only once there are tabs to choose from). It announces the loading once for the
- * whole sheet (the header's blocks and the tab strip are decorative).
+ * list is drawn only once there are tabs to choose from). Three bars are the common case: the
+ * incident's kind is not known yet, and a telemetry incident gains a fourth tab on arrival. It
+ * announces the loading once for the whole sheet (the header's blocks and the tab strip are
+ * decorative).
  */
 function DetailBodySkeleton() {
   return (
