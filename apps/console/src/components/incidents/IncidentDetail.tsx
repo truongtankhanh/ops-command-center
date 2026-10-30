@@ -4,6 +4,7 @@ import { ApiRequestError, isRateLimited } from '../../api/client';
 import { useAssets, useCameras, useIncident, useZones } from '../../api/queries';
 import { incidentCameras } from '../../lib/cameras/cameras';
 import { categoryLabel, categoryOfType, formatAgo, typeLabel } from '../../lib/incidents/incidents';
+import { useRelatedOfIncident } from '../../lib/incidents/useRelatedOfIncident';
 import { useNow } from '../../lib/shared/useNow';
 import { useConsole } from '../../store';
 import text from '../../styles/text.module.css';
@@ -12,7 +13,7 @@ import { EmptyState } from '../../ui/EmptyState';
 import { focusLost } from '../../ui/focus';
 import { Icon } from '../../ui/Icon';
 import { actorKindIcon, categoryIcon, Clock, incidentTypeIcon } from '../../ui/icons';
-import { InspectorFrame } from '../../ui/InspectorFrame';
+import { InspectorFrame, type InspectorTab } from '../../ui/InspectorFrame';
 import { InspectorHeader } from '../../ui/InspectorHeader';
 import { SeverityBadge } from '../../ui/SeverityBadge';
 import { Skeleton } from '../../ui/Skeleton';
@@ -22,6 +23,7 @@ import styles from './IncidentDetail.module.css';
 import { IncidentDevice } from './IncidentDevice';
 import { IncidentEvidence } from './IncidentEvidence';
 import { IncidentLifecycle } from './IncidentLifecycle';
+import { IncidentRelated } from './IncidentRelated';
 import { IncidentResponse, NOTE_KEPT } from './IncidentResponse';
 import { IncidentTimeline } from './IncidentTimeline';
 import { LoadFailed, RateLimited } from '../shell/LoadStates';
@@ -30,10 +32,15 @@ import { LoadFailed, RateLimited } from '../shell/LoadStates';
  * The incident in the sheet (frames 02 / 06). One `InspectorFrame` (so one `Sheet`) holds the
  * loading, failed and loaded states, with the header, the body and the footer as its slots, so the
  * data arriving never moves focus. The header is the shared `InspectorHeader` (V3-09.4); the body
- * is the **Details** tab, the frame's only tab for now, so no tab list is drawn (Related and
- * Telemetry come with V3-09.5 and V3-09.6, and the Timeline moves out then). The note being
+ * is three tabs once the incident is loaded (V3-09.5): **Details**, **Related** (with its count)
+ * and **Timeline**. Before that, or when the incident cannot be had, **Details** is the only tab
+ * and no tab list is drawn. Telemetry comes with V3-09.6, between Related and Timeline. The foot is
+ * outside the panel, so a tab change never touches the note or the actions. The note being
  * written lives in the store (`noteDrafts`): leaving for another incident or the report form keeps
  * it, and only Close or a sent note clears it.
+ *
+ * The Related list is read here, above the frame, because its count is part of the tab: the tab
+ * gets the same object (`useRelatedOfIncident`), so the badge and the rows cannot disagree.
  *
  * Once the incident is resolved — here or by someone else — the response footer goes. If focus was
  * in it, focus moves to the sheet, so Escape still reaches it. (An acknowledge keeps the footer:
@@ -84,6 +91,50 @@ export function IncidentDetail({ id }: { id: string }) {
   );
 
   const loading = !incident && isPending && !isRateLimited(failureReason);
+  const related = useRelatedOfIncident(incident);
+
+  const detailsContent = incident ? (
+    <DetailContent incident={incident} />
+  ) : loading ? (
+    <DetailBodySkeleton />
+  ) : isPending ? (
+    <RateLimited />
+  ) : error instanceof ApiRequestError && error.status === 404 ? (
+    <EmptyState>This incident no longer exists.</EmptyState>
+  ) : (
+    <LoadFailed
+      error={error}
+      fallback="This incident could not be loaded."
+      isFetching={isFetching}
+      onRetry={() => void refetch()}
+    />
+  );
+  const tabs: InspectorTab<SheetTab>[] = [
+    { value: 'details', label: 'Details', content: detailsContent },
+  ];
+  // Only an incident that is there has anything to relate or to date: the other states are the
+  // Details tab alone, which draws no tab list.
+  if (incident) {
+    tabs.push(
+      {
+        value: 'related',
+        label: 'Related',
+        // Never a 0 that is a guess: no count until every list it is made from has arrived.
+        ...(related.status === 'ready' ? { count: related.related.count } : {}),
+        content: <IncidentRelated state={related} />,
+      },
+      {
+        value: 'timeline',
+        label: 'Timeline',
+        // The tab names the panel, so the list needs no heading of its own.
+        content: (
+          <div className={styles.section}>
+            <IncidentTimeline timeline={incident.timeline} />
+          </div>
+        ),
+      },
+    );
+  }
 
   return (
     <InspectorFrame
@@ -104,33 +155,15 @@ export function IncidentDetail({ id }: { id: string }) {
         )
       }
       tabsLabel="Incident sections"
-      tabs={[
-        {
-          value: 'details',
-          label: 'Details',
-          content: incident ? (
-            <DetailContent incident={incident} />
-          ) : loading ? (
-            <DetailBodySkeleton />
-          ) : isPending ? (
-            <RateLimited />
-          ) : error instanceof ApiRequestError && error.status === 404 ? (
-            <EmptyState>This incident no longer exists.</EmptyState>
-          ) : (
-            <LoadFailed
-              error={error}
-              fallback="This incident could not be loaded."
-              isFetching={isFetching}
-              onRetry={() => void refetch()}
-            />
-          ),
-        },
-      ]}
+      tabs={tabs}
       // Last drawn content of the sheet: the footer sticks to its bottom.
       foot={incident ? <IncidentResponse incident={incident} kept={kept} /> : undefined}
     />
   );
 }
+
+/** The tabs of the incident sheet; Telemetry joins between Related and Timeline in V3-09.6. */
+type SheetTab = 'details' | 'related' | 'timeline';
 
 /** The header laid out like the loaded one (the body's skeleton is `DetailBodySkeleton`). */
 function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
@@ -150,29 +183,29 @@ function DetailSkeleton({ closeButton }: { closeButton: ReactNode }) {
 }
 
 /**
- * Laid out like the lifecycle and the timeline, so nothing jumps when the incident arrives. It
- * announces the loading once for the whole sheet (the header's blocks are decorative).
+ * Laid out like the tab list and the lifecycle, so nothing jumps when the incident arrives (the tab
+ * list is drawn only once there are tabs to choose from). It announces the loading once for the
+ * whole sheet (the header's blocks and the tab strip are decorative).
  */
 function DetailBodySkeleton() {
   return (
-    <div className={styles.bodySkeleton} aria-busy="true">
-      <p role="status" className={styles.hidden}>
-        Loading incident…
-      </p>
-      <Skeleton className={styles.skeletonStepper} />
-      <div className={styles.skeletonMetrics}>
-        <Skeleton className={styles.skeletonMetric} />
-        <Skeleton className={styles.skeletonMetric} />
-      </div>
-      <div className={styles.skeletonTimeline}>
-        {[0, 1].map((row) => (
-          <div key={row} className={styles.skeletonEntry}>
-            <Skeleton shape="circle" className={styles.skeletonBadgeIcon} />
-            <Skeleton className={styles.skeletonLine} />
-          </div>
+    <>
+      <div className={styles.skeletonTabs}>
+        {[0, 1, 2].map((tab) => (
+          <Skeleton key={tab} className={styles.skeletonTab} />
         ))}
       </div>
-    </div>
+      <div className={styles.bodySkeleton} aria-busy="true">
+        <p role="status" className={styles.hidden}>
+          Loading incident…
+        </p>
+        <Skeleton className={styles.skeletonStepper} />
+        <div className={styles.skeletonMetrics}>
+          <Skeleton className={styles.skeletonMetric} />
+          <Skeleton className={styles.skeletonMetric} />
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -257,8 +290,8 @@ function IncidentAge({ reportedAt }: { reportedAt: string }) {
 
 /**
  * What the Details tab holds, in the order of frame 02: the lifecycle, the description and who
- * reported it, the evidence and the device (a telemetry incident), the timeline (until it gets its
- * own tab, V3-09.5) and the cameras.
+ * reported it, the evidence and the device (a telemetry incident) and the cameras. The timeline and
+ * the related items have their own tabs (V3-09.5).
  */
 function DetailContent({ incident }: { incident: Detail }) {
   const { data: zones = [] } = useZones();
@@ -290,11 +323,6 @@ function DetailContent({ incident }: { incident: Detail }) {
       {incident.source === 'telemetry' && incident.assetId && (
         <IncidentDevice incident={incident} />
       )}
-
-      <section className={styles.section}>
-        <h3>Timeline</h3>
-        <IncidentTimeline timeline={incident.timeline} />
-      </section>
 
       {/* Only a telemetry incident has an asset to look at: the others add no query (V2-11.3). */}
       {incident.source === 'telemetry' && incident.assetId ? (

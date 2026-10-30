@@ -106,7 +106,7 @@
   height: calc(28px * var(--ui-scale));
 }
 
-/* The body's skeleton: the sheet-section spacing round the stepper, the metrics and the timeline. */
+/* The body's skeleton: the sheet-section spacing round the stepper and the metrics. */
 .bodySkeleton {
   padding: var(--section-pad-y) var(--space-5);
 }
@@ -127,27 +127,19 @@
   border-radius: var(--radius-m);
 }
 
-.skeletonTimeline {
-  display: grid;
-  gap: var(--space-3);
-  margin-top: var(--space-6);
-}
-
-.skeletonEntry {
-  display: grid;
-  grid-template-columns: calc(28px * var(--ui-scale)) 1fr;
+/* The tab list's place: its height, padding and hairline, with a bar for each of the three tabs. */
+.skeletonTabs {
+  display: flex;
   align-items: center;
-  column-gap: var(--space-3);
+  gap: var(--space-4);
+  height: calc(44px * var(--ui-scale));
+  padding: 0 var(--space-3);
+  box-shadow: inset 0 -1px 0 var(--border-subtle);
 }
 
-.skeletonBadgeIcon {
-  width: calc(28px * var(--ui-scale));
-  height: calc(28px * var(--ui-scale));
-}
-
-.skeletonLine {
-  width: 70%;
-  height: calc(16px * var(--ui-scale));
+.skeletonTab {
+  width: calc(56px * var(--ui-scale));
+  height: calc(14px * var(--ui-scale));
 }
 
 /* A compact camera tile while the camera list loads (`.cameras` lays out two). */
