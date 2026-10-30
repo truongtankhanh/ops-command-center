@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "CameraSource port and implementations: resolves a camera to a client-renderable stream.",
-  "license": "MIT",
+  "license": "PolyForm-Strict-1.0.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
