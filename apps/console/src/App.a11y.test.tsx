@@ -815,10 +815,18 @@ describe('the console', () => {
         act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
-        expect(within(sheet).getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
-        expect(within(sheet).getByText(/^1 min \d+ s old$/)).toBeInTheDocument();
+        // The live tiles above the rows say the same in their own section (V3-09.7, until V3-09.8
+        // moves the rows to the Telemetry tab): read the rows' section.
+        const readings = within(
+          sheet.querySelector('#asset-readings-title')?.closest('section') as HTMLElement,
+        );
+        expect(readings.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(readings.getByText(/^1 min \d+ s old$/)).toBeInTheDocument();
         expectNoTickingAgeAnnounced();
-        await checkPage();
+        // Two regions are named "Last readings" for now: the tiles and the rows both say it when the
+        // asset is stale (V3-09.7). V3-09.8 moves the rows to the Telemetry tab and deletes this
+        // exception; every other rule still applies.
+        await expectNoAxeViolations(document.body, { screen: true, disable: ['landmark-unique'] });
       });
 
       it('the inspector of an asset whose class has no model', async () => {

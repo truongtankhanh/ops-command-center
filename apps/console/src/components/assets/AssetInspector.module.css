@@ -1,42 +1,9 @@
 /*
- * The asset inspector's head (frames 03, 05, 08): code and Close, name, then the state pill, the
- * place and the incident badge. The readings are `AssetReadings.module.css`. State is an
- * attribute (`data-state`, and `data-severity` for a fault, read through the global `--sev`).
+ * The asset inspector's chips (frames 03, 04, 05, 08): the state pill, the place and the incident
+ * badge in the row under the shared header (`InspectorHeader`, V3-09.7), and the loading shapes.
+ * The readings are `AssetReadings.module.css`. State is an attribute (`data-state`, and
+ * `data-severity` for a fault, read through the global `--sev`).
  */
-
-.head {
-  padding: var(--section-pad-y) var(--space-5);
-}
-
-.toprow {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.code {
-  color: var(--text-secondary);
-  font-family: var(--font-ui);
-  font-size: var(--type-body);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.02em;
-}
-
-.title {
-  margin: var(--space-3) 0 0;
-  font-family: var(--font-ui);
-  font-size: var(--type-2xl);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-2xl);
-}
-
-.badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1-5);
-  margin-top: var(--space-3);
-}
 
 /* Zone and incident, as tall as the pill (frame 03 `.chip`). */
 .chip {
@@ -81,10 +48,10 @@
 }
 
 /* Loading: the sizes of the loaded head and rows, so nothing jumps when data arrives. */
+/* The first block of the header's chip row: it takes most of the row, so the badges wrap under it. */
 .skeletonTitle {
-  width: 60%;
+  flex: 0 0 80%;
   height: calc(28px * var(--ui-scale));
-  margin-top: var(--space-3);
 }
 
 .skeletonBadge {

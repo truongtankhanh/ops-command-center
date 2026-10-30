@@ -7,7 +7,7 @@ import type {
   TelemetryRule,
   Zone,
 } from '@occ/contracts';
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Profiler } from 'react';
 import { TOO_MANY_REQUESTS } from '../../api/client';
@@ -368,11 +368,34 @@ function renderUncached() {
   return renderWithQueryClient(<AssetInspector code="CT-01" />, client);
 }
 
+/**
+ * `AssetReadings`' own section. The live tiles above it repeat its labels, its freshness line and,
+ * for a stale asset, its "Last readings" title (V3-09.7, until V3-09.8 moves it), so the cases
+ * about the rows start from here.
+ */
+const readingsSection = (): HTMLElement => {
+  const section = document.getElementById('asset-readings-title')?.closest('section');
+  if (!section) throw new Error('no readings section');
+  return section;
+};
+
 const readingRow = (label: string): HTMLElement => {
-  const row = screen.getByText(label).closest('li');
+  const row = within(readingsSection()).getByText(label).closest('li');
   if (!row) throw new Error(`no reading row for ${label}`);
   return row;
 };
+
+/** The header's parts, found from its title: the tile before it and the chips row after it. */
+function headerOf(name = 'Cooling tower 1') {
+  const title = screen.getByRole('heading', { level: 2, name });
+  const heading = title.parentElement as HTMLElement;
+  const header = (heading.parentElement as HTMLElement).parentElement as HTMLElement;
+  return {
+    header,
+    tile: heading.previousElementSibling as HTMLElement,
+    chips: Array.from(header.children[1]?.children ?? []).map((chip) => chip.textContent),
+  };
+}
 
 const partRow = (label: string): HTMLElement => {
   const row = within(screen.getByRole('tree')).getByText(label).closest('[role="treeitem"]');
@@ -424,7 +447,8 @@ describe('AssetInspector', () => {
       expect(
         screen.getAllByText('Running').some((el) => el.getAttribute('data-state') === 'running'),
       ).toBe(true);
-      expect(screen.getByText('Data Center · roof')).toBeInTheDocument();
+      // The place is a chip of the header (the card has it as its Location row too).
+      expect(within(headerOf().header).getByText('Data Center · roof')).toBeInTheDocument();
       expect(screen.getByText('No open incidents')).toBeInTheDocument();
     });
 
@@ -442,7 +466,7 @@ describe('AssetInspector', () => {
     it('says how long ago, outside any live region', () => {
       renderInspector({ incidents: [] });
 
-      const text = screen.getByText(/^Updated \d(\.\d)? s ago$/);
+      const text = within(readingsSection()).getByText(/^Updated \d(\.\d)? s ago$/);
       expect(text.closest('[role="status"], [aria-live]')).toBeNull();
     });
 
@@ -488,6 +512,259 @@ describe('AssetInspector', () => {
       renderInspector();
 
       expect(screen.queryByText('No open incidents')).toBeNull();
+    });
+  });
+
+  // V3-09.7: the shared inspector header (frame 04): tile, name, code and class, Close, chips.
+  describe('the header', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    it('draws the class glyph in a decorative tile, neutral for a healthy asset', () => {
+      renderInspector({ incidents: [] });
+
+      const { tile } = headerOf();
+      expect(tile).toHaveAttribute('aria-hidden', 'true');
+      expect(tile.querySelector('svg')).not.toBeNull();
+      expect(tile).not.toHaveAttribute('data-severity');
+    });
+
+    it('hues the tile with the severity of the incident open on the asset', () => {
+      renderInspector({ incidents: [INCIDENT] });
+
+      expect(headerOf().tile).toHaveAttribute('data-severity', 'high');
+    });
+
+    it('says the code and the class under the name, and Close in the header', () => {
+      renderInspector({ incidents: [] });
+
+      const { header } = headerOf();
+      expect(within(header).getByText('CT-01 · Cooling tower')).toBeInTheDocument();
+      expect(within(header).getByRole('button', { name: 'Close asset' })).toBeInTheDocument();
+    });
+
+    it('puts the chips in order: the state, the place, the incident', () => {
+      renderInspector({ incidents: [] });
+
+      expect(headerOf().chips).toEqual(['Running', 'Data Center · roof', 'No open incidents']);
+    });
+
+    it('ends the chips with "No 3D model" for a class with no model', () => {
+      hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
+
+      renderInspector({ detail: SENSOR, incidents: [] });
+
+      expect(headerOf('Leak sensor, level 3').chips.at(-1)).toBe('No 3D model');
+    });
+
+    it('leaves out the state pill when the state has no word', () => {
+      hold({ assets: { 'CT-01': entry({ running: 'not-a-boolean' }) }, afterMs: 400 });
+
+      renderInspector({ incidents: [] });
+
+      expect(headerOf().chips).toEqual(['Data Center · roof', 'No open incidents']);
+    });
+
+    it('has the asset name as the sheet’s only level-2 heading', () => {
+      renderInspector({ incidents: [] });
+
+      expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+    });
+  });
+
+  // V3-09.7: the Details tab gains the device card and the live tiles above the readings (frame 04).
+  describe('the device card and the live tiles', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    const card = () => screen.getByRole('region', { name: 'Device information' });
+    /** The tiles' section: the first of two sections titled "Last readings" when the asset is stale. */
+    const tiles = () => screen.getAllByRole('region', { name: /^(Live data|Last readings)$/ })[0];
+    // The tile is the label's parent, inside the list item: it carries `data-severity` and `data-stale`.
+    const tileOf = (label: string) =>
+      within(tiles() as HTMLElement).getByText(label).parentElement as HTMLElement;
+    const rowLabels = () =>
+      Array.from(card().querySelectorAll('dt')).map((term) => term.textContent);
+    const follows = (before: Element, after: Element) =>
+      Boolean(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const expectInOrder = (nodes: Element[]) =>
+      nodes.slice(1).forEach((next, index) => expect(follows(nodes[index]!, next)).toBe(true));
+
+    it('goes header, card, tiles, readings, parts, incident, for a modelled class', () => {
+      renderInspector({ incidents: [INCIDENT] });
+
+      const order = [
+        headerOf().header,
+        card(),
+        screen.getByRole('region', { name: 'Live data' }),
+        readingsSection(),
+        screen.getByRole('heading', { level: 3, name: 'Parts' }),
+        screen.getByRole('heading', { level: 3, name: 'Incident raised by this asset' }),
+      ];
+      expectInOrder(order);
+    });
+
+    it('goes card, tiles, readings, then the twin note, for a class with no model', () => {
+      hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
+
+      renderInspector({ detail: SENSOR, incidents: [] });
+
+      const order = [
+        card(),
+        screen.getByRole('region', { name: 'Live data' }),
+        readingsSection(),
+        screen.getByRole('heading', { level: 3, name: 'In the twin' }),
+      ];
+      expectInOrder(order);
+      expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+    });
+
+    describe('the card', () => {
+      it('states the device ID, class and location, which the header does not', () => {
+        renderInspector({ incidents: [] });
+
+        expect(rowLabels()).toEqual(['Device ID', 'Class', 'Location']);
+        expect(within(card()).getByText('CT-01')).toBeInTheDocument();
+        expect(within(card()).getByText('Cooling tower')).toBeInTheDocument();
+        expect(within(card()).getByText('Data Center · roof')).toBeInTheDocument();
+      });
+
+      it('leaves out the name and the status, which the header says, even for a fault', () => {
+        renderInspector({ incidents: [INCIDENT] });
+
+        expect(rowLabels()).not.toContain('Device name');
+        expect(rowLabels()).not.toContain('Status');
+        expect(within(card()).queryByText('Cooling tower 1')).toBeNull();
+        expect(within(card()).queryByText('Fault')).toBeNull();
+      });
+
+      it('has a battery row only for a class with the battery point', () => {
+        const battery = point({
+          key: 'batteryPct',
+          label: 'Battery',
+          unit: '%',
+          min: 0,
+          max: 100,
+          expectedIntervalS: 3600,
+        });
+        hold({
+          assets: {
+            'LKS-B3': { ...sensorEntry(), values: { leakDetected: true, batteryPct: 92 } },
+          },
+          afterMs: 400,
+        });
+        const { unmount } = renderInspector({
+          detail: { ...SENSOR, points: [LEAK, battery] },
+          incidents: [],
+        });
+        expect(rowLabels()).toContain('Battery');
+        expect(card()).toHaveTextContent(/92/);
+        unmount();
+
+        renderInspector({ incidents: [] });
+        expect(rowLabels()).not.toContain('Battery');
+      });
+
+      it('has no location while the zone is unknown, and invents none', () => {
+        renderInspector({ zones: [], incidents: [] });
+
+        expect(rowLabels()).toEqual(['Device ID', 'Class']);
+      });
+
+      it('collapses and opens again, keeping its rows', async () => {
+        renderInspector({ incidents: [] });
+        const toggle = within(card()).getByRole('button', { name: 'Device information' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+        await userEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(within(card()).getByText('Device ID')).not.toBeVisible();
+
+        await userEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(within(card()).getByText('Device ID')).toBeVisible();
+      });
+    });
+
+    describe('the tiles', () => {
+      it('has a tile for each headline and ruled point and none for the others', () => {
+        renderInspector({ incidents: [] });
+
+        expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
+        expect(tileOf('Fan speed')).toHaveTextContent('1,420');
+        expect(tileOf('Motor temperature')).toHaveTextContent('71');
+        expect(tileOf('Vibration')).toHaveTextContent('2.8');
+        expect(within(tiles() as HTMLElement).queryByText('Run state')).toBeNull();
+        expect(within(tiles() as HTMLElement).queryByText('Fan set point')).toBeNull();
+      });
+
+      it('says "—" for a change with no history and a signed change with some', () => {
+        renderInspector({ incidents: [] });
+        expect(within(tileOf('Fan speed')).getByText('—')).toBeInTheDocument();
+        cleanup();
+
+        hold({
+          assets: { 'CT-01': entry() },
+          afterMs: 400,
+          series: new Map([[seriesKey('CT-01', 'fanSpeedRpm'), fanSeries(400)]]),
+        });
+        renderInspector({ incidents: [] });
+
+        expect(tileOf('Fan speed')).toHaveTextContent(/\+20(\.0)? \/ 15 min/);
+      });
+
+      it('tints a reading past its rule with the rule severity, and says so in words', () => {
+        hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
+
+        renderInspector({ incidents: [] });
+
+        expect(tileOf('Motor temperature')).toHaveAttribute('data-severity', 'critical');
+        expect(tileOf('Motor temperature')).toHaveTextContent('over its limit');
+        expect(tileOf('Fan speed')).not.toHaveAttribute('data-severity');
+      });
+
+      it('shows a dash, not a number, for a point nothing was received for', () => {
+        hold({ assets: {}, afterMs: 400 });
+
+        renderInspector({ incidents: [] });
+
+        expect(tileOf('Motor temperature')).toHaveTextContent('—');
+      });
+
+      it('draws no tiles for an asset with no headline or ruled point, and keeps the card', () => {
+        renderInspector({
+          detail: { ...DETAIL, headline: [], points: [RUNNING], rules: [] },
+          incidents: [],
+        });
+
+        expect(screen.queryByRole('region', { name: 'Live data' })).toBeNull();
+        expect(card()).toBeInTheDocument();
+      });
+    });
+
+    describe('a stale asset', () => {
+      beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 72_000 }));
+
+      it('dims the tiles, drops their change and calls them the last readings', () => {
+        renderInspector({ incidents: [] });
+
+        expect(tiles()).toHaveAccessibleName('Last readings');
+        expect(tileOf('Fan speed')).toHaveAttribute('data-stale', 'true');
+        expect(within(tileOf('Fan speed')).getByText('—')).toBeInTheDocument();
+      });
+
+      it('keeps the state pill saying how long, as before', () => {
+        renderInspector({ incidents: [] });
+
+        expect(headerOf().chips[0]).toMatch(/^No data since \d{2}:\d{2}$/);
+      });
+    });
+
+    it('is read only and the same for a viewer', () => {
+      act(() => useSession.getState().signedIn({ displayName: 'Demo User', roles: ['viewer'] }));
+
+      renderInspector({ incidents: [] });
+
+      expect(card()).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
     });
   });
 
@@ -561,10 +838,12 @@ describe('AssetInspector', () => {
     it('turns the eyebrow, the age and the hint to the last readings', () => {
       renderInspector({ incidents: [] });
 
-      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
-      expect(screen.getByText('1 min 12 s old')).toBeInTheDocument();
+      // The rows' section: the tiles say the same in their own (V3-09.7).
+      const readings = within(readingsSection());
+      expect(readings.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      expect(readings.getByText('1 min 12 s old')).toBeInTheDocument();
       expect(
-        screen.getByText('Charts stop at the last reading; the gap is the outage.'),
+        readings.getByText('Charts stop at the last reading; the gap is the outage.'),
       ).toBeInTheDocument();
       expect(screen.getByText(/^No data since \d{2}:\d{2}$/)).toBeInTheDocument();
     });
@@ -582,7 +861,9 @@ describe('AssetInspector', () => {
 
     it('is live again when a fresh reading arrives', () => {
       renderInspector({ incidents: [] });
-      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      expect(
+        within(readingsSection()).getByRole('heading', { name: 'Last readings' }),
+      ).toBeInTheDocument();
 
       // The reading is received again, at the API's present.
       act(() =>
@@ -608,7 +889,9 @@ describe('AssetInspector', () => {
 
       renderInspector({ incidents: [] });
 
-      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      expect(
+        within(readingsSection()).getByRole('heading', { name: 'Last readings' }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/^Offline since \d{2}:\d{2}$/)).toBeInTheDocument();
     });
   });
@@ -623,6 +906,17 @@ describe('AssetInspector', () => {
       expect(screen.getByRole('button', { name: 'Close asset' })).toBeInTheDocument();
     });
 
+    // The header is the shared one: with no asset yet it has the code and Close, and no title.
+    it('names the asset in the header while it loads, announcing the loading once', () => {
+      renderUncached();
+
+      // (The sheet has a status region of its own for the note hint, so count the words, not roles.)
+      expect(screen.getAllByText('Loading asset…')).toHaveLength(1);
+      expect(screen.getByText('CT-01')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close asset' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
+    });
+
     it('says a missing asset no longer exists', async () => {
       answers = [() => apiError(404, 'Asset CT-01 was not found')];
 
@@ -631,6 +925,10 @@ describe('AssetInspector', () => {
       expect(await screen.findByText('This asset no longer exists.')).toBeInTheDocument();
       // Retrying cannot bring it back.
       expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+      // The header still says which asset and has Close, with nothing to head.
+      expect(screen.getByText('CT-01')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Close asset' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
     });
 
     it('retries a failed load', async () => {
