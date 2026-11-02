@@ -68,6 +68,10 @@ function clientWithBuilding() {
 
 const crumbsNav = () => screen.queryByRole('navigation', { name: 'Scene level' });
 
+/** The floating `Panel` an element is in: the stage's one bar (V3-10.1), found by the attribute, never a class. */
+const barOf = (element: HTMLElement) => element.closest<HTMLElement>('[data-variant="floating"]');
+const bars = () => document.querySelectorAll('[data-variant="floating"]');
+
 describe('StageView', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -109,6 +113,18 @@ describe('StageView', () => {
 
   // jsdom has no WebGL 2, so the store never holds `3d` here (see `effectiveView`): what is stored cannot change
   // what is drawn: the stage keeps showing the map and the switch shows 2D pressed.
+  // V3-10.1: the switch and the layers are one floating bar, not two pills. The divider and the height are look only.
+  it('holds the switch and the layers in one floating bar', () => {
+    render(<StageView />);
+
+    const bar = barOf(screen.getByRole('group', { name: 'View' }));
+    expect(bar).not.toBeNull();
+    expect(bar).toContainElement(screen.getByRole('group', { name: 'Layers' }));
+    expect(bars()).toHaveLength(1);
+    // The groups name themselves; a toolbar role would promise arrow-key roving these controls do not have.
+    expect(bar).not.toHaveAttribute('role');
+  });
+
   it('still draws the map when a 3D choice was stored by a later build', () => {
     localStorage.setItem('occ.console.view', '3d');
 
@@ -379,6 +395,54 @@ describe('StageView', () => {
 
         expect(crumbsNav()).not.toBeInTheDocument();
         expect(screen.getByRole('group', { name: 'View' })).toBeInTheDocument();
+      });
+    });
+
+    // V3-10.1: whatever the level, one bar holds the switch or the breadcrumb, the layers and the picker.
+    describe('the stage bar', () => {
+      it('holds the switch, the layers and the "Colour by" picker at campus level', async () => {
+        renderStage();
+        show3d();
+        await screen.findByText('3D stage');
+        act(() => useConsole.getState().toggleLayer('heat'));
+
+        const bar = barOf(screen.getByRole('group', { name: 'View' }));
+        expect(bar).not.toBeNull();
+        expect(bar).toContainElement(screen.getByRole('group', { name: 'Layers' }));
+        expect(bar).toContainElement(
+          screen.getByRole('button', { name: 'Colour by Indoor temperature' }),
+        );
+        expect(bars()).toHaveLength(1);
+      });
+
+      it('holds the breadcrumb in the switch’s place at building level, with the layers and the picker', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+        act(() => useConsole.getState().toggleLayer('heat'));
+
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        const bar = barOf(crumbsNav()!);
+        expect(bar).not.toBeNull();
+        expect(bar).toContainElement(screen.getByRole('group', { name: 'Layers' }));
+        expect(bar).toContainElement(
+          screen.getByRole('button', { name: 'Colour by Indoor temperature' }),
+        );
+        expect(screen.queryByRole('group', { name: 'View' })).not.toBeInTheDocument();
+        expect(bars()).toHaveLength(1);
+      });
+
+      it('keeps the same bar when the level changes', async () => {
+        renderStage(clientWithBuilding());
+        show3d();
+        await screen.findByText('3D stage');
+        const layers = screen.getByRole('group', { name: 'Layers' });
+        const before = barOf(layers);
+
+        act(() => useConsole.getState().focusBuilding('z-dc'));
+
+        expect(barOf(screen.getByRole('group', { name: 'Layers' }))).toBe(before);
       });
     });
   });

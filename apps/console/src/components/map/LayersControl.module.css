@@ -1,5 +1,6 @@
 /*
- * Frame 14's `.layers`: look only, `StageView` places it beside the 3D / 2D switch. The pressed
+ * Frame 14's `.layers`: look only, `StageView` places it beside the 3D / 2D switch. Its surface, hairline, radius and
+ * shadow are the stage bar's (V3-10.1, a `Panel` in `StageView`), so the group draws none of its own. The pressed
  * look (accent tint, border) is `Button`'s own `aria-pressed` rule. The overrides below have one
  * selector part more than `Button`'s rules, so they do not depend on CSS order.
  */
@@ -9,11 +10,6 @@
   align-items: center;
   gap: var(--space-1);
   max-width: 100%;
-  padding: var(--space-0-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: var(--surface-1);
-  box-shadow: var(--shadow-2);
 }
 
 .label {

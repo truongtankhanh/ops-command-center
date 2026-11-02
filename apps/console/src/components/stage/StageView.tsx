@@ -5,6 +5,7 @@ import { useConsole } from '../../store';
 import { EmptyState } from '../../ui/EmptyState';
 import { ErrorBoundary } from '../../ui/ErrorBoundary';
 import { CircleX } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import { CampusMap } from '../map/CampusMap';
 import { ColourBy } from '../map/ColourBy';
 import { LayersControl } from '../map/LayersControl';
@@ -47,15 +48,19 @@ const lazyStage = (onLoaded: () => void) =>
  *
  * The tools are siblings of the map, not children: the map's own box clips and stacks what is
  * inside it, and the stage grid places the map and the strip, so the tools are out of the flow
- * (`StageView.module.css`), as the banners are. The layers control sits beside the switch. They are
- * always drawn, so the operator can go back to 2D when the 3D stage fails to load.
+ * (`StageView.module.css`), as the banners are. They are one floating bar (V3-10.1, a `Panel`): the
+ * switch, a divider, the layers control and, in 3D, the picker. The bar is a plain `div` with no
+ * role, because the groups inside it name themselves and `toolbar` would promise arrow-key roving
+ * that these controls do not have. They are always drawn, so the operator can go back to 2D when
+ * the 3D stage fails to load.
  *
  * In the 3D view at building and asset level the scene's breadcrumb takes the switch's place (V2-15.6, frames 03,
  * 12 and 15), and the layers stay. The switch is back at campus level, which is one press of the breadcrumb's back
  * button away, and in the 2D view, where the levels do not exist.
  *
- * In the 3D view the "Colour by" picker (V2-17.4, frame 13) follows the layers in the same row, so it wraps with
- * them; it draws nothing unless the Heat layer is on and the level shows it.
+ * In the 3D view the "Colour by" picker (V2-17.4, frame 13) follows the layers in the same bar, so it wraps with
+ * them; it draws nothing unless the Heat layer is on and the level shows it. The divider is decoration (hidden
+ * from assistive tech) and sits between the switch or breadcrumb and the layers only.
  */
 export function StageView() {
   const view = useConsole((s) => s.view);
@@ -63,11 +68,12 @@ export function StageView() {
   return (
     <>
       {view === '3d' ? <LazyTwinStage /> : <CampusMap />}
-      <div className={styles.tools} data-view={view}>
+      <Panel variant="floating" className={styles.tools} data-view={view}>
         {view === '3d' && level !== 'campus' ? <TwinBreadcrumb /> : <ViewSwitch />}
+        <span className={styles.divider} aria-hidden="true" />
         <LayersControl view={view} />
         {view === '3d' && <ColourBy />}
-      </div>
+      </Panel>
     </>
   );
 }
