@@ -1,9 +1,16 @@
 /*
- * Frame 14's `.tw-tools`: the top-left of the stage. Out of the grid's flow (`position: absolute`,
- * like `.banners` in App.module.css), so the stage's `1fr auto` rows, the map and the strip, do not
- * move. It follows the map in the DOM, so it paints over it; the sheet (`--z-sheet`) and the banners
- * lie over it in turn. The switch and the layers control wrap onto a second row rather than run
- * under the open sheet (`--sheet-inset`, set on the stage) or off a narrow stage.
+ * The stage's tools (V3-10.1; frames 01 and 08): one floating bar at the top-left, a `Panel` (`StageView` renders it),
+ * which supplies the surface, the hairline, the large radius and the shadow, so none is restated here and the four
+ * controls inside draw none of their own. It holds the switch or the breadcrumb, a divider, the layers and, in 3D,
+ * the picker. Out of the grid's flow (`position: absolute`, like `.banners` in App.module.css), so the stage's
+ * `1fr auto` rows, the map and the strip, do not move. It follows the map in the DOM, so it paints over it; the
+ * sheet (`--z-sheet`) and the banners lie over it in turn.
+ *
+ * It wraps onto a second row rather than run under the open sheet (`--sheet-inset`, set on the stage) or off a narrow
+ * stage; the divider can then end a row, which is accepted. One row is 42 px (1 + 4 + 32 + 4 + 1), so it ends at 54 px
+ * and clears the cards anchored at 64 px (the part callout, the building summary, the camera rail). Every control in it
+ * is at most `--control-s` high for that reason. No `overflow: hidden` and no `isolation`: the picker's list drops out
+ * of the bar and must not be clipped.
  */
 .tools {
   position: absolute;
@@ -12,8 +19,19 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding: var(--space-1);
   max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
+}
+
+/* Decoration between the switch (or breadcrumb) and the layers: not a control, not read out. */
+.divider {
+  flex: none;
+  align-self: center;
+  width: 1px;
+  height: calc(20px * var(--ui-scale));
+  margin-inline: var(--space-1);
+  background: var(--border-strong);
 }
 
 /*
