@@ -70,7 +70,11 @@ const crumbsNav = () => screen.queryByRole('navigation', { name: 'Scene level' }
 
 /** The floating `Panel` an element is in: the stage's one bar (V3-10.1), found by the attribute, never a class. */
 const barOf = (element: HTMLElement) => element.closest<HTMLElement>('[data-variant="floating"]');
-const bars = () => document.querySelectorAll('[data-variant="floating"]');
+/**
+ * Every floating `Panel` that is shown. The "Colour by" list is one too since V3-10.6 and is always mounted, hidden while the
+ * picker is closed, so a hidden panel is not a second bar.
+ */
+const bars = () => document.querySelectorAll('[data-variant="floating"]:not([hidden])');
 
 describe('StageView', () => {
   beforeEach(() => {

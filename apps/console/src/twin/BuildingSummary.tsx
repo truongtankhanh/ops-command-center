@@ -11,6 +11,7 @@ import { buildingReadings, tempText } from '../lib/twin-core/twinHeat';
 import { levelOf } from '../lib/twin-core/twinLevel';
 import { useServerNow, useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
+import { Panel } from '../ui/Panel';
 import styles from './BuildingSummary.module.css';
 
 const NO_INCIDENTS: never[] = [];
@@ -55,7 +56,12 @@ export function BuildingSummary() {
 
   if (level !== 'building' || zone === undefined || figures === null) return null;
   return (
-    <section className={styles.card} aria-label={`${zone.name} summary`}>
+    <Panel
+      variant="floating"
+      role="region"
+      aria-label={`${zone.name} summary`}
+      className={styles.card}
+    >
       <div className={styles.head}>
         <p className={styles.eyebrow}>{buildingEyebrow(zone)}</p>
         <p className={styles.name}>{zone.name}</p>
@@ -78,6 +84,6 @@ export function BuildingSummary() {
           </div>
         )}
       </dl>
-    </section>
+    </Panel>
   );
 }

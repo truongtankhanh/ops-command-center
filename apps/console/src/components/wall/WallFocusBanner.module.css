@@ -1,7 +1,8 @@
 /*
  * Frame 18's `.wall-focus`: top centre over the stage, edged in the critical colour with a soft halo, the title at the
  * frame's 24 px and the detail at 16 px (the wall's `--ui-scale` carries them to 4K). The critical colour is on the edge
- * and the glyph only: critical text never sits on `--surface-3` (tokens.css).
+ * and the glyph only: critical text never sits on the glass (tokens.css). The surface (hairline, `--radius-l`, glass,
+ * shadow) is the floating `ui/Panel` (V3-10.6); the 2 px critical edge and its halo are this banner's own.
  */
 .banner {
   position: absolute;
@@ -14,9 +15,15 @@
   max-width: calc(100% - var(--space-6));
   padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   transform: translateX(-50%);
+}
+
+/*
+ * The edge and the halo, over `Panel`'s 1 px border and `--shadow-3`; the extra attribute puts this above `Panel`'s own
+ * rules, so it does not depend on which stylesheet comes last. `--sev-critical` on the glass is a checked graphic pair
+ * (`contrast.ts`).
+ */
+.banner[data-variant] {
   border: 2px solid var(--sev-critical);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
   box-shadow:
     var(--shadow-3),
     0 0 0 4px color-mix(in srgb, var(--sev-critical) 22%, transparent);

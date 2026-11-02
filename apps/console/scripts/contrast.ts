@@ -127,12 +127,13 @@ const PAIRS: Pair[] = [
     over: 'glass backdrop, worst case',
     min: TEXT,
   })),
-  // What the floating overlays (V3-04.5: popover, toast, dialog, banner) draw on the glass besides text: the
-  // toast's severity border, ring and icon tile, the banner's border and glyph, and the focus ring and lit edge.
-  // All are graphics (3:1), measured the same way. Critical is 3.84 here, under the text bar, so critical never
+  // What the floating overlays (V3-04.5: popover, toast, dialog, banner; V3-10.6: tooltip, callout, summary, colour
+  // list, loading card, wall banner) draw on the glass besides text: the toast's severity border, ring and icon tile,
+  // the banner's border and glyph, the focus ring and lit edge, the tooltip's severity icon, and the loading card's
+  // done (`--success`) and failed (`--danger`) step icons. All are graphics (3:1), measured the same way. Critical is 3.84 here, under the text bar, so critical never
   // reads as text on an overlay (the icon carries the hue). `--border-strong` is not listed: it is 2.64 on the
   // glass, which is why a `secondary` `Button` stays off the overlays (`primary` or `ghost`).
-  ...[...SEVERITIES, '--warning', '--accent'].map((fg) => ({
+  ...[...SEVERITIES, '--warning', '--accent', '--success', '--danger'].map((fg) => ({
     fg,
     bg: '--glass-bg',
     over: 'glass backdrop, worst case',
@@ -165,8 +166,9 @@ const PAIRS: Pair[] = [
   // The healthy asset's diamond (V3-10.5): a `--signal` edge, a graphic (3:1), on the diamond's own `--surface-2` fill and
   // on what lies outside it, the ground and the site boundary. The edge is never the only cue (shape, tint, dash).
   ...cross(['--signal'], ['--surface-2', 'map ground', 'map boundary'], UI),
-  // The map tooltip on `--surface-3`: the severity label is `--text-primary`, the hue is only on the
-  // icon (a graphic) — critical text would fail there (see above).
+  // A severity hue as an icon on `--surface-3` (a graphic, 3:1), the step that the tab, segment and chip fills and the
+  // row tags still draw; critical text would fail there (see above). It was added for the map tooltip, which moved to
+  // the glass in V3-10.6 (its severity icon is the glass graphics pair above), so this is now a guard for those fills.
   ...cross(SEVERITIES, ['--surface-3'], UI),
   // `SeverityBadge` and the checked severity option in `SegmentedControl`, both on `--surface-1`:
   // the label stays `--text-primary` on the tint, and the hue is only on the icon (a graphic, 3:1).

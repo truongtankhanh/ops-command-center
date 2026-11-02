@@ -1,7 +1,7 @@
 /*
  * The 3D view's building summary (V2-15.9), frame 12's `.tw-callout` in the console's tokens (`mockups/twin.css` is
- * the mockups' stylesheet, not the console's): a popover-family surface (`Tips.module.css`) with the accent border
- * of a callout. It stands at the top right under the tools row, offset by the open sheet (`--sheet-inset`, set on
+ * the mockups' stylesheet, not the console's): the floating `ui/Panel` (V3-10.6) with the accent edge of a callout, the
+ * building in focus. It stands at the top right under the tools row, offset by the open sheet (`--sheet-inset`, set on
  * the stage and inherited) like the camera controls, and never wider than the stage leaves it. It comes after the
  * canvas in the stage, so it paints over it without a z-index (`StageView.module.css .twin`), and it takes pointer
  * events like any text: the drag hint and the tooltip layer are not over it.
@@ -12,11 +12,15 @@
   right: calc(var(--sheet-inset, 0px) + var(--space-3));
   width: calc(264px * var(--ui-scale));
   max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
-  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
   color: var(--text-primary);
+}
+
+/*
+ * Only the colour: `Panel` draws the 1 px border. The extra attribute puts this above `Panel`'s own rule, so it does not
+ * depend on which stylesheet comes last. `--accent` on the glass is a checked graphic pair (`contrast.ts`).
+ */
+.card[data-variant] {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
 }
 
 .head {

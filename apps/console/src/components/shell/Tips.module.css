@@ -1,19 +1,15 @@
 /*
- * The surface and the bodies of the hover tooltips (`Tips.tsx`), a popover-family surface (DN-1), shared by
- * the 2D map's tooltip and the 3D view's (V2-15.5). Each tooltip adds only where it stands. Severity is the
- * label in `--text-primary` with the hue on the icon only: critical text fails on `--surface-3`.
+ * The size, the type and the bodies of the hover tooltips (`Tips.tsx`), shared by the 2D map's tooltip and the 3D
+ * view's (V2-15.5). The surface (hairline, `--radius-l`, glass, shadow) is the floating `ui/Panel` that each tooltip
+ * renders with this class (V3-10.6), so none is restated here. Each tooltip adds only where it stands. Severity is
+ * the label in `--text-primary` with the hue on the icon only: critical text is not set on the glass.
  * `max-width` is twice `HALF_WIDTH` in MapTooltip.tsx, which clamps the map's tooltip to the map's sides.
- * The body rules are scoped under `.tip`, so the surface class (`tipSurface`) must be on the element around
- * a body.
+ * The body rules are scoped under `.tip`, so the class (`tipSurface`) must be on the element around a body.
  */
 .tip {
   width: max-content;
   max-width: calc(280px * var(--ui-scale));
   padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
   font-size: var(--type-s);
   line-height: var(--leading-s);
   color: var(--text-secondary);

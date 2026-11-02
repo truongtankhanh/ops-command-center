@@ -41,20 +41,22 @@
   transform: rotate(180deg);
 }
 
-/* No `display` here, so the `hidden` attribute keeps hiding the closed list. */
-.listbox {
+/*
+ * The plate under the button: the floating `ui/Panel` (V3-10.6) supplies the surface, so only where it stands is set here.
+ * No `display` here or on the list, so the `hidden` attribute keeps hiding the closed picker, and no `overflow: hidden`.
+ */
+.listPanel {
   position: absolute;
   top: calc(100% + var(--space-2));
   left: 0;
   z-index: var(--z-popover);
   min-width: 100%;
+}
+
+.listbox {
   margin: 0;
   padding: var(--space-1-5);
   list-style: none;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
-  background: var(--surface-3);
-  box-shadow: var(--shadow-3);
 }
 
 .option {
