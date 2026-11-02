@@ -2,7 +2,7 @@
  * The asset inspector's foot (frame 04 `.pf`). The same chrome as the incident sheet's foot
  * (`IncidentResponse.module.css` `.footer`): a flat `--surface-1` strip set apart by a hairline and
  * `--shadow-1`, sticky at the bottom of the scrolling sheet, `margin-top: auto` so a short sheet still
- * ends in it. Change the three feet together (this one, that one and `ViewOnlyNote`).
+ * ends in it. Change the four feet together (this one, that one, `ViewOnlyNote` and the report form's).
  */
 
 .foot {

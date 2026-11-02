@@ -372,6 +372,18 @@ describe('ReportIncidentForm', () => {
     expect(useConsole.getState().reporting).toBe(false);
   });
 
+  // V3-09.10: the foot is the flat strip of the other sheets' feet; one primary action beside a `secondary` one.
+  it('has Report as its one primary action, and Cancel beside it as the secondary one', () => {
+    const { form } = renderForm();
+
+    expect(form.getByRole('button', { name: 'Report incident' })).toHaveAttribute(
+      'data-variant',
+      'primary',
+    );
+    // `secondary` is Button's default and sets no `data-variant`.
+    expect(form.getByRole('button', { name: 'Cancel' })).not.toHaveAttribute('data-variant');
+  });
+
   it('stays open with the input on Escape once anything is entered, but still closes on Cancel', async () => {
     const { form } = renderForm();
     await userEvent.type(titleBox(form), 'Smoke near the stairwell');

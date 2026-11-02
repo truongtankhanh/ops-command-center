@@ -1,4 +1,11 @@
-/* Segmented radio group: mockup 03 `.seg` (row, severity icons) and `.type-grid` / `.opt` (grid). */
+/*
+ * Segmented radio group: mockup 03 `.seg` (row, severity icons) and `.type-grid` / `.opt` (grid).
+ *
+ * It has to fit the 360 px sheet (V3-09.10): 320 px of content, so three grid columns are about 103 px and
+ * four row options about 77 px. Nothing here has a fixed height that a label can outgrow: the grid's tiles
+ * grow with a label that wraps to a second line (and the tiles of one row share the tallest), and the row's
+ * options have room for "Critical". `data-layout` and `data-compact` are still the only hooks (ADR-0016).
+ */
 
 .group {
   margin: 0;
@@ -49,6 +56,14 @@
   position: relative;
 }
 
+/*
+ * The row (severity): frame 12's 4 px between four options, so the longest label ("Critical", semibold
+ * once checked) keeps its place in a 75 px option at 320 px of content.
+ */
+.options:not([data-layout='grid']) {
+  gap: var(--space-1);
+}
+
 /* Hidden but still focusable and checkable: the label below is what the user sees and clicks. */
 .input {
   position: absolute;
@@ -62,6 +77,7 @@
   justify-content: center;
   gap: var(--space-1-5);
   height: var(--control-m);
+  min-width: 0;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-m);
   background: var(--surface-0);
@@ -96,24 +112,46 @@
   box-shadow: inset 0 -3px 0 var(--sev);
 }
 
+/* The row's options: a little less gap between the glyph and the label, and no side padding to take from it. */
+.options:not([data-layout='grid']) .face {
+  gap: var(--space-1);
+}
+
 /* The grid: three columns of tiles with the glyph above the label (frame 03's type grid). */
 .options[data-layout='grid'] {
   grid-auto-flow: row;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* A tile is a flex item of its label, so the tiles of one row are as tall as the tallest of them. */
+.options[data-layout='grid'] .option {
+  display: flex;
+  min-width: 0;
+}
+
+/*
+ * A tile is at least as tall as the frame draws it and grows with its label: "Medical emergency" is about
+ * 115 px at 14 px and a tile has about 92 px inside its border and padding at 360 px, so it wraps to a second
+ * line, which a fixed 54 px height let cross the border (it fitted on one line at 440 px). The line height is
+ * set so a wrapped label has a known height; the 4 px padding keeps a one-line tile at its 54 px (22 glyph + 4 gap +
+ * 20 line + 4 + 4), so a label that fits looks exactly as before.
+ */
 .options[data-layout='grid'] .face {
+  flex: 1;
   flex-direction: column;
   gap: var(--space-1);
-  height: calc(62px * var(--ui-scale));
-  padding: 0 var(--space-1);
+  height: auto;
+  min-height: calc(62px * var(--ui-scale));
+  padding: var(--space-1);
   font-size: var(--type-m);
+  line-height: var(--leading-m);
   text-align: center;
+  overflow-wrap: break-word;
 }
 
 /* Frame 09's `.type-grid.is-compact`: shorter tiles, so six categories fit above the type step. */
 .options[data-compact] .face {
-  height: calc(54px * var(--ui-scale));
+  min-height: calc(54px * var(--ui-scale));
 }
 
 /* A severity option's glyph keeps its hue; any other glyph turns accent with its option. */

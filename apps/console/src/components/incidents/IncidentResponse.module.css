@@ -4,8 +4,8 @@
  * scrolling sheet, so the actions stay in reach while the timeline scrolls; `margin-top: auto` keeps it at
  * the bottom when the content is short (the sheet is a flex column). No `z-index`: as the sheet's last drawn
  * content it already paints over what scrolls under it. The notes that stand in for it (view only, out of
- * scope) are `ViewOnlyNote`'s and the asset's foot is `AssetFoot`'s, with the same chrome: change the three
- * together. `Panel` is not used: it is a bordered, rounded overlay, and this strip is flush with the sheet.
+ * scope) are `ViewOnlyNote`'s and the asset's foot is `AssetFoot`'s, with the same chrome, and the report form's foot is
+ * the fourth (`ReportIncidentForm.module.css`): change the four together. `Panel` is not used: it is a bordered, rounded overlay, and this strip is flush with the sheet.
  */
 .footer {
   position: sticky;

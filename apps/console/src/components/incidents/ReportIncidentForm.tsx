@@ -418,7 +418,7 @@ export function ReportIncidentForm() {
           </Field>
         </div>
 
-        {/* Sticky at the bottom of the scrolling sheet, so Report stays in reach (frame 03). */}
+        {/* Sticky at the bottom of the scrolling sheet, so Report stays in reach (frame 12). */}
         <div className={styles.footer}>
           {report.error && (
             <p className={styles.error} role="alert">
@@ -441,7 +441,8 @@ export function ReportIncidentForm() {
               {report.isPending ? 'Reporting…' : 'Report incident'}
             </Button>
             <Button
-              variant="ghost"
+              // The one primary action is Report; Cancel is `secondary` on the foot's flat `--surface-1` (frame 12).
+              variant="secondary"
               className={styles.grow}
               // Escape cancels only while there is nothing to lose; the hint below says so then.
               shortcut={hasDraft ? undefined : 'Esc'}
