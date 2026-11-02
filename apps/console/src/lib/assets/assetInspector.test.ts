@@ -4,6 +4,7 @@ import {
   encodedLatest,
   footprintText,
   freshnessText,
+  incidentHistoryOf,
   incidentsOf,
   inspectorRows,
   inspectorStateText,
@@ -315,6 +316,90 @@ describe('incidentsOf', () => {
 
   it('returns nothing for no incidents', () => {
     expect(incidentsOf(asset, [])).toEqual([]);
+  });
+});
+
+describe('incidentHistoryOf', () => {
+  const incident = (overrides: Partial<Incident>): Incident => ({
+    id: 'inc-1',
+    code: 'INC-000001',
+    type: 'equipment_fault',
+    severity: 'medium',
+    status: 'open',
+    title: 'Motor over temperature',
+    description: null,
+    zoneId: 'zone-dc',
+    position: [0, 0],
+    source: 'telemetry',
+    assetId: 'asset-ct-01',
+    reportedAt: '2026-10-15T08:00:00.000Z',
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    ...overrides,
+  });
+  const asset = { id: 'asset-ct-01' };
+
+  it('lists the incidents of the asset in every status, and nothing else', () => {
+    const open = incident({ id: 'a' });
+    const acknowledged = incident({ id: 'b', status: 'acknowledged' });
+    const resolved = incident({ id: 'c', status: 'resolved' });
+    const another = incident({ id: 'd', assetId: 'asset-ct-02' });
+    const operator = incident({ id: 'e', assetId: null });
+    // An API from before `incident.asset_id` never sends the field.
+    const old = incident({ id: 'f' });
+    delete old.assetId;
+
+    const found = incidentHistoryOf(asset, [open, resolved, another, operator, old, acknowledged]);
+
+    expect(found.map((i) => i.id).sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('is newest first whatever the severity and the status', () => {
+    const oldCritical = incident({
+      id: 'old-critical',
+      severity: 'critical',
+      reportedAt: '2026-10-10T08:00:00.000Z',
+    });
+    const newResolved = incident({
+      id: 'new-resolved',
+      severity: 'low',
+      status: 'resolved',
+      reportedAt: '2026-10-15T09:00:00.000Z',
+    });
+    const middleOpen = incident({
+      id: 'middle-open',
+      severity: 'high',
+      reportedAt: '2026-10-12T08:00:00.000Z',
+    });
+
+    // The feed would put the open, most severe one first; a history starts with the latest.
+    expect(
+      incidentHistoryOf(asset, [oldCritical, newResolved, middleOpen]).map((i) => i.id),
+    ).toEqual(['new-resolved', 'middle-open', 'old-critical']);
+  });
+
+  it('keeps a stable order for incidents reported at the same time', () => {
+    const b = incident({ id: 'b' });
+    const a = incident({ id: 'a' });
+
+    expect(incidentHistoryOf(asset, [b, a]).map((i) => i.id)).toEqual(['a', 'b']);
+    expect(incidentHistoryOf(asset, [a, b]).map((i) => i.id)).toEqual(['a', 'b']);
+  });
+
+  it('does not reorder or change the list it is given', () => {
+    const list = [
+      incident({ id: 'older', reportedAt: '2026-10-14T08:00:00.000Z' }),
+      incident({ id: 'newer', reportedAt: '2026-10-15T08:00:00.000Z' }),
+    ];
+
+    incidentHistoryOf(asset, list);
+
+    expect(list.map((i) => i.id)).toEqual(['older', 'newer']);
+  });
+
+  it('returns nothing for no incidents', () => {
+    expect(incidentHistoryOf(asset, [])).toEqual([]);
   });
 });
 

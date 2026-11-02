@@ -795,13 +795,51 @@ describe('the console', () => {
         act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
-        expect(within(sheet).getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
-        // In the readings section: the fan motor's row in the parts list shows the same value.
-        const readings = within(sheet).getByRole('region', { name: 'Live readings' });
-        expect(within(readings).getByText('71 °C')).toBeInTheDocument();
+        // Details holds the live tiles; the full list of points is the Telemetry tab (V3-09.8).
+        expect(within(sheet).getByRole('region', { name: 'Live data' })).toHaveTextContent('71');
+        expect(within(sheet).queryByRole('heading', { name: 'Live readings' })).toBeNull();
         expect(
           within(sheet).getByRole('button', { name: 'Report a fault on CT-01' }),
         ).toBeVisible();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('the inspector’s Telemetry tab with live readings', async () => {
+        renderConsole({ details: [TOWER] });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+
+        act(() => consoleState().selectAsset('CT-01', null));
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        fireEvent.click(within(sheet).getByRole('tab', { name: 'Telemetry' }));
+
+        const readings = within(sheet).getByRole('region', { name: 'Live readings' });
+        expect(within(readings).getByText('71 °C')).toBeInTheDocument();
+        expectNoTickingAgeAnnounced();
+        await checkPage();
+      });
+
+      it('the inspector’s Related tab', async () => {
+        renderConsole({ details: [TOWER] });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+
+        act(() => consoleState().selectAsset('CT-01', null));
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        fireEvent.click(within(sheet).getByRole('tab', { name: /^Related/ }));
+
+        expect(within(sheet).getByRole('tab', { name: /^Related/, selected: true })).toBeVisible();
+        await checkPage();
+      });
+
+      it('the inspector’s Timeline tab', async () => {
+        renderConsole({ details: [TOWER] });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+
+        act(() => consoleState().selectAsset('CT-01', null));
+        const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+        fireEvent.click(within(sheet).getByRole('tab', { name: 'Timeline' }));
+
+        expect(within(sheet).getByRole('tab', { name: 'Timeline', selected: true })).toBeVisible();
         expectNoTickingAgeAnnounced();
         await checkPage();
       });
@@ -815,18 +853,13 @@ describe('the console', () => {
         act(() => consoleState().selectAsset('CT-01', null));
 
         const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
-        // The live tiles above the rows say the same in their own section (V3-09.7, until V3-09.8
-        // moves the rows to the Telemetry tab): read the rows' section.
-        const readings = within(
-          sheet.querySelector('#asset-readings-title')?.closest('section') as HTMLElement,
-        );
+        // The tiles on Details and the rows on Telemetry both say "Last readings", one tab at a time.
+        fireEvent.click(within(sheet).getByRole('tab', { name: 'Telemetry' }));
+        const readings = within(sheet);
         expect(readings.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
         expect(readings.getByText(/^1 min \d+ s old$/)).toBeInTheDocument();
         expectNoTickingAgeAnnounced();
-        // Two regions are named "Last readings" for now: the tiles and the rows both say it when the
-        // asset is stale (V3-09.7). V3-09.8 moves the rows to the Telemetry tab and deletes this
-        // exception; every other rule still applies.
-        await expectNoAxeViolations(document.body, { screen: true, disable: ['landmark-unique'] });
+        await checkPage();
       });
 
       it('the inspector of an asset whose class has no model', async () => {

@@ -1,6 +1,7 @@
 import type { Asset, Incident, TelemetryPoint, TelemetryValue, Zone } from '@occ/contracts';
 import {
   type AssetState,
+  assetStateOf,
   assetStates,
   countAssetFilters,
   groupByZone,
@@ -271,6 +272,62 @@ describe('assetStates', () => {
       ['CT-01', 'running'],
       ['CT-02', 'nodata'],
     ]);
+  });
+});
+
+describe('assetStateOf', () => {
+  const running = { 'CT-01': entry({ values: { running: true } }) };
+
+  it('says what assetStates says for the same asset, in the same cases', () => {
+    const cases: {
+      name: string;
+      overview: Record<string, AssetTelemetryState>;
+      incidents: Incident[];
+    }[] = [
+      { name: 'fault', overview: running, incidents: [incident()] },
+      {
+        name: 'resolved incident',
+        overview: running,
+        incidents: [incident({ status: 'resolved' })],
+      },
+      { name: 'offline', overview: { 'CT-01': entry({ online: false }) }, incidents: [] },
+      { name: 'no entry', overview: {}, incidents: [] },
+      { name: 'stale', overview: { 'CT-01': entry({ ageMs: 60_000 }) }, incidents: [] },
+      {
+        name: 'standby',
+        overview: { 'CT-01': entry({ values: { running: false } }) },
+        incidents: [],
+      },
+      { name: 'running', overview: running, incidents: [] },
+      {
+        name: 'unknown',
+        overview: { 'CT-01': entry({ values: { fanSpeedRpm: 0 } }) },
+        incidents: [],
+      },
+    ];
+
+    for (const { name, overview, incidents } of cases) {
+      expect(assetStateOf(asset(), incidents, overview['CT-01'], NOW), name).toBe(
+        stateOf(asset(), overview, incidents),
+      );
+    }
+  });
+
+  it('reads incidents that have not arrived as no incident, never as a fault', () => {
+    expect(assetStateOf(asset(), undefined, running['CT-01'], NOW)).toBe('running');
+  });
+
+  it('reads an entry that has not arrived as no data', () => {
+    expect(assetStateOf(asset(), [], undefined, NOW)).toBe('nodata');
+  });
+
+  it('is a fault with no entry at all, as the list says', () => {
+    expect(assetStateOf(asset(), [incident()], undefined, NOW)).toBe('fault');
+  });
+
+  it('does not judge staleness before the server clock is known', () => {
+    const old = { 'CT-01': entry({ ageMs: 3_600_000, values: { running: true } }) };
+    expect(assetStateOf(asset(), [], old['CT-01'], null)).toBe('running');
   });
 });
 

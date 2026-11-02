@@ -88,6 +88,29 @@ export function assetStates(
 }
 
 /**
+ * The list's own rule for one asset (`assetStates`), so the inspector's pill, its card and tiles, a
+ * sibling row in the Related tab and the Assets tab never disagree. `incidents` may still be on its
+ * way (`undefined`: no incident known, so no fault) and `entry` absent (nothing received yet).
+ *
+ * It changes with the clock, so a caller that renders it every second memoizes on its inputs.
+ */
+export function assetStateOf(
+  asset: Asset,
+  incidents: readonly Incident[] | undefined,
+  entry: AssetTelemetryState | undefined,
+  serverNow: number | null,
+): AssetState {
+  return (
+    assetStates(
+      [asset],
+      incidents ?? [],
+      entry === undefined ? {} : { [asset.code]: entry },
+      serverNow,
+    ).get(asset.code) ?? 'unknown'
+  );
+}
+
+/**
  * The unresolved incident of `asset`. Among several, the one the feed lists first: most severe,
  * then newest (`compareIncidents`).
  */
