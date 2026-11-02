@@ -12,6 +12,7 @@ import { levelOf, showsHeat } from '../../lib/twin-core/twinLevel';
 import { useConsole } from '../../store';
 import { Icon } from '../../ui/Icon';
 import { Check, ChevronDown } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import styles from './ColourBy.module.css';
 
 /**
@@ -151,35 +152,41 @@ function Picker() {
         Colour by <span className={styles.value}>{SELECTED.label}</span>
         <Icon glyph={ChevronDown} size={16} className={styles.chevron} />
       </button>
-      {/* Always rendered so `aria-controls` points at a real element; `hidden` keeps it out of the tree while closed. */}
-      <ul
-        ref={listboxRef}
-        id={listboxId}
-        role="listbox"
-        aria-label="Colour by"
-        aria-activedescendant={open ? optionId(active) : undefined}
-        tabIndex={-1}
-        hidden={!open}
-        className={styles.listbox}
-        onKeyDown={onListKeyDown}
-      >
-        {HEAT_MEASURES.map((measure, index) => (
-          <li
-            key={measure.id}
-            id={optionId(index)}
-            role="option"
-            aria-selected={measure.id === SELECTED.id}
-            data-active={index === active || undefined}
-            className={styles.option}
-            onClick={choose}
-          >
-            <span className={styles.mark}>
-              {measure.id === SELECTED.id && <Icon glyph={Check} size={16} />}
-            </span>
-            {measure.label}
-          </li>
-        ))}
-      </ul>
+      {/*
+       * Always rendered so `aria-controls` points at a real element; `hidden` keeps it out of the tree while closed. The
+       * floating `Panel` around the list is hidden with it, so a closed picker leaves no empty plate (a `ul` cannot be the
+       * panel: `Panel` is a `div`).
+       */}
+      <Panel variant="floating" hidden={!open} className={styles.listPanel}>
+        <ul
+          ref={listboxRef}
+          id={listboxId}
+          role="listbox"
+          aria-label="Colour by"
+          aria-activedescendant={open ? optionId(active) : undefined}
+          tabIndex={-1}
+          hidden={!open}
+          className={styles.listbox}
+          onKeyDown={onListKeyDown}
+        >
+          {HEAT_MEASURES.map((measure, index) => (
+            <li
+              key={measure.id}
+              id={optionId(index)}
+              role="option"
+              aria-selected={measure.id === SELECTED.id}
+              data-active={index === active || undefined}
+              className={styles.option}
+              onClick={choose}
+            >
+              <span className={styles.mark}>
+                {measure.id === SELECTED.id && <Icon glyph={Check} size={16} />}
+              </span>
+              {measure.label}
+            </li>
+          ))}
+        </ul>
+      </Panel>
     </div>
   );
 }

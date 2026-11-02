@@ -3,6 +3,7 @@ import { formatReading } from '../../lib/assets/readings';
 import { describeEvidence, evidenceOfTimeline } from '../../lib/telemetry/telemetryEvidence';
 import { Icon } from '../../ui/Icon';
 import { severityIcon } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import styles from './WallFocusBanner.module.css';
 
 interface WallFocusBannerProps {
@@ -48,7 +49,7 @@ export function WallFocusBanner({ incidentId, secondsLeft, returned }: WallFocus
         {announcement}
       </p>
       {incident !== undefined && (
-        <div className={styles.banner}>
+        <Panel variant="floating" className={styles.banner}>
           <span className={styles.glyph}>
             <Icon glyph={severityIcon(incident.severity)} size={22} />
           </span>
@@ -62,7 +63,7 @@ export function WallFocusBanner({ incidentId, secondsLeft, returned }: WallFocus
             <span>Campus view in</span>
             <b>{secondsLeft} s</b>
           </div>
-        </div>
+        </Panel>
       )}
     </>
   );

@@ -324,6 +324,8 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-low`         | `--glass-bg` over `glass backdrop, worst case` | 4.92  | 3       | pass                                                                                       |
 | `--warning`         | `--glass-bg` over `glass backdrop, worst case` | 7.30  | 3       | pass                                                                                       |
 | `--accent`          | `--glass-bg` over `glass backdrop, worst case` | 3.65  | 3       | pass                                                                                       |
+| `--success`         | `--glass-bg` over `glass backdrop, worst case` | 7.58  | 3       | pass                                                                                       |
+| `--danger`          | `--glass-bg` over `glass backdrop, worst case` | 5.64  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-0`                                  | 5.35  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-1`                                  | 4.86  | 3       | pass                                                                                       |
 | `--accent`          | `--surface-2`                                  | 4.34  | 3       | pass                                                                                       |

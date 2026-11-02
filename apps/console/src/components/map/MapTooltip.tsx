@@ -5,6 +5,7 @@ import { isActive } from '../../lib/incidents/incidents';
 import { type HoverTarget, hoverTargetOf, isClickable, sameTarget } from '../../lib/map/mapHover';
 import { HOVER_LAYERS, visibleLayers } from '../../lib/map/mapLayers';
 import { useConsole } from '../../store';
+import { Panel } from '../../ui/Panel';
 import { AssetTip, CameraTip, ClusterTip, IncidentTip } from '../shell/Tips';
 import { tipSurface } from '../shell/tipSurface';
 import styles from './MapTooltip.module.css';
@@ -134,14 +135,15 @@ export function MapTooltip({ map }: { map: MapLibreMap | null }) {
   }
 
   return (
-    <div
+    <Panel
+      variant="floating"
       className={`${tipSurface} ${styles.tooltip}`}
       style={{ left: hover.left, top: hover.top }}
       data-placement={hover.below ? 'below' : 'above'}
       aria-hidden="true"
     >
       {body}
-    </div>
+    </Panel>
   );
 }
 

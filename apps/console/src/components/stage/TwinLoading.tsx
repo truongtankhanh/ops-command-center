@@ -2,6 +2,7 @@ import { type LoadStep, loadedShare, type StepState } from '../../lib/twin-core/
 import { Button } from '../../ui/Button';
 import { Icon } from '../../ui/Icon';
 import { Check, CircleDot, CircleX } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import styles from './TwinLoading.module.css';
 
 const STATE_ICON = { done: Check, failed: CircleX, active: CircleDot, queued: CircleDot };
@@ -41,7 +42,7 @@ export function TwinLoading({ steps, onRetry, retrying = false }: TwinLoadingPro
   const failed = steps.some(({ state }) => state === 'failed');
 
   return (
-    <div role="status" className={styles.card}>
+    <Panel variant="floating" role="status" className={styles.card}>
       <strong className={styles.title}>
         {failed ? 'The 3D view is not ready' : 'Loading the 3D view'}
       </strong>
@@ -73,6 +74,6 @@ export function TwinLoading({ steps, onRetry, retrying = false }: TwinLoadingPro
           </li>
         ))}
       </ul>
-    </div>
+    </Panel>
   );
 }

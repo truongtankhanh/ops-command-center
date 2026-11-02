@@ -11,6 +11,7 @@ import { useAssetState, useServerNow } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
 import { Button } from '../ui/Button';
 import { X } from '../ui/icons';
+import { Panel } from '../ui/Panel';
 import styles from './TwinCallout.module.css';
 
 /**
@@ -141,8 +142,9 @@ function PartCallout({
   const { reading } = callout;
   return (
     <>
-      <div
+      <Panel
         ref={card}
+        variant="floating"
         role="dialog"
         aria-label={callout.label}
         className={styles.card}
@@ -171,7 +173,7 @@ function PartCallout({
           {callout.subline !== null && <p className={styles.subline}>{callout.subline}</p>}
           {callout.limit !== null && <p className={styles.limit}>{callout.limit}</p>}
         </div>
-      </div>
+      </Panel>
     </>
   );
 }

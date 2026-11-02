@@ -8,6 +8,7 @@ import { onPick } from '../lib/twin-core/twinPicker';
 import type { PickRef, ScreenPoint } from '../lib/twin-core/twinPicking';
 import { placeTip, TIP_DELAY_MS } from '../lib/twin-core/twinTooltip';
 import { useConsole } from '../store';
+import { Panel } from '../ui/Panel';
 import styles from './TwinTooltip.module.css';
 import { sheetInset } from './useSheetOffset';
 
@@ -167,9 +168,14 @@ export function TwinTooltip() {
   return (
     <div ref={layer} className={styles.layer} aria-hidden="true">
       {body && (
-        <div ref={tip} role="tooltip" className={`${tipSurface} ${styles.tooltip}`}>
+        <Panel
+          ref={tip}
+          variant="floating"
+          role="tooltip"
+          className={`${tipSurface} ${styles.tooltip}`}
+        >
           {body}
-        </div>
+        </Panel>
       )}
     </div>
   );
