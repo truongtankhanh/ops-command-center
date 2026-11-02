@@ -33,7 +33,8 @@ function transitionErrorMessage(error: Error): string {
 }
 
 /**
- * The foot of the incident sheet (frames 02 / 06 / 11). Only the actions the user's roles grant,
+ * The foot of the incident sheet (frames 02 / 06 / 11), a flat strip outside the tab panels so it stays
+ * mounted, and its keys keep working, on every tab. Only the actions the user's roles grant,
  * for this incident's category, are shown; the API refuses the rest anyway (ADR-0011, ADR-0021). A
  * user who may take neither action gets a footer saying why instead of a gap, on every status: the
  * view-only one for a role without the permissions, the out-of-scope one for a role whose
@@ -214,8 +215,9 @@ function ResponseForm({
         {showResolve && (
           <Button
             ref={resolveRef}
-            // One primary action at a time. `secondary` would fail 3:1 on this footer's surface-2.
-            variant={showAcknowledge ? 'ghost' : 'primary'}
+            // One primary action at a time; the other is `secondary` (frame 02), whose boundary reaches
+            // 3:1 on the foot's flat `--surface-1`.
+            variant={showAcknowledge ? 'secondary' : 'primary'}
             className={styles.grow}
             disabled={busy}
             shortcut={resolveKeyWorks ? 'R' : undefined}

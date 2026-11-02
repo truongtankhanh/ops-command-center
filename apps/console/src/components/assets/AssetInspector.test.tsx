@@ -1808,6 +1808,65 @@ describe('AssetInspector', () => {
       expect(content.at(-1)).toBe(foot);
     });
 
+    // V3-09.9: the foot is outside the tab panels, so it is the same on every tab.
+    describe('on a tab other than Details', () => {
+      const OTHER_TABS = ['Related', 'Telemetry', 'Timeline'] as const;
+      const open = (name: string) => openTab(new RegExp(`^${name}`));
+
+      it.each(OTHER_TABS)('offers a role that may report the report button on %s', async (name) => {
+        signInAs('operator');
+        useConsole.getState().selectAsset('CT-01', null);
+        renderInspector({ incidents: [] });
+        open(name);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Report a fault on CT-01' }));
+
+        expect(useConsole.getState()).toMatchObject({
+          reporting: true,
+          reportZoneId: DETAIL.zoneId,
+          reportPreset: { category: 'facilities', type: 'equipment_fault' },
+        });
+      });
+
+      it.each(OTHER_TABS)(
+        'gives a viewer the view-only note on %s, and no report button',
+        (name) => {
+          signInAs('viewer');
+          renderInspector({ incidents: [] });
+          open(name);
+
+          expect(screen.getByRole('note')).toHaveAttribute('data-footer', 'view-only');
+          expect(screen.getByRole('note')).toHaveTextContent('View only');
+          expect(screen.queryByRole('button', { name: /Report a fault/ })).toBeNull();
+        },
+      );
+
+      it.each(OTHER_TABS)('draws no Focus on %s in the 2D view', (name) => {
+        signInAs('operator');
+        renderInspector({ incidents: [] });
+        open(name);
+
+        expect(screen.queryByRole('button', { name: 'Focus' })).toBeNull();
+      });
+
+      it.each(OTHER_TABS)(
+        'draws Focus on %s in the 3D view, and it flies to the asset',
+        async (name) => {
+          useConsole.setState({ view: '3d' });
+          useConsole.getState().selectAsset('CT-01', null);
+          signInAs('viewer');
+          renderInspector({ incidents: [] });
+          open(name);
+
+          await userEvent.click(
+            within(screen.getByRole('note')).getByRole('button', { name: 'Focus' }),
+          );
+
+          expect(focusSelection).toHaveBeenCalledExactlyOnceWith('CT-01', null);
+        },
+      );
+    });
+
     describe('Focus (V2-15.11)', () => {
       const focusButton = () => screen.queryByRole('button', { name: 'Focus' });
       const roles = ['operator', 'supervisor', 'technician', 'viewer'] as const;

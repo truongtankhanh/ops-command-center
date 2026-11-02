@@ -1037,6 +1037,20 @@ describe('IncidentDetail', () => {
         expect(screen.getByRole('tabpanel', { name: 'Details' })).toBeInTheDocument();
       });
 
+      // V3-09.9: the keys belong to the foot, which is outside this tab's panel.
+      it('acknowledges on A from the Telemetry tab', async () => {
+        signInAs('operator');
+        postResponse = () =>
+          json(raisedByRule({ status: 'acknowledged', acknowledgedAt: minutesAgo(0), version: 2 }));
+        renderTelemetry(raisedByRule());
+        await openTab('Telemetry');
+
+        await userEvent.keyboard('a');
+
+        await waitFor(() => expect(postCalls()).toHaveLength(1));
+        expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/acknowledge');
+      });
+
       it('keeps the response foot, and the status, on the tab', async () => {
         renderTelemetry(raisedByRule());
 
@@ -1226,11 +1240,9 @@ describe('IncidentDetail', () => {
           'data-variant',
           'primary',
         );
-        // One primary action at a time; a bordered secondary would fail 3:1 on the footer.
-        expect(screen.getByRole('button', { name: 'Resolve' })).toHaveAttribute(
-          'data-variant',
-          'ghost',
-        );
+        // One primary action at a time. The other is `secondary`, Button's default, which sets no
+        // `data-variant` (its boundary reaches 3:1 on the foot's flat surface).
+        expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveAttribute('data-variant');
       },
     );
 
@@ -1305,10 +1317,7 @@ describe('IncidentDetail', () => {
           'data-variant',
           'primary',
         );
-        expect(screen.getByRole('button', { name: 'Resolve' })).toHaveAttribute(
-          'data-variant',
-          'ghost',
-        );
+        expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveAttribute('data-variant');
         expect(screen.queryByRole('note')).toBeNull();
       },
     );
@@ -1554,6 +1563,105 @@ describe('IncidentDetail', () => {
       // The first request is on its way (the token is read first); the second key sent nothing.
       await waitFor(() => expect(postCalls()).toHaveLength(1));
     });
+
+    // V3-09.9: the foot is outside the tab panels, so `ResponseForm` stays mounted and its keys work
+    // from whichever tab is open. A click on a tab leaves the focus on the tab button, not in a text field.
+    describe('from another tab', () => {
+      const OTHER_TABS = ['Related', 'Timeline'] as const;
+      const tab = (name: string) => new RegExp(`^${name}`);
+
+      beforeEach(() => {
+        signInAs('operator');
+        useConsole.setState({ selectedIncidentId: detail().id });
+      });
+
+      it.each(OTHER_TABS)('acknowledges on A from the %s tab', async (name) => {
+        postResponse = () =>
+          json(detail({ status: 'acknowledged', acknowledgedAt: minutesAgo(0), version: 2 }));
+        renderDetail();
+        await openTab(tab(name));
+
+        await userEvent.keyboard('a');
+
+        await waitFor(() => expect(postCalls()).toHaveLength(1));
+        expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/acknowledge');
+      });
+
+      it.each(OTHER_TABS)(
+        'resolves a non-critical incident on R from the %s tab at once',
+        async (name) => {
+          postResponse = () =>
+            json(detail({ status: 'resolved', resolvedAt: minutesAgo(0), version: 2 }));
+          renderDetail();
+          await openTab(tab(name));
+
+          await userEvent.keyboard('r');
+
+          await waitFor(() => expect(postCalls()).toHaveLength(1));
+          expect(postCalls()[0]![0]).toBe('/api/incidents/incident-1/resolve');
+          expect(screen.queryByRole('dialog')).toBeNull();
+        },
+      );
+
+      it('still asks before resolving a critical incident without a note, and "Add a note" focuses the note', async () => {
+        renderDetail(detail({ severity: 'critical' }));
+        await openTab('Timeline');
+
+        await userEvent.keyboard('r');
+
+        expect(
+          screen.getByRole('dialog', { name: 'Resolve INC-000042 without a note?' }),
+        ).toBeInTheDocument();
+        expect(postCalls()).toHaveLength(0);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Add a note' }));
+
+        expect(screen.getByLabelText(NOTE_LABEL)).toHaveFocus();
+      });
+
+      it('never acknowledges while typing the note, which is reachable from every tab', async () => {
+        renderDetail();
+        await openTab('Timeline');
+
+        await userEvent.type(screen.getByLabelText(NOTE_LABEL), 'a');
+
+        expect(screen.getByLabelText(NOTE_LABEL)).toHaveValue('a');
+        expect(postCalls()).toHaveLength(0);
+      });
+
+      it('offers no A or R while single-key shortcuts are off', async () => {
+        useConsole.setState({ keyboardShortcuts: false });
+        renderDetail();
+        await openTab(tab('Related'));
+
+        expect(screen.getByRole('button', { name: 'Acknowledge' })).not.toHaveAttribute(
+          'aria-keyshortcuts',
+        );
+        expect(screen.getByRole('button', { name: 'Resolve' })).not.toHaveAttribute(
+          'aria-keyshortcuts',
+        );
+        await userEvent.keyboard('a');
+        await userEvent.keyboard('r');
+
+        expect(postCalls()).toHaveLength(0);
+      });
+
+      it.each<[string, Role, Partial<Detail>]>([
+        ['a viewer', 'viewer', {}],
+        ['a technician on an incident out of scope', 'technician', { type: 'intrusion' }],
+      ])('does nothing on A or R for %s', async (_who, role, overrides) => {
+        resetStore(useSession);
+        signInAs(role);
+        renderDetail(detail(overrides));
+        await openTab('Timeline');
+
+        await userEvent.keyboard('a');
+        await userEvent.keyboard('r');
+
+        expect(postCalls()).toHaveLength(0);
+        expect(screen.getByRole('note')).toBeInTheDocument();
+      });
+    });
   });
 
   // UI-16 Q6: the button that had focus goes with the step it took; focus must not fall to the body.
@@ -1573,6 +1681,21 @@ describe('IncidentDetail', () => {
       await userEvent.click(acknowledgeButton());
 
       await waitFor(() => expect(resolveButton()).toHaveFocus());
+    });
+
+    // V3-09.9: the foot is outside the panel, so another tab does not change where the focus goes.
+    it('moves focus to Resolve once acknowledged with another tab open, and keeps that tab', async () => {
+      postResponse = () => json(acknowledged());
+      renderDetail();
+      await openTab('Timeline');
+
+      await userEvent.click(acknowledgeButton());
+
+      await waitFor(() => expect(resolveButton()).toHaveFocus());
+      expect(screen.getByRole('tab', { name: 'Timeline' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
     });
 
     // A live update, as `useLiveIncidents` writes it. The query notifies its observers on a later
