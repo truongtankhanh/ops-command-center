@@ -2,7 +2,7 @@
  * The note that replaces a sheet's foot (frames 04 / 11 `.vo`). Same chrome as the response foot of
  * `IncidentResponse.module.css`: a flat `--surface-1` strip set apart by a hairline and `--shadow-1`,
  * sticky at the bottom of the scrolling sheet, `margin-top: auto` so a short sheet still ends in it,
- * because it takes that foot's place. Change the three feet together.
+ * because it takes that foot's place. Change the four feet together (the fourth is the report form's, `ReportIncidentForm.module.css`).
  */
 
 .note {
