@@ -1,0 +1,43 @@
+/*
+ * ScaleBar (V3-10.3, frames 01 and 09's `.scalebar`): a bracket and its label, bare over the map or the 3D scene. Look only,
+ * the caller places it (no `position`, `left` or `bottom` here, as in `Panel`). The caller that stands it in a corner above
+ * other items also reads its height: 6 + 4 + 16 px, `--scale-bar-clearance` in `CampusMap.module.css` and
+ * `TwinStage.module.css`.
+ *
+ * It takes no pointer, so a drag that starts over it still reaches the map or the canvas.
+ */
+.scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: max-content;
+  pointer-events: none;
+}
+
+/* Nothing is drawn before the first reading: no ghost ticks, and the label has no text to show. */
+.scale:not([data-ready]) {
+  visibility: hidden;
+}
+
+/*
+ * Written by `writeScale` as a whole number of CSS px. **Not `calc(<px> * var(--ui-scale))`, on purpose:** the width is a
+ * measurement of the pixels the map and the camera are in, so scaling it would make the label lie wherever the scale is not
+ * 1. The height and the gap are looks and do follow it.
+ */
+.bar {
+  width: var(--scale-bar-width, 0px);
+  height: calc(6px * var(--ui-scale));
+  border: 1px solid var(--text-tertiary);
+  border-top: 0;
+}
+
+/* The label halo of the map's zone names (`CampusMap.module.css .zoneLabel`): a stroke in the ground colour under the text. */
+.label {
+  font-family: var(--font-ui);
+  font-size: var(--type-2xs);
+  line-height: var(--leading-2xs);
+  color: var(--text-secondary);
+  -webkit-text-stroke: 3px var(--surface-0);
+  paint-order: stroke fill;
+  white-space: nowrap;
+}

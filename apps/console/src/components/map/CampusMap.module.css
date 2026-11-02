@@ -1,9 +1,23 @@
-/* `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners. */
+/*
+ * `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners.
+ *
+ * `--scale-bar-clearance` (V3-10.3): how far the legend is raised so the scale bar sits under it in the bottom-left corner,
+ * the bar's 26 px (`ui/ScaleBar.module.css`: 6 + 4 + 16) and one `--space-2`. A look-only number. V3-10.4 moves the legend
+ * to the bottom-right and deletes this property with it; `TwinStage.module.css` has its twin.
+ */
 .map {
+  --scale-bar-clearance: calc(34px * var(--ui-scale));
   position: relative;
   min-height: 0;
   overflow: hidden;
   isolation: isolate;
+}
+
+/* Frame 09's scale bar, bottom-left like every other item of that corner (`ui/ScaleBar` sets no layout). */
+.scale {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-3);
 }
 
 /* A video wall's map takes no pointer or touch, whatever MapLibre would do (V2-21.9). */

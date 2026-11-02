@@ -22,6 +22,7 @@ import {
   LOD_HYSTERESIS,
   LOD_SCREEN_FRACTION,
   lodDistance,
+  metresPerPixelAt,
   normalizeYaw,
   type Pose,
   poseToPosition,
@@ -690,5 +691,50 @@ describe('lodDistance', () => {
     expect(generator).toBeLessThan(156);
     expect(tower).toBeGreaterThan(CAMERA_LIMITS.campus.minDistance);
     expect(tower).toBeLessThan(CAMERA_LIMITS.campus.maxDistance);
+  });
+});
+
+describe('metresPerPixelAt (the 3D scale bar)', () => {
+  const tanHalf = (fovDeg: number) => Math.tan((fovDeg * Math.PI) / 360);
+
+  it('is the view’s height at the distance over the viewport’s pixels', () => {
+    expect(metresPerPixelAt(100, 50, 600)).toBeCloseTo((2 * 100 * tanHalf(50)) / 600, 12);
+    // About 0.155 m a pixel: 120 px is about 18.7 m, which rounds to the bar's "≈ 10 m".
+    expect(metresPerPixelAt(100, HOME_FOV_DEG, 600)).toBeCloseTo(0.15544, 4);
+  });
+
+  it('grows with the distance and shrinks with a taller viewport and with zoom', () => {
+    const base = metresPerPixelAt(100, 50, 600);
+    expect(metresPerPixelAt(200, 50, 600)).toBeCloseTo(base * 2, 12);
+    expect(metresPerPixelAt(100, 50, 1200)).toBeCloseTo(base / 2, 12);
+    expect(metresPerPixelAt(100, 50, 600, 2)).toBeCloseTo(base / 2, 12);
+    expect(metresPerPixelAt(100, 50, 600, 1)).toBe(base);
+  });
+
+  it('is larger for a wider lens at the same distance', () => {
+    expect(metresPerPixelAt(100, 70, 600)).toBeGreaterThan(metresPerPixelAt(100, 50, 600));
+  });
+
+  it('reads the campus camera limits as scales a bar can show', () => {
+    // A 600 px stage: 60 m is the closest the campus camera gets, 900 m the farthest.
+    expect(metresPerPixelAt(CAMERA_LIMITS.campus.minDistance, HOME_FOV_DEG, 600)).toBeCloseTo(
+      0.0933,
+      4,
+    );
+    expect(metresPerPixelAt(CAMERA_LIMITS.campus.maxDistance, HOME_FOV_DEG, 600)).toBeCloseTo(
+      1.399,
+      3,
+    );
+  });
+
+  it('has no scale (Infinity) for a distance, lens, height or zoom that cannot be used', () => {
+    expect(metresPerPixelAt(0, 50, 600)).toBe(Infinity);
+    expect(metresPerPixelAt(-5, 50, 600)).toBe(Infinity);
+    expect(metresPerPixelAt(100, 0, 600)).toBe(Infinity);
+    expect(metresPerPixelAt(100, 180, 600)).toBe(Infinity);
+    expect(metresPerPixelAt(100, 50, 0)).toBe(Infinity);
+    expect(metresPerPixelAt(100, 50, 600, 0)).toBe(Infinity);
+    expect(metresPerPixelAt(Number.NaN, 50, 600)).toBe(Infinity);
+    expect(metresPerPixelAt(100, 50, Infinity)).toBe(Infinity);
   });
 });

@@ -14,6 +14,7 @@ import { LeaderOverlay, TwinCallout } from './TwinCallout';
 import { TwinCanvas } from './TwinCanvas';
 import { TwinControls } from './TwinControls';
 import { TwinLegend } from './TwinLegend';
+import { TwinScale } from './TwinScale';
 import { TwinTooltip } from './TwinTooltip';
 import styles from './TwinStage.module.css';
 import { TwinView } from './TwinView';
@@ -47,11 +48,11 @@ const HudReadout = import.meta.env.MODE === 'development' ? lazy(() => import('.
  * It owns the scene (`useTwinScene`), the points of the classes that have a model (`useClassPoints`, for the
  * bindings of V2-14.7), the incident beacons (`useTwinBeacons`, V2-16.3), the zone outlined on the ground (`useTwinHighlightZone`, V2-16.4) and the telemetry feed the models' moving parts follow (`useTwinFeed`, V2-14.8), and
  * renders the WebGL canvas and the DOM over it as siblings: the zone labels, the drag hint, the legends (the heat legend over the marker legend, V2-17.4), the
- * building summary (V2-15.9, at building level only), the hint while the report's location is picked (V2-16.7), the part callout (V2-15.10, at part level only), the camera
+ * building summary (V2-15.9, at building level only), the scale bar (V3-10.3, under the legends), the hint while the report's location is picked (V2-16.7), the part callout (V2-15.10, at part level only), the camera
  * controls and the hover tooltip (V2-15.5). The heat overlay (`useHeatScene`, V2-17.3) is derived here too and handed to the canvas, the
  * labels and the view's name; it is `null` until the layer is on at campus or building level. The canvas gets the same scene and the refs for what it keeps in step
  * from its frame loop without a React render: the labels' layer (`LabelProjector`, V2-12.7), the compass
- * (`CompassSync`, V2-12.10) and the part callout's leader (`LeaderProjector`, V2-15.10).
+ * (`CompassSync`, V2-12.10), the scale bar (`ScaleSync`, V3-10.3) and the part callout's leader (`LeaderProjector`, V2-15.10).
  *
  * For assistive technology the picture is one group (`TwinView`, V2-12.12): the canvas and the labels are
  * inside it, and the canvas is hidden because a summary of the site and the Assets tab are its accessible
@@ -60,7 +61,7 @@ const HudReadout = import.meta.env.MODE === 'development' ? lazy(() => import('.
  *
  * - **On a video wall** (`wall`, V2-21.6, `WallApp`) it is the picture only: the canvas is locked and pinned to a pixel ratio of
  *   1.0 (`TwinCanvas`), the view is not focusable and takes no key (`TwinView`), the wrapper takes no pointer or touch
- *   (`data-still`), and none of the drawn controls is mounted: the drag hint, the pick hint, the legends, the building
+ *   (`data-still`), and none of the drawn controls is mounted: the drag hint, the pick hint, the legends, the scale bar, the building
  *   summary, the part callout and its leader, the camera controls and the tooltip. The heat overlay is off whatever the layer
  *   says (no switch to turn it on). The Incidents and Cameras layers are the store's, which are on and which a wall has
  *   nothing to change.
@@ -107,6 +108,8 @@ export default function TwinStage({ wall = false }: { wall?: boolean }) {
     invalidateRef.current();
   }, []);
   const compass = useRef<HTMLButtonElement>(null);
+  // The scale bar (V3-10.3): `TwinScale` renders it, `ScaleSync` in the canvas writes it from the camera; no render follows.
+  const scale = useRef<HTMLDivElement>(null);
   // The developer HUD (V2-19.1): the readout is here, its probe in the canvas; the list is theirs to share.
   const hudRef = useRef<HTMLDListElement>(null);
   const [hudRequested] = useState(() => HudReadout !== null && debugTwinRequested(location.search));
@@ -139,6 +142,7 @@ export default function TwinStage({ wall = false }: { wall?: boolean }) {
             }}
             labelLayer={labelLayer}
             compassRef={compass}
+            scaleRef={scale}
             leaderLineRef={leaderLineRef}
             leaderDotRef={leaderDotRef}
             leaderStartRef={leaderStartRef}
@@ -168,6 +172,8 @@ export default function TwinStage({ wall = false }: { wall?: boolean }) {
           )}
           {/* The card of the building in focus (V2-15.9): nothing at other levels, and nothing before the scene is there. */}
           {scene && <BuildingSummary />}
+          {/* Frame 01's scale bar (V3-10.3): bottom-left, under the pad and the legends; nothing to measure without a scene. */}
+          {scene && <TwinScale scaleRef={scale} className={styles.scale} />}
           {/* The leader of the part callout (V2-15.10) under its card, which shows at part level only. */}
           <LeaderOverlay lineRef={leaderLineRef} dotRef={leaderDotRef} />
           {scene && <TwinCallout onStart={onLeaderStart} />}

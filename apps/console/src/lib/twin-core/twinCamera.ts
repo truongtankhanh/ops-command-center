@@ -94,6 +94,28 @@ export function lodDistance(
   return radius / (fraction * Math.tan(toRadians(fovDeg) / 2));
 }
 
+/**
+ * Metres on the ground per screen pixel, across the screen, at the depth of the camera's target (V3-10.3, the 3D scale bar):
+ * the view's height at `distanceM` is `2 · d · tan(fov / 2)` metres, spread over `viewportHeightPx` pixels (and `zoom`
+ * times as many when the camera zooms). Only true at that depth: a perspective picture draws what is nearer larger and what
+ * is farther smaller, which is why the bar says "≈".
+ *
+ * `Infinity` ("no scale") for a distance, field of view (degrees), height or zoom that is not a positive finite number,
+ * as `lodDistance` answers a bad input; `niceLength` then draws no bar.
+ */
+export function metresPerPixelAt(
+  distanceM: number,
+  fovDeg: number,
+  viewportHeightPx: number,
+  zoom = 1,
+): number {
+  const valid = [distanceM, fovDeg, viewportHeightPx, zoom].every(
+    (value) => Number.isFinite(value) && value > 0,
+  );
+  if (!valid || fovDeg >= 180) return Infinity;
+  return (2 * distanceM * Math.tan(toRadians(fovDeg) / 2)) / (viewportHeightPx * zoom);
+}
+
 /** `degrees` as an angle in (−180, 180]: 190 is −170, −180 is 180. */
 export function normalizeYaw(degrees: number): number {
   const wrapped = ((((degrees + 180) % 360) + 360) % 360) - 180;

@@ -1599,6 +1599,48 @@ describe('CampusMap', () => {
     });
   });
 
+  describe('the scale bar (V3-10.3)', () => {
+    // The fake map answers zoom 16.4, and the site is at latitude 11.953: 0.8855 m a pixel, so 100 m is 113 px.
+    it('shows the round length for the map’s zoom once the map is ready', async () => {
+      await renderMap([incident({ id: 'a' })]);
+
+      expect(screen.getByText('100 m')).toBeInTheDocument();
+    });
+
+    it('follows the map’s zoom', async () => {
+      const { map } = await renderMap([incident({ id: 'a' })]);
+      map.getZoom.mockReturnValue(18);
+
+      act(() => map.fire('zoom'));
+
+      expect(screen.getByText('20 m')).toBeInTheDocument();
+      expect(screen.queryByText('100 m')).toBeNull();
+    });
+
+    it('is true at the first zone’s latitude when the site has no plan', async () => {
+      siteNotFound();
+      const { client } = await renderMap([incident({ id: 'a' })], {
+        sitePlan: null,
+        zones: [zone()],
+      });
+      await waitFor(() => expect(client.getQueryState(queryKeys.sitePlan)?.status).toBe('error'));
+
+      expect(screen.getByText('100 m')).toBeInTheDocument();
+    });
+
+    it('is hidden from assistive technology', async () => {
+      await renderMap([incident({ id: 'a' })]);
+
+      expect(screen.getByText('100 m').closest('[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it('is not drawn on a video wall', async () => {
+      await renderMap([incident({ id: 'a' })], { wall: true });
+
+      expect(screen.queryByText('100 m')).toBeNull();
+    });
+  });
+
   describe('on a video wall (V2-21.9)', () => {
     const OTHER: [number, number] = [108.443, 11.954];
 
