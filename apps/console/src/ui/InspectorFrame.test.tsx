@@ -163,6 +163,19 @@ describe('InspectorFrame', () => {
       expect(tab('Details')).toHaveAttribute('aria-selected', 'true');
     });
 
+    // A panel of text only has no Tab stop of its own (the content is `<p>`), so the panel is one.
+    it('makes a panel with nothing focusable a Tab stop, and not one that holds a control', async () => {
+      renderFrame([
+        DETAILS,
+        { ...RELATED, content: <button type="button">Related control</button> },
+      ]);
+      expect(screen.getByRole('tabpanel', { name: 'Details' })).toHaveAttribute('tabindex', '0');
+
+      await userEvent.click(tab('Related 3'));
+
+      expect(screen.getByRole('tabpanel', { name: 'Related 3' })).not.toHaveAttribute('tabindex');
+    });
+
     it('goes from one tab to a list as soon as a second tab is offered', () => {
       const { rerender, onEscape } = renderFrame([DETAILS]);
       expect(screen.queryByRole('tablist')).toBeNull();
