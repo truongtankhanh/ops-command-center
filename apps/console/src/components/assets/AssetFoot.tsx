@@ -10,7 +10,8 @@ import styles from './AssetFoot.module.css';
 import { ViewOnlyNote } from '../shell/ViewOnlyNote';
 
 /**
- * The foot of the asset inspector (frames 03, 17). A user who may report gets "Report a fault on
+ * The foot of the asset inspector (frames 03, 04, 17), a flat strip outside the tab panels so it stays
+ * mounted on every tab. A user who may report gets "Report a fault on
  * CT-01", which opens the report form already on Facilities / Equipment fault, in the asset's zone
  * (`reportPresetOf`); anyone else gets the view-only note in its place, so the sheet never ends in
  * a gap. The console only hides what a role cannot do: the API's `403` is the control (ADR-0011).
@@ -47,7 +48,7 @@ export function AssetFoot({
   });
   const focus = canFocus ? (
     <Button
-      variant="ghost"
+      variant="secondary"
       icon={Crosshair}
       shortcut={keysOn ? 'F' : undefined}
       className={styles.focus}
@@ -67,10 +68,7 @@ export function AssetFoot({
   }
   return (
     <div className={styles.foot}>
-      {/*
-        `primary`: it is the sheet's only primary action, and `secondary` fails 3:1 on this foot's
-        `--surface-2` (`Button`). Frame 03 draws a secondary one; `IncidentResponse` meets the same.
-      */}
+      {/* `primary`: it is the sheet's only primary action; Focus beside it is `secondary` (frame 04). */}
       <Button
         variant="primary"
         icon={Flag}
