@@ -43,6 +43,7 @@ in the contract, open data rather than a union, so a class this build lacks is e
 | `actorKindIcon`                  | `user` / `system`                                                                                                    | `User` / `Cpu`                                                                                                                                                        |
 | `connectionIcon`                 | `live` / `connecting` / `reconnecting` / `offline`                                                                   | `Radio` / `RefreshCw` / `RefreshCw` / `WifiOff` (`connecting` is the first connect only)                                                                              |
 | `healthIcon`                     | the status bar's summary: `healthy` / `degraded`                                                                     | `CircleCheck` / `TriangleAlert` (both shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                                |
+| `alarmLoadIcon`                  | the status bar's alarm-load segment: calm / flooding                                                                 | `Bell` / `TriangleAlert` (the triangle is shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                            |
 | `sidePanelIcon`                  | the side column's tabs: `incidents` / `assets`                                                                       | `TriangleAlert` / `Box` (both shared on purpose, see [below](#the-side-panels-tabs-v3-071))                                                                           |
 | `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                                                                                  |
 | `assetClassIcon`                 | the 16 catalogue class codes and the 3 of V3-A, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))    | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ThermometerSun` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` / `Siren` / `KeyRound` / `Router` |
@@ -91,6 +92,8 @@ is deliberate and holds because the bar always says the sentence next to the gly
 and never in a severity hue, and sits at the foot of the console, away from the incident list. The bar's segments reuse
 `connectionIcon` and `telemetryIcon` for the two links, and `Box` (3D view) or `MapIcon` (2D map, or 3D unavailable) for the
 engine. Its Settings entry (V3-06.3) draws `SlidersHorizontal`, used nowhere else.
+The alarm-load segment (V3-21.2) draws `Bell`, used nowhere else, and `TriangleAlert` during a flood: the same share as the degraded summary, and it holds
+for the same reason, because the segment says "Alarm flood" beside the glyph and draws it in `--text-secondary` or `--warning`, never in a severity hue.
 
 ### The side panel's tabs (V3-07.1)
 

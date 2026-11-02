@@ -11,6 +11,7 @@ import {
   ArrowUpDown,
   Ban,
   Battery,
+  Bell,
   Biohazard,
   Box,
   Building2,
@@ -220,6 +221,11 @@ const HEALTH_ICONS: Record<SystemHealth['level'], Glyph> = {
 };
 
 export const healthIcon = (level: SystemHealth['level']) => HEALTH_ICONS[level];
+
+// The status bar's alarm-load segment (V3-21.2, frame 16): a bell while calm, the warning triangle during a flood. The triangle is
+// shared on purpose with the High severity and the degraded health (as `HEALTH_ICONS`): the segment always says "Alarm flood"
+// beside it and never draws it in a severity hue. `Bell` is used nowhere else. Written in icons.md.
+export const alarmLoadIcon = (flooding: boolean): Glyph => (flooding ? TriangleAlert : Bell);
 
 // The side column's two tabs (V3-07.1, frame 01). Both glyphs are shared on purpose with another meaning
 // (`TriangleAlert` is the High severity and the degraded health, `Box` the 3D view and an asset drawn without a model):
