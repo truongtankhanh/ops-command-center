@@ -1,15 +1,22 @@
 /*
- * Frame 01's `.scene-ctrl`: the compass over the camera buttons, bottom-right of the 3D stage. Out of the flow
- * (the stage box is `position: relative`), and beside the open sheet like the 2D map's controls:
- * `--sheet-inset` is set on the stage (App.module.css) and inherited.
+ * Frame 01's `.rail` (V3-10.2): the 3D stage's camera controls as one compact column down the left edge, under the stage
+ * bar (`StageView.module.css .tools`, which ends at 54 px, so 64 px clears it). It is a floating `Panel`, which supplies
+ * the surface, the hairline, the large radius and the shadow, so none is restated here. Out of the flow (the stage box is
+ * `position: relative`), and on the left because the open sheet lies over the right: no `--sheet-inset` offset.
+ *
+ * Its width is `--camera-rail-width` (1 + 4 + 36 + 4 + 1 px, set on the stage in `TwinStage.module.css`), which the part
+ * callout uses to stand to its right. Nine buttons at most make it about 366 px tall. No `overflow: hidden`: it would
+ * clip the focus rings.
  */
-.cluster {
+.rail {
   position: absolute;
-  right: calc(var(--sheet-inset, 0px) + var(--space-3));
-  bottom: var(--space-3);
-  display: grid;
-  gap: var(--space-2);
-  justify-items: end;
+  top: calc(64px * var(--ui-scale));
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
 }
 
 /*
@@ -19,13 +26,13 @@
 .compass {
   display: grid;
   place-items: center;
-  width: calc(40px * var(--ui-scale));
-  height: calc(40px * var(--ui-scale));
+  flex: none;
+  width: var(--control-dense);
+  height: var(--control-dense);
   padding: 0;
-  border: 1px solid var(--border-subtle);
+  border: 0;
   border-radius: 50%;
-  background: var(--surface-1);
-  box-shadow: var(--shadow-2);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -51,15 +58,20 @@
 }
 
 /*
- * The five camera buttons, the box of `MapControls.module.css`: no `overflow: hidden` (it would clip the focus
- * ring), the end buttons round their own corners, hairlines between.
+ * A group of buttons (the drag tool, the camera, the selection): a column with the rail's gap, no box of its own. A
+ * hairline and the gap above it set a group apart from the one before it (and from the compass).
  */
 .group {
   display: grid;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: var(--surface-1);
-  box-shadow: var(--shadow-2);
+  align-self: stretch;
+  justify-items: center;
+  gap: var(--space-1);
+}
+
+.compass + .group,
+.group + .group {
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-subtle);
 }
 
 /* The drag tool pair (V3-29): the pressed one is lit in the accent, with a hairline, so it reads without colour alone. */
@@ -71,20 +83,8 @@
 
 /* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
 .group .button {
-  width: calc(38px * var(--ui-scale));
-  height: calc(38px * var(--ui-scale));
+  width: var(--control-dense);
+  height: var(--control-dense);
   padding: 0;
-  border-radius: 0;
-}
-
-.group .button:first-child {
-  border-radius: calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px) 0 0;
-}
-
-.group .button:last-child {
-  border-radius: 0 0 calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px);
-}
-
-.group .button + .button {
-  box-shadow: inset 0 1px 0 var(--border-subtle);
+  border-radius: var(--radius-s);
 }

@@ -2,8 +2,13 @@
  * R3F's canvas takes the size of its parent, so the parent gets the stage's whole box. It is also the
  * box the zone labels are placed in (`ZoneLabels.module.css .layer` fills the group `TwinView` makes over it, which
  * has the same box). The canvas has its own `.fill` inside that group.
+ *
+ * It also carries `--camera-rail-width` (V3-10.2): the camera rail's width, 1 px border + 4 px padding + a 36 px
+ * button (`TwinControls.module.css`), which the part callout reads to stand to the rail's right. One number here, so the
+ * two cannot drift; both are children of the outer `.fill`, so they inherit it.
  */
 .fill {
+  --camera-rail-width: calc(46px * var(--ui-scale));
   position: relative;
   width: 100%;
   height: 100%;
