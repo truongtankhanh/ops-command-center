@@ -22,7 +22,8 @@ export interface InspectorTab<T extends string = string> {
  *   so the sheet's children are the same list as before the frame: the sticky foot stays a direct
  *   child of the scrolling sheet. Two or more tabs use `Tabs` (WAI-ARIA tabs, automatic
  *   activation, one tab stop), which renders only the selected tab's content in one panel named by
- *   its tab.
+ *   its tab. A panel with nothing focusable in it (Telemetry without "All points", or a tab that
+ *   is loading, empty or failed) is itself a tab stop, so its text can be reached by keyboard.
  * - **The foot is outside the tab panel**, so a tab change never touches it. Roles and their
  *   footers are the content's business: the frame only gives the slot.
  * - **The tab state is the frame's** (uncontrolled), starting on the first tab. The contents are
@@ -85,6 +86,7 @@ export function InspectorFrame<T extends string>({
             tabs={tabs}
             value={active.value}
             onChange={setSelected}
+            reachablePanel
             panelClassName={styles.panel}
           >
             {active.content}

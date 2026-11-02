@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { expectNoAxeViolations } from '../test-utils';
 import { Tabs } from './Tabs';
 
@@ -240,6 +240,143 @@ describe('Tabs', () => {
       render(<ChipHarness />);
 
       await expectNoAxeViolations();
+    });
+  });
+
+  describe('reachablePanel', () => {
+    /** The panel's content is a prop, so a case can hold text only, a control, or change between them. */
+    function PanelHarness({
+      content,
+      reachablePanel = true,
+    }: {
+      content: ReactNode;
+      reachablePanel?: boolean;
+    }) {
+      return (
+        <Tabs
+          label="Letters"
+          tabs={TABS}
+          value="a"
+          onChange={() => {}}
+          reachablePanel={reachablePanel}
+        >
+          {content}
+        </Tabs>
+      );
+    }
+
+    it('makes a panel with nothing focusable a Tab stop, right after the selected tab', async () => {
+      render(<PanelHarness content={<p>Only text</p>} />);
+
+      expect(screen.getByRole('tabpanel', { name: 'Alpha' })).toHaveAttribute('tabindex', '0');
+      await userEvent.tab();
+      expect(tab('Alpha')).toHaveFocus();
+      await userEvent.tab();
+      expect(screen.getByRole('tabpanel', { name: 'Alpha' })).toHaveFocus();
+    });
+
+    it('leaves a panel with a focusable control alone', () => {
+      render(<PanelHarness content={<button type="button">In the panel</button>} />);
+
+      expect(screen.getByRole('tabpanel')).not.toHaveAttribute('tabindex');
+    });
+
+    it('does not count a disabled control or a control taken out of the Tab order', () => {
+      render(
+        <PanelHarness
+          content={
+            <>
+              <button type="button" disabled>
+                Off
+              </button>
+              <button type="button" tabIndex={-1}>
+                Skipped
+              </button>
+            </>
+          }
+        />,
+      );
+
+      expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '0');
+    });
+
+    it('follows the content when a control appears in it and when it goes', async () => {
+      function Changing() {
+        const [loaded, setLoaded] = useState(false);
+        return (
+          <>
+            <button type="button" onClick={() => setLoaded((value) => !value)}>
+              Switch
+            </button>
+            <PanelHarness
+              content={loaded ? <button type="button">Loaded</button> : <p>Loading</p>}
+            />
+          </>
+        );
+      }
+      render(<Changing />);
+      expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '0');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Switch' }));
+      await waitFor(() => expect(screen.getByRole('tabpanel')).not.toHaveAttribute('tabindex'));
+
+      await userEvent.click(screen.getByRole('button', { name: 'Switch' }));
+      await waitFor(() => expect(screen.getByRole('tabpanel')).toHaveAttribute('tabindex', '0'));
+    });
+
+    it('is off by default', () => {
+      render(<PanelHarness content={<p>Only text</p>} reachablePanel={false} />);
+
+      expect(screen.getByRole('tabpanel')).not.toHaveAttribute('tabindex');
+    });
+
+    it('has no axe violations on a panel that is a Tab stop', async () => {
+      render(<PanelHarness content={<p>Only text</p>} />);
+
+      await expectNoAxeViolations();
+    });
+  });
+
+  describe('when a tab is no longer offered', () => {
+    /** The consumer owns the selection, as the frame does: it passes the tabs and the selected one. */
+    const Offered = ({ tabs, value }: { tabs: typeof TABS; value: Letter }) => (
+      <>
+        <button type="button">Outside</button>
+        <Tabs label="Letters" tabs={tabs} value={value} onChange={() => {}}>
+          <p>Showing {value}</p>
+        </Tabs>
+      </>
+    );
+
+    it('moves focus to the selected tab when the tab that had focus goes', async () => {
+      const { rerender } = render(<Offered tabs={TABS} value="c" />);
+      await userEvent.click(tab('Gamma'));
+      expect(tab('Gamma')).toHaveFocus();
+
+      rerender(<Offered tabs={TABS.slice(0, 2)} value="a" />);
+
+      expect(screen.queryByRole('tab', { name: 'Gamma' })).toBeNull();
+      expect(tab('Alpha')).toHaveFocus();
+      expect(tab('Alpha')).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('leaves focus where it is when it was not on the tab that goes', async () => {
+      const { rerender } = render(<Offered tabs={TABS} value="a" />);
+      await userEvent.click(screen.getByRole('button', { name: 'Outside' }));
+
+      rerender(<Offered tabs={TABS.slice(0, 2)} value="a" />);
+
+      expect(screen.getByRole('button', { name: 'Outside' })).toHaveFocus();
+    });
+
+    it('does not take focus back from the page when the focused tab only re-renders', async () => {
+      const { rerender } = render(<Offered tabs={TABS} value="b" />);
+      await userEvent.click(tab('Beta'));
+      (document.activeElement as HTMLElement).blur();
+
+      rerender(<Offered tabs={TABS} value="b" />);
+
+      expect(document.body).toHaveFocus();
     });
   });
 });
