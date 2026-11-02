@@ -1,21 +1,25 @@
 /*
- * Frame 01's `.tw-legend`: the 2D legend's look (`MapLegend.module.css`). `TwinStage.module.css .legends` places it,
- * bottom-left of the 3D stage, below the heat legend when that is shown (V2-17.4); it wraps inside the column's width
- * instead of running under the camera controls at the bottom-right (40 px wide with their border, `--space-3`
- * from the edge), which sit beside the open sheet (`--sheet-inset`, set on the stage).
+ * Frame 01's `.tw-legend`: the 2D legend's look (`MapLegend.module.css`), a floating `Panel` (V3-10.4) that supplies the
+ * surface, so none is restated here. `TwinStage.module.css .legends` places it, bottom-right of the 3D stage beside the
+ * open sheet (`--sheet-inset`, set on the stage), below the heat legend when that is shown (V2-17.4). This is the layout: the
+ * toggle on top and the entries in a column below it; the one-line variants (`data-line`: the isolated asset and the building
+ * in focus) are a row, a glyph and a sentence.
  */
 .legend {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   max-width: 100%;
-  padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-1-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  box-shadow: var(--shadow-2);
+  padding: var(--space-2) var(--space-3);
   font-size: var(--type-s);
   color: var(--text-secondary);
+}
+
+.legend[data-line] {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .toggle {
@@ -51,9 +55,9 @@
 /* `display` only while shown, so the `hidden` attribute keeps hiding the closed list. */
 .entries:not([hidden]) {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-4);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1-5);
   margin: 0;
   padding: 0;
   list-style: none;

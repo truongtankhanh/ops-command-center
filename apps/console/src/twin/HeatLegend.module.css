@@ -1,7 +1,8 @@
 /*
  * Frame 13's `.heat-legend` in the console's tokens (`mockups/twin.css` is the mockups' stylesheet, not the
- * console's): a box in the 3D legend's look (`TwinLegend.module.css`). `TwinStage.module.css .legends` places it, so it
- * sets no position of its own; it is 300 px wide at laptop size and never wider than the column the stage leaves it.
+ * console's): a floating `Panel` (V3-10.4) in the 3D legend's look (`TwinLegend.module.css`); the `Panel` supplies the
+ * surface, so none is restated here. `TwinStage.module.css .legends` places it, so it sets no position of its own; it is
+ * 300 px wide at laptop size and never wider than the column the stage leaves it.
  */
 .legend {
   display: grid;
@@ -10,10 +11,6 @@
   width: calc(300px * var(--ui-scale));
   max-width: 100%;
   padding: var(--space-3);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  box-shadow: var(--shadow-2);
   font-size: var(--type-s);
   color: var(--text-secondary);
 }

@@ -7,9 +7,9 @@
  * button (`TwinControls.module.css`), which the part callout reads to stand to the rail's right. One number here, so the
  * two cannot drift; both are children of the outer `.fill`, so they inherit it.
  *
- * `--scale-bar-clearance` (V3-10.3): how far the legends column is raised so the scale bar sits under it in the bottom-left
- * corner, the bar's 26 px (`ui/ScaleBar.module.css`: 6 + 4 + 16) and one `--space-2`. A look-only number. V3-10.4 moves the
- * legends to the bottom-right and deletes this property with them; `CampusMap.module.css` has its twin.
+ * `--scale-bar-clearance` (V3-10.3): how far the pad (`.corner`) is raised so the scale bar sits under it in the bottom-left
+ * corner, the bar's 26 px (`ui/ScaleBar.module.css`: 6 + 4 + 16) and one `--space-2`. A look-only number. The legends used
+ * to be raised by it too; they are bottom-right since V3-10.4, and the 2D map's copy of the property went with them.
  */
 .fill {
   --camera-rail-width: calc(46px * var(--ui-scale));
@@ -20,23 +20,31 @@
 }
 
 /*
- * The stage's bottom-left corner (V2-17.4): the heat legend over the marker legend, in one column so the two never
- * overlap. It is the positioned box; the legends inside set no position. It stops short of the camera controls at the
- * bottom-right (40 px wide with their border, `--space-3` from the edge), which sit beside the open sheet
- * (`--sheet-inset`, set on the stage), so a long legend wraps inside it.
- *
- * It stands above the scale bar (V3-10.3) by `--scale-bar-clearance`, set on `.fill`; V3-10.4 takes the clearance off when the
- * legends move to the bottom-right and the pad stays above the bar.
+ * The stage's bottom-left corner (V3-10.4, V3-29): the 8-direction pad, above the scale bar by `--scale-bar-clearance`
+ * (set on `.fill`). The left edge is never under the sheet, so no `--sheet-inset` offset. It was the first item of the
+ * legends' column; the legends moved to the bottom-right and the pad stayed (brief, frame 24).
  */
-.legends {
+.corner {
   position: absolute;
   left: var(--space-3);
   bottom: calc(var(--space-3) + var(--scale-bar-clearance, 0px));
+}
+
+/*
+ * The stage's bottom-right corner (V2-17.4, V3-10.4): the heat legend over the marker legend, in one column so the two never
+ * overlap, right-aligned and beside the open sheet (`--sheet-inset`, set on the stage). It is the positioned box; the legends
+ * inside set no position. Each is a floating `Panel` with its own width (the heat legend 300 px), and a long one wraps inside
+ * the stage's width less the sheet.
+ */
+.legends {
+  position: absolute;
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
+  bottom: var(--space-3);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: flex-end;
   gap: var(--space-2);
-  max-width: calc(100% - var(--sheet-inset, 0px) - 3 * var(--space-3) - 40px * var(--ui-scale));
+  max-width: calc(100% - var(--sheet-inset, 0px) - 2 * var(--space-3));
 }
 
 /* Frame 01's scale bar, bottom-left like every other item of that corner (`ui/ScaleBar` sets no layout). */

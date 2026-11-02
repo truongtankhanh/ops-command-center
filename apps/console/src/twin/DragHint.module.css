@@ -1,13 +1,13 @@
 /*
- * Frame 01's `.tw-drag-hint`: a 30 px pill, bottom of the 3D stage, at the right edge. The camera controls used to stand
- * there and the hint cleared them by 52 px; they are a rail on the left since V3-10.2, so it sits flush. The legends'
- * move to the bottom-right (V3-10.4) will place it again. The sheet (`--sheet-inset`, set on the stage) moves it,
- * and `data-at='top'` lifts it to the top of the part the sheet leaves visible.
+ * A 30 px pill at the top of the part of the 3D stage the sheet leaves visible (`--sheet-inset`, set on the stage). It used
+ * to stand at the bottom-right (frame 01's `.tw-drag-hint`), beside the camera controls and then flush to the edge; the
+ * legends are in that corner since V3-10.4, and no V3 frame draws the hint, so it takes the place it already took while the
+ * sheet was open, which is clear of them. The stage bar is top-left and the building summary starts at 64 px.
  */
 .hint {
   position: absolute;
+  top: var(--space-3);
   right: calc(var(--sheet-inset, 0px) + var(--space-3));
-  bottom: var(--space-3);
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
@@ -22,12 +22,6 @@
   color: var(--text-secondary);
   white-space: nowrap;
   pointer-events: none;
-}
-
-.hint[data-at='top'] {
-  top: var(--space-3);
-  right: calc(var(--sheet-inset, 0px) + var(--space-3));
-  bottom: auto;
 }
 
 /* A phone has no Shift key; the hint would tell it about one. (Media queries cannot read custom properties.) */

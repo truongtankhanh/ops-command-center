@@ -232,6 +232,21 @@ describe('TwinStage', () => {
       expect(heat).toHaveTextContent('Indoor temperature, by building');
     });
 
+    // V3-10.4: the legends are at the bottom-right and the pad stays bottom-left, so they no longer share a column; the DOM order
+    // (pad, heat legend, marker legend) is what the tab order below relies on.
+    it('keeps the pad out of the legends’ column, and draws the legends as floating panels', () => {
+      renderStage([zone(0, 'building', 'Library')]);
+      heatOn();
+
+      const pad = screen.getByRole('group', { name: 'Pan the view' });
+      const heat = screen.getByRole('note');
+      const markers = screen.getByRole('button', { name: 'Legend' });
+      expect(heat.parentElement).not.toContainElement(pad);
+      expect(pad.compareDocumentPosition(heat)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(heat).toHaveAttribute('data-variant', 'floating');
+      expect(markers.closest('[data-variant]')).toHaveAttribute('data-variant', 'floating');
+    });
+
     it('keeps the building line that says Esc returns, under the heat legend, at building level', () => {
       renderStage([zone(0, 'building', 'Library')]);
       heatOn();

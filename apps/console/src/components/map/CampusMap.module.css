@@ -1,12 +1,13 @@
 /*
  * `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners.
  *
- * `--scale-bar-clearance` (V3-10.3): how far the legend is raised so the scale bar sits under it in the bottom-left corner,
- * the bar's 26 px (`ui/ScaleBar.module.css`: 6 + 4 + 16) and one `--space-2`. A look-only number. V3-10.4 moves the legend
- * to the bottom-right and deletes this property with it; `TwinStage.module.css` has its twin.
+ * `--map-controls-clearance` (V3-10.4): how far the legend is raised so it stands above the zoom controls, which share its
+ * bottom-right corner until V3-10.5 moves them to a rail (frame 09): the controls' three 38 px buttons and their two 1 px
+ * borders, and one `--space-2`. A look-only number; V3-10.5 deletes this property with the move. (The scale bar, bottom-left,
+ * has nothing above it in 2D, so the old `--scale-bar-clearance` is gone here; the 3D stage keeps its own for the pad.)
  */
 .map {
-  --scale-bar-clearance: calc(34px * var(--ui-scale));
+  --map-controls-clearance: calc(116px * var(--ui-scale) + var(--space-2));
   position: relative;
   min-height: 0;
   overflow: hidden;
