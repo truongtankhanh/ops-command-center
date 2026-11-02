@@ -188,6 +188,14 @@ export function upsertIncident(list: Incident[] | undefined, incident: Incident)
 }
 
 /**
+ * How many incidents the console asks the API for (`GET /incidents?limit=`; the route allows 1 to 500 and defaults to 100).
+ * `api/queries.ts` puts it in the query string and the alarm-load model's `isPartial` compares the cached list with it, so
+ * the request and the "this list may be cut" flag cannot drift (V3-21.1). It lives here, not in the query module, so a pure
+ * model can import it without pulling in the HTTP client.
+ */
+export const INCIDENT_LIST_LIMIT = 200;
+
+/**
  * Merges a refetched list into the cached one, keeping the newer copy of each incident, so a
  * snapshot read before a live event cannot roll it back. Incidents are never deleted, so one
  * missing from the snapshot was most likely created after it was read: it is kept, not dropped.
