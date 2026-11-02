@@ -103,6 +103,16 @@ describe('TwinLegend', () => {
     expect(screen.getByRole('list')).toBeVisible();
   });
 
+  // V3-10.4: the surface is the Panel's, so the legend is one floating panel holding the toggle and the list.
+  it('is one floating panel with the toggle and the entries inside it', () => {
+    renderLegend();
+
+    const panel = screen.getByRole('button', { name: 'Legend' }).closest('[data-variant]');
+    expect(panel).toHaveAttribute('data-variant', 'floating');
+    expect(panel).not.toHaveAttribute('data-line');
+    expect(panel).toContainElement(screen.getByRole('list'));
+  });
+
   it('lists the open and handled incidents, the camera and the asset, as frame 01 does', () => {
     renderLegend();
 
@@ -310,6 +320,18 @@ describe('TwinLegend with an asset isolated (V2-15.7)', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
+  it('is a floating panel marked as a one-line variant', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: 'CT-01' });
+
+    renderLegend([], {}, [DATA_CENTER]);
+
+    const panel = screen
+      .getByText(/Isolated — the rest of the campus is faded\./)
+      .closest('[data-variant]');
+    expect(panel).toHaveAttribute('data-variant', 'floating');
+    expect(panel).toHaveAttribute('data-line');
+  });
+
   it('returns to the campus for an asset in no building', () => {
     useConsole.setState({ focusZoneId: null, selectedAssetCode: 'TR-01' });
 
@@ -398,6 +420,16 @@ describe('TwinLegend with a building in focus (V2-15.8)', () => {
     expect(screen.getByText('Esc')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Legend' })).not.toBeInTheDocument();
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
+  it('is a floating panel marked as a one-line variant', () => {
+    useConsole.setState({ focusZoneId: 'zone-dc', selectedAssetCode: null });
+
+    renderLegend();
+
+    const panel = screen.getByText(/Walls see-through/).closest('[data-variant]');
+    expect(panel).toHaveAttribute('data-variant', 'floating');
+    expect(panel).toHaveAttribute('data-line');
   });
 
   it('asks for no zones: where Escape goes back to is always the campus', () => {

@@ -1,7 +1,7 @@
 /*
  * The 8-direction pad (V3-29, frame 24): a round box with eight arrows at the compass points of the screen and a centre
  * button. Sizes follow `--ui-scale`; the arrows sit by percentages of the box, so they stay on the circle at any scale.
- * It is a flex item of the stage's bottom-left column (`TwinStage.module.css .legends`), above the legends.
+ * It stands alone in the stage's bottom-left corner (`TwinStage.module.css .corner`), above the scale bar.
  */
 .pad {
   position: relative;

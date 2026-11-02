@@ -27,6 +27,15 @@ describe('HeatLegend (V2-17.4)', () => {
       expect(screen.queryByRole('note')).toBeNull();
     });
 
+    // V3-10.4: the surface is the Panel's; the legend stays a note and takes no tab stop.
+    it('is a floating panel that is still a note, with no tab stop', () => {
+      heatOn();
+      render(<HeatLegend />);
+
+      expect(legend()).toHaveAttribute('data-variant', 'floating');
+      expect(legend()).not.toHaveAttribute('tabindex');
+    });
+
     it('is drawn with a building in focus', () => {
       heatOn();
       act(() => useConsole.getState().focusBuilding('BLD-DC'));

@@ -107,13 +107,16 @@ describe('DragHint', () => {
     expect(screen.getByText(TEXT)).toBeInTheDocument();
   });
 
-  it('sits at the top of the visible part while the sheet is open', () => {
+  // V3-10.4: the bottom-right belongs to the legends, so the hint is always at the top of the part the sheet leaves visible.
+  // That is CSS (jsdom has no layout); what is left to assert is that it no longer switches placement with the sheet.
+  it('is shown the same way whether or not the sheet is open', () => {
     renderOnStage();
     expect(screen.getByText(TEXT)).not.toHaveAttribute('data-at');
 
     act(() => useConsole.getState().select('inc-1'));
 
-    expect(screen.getByText(TEXT)).toHaveAttribute('data-at', 'top');
+    expect(screen.getByText(TEXT)).toBeInTheDocument();
+    expect(screen.getByText(TEXT)).not.toHaveAttribute('data-at');
   });
 
   it('shows, and is dismissed in memory, when storage is blocked', () => {

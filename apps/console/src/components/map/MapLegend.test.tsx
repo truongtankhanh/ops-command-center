@@ -21,6 +21,15 @@ describe('MapLegend', () => {
     expect(screen.getByRole('list')).toBeVisible();
   });
 
+  // V3-10.4: the surface is the Panel's, so the legend is one floating panel holding the toggle and the list.
+  it('is one floating panel with the toggle and the entries inside it', () => {
+    render(<MapLegend />);
+
+    const panel = screen.getByRole('button', { name: 'Legend' }).closest('[data-variant]');
+    expect(panel).toHaveAttribute('data-variant', 'floating');
+    expect(panel).toContainElement(screen.getByRole('list'));
+  });
+
   it('lists the incidents, cameras, camera views and assets, severity last', () => {
     render(<MapLegend />);
 

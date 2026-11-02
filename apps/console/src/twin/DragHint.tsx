@@ -13,9 +13,9 @@ const DRAG_PX = 4;
  * "Drag to rotate · Pan tool or Shift + drag to pan" (V2-12.10, frame 01 `.tw-drag-hint`; V3-29 added the tool and the
  * Pan tool's own wording, "Drag to pan · Shift + drag to rotate"): a pill over the 3D stage until
  * the operator has dragged it once in this tab. It is decoration (`aria-hidden`, no pointer events): the same
- * instruction is in the stage's label for assistive tech (V2-12.12). It sits at the bottom, left of the camera
- * controls; with the sheet open it moves to the top of the part the sheet leaves visible (frame 01), where
- * it does not run into the legend. A phone has no Shift, so it is hidden there (`DragHint.module.css`).
+ * instruction is in the stage's label for assistive tech (V2-12.12). It sits at the top of the part of the stage the
+ * sheet leaves visible, clear of the legends at the bottom-right (V3-10.4; it was at the bottom until then, and
+ * moved up only while the sheet was open). A phone has no Shift, so it is hidden there (`DragHint.module.css`).
  *
  * The drag is watched on the stage box (the hint's parent), which gets the pointer events the canvas gets.
  */
@@ -23,11 +23,6 @@ export function DragHint() {
   const hint = useRef<HTMLParagraphElement>(null);
   const panTool = useConsole((s) => s.panTool);
   const [seen, setSeen] = useState(readSeen);
-  // The sheet is open when an incident or an asset is selected or a report is being written (as `App` and
-  // `CampusMap` decide it).
-  const sheetOpen = useConsole(
-    (s) => s.selectedIncidentId !== null || s.selectedAssetCode !== null || s.reporting,
-  );
 
   useEffect(() => {
     const stage = hint.current?.parentElement;
@@ -59,12 +54,7 @@ export function DragHint() {
 
   if (seen) return null;
   return (
-    <p
-      ref={hint}
-      className={styles.hint}
-      data-at={sheetOpen ? 'top' : undefined}
-      aria-hidden="true"
-    >
+    <p ref={hint} className={styles.hint} aria-hidden="true">
       {panTool ? (
         <>
           Drag to pan · <Kbd>Shift</Kbd> + drag to rotate

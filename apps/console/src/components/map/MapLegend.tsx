@@ -2,10 +2,12 @@ import { useId } from 'react';
 import { useLegendOpen } from '../../lib/shell/useLegendOpen';
 import { Icon } from '../../ui/Icon';
 import { cameraIcon, ChevronDown } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import styles from './MapLegend.module.css';
 
 /**
- * Frame 01's legend, bottom-left. Status is shape (filled = open, ring = being handled), not
+ * Frame 01's and 09's legend (V3-10.4), bottom-right beside the open sheet, a floating `Panel` with the toggle as its header and
+ * the entries in a column below. Status is shape (filled = open, ring = being handled), not
  * colour, so the swatches are neutral; the hue is severity, said in words as the last entry.
  * The three asset entries (frame 14) are the marker's three looks, each a shape and its words: the
  * light edge, the severity tint and edge, the dim dashed edge.
@@ -17,7 +19,7 @@ export function MapLegend() {
   const [open, toggle] = useLegendOpen();
 
   return (
-    <div className={styles.legend}>
+    <Panel variant="floating" className={styles.legend}>
       <button
         type="button"
         className={styles.toggle}
@@ -69,6 +71,6 @@ export function MapLegend() {
         </li>
         <li>Colour = severity</li>
       </ul>
-    </div>
+    </Panel>
   );
 }

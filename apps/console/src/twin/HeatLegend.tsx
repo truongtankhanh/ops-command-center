@@ -2,6 +2,7 @@ import { INDOOR_TEMPERATURE } from '../lib/twin-core/heatMeasures';
 import { HEAT_DOMAIN } from '../lib/twin-core/twinHeat';
 import { levelOf, showsHeat } from '../lib/twin-core/twinLevel';
 import { useConsole } from '../store';
+import { Panel } from '../ui/Panel';
 import styles from './HeatLegend.module.css';
 
 const [LOW, HIGH] = HEAT_DOMAIN;
@@ -15,7 +16,7 @@ const tickText = (tempC: number): string => `${Number(tempC.toFixed(1))} °C`;
 /**
  * What the heat colours mean (V2-17.4, frame 13 `.heat-legend`, ADR-0020 "Settled in V2-17.1" and "V2-17.4"): the
  * title, the ramp, the scale's ticks and a note, shown over the stage while the overlay is drawn (the layer is on and
- * the level is the campus or a building, `showsHeat`). Bottom-left, above the marker legend: `TwinStage` stacks them,
+ * the level is the campus or a building, `showsHeat`). Bottom-right, above the marker legend (a floating `Panel`, V3-10.4): `TwinStage` stacks them,
  * because the marker legend still explains the beacons and the cameras, and at building level it holds the line that
  * says `Esc` returns to the campus.
  *
@@ -33,7 +34,7 @@ export function HeatLegend() {
   if (!shown) return null;
 
   return (
-    <div role="note" className={styles.legend}>
+    <Panel variant="floating" role="note" className={styles.legend}>
       <p className={styles.title}>{INDOOR_TEMPERATURE.label}, by building</p>
       <div className={styles.ramp} aria-hidden="true" />
       <div className={styles.scale}>
@@ -45,6 +46,6 @@ export function HeatLegend() {
         A reading, not a severity. Every building reports one; a faded building&apos;s sensor is
         silent. The Assets tab lists each reading.
       </p>
-    </div>
+    </Panel>
   );
 }

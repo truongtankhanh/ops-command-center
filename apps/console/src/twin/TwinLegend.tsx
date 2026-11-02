@@ -9,14 +9,15 @@ import { useConsole } from '../store';
 import { Icon } from '../ui/Icon';
 import { Box, cameraIcon, ChevronDown } from '../ui/icons';
 import { Kbd } from '../ui/Kbd';
+import { Panel } from '../ui/Panel';
 import styles from './TwinLegend.module.css';
 import { useIsolation } from './useIsolation';
 
 const NO_ASSETS: Asset[] = [];
 
 /**
- * The 3D stage's legend (V2-12.10, frame 01 `.tw-legend`), bottom-left, in the 2D legend's look and with its
- * toggle: the same open or closed preference (`useLegendOpen`), so a legend closed in one view is closed in
+ * The 3D stage's legend (V2-12.10, frame 01 `.tw-legend`), in the 2D legend's look (a floating `Panel`, V3-10.4) and with
+ * its toggle: the same open or closed preference (`useLegendOpen`), so a legend closed in one view is closed in
  * the other. Status is shape (a filled disc is open, a ring is being handled), not colour, so the swatches
  * are neutral; the camera entry is the camera glyph.
  *
@@ -53,7 +54,7 @@ export function TwinLegend() {
   if (focusZoneId !== null) return <BuildingLine />;
 
   return (
-    <div className={styles.legend}>
+    <Panel variant="floating" className={styles.legend}>
       <button
         type="button"
         className={styles.toggle}
@@ -88,7 +89,7 @@ export function TwinLegend() {
           </li>
         )}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
@@ -114,7 +115,7 @@ function BuildingLine() {
 /** One sentence, then `Esc` in a key and where it goes back to; `back` is `null` while that is not known. */
 function LegendLine({ lead, back }: { lead: string; back: string | null }) {
   return (
-    <div className={styles.legend}>
+    <Panel variant="floating" className={styles.legend} data-line>
       <Icon glyph={Box} size={16} />
       <span className={styles.line}>
         {lead}
@@ -125,6 +126,6 @@ function LegendLine({ lead, back }: { lead: string; back: string | null }) {
           </>
         )}
       </span>
-    </div>
+    </Panel>
   );
 }
