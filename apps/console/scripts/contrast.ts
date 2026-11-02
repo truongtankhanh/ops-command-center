@@ -162,6 +162,9 @@ const PAIRS: Pair[] = [
   { fg: 'map zone outline', bg: 'map boundary', min: UI },
   { fg: '--text-secondary', bg: 'map boundary', min: TEXT },
   ...cross(['--accent'], ['map boundary', ...ZONE_FILLS], UI),
+  // The healthy asset's diamond (V3-10.5): a `--signal` edge, a graphic (3:1), on the diamond's own `--surface-2` fill and
+  // on what lies outside it, the ground and the site boundary. The edge is never the only cue (shape, tint, dash).
+  ...cross(['--signal'], ['--surface-2', 'map ground', 'map boundary'], UI),
   // The map tooltip on `--surface-3`: the severity label is `--text-primary`, the hue is only on the
   // icon (a graphic) — critical text would fail there (see above).
   ...cross(SEVERITIES, ['--surface-3'], UI),
@@ -478,6 +481,7 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
     ['surface2', mapColors.surface2, '--surface-2'],
     ['surface3', mapColors.surface3, '--surface-3'],
     ['accent', mapColors.accent, '--accent'],
+    ['signal', mapColors.signal, '--signal'],
     ['onAccent', mapColors.onAccent, '--on-accent'],
     ['textPrimary', mapColors.textPrimary, '--text-primary'],
     ['textSecondary', mapColors.textSecondary, '--text-secondary'],

@@ -57,6 +57,8 @@ export const mapColors = {
   surface3: '#1a3250',
   /** `--accent` */
   accent: '#3185ff',
+  /** `--signal`: the live edge of a healthy asset's diamond (V3-10.5). */
+  signal: '#35e7ff',
   /** `--on-accent` */
   onAccent: '#07111f',
   /** `--text-primary` */

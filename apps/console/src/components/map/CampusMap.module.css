@@ -1,13 +1,10 @@
 /*
- * `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners.
- *
- * `--map-controls-clearance` (V3-10.4): how far the legend is raised so it stands above the zoom controls, which share its
- * bottom-right corner until V3-10.5 moves them to a rail (frame 09): the controls' three 38 px buttons and their two 1 px
- * borders, and one `--space-2`. A look-only number; V3-10.5 deletes this property with the move. (The scale bar, bottom-left,
- * has nothing above it in 2D, so the old `--scale-bar-clearance` is gone here; the 3D stage keeps its own for the pad.)
+ * `isolation` keeps the tooltip's and controls' stacking inside the map, under the sheet and banners. (Nothing stands above
+ * the scale bar, bottom-left, or beside the legend, bottom-right, in 2D: the zoom controls are a rail at the top-left since
+ * V3-10.5, so neither `--scale-bar-clearance` nor `--map-controls-clearance` is declared here; the 3D stage keeps its own
+ * `--scale-bar-clearance` for the pad.)
  */
 .map {
-  --map-controls-clearance: calc(116px * var(--ui-scale) + var(--space-2));
   position: relative;
   min-height: 0;
   overflow: hidden;

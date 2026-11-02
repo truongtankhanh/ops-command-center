@@ -4,7 +4,9 @@ import { cameraIcon, incidentTypeIcon, severityIcon, unknownIcon } from '../../u
 import {
   addClusterCountImage,
   glyphStyle,
+  discRadiusOf,
   imageIdOf,
+  MARKER_BOX,
   type MarkerForm,
   markerSvg,
   registerMapImages,
@@ -102,8 +104,9 @@ describe('markerSvg', () => {
   it('draws an acknowledged marker as a severity ring on the ground', () => {
     const svg = markerSvg(acknowledged, '<svg/>', 1);
 
+    // Frame 09's thin ring: 2.5 px, the same as the open marker's edge.
     expect(svg).toContain(
-      `fill="${mapColors.ground}" stroke="${mapColors.severity.critical}" stroke-width="3"`,
+      `fill="${mapColors.ground}" stroke="${mapColors.severity.critical}" stroke-width="2.5"`,
     );
   });
 
@@ -126,6 +129,83 @@ describe('markerSvg', () => {
   });
 });
 
+// V3-10.5: frame 09's soft halo, drawn inside the same 28 px box. The 3D beacons use these bitmaps as their base and place
+// their rings and tags from `MARKER_BOX` and `discRadiusOf`, so the box and the radii must not move with the look.
+describe('incident halo', () => {
+  type Incident = Extract<MarkerForm, { kind: 'incident' }>;
+  const openOf = (severity: Incident['severity']): Incident => ({
+    kind: 'incident',
+    severity,
+    status: 'open',
+    type: 'fire_alarm',
+  });
+  const offsetOf = (svg: string) => Number(/<stop offset="([\d.]+)"/.exec(svg)![1]);
+
+  it('glows in the severity of an open and of an acknowledged incident', () => {
+    for (const form of [open, acknowledged]) {
+      const svg = markerSvg(form, '<svg/>', 1);
+
+      expect(svg).toContain('<radialGradient');
+      expect(svg).toContain(`stop-color="${mapColors.severity.critical}" stop-opacity="0.35"`);
+      expect(svg).toContain(`stop-color="${mapColors.severity.critical}" stop-opacity="0"`);
+    }
+  });
+
+  it('reaches the box edge and is drawn under the disc', () => {
+    const svg = markerSvg(open, '<svg/>', 1);
+
+    expect(svg).toContain(
+      `<circle cx="${MARKER_BOX / 2}" cy="${MARKER_BOX / 2}" r="${MARKER_BOX / 2}" fill="url(#halo)"/>`,
+    );
+    expect(svg.indexOf('url(#halo)')).toBeLessThan(
+      svg.indexOf(`fill="${mapColors.severity.critical}" stroke="${mapColors.ground}"`),
+    );
+  });
+
+  it('starts at the ring’s outer edge, whatever the severity', () => {
+    for (const severity of ['low', 'medium', 'high', 'critical'] as const) {
+      const form = openOf(severity);
+
+      const startsAt = offsetOf(markerSvg(form, '<svg/>', 1)) * (MARKER_BOX / 2);
+
+      // The disc's radius plus half of its 2.5 px ring.
+      expect(startsAt).toBeCloseTo(discRadiusOf(form) + 1.25, 5);
+    }
+  });
+
+  it('scales the bitmap with the pixel ratio, not the drawing', () => {
+    expect(markerSvg(acknowledged, '<svg/>', 2)).toContain(
+      'width="56" height="56" viewBox="0 0 28 28"',
+    );
+  });
+
+  it('draws none for a resolved incident, a camera or a cluster badge', () => {
+    const quiet: MarkerForm[] = [
+      { kind: 'resolved', type: 'fire_alarm' },
+      { kind: 'camera', online: true },
+      { kind: 'camera', online: false },
+      { kind: 'cluster-severity', severity: 'critical' },
+      { kind: 'asset', look: 'normal' },
+      { kind: 'asset', look: 'nodata' },
+      { kind: 'asset', look: 'fault', severity: 'high' },
+    ];
+
+    for (const form of quiet) {
+      expect(markerSvg(form, '', 1)).not.toContain('radialGradient');
+    }
+  });
+
+  it('keeps the box and the disc radii the 3D beacons read', () => {
+    const radius = (severity: Incident['severity']) => discRadiusOf(openOf(severity));
+
+    expect(MARKER_BOX).toBe(28);
+    expect([radius('low'), radius('medium'), radius('high'), radius('critical')]).toEqual([
+      10, 10, 11, 12,
+    ]);
+    expect(discRadiusOf({ kind: 'resolved', type: 'fire_alarm' })).toBe(8);
+  });
+});
+
 describe('asset diamond', () => {
   it('is a square of 8 px turned 45°, with no glyph', () => {
     const svg = markerSvg({ kind: 'asset', look: 'normal' }, '<svg id="glyph"/>', 1);
@@ -136,11 +216,11 @@ describe('asset diamond', () => {
     expect(svg).not.toContain('<g ');
   });
 
-  it('draws a normal asset on its surface with a light edge', () => {
+  it('draws a normal asset on its surface with a --signal edge (V3-10.5)', () => {
     const svg = markerSvg({ kind: 'asset', look: 'normal' }, '', 1);
 
     expect(svg).toContain(
-      `fill="${mapColors.surface2}" stroke="${mapColors.textSecondary}" stroke-width="1.5"`,
+      `fill="${mapColors.surface2}" stroke="${mapColors.signal}" stroke-width="1.5"`,
     );
     expect(svg).not.toContain('stroke-dasharray');
   });
