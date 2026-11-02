@@ -1,0 +1,152 @@
+/*
+ * The asset sheet's Related tab (V3-09.8). Sections are separated by a 1 px inset line and headed
+ * by an eyebrow, as the Details tab's and the incident sheet's Related are
+ * (`IncidentRelated.module.css`); the incident rows and the camera tiles bring their own look. No
+ * frame draws this tab's content (frame 04 draws the tab bar only), so it follows frame 03a.
+ */
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+  box-shadow: inset 0 1px 0 var(--border-subtle);
+}
+
+/* Frame 02 `.eyebrow`. */
+.section h3 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.rows {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two compact tiles to a row, as on the Details tab. */
+.cameras {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* A sibling asset (frame 03a's "Assets in this zone"): tile, then the name and code, then the state. */
+.sibling {
+  display: grid;
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sibling:hover {
+  background: var(--surface-2);
+}
+
+.siblingTile {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+}
+
+/* A fault takes its incident's hue on the tile as well as on the state's glyph. */
+.sibling[data-state='fault'] .siblingTile {
+  border-color: var(--sev);
+  color: var(--sev);
+}
+
+/* Wrapped, not cut off: the name is what tells two cooling towers apart in a 360 px sheet. */
+.siblingName {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-l);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-l);
+  overflow-wrap: anywhere;
+}
+
+.siblingCode {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+/* Device state: glyph and word, neutral; only a fault's glyph takes `--sev` (the header pill's rule). */
+.state {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}
+
+.state[data-state='running'],
+.state[data-state='fault'] {
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.state[data-state='fault'] svg {
+  color: var(--sev);
+}
+
+/* Loading: the sheet-section spacing round two rows and the camera pair. */
+.skeleton {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+}
+
+.skeletonRow {
+  height: calc(64px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+.skeletonCamera {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

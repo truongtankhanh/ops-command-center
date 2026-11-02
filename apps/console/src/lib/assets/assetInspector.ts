@@ -190,6 +190,22 @@ export function incidentsOf(asset: Pick<Asset, 'id'>, incidents: readonly Incide
     .sort(compareIncidents);
 }
 
+/**
+ * Every incident of `asset`, whatever its status, newest first by `reportedAt` (V3-09.8): the
+ * Timeline tab's list. It is a history, so deliberately not the feed's order (`compareIncidents`
+ * puts the unresolved before the resolved and then ranks by severity). Ties fall back to the id so
+ * the order never shuffles between renders. How far back it reaches is the list the caller holds:
+ * the console's own feed, not a per-asset query.
+ */
+export function incidentHistoryOf(
+  asset: Pick<Asset, 'id'>,
+  incidents: readonly Incident[],
+): Incident[] {
+  return incidents
+    .filter((incident) => incident.assetId === asset.id)
+    .sort((a, b) => b.reportedAt.localeCompare(a.reportedAt) || a.id.localeCompare(b.id));
+}
+
 // `en-GB` like `readings.ts`: "1.4", "6", "2.3".
 const METRES = new Intl.NumberFormat('en-GB', { maximumFractionDigits: 1 });
 

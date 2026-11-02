@@ -1,5 +1,7 @@
 import type {
+  Asset,
   AssetDetail,
+  Camera,
   Incident,
   LngLat,
   Role,
@@ -14,6 +16,7 @@ import { TOO_MANY_REQUESTS } from '../../api/client';
 import { queryKeys } from '../../api/queries';
 import { getAccessToken, renewSession } from '../../auth/session';
 import { useSession } from '../../auth/store';
+import { offsetM } from '../../lib/map/geo';
 import {
   type AssetTelemetryState,
   initialTelemetryState,
@@ -338,11 +341,17 @@ function renderInspector({
   detail = DETAIL,
   incidents,
   zones = [zone],
+  assets,
+  cameras = [],
   model,
 }: {
   detail?: AssetDetail;
   incidents?: Incident[];
   zones?: Zone[];
+  /** The catalogue the Related tab reads: just this asset by default. */
+  assets?: Asset[];
+  /** `null` leaves the camera list unloaded (the request stays pending). */
+  cameras?: Camera[] | null;
   /** What the model's query holds: the class's stand-in tree by default, `null` for a file with no class root,
    * `false` for nothing (the file is on its way). */
   model?: NodeInfo | null | false;
@@ -350,6 +359,9 @@ function renderInspector({
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.asset(detail.code), detail);
   client.setQueryData(queryKeys.zones, zones);
+  // The Related tab reads these too; cached, they ask for nothing (and eat no queued answer).
+  client.setQueryData(queryKeys.assets, assets ?? [detail]);
+  if (cameras !== null) client.setQueryData(queryKeys.cameras, cameras);
   if (incidents) client.setQueryData(queryKeys.incidents, incidents);
   const url = detail.class.modelUrl;
   const tree = model === undefined ? (url === null ? undefined : MODELS[url]) : model;
@@ -364,26 +376,23 @@ function renderUncached() {
   const client = createTestQueryClient();
   client.setQueryData(queryKeys.zones, [zone]);
   client.setQueryData(queryKeys.incidents, []);
+  client.setQueryData(queryKeys.assets, []);
+  client.setQueryData(queryKeys.cameras, []);
   client.setQueryData(queryKeys.model(TOWER_URL), TOWER_TREE);
   return renderWithQueryClient(<AssetInspector code="CT-01" />, client);
 }
 
-/**
- * `AssetReadings`' own section. The live tiles above it repeat its labels, its freshness line and,
- * for a stale asset, its "Last readings" title (V3-09.7, until V3-09.8 moves it), so the cases
- * about the rows start from here.
- */
-const readingsSection = (): HTMLElement => {
-  const section = document.getElementById('asset-readings-title')?.closest('section');
-  if (!section) throw new Error('no readings section');
-  return section;
-};
-
+/** A reading's row: `AssetReadings` lives on the Telemetry tab, so open it first (`openTab`). */
 const readingRow = (label: string): HTMLElement => {
-  const row = within(readingsSection()).getByText(label).closest('li');
+  const row = screen.getByText(label).closest('li');
   if (!row) throw new Error(`no reading row for ${label}`);
   return row;
 };
+
+/** Chooses a tab of the sheet ("Related" with its count is matched by a pattern). */
+function openTab(name: string | RegExp) {
+  fireEvent.click(screen.getByRole('tab', { name }));
+}
 
 /** The header's parts, found from its title: the tile before it and the chips row after it. */
 function headerOf(name = 'Cooling tower 1') {
@@ -424,15 +433,16 @@ describe('AssetInspector', () => {
   describe('live', () => {
     beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
 
-    // The readings are the inspector frame's only tab (V3-09.1); the others come with V3-09.8.
-    it('draws no tab list while the details are its only tab', () => {
+    // V3-09.8: Details, then Related (with its count), Telemetry and Timeline once the asset is there.
+    it('opens on Details with its tab list once the asset is loaded', () => {
       renderInspector({ incidents: [] });
 
       expect(
         screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
       ).toBeInTheDocument();
-      expect(screen.queryByRole('tablist')).toBeNull();
-      expect(screen.queryByRole('tabpanel')).toBeNull();
+      expect(screen.getByRole('tablist', { name: 'Asset sections' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByRole('tabpanel', { name: 'Details' })).toBeInTheDocument();
     });
 
     it('names the sheet and shows the head and the badges', () => {
@@ -454,6 +464,7 @@ describe('AssetInspector', () => {
 
     it('shows the headline and ruled points with their value, unit and rule line', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
       expect(within(readingRow('Fan speed')).getByText('1,420 rpm')).toBeInTheDocument();
@@ -465,8 +476,9 @@ describe('AssetInspector', () => {
 
     it('says how long ago, outside any live region', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
-      const text = within(readingsSection()).getByText(/^Updated \d(\.\d)? s ago$/);
+      const text = screen.getByText(/^Updated \d(\.\d)? s ago$/);
       expect(text.closest('[role="status"], [aria-live]')).toBeNull();
     });
 
@@ -477,6 +489,7 @@ describe('AssetInspector', () => {
         series: new Map([[seriesKey('CT-01', 'fanSpeedRpm'), fanSeries(400)]]),
       });
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       const fan = readingRow('Fan speed').querySelector('svg');
       expect(fan).toHaveAttribute('aria-hidden', 'true');
@@ -491,6 +504,7 @@ describe('AssetInspector', () => {
     it('tints a value past its rule with the rule severity, and says so in words', () => {
       hold({ assets: { 'CT-01': entry({ motorTempC: 92 }) }, afterMs: 400 });
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       const row = readingRow('Motor temperature');
       expect(row).toHaveAttribute('data-severity', 'critical');
@@ -576,8 +590,8 @@ describe('AssetInspector', () => {
     beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
 
     const card = () => screen.getByRole('region', { name: 'Device information' });
-    /** The tiles' section: the first of two sections titled "Last readings" when the asset is stale. */
-    const tiles = () => screen.getAllByRole('region', { name: /^(Live data|Last readings)$/ })[0];
+    /** The tiles' section: "Live data", or "Last readings" when the asset is stale. */
+    const tiles = () => screen.getByRole('region', { name: /^(Live data|Last readings)$/ });
     // The tile is the label's parent, inside the list item: it carries `data-severity` and `data-stale`.
     const tileOf = (label: string) =>
       within(tiles() as HTMLElement).getByText(label).parentElement as HTMLElement;
@@ -588,21 +602,20 @@ describe('AssetInspector', () => {
     const expectInOrder = (nodes: Element[]) =>
       nodes.slice(1).forEach((next, index) => expect(follows(nodes[index]!, next)).toBe(true));
 
-    it('goes header, card, tiles, readings, parts, incident, for a modelled class', () => {
+    it('goes header, card, tiles, parts, incident, for a modelled class', () => {
       renderInspector({ incidents: [INCIDENT] });
 
       const order = [
         headerOf().header,
         card(),
         screen.getByRole('region', { name: 'Live data' }),
-        readingsSection(),
         screen.getByRole('heading', { level: 3, name: 'Parts' }),
         screen.getByRole('heading', { level: 3, name: 'Incident raised by this asset' }),
       ];
       expectInOrder(order);
     });
 
-    it('goes card, tiles, readings, then the twin note, for a class with no model', () => {
+    it('goes card, tiles, then the twin note, for a class with no model', () => {
       hold({ assets: { 'LKS-B3': sensorEntry() }, afterMs: 400 });
 
       renderInspector({ detail: SENSOR, incidents: [] });
@@ -610,11 +623,18 @@ describe('AssetInspector', () => {
       const order = [
         card(),
         screen.getByRole('region', { name: 'Live data' }),
-        readingsSection(),
         screen.getByRole('heading', { level: 3, name: 'In the twin' }),
       ];
       expectInOrder(order);
       expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
+    });
+
+    // V3-09.8: the full list of points moved to the Telemetry tab, so Details holds the tiles alone.
+    it('no longer holds the list of readings: the tiles are all it says of the points', () => {
+      renderInspector({ incidents: [] });
+
+      expect(screen.queryByRole('heading', { name: 'Live readings' })).toBeNull();
+      expect(screen.queryByText(/^All points/)).toBeNull();
     });
 
     describe('the card', () => {
@@ -773,6 +793,7 @@ describe('AssetInspector', () => {
 
     it('keeps the other points behind a disclosure with their count', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       expect(screen.getByText('All points (4)')).toBeInTheDocument();
       const more = screen.getByText('All points (4)').closest('details');
@@ -784,6 +805,7 @@ describe('AssetInspector', () => {
 
     it('words a boolean and an enum, and draws no limit line for a boolean', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       expect(within(readingRow('Control mode')).getByText('Auto')).toBeInTheDocument();
       // An enum has no series: the value only.
@@ -795,6 +817,7 @@ describe('AssetInspector', () => {
 
     it('does not throw for a point of a kind it does not know, and shows its value', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       const odd = readingRow('Oddity');
       expect(within(odd).getByText('strange')).toBeInTheDocument();
@@ -810,6 +833,7 @@ describe('AssetInspector', () => {
       hold({ assets: { 'CT-01': without }, afterMs: 400 });
 
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       const row = readingRow('Motor temperature');
       expect(within(row).getByText('—')).toBeInTheDocument();
@@ -820,6 +844,7 @@ describe('AssetInspector', () => {
       hold({ assets: {}, afterMs: 400 });
 
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       expect(within(readingRow('Fan speed')).getByText('—')).toBeInTheDocument();
       expect(screen.queryByText(/ago$|old$/)).toBeNull();
@@ -837,19 +862,20 @@ describe('AssetInspector', () => {
 
     it('turns the eyebrow, the age and the hint to the last readings', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
-      // The rows' section: the tiles say the same in their own (V3-09.7).
-      const readings = within(readingsSection());
-      expect(readings.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
-      expect(readings.getByText('1 min 12 s old')).toBeInTheDocument();
+      // One tab at a time: the tiles on Details say "Last readings" too, but are not mounted here.
+      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      expect(screen.getByText('1 min 12 s old')).toBeInTheDocument();
       expect(
-        readings.getByText('Charts stop at the last reading; the gap is the outage.'),
+        screen.getByText('Charts stop at the last reading; the gap is the outage.'),
       ).toBeInTheDocument();
       expect(screen.getByText(/^No data since \d{2}:\d{2}$/)).toBeInTheDocument();
     });
 
     it('dims every row and stops the sparklines at the last reading', () => {
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
       const row = readingRow('Fan speed');
       expect(row).toHaveAttribute('data-stale', 'true');
@@ -861,9 +887,8 @@ describe('AssetInspector', () => {
 
     it('is live again when a fresh reading arrives', () => {
       renderInspector({ incidents: [] });
-      expect(
-        within(readingsSection()).getByRole('heading', { name: 'Last readings' }),
-      ).toBeInTheDocument();
+      openTab('Telemetry');
+      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
 
       // The reading is received again, at the API's present.
       act(() =>
@@ -888,11 +913,232 @@ describe('AssetInspector', () => {
       hold({ assets: { 'CT-01': { ...entry(), online: false } }, afterMs: 400 });
 
       renderInspector({ incidents: [] });
+      openTab('Telemetry');
 
-      expect(
-        within(readingsSection()).getByRole('heading', { name: 'Last readings' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
       expect(screen.getByText(/^Offline since \d{2}:\d{2}$/)).toBeInTheDocument();
+    });
+  });
+
+  // V3-09.8: Details, Related, Telemetry and Timeline once the asset is loaded; the foot is outside the panel.
+  describe('the tabs', () => {
+    beforeEach(() => hold({ assets: { 'CT-01': entry() }, afterMs: 400 }));
+
+    const signInAs = (role: Role) =>
+      act(() => useSession.getState().signedIn({ displayName: 'Demo User', roles: [role] }));
+
+    /** Another asset of the zone, and a camera that sees this one (offline: no stream under jsdom). */
+    const BESIDE: Asset = { ...DETAIL, id: 'asset-ct-02', code: 'CT-02', name: 'Cooling tower 2' };
+    const WATCHER: Camera = {
+      id: 'cam-1',
+      code: 'CAM-1',
+      name: 'Roof camera',
+      zoneId: zone.id,
+      position: offsetM(DETAIL.position, 0, -20),
+      online: false,
+      fieldOfView: { heading: 0, angle: 90, range: 50 },
+    };
+    const earlier = (overrides: Partial<Incident>): Incident => ({
+      ...INCIDENT,
+      id: 'inc-0',
+      code: 'INC-000090',
+      title: 'Earlier vibration alarm',
+      status: 'resolved',
+      reportedAt: new Date(RECEIVED_MS - 86_400_000).toISOString(),
+      resolvedAt: new Date(RECEIVED_MS - 80_000_000).toISOString(),
+      ...overrides,
+    });
+    const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent);
+
+    it('offers Details, Related, Telemetry and Timeline in that order, on Details', () => {
+      renderInspector({ incidents: [] });
+
+      expect(tabNames()).toEqual(['Details', 'Related 0', 'Telemetry', 'Timeline']);
+      expect(screen.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('counts what Related lists: the asset’s incident, the camera that sees it and the sibling', () => {
+      renderInspector({ incidents: [INCIDENT], assets: [DETAIL, BESIDE], cameras: [WATCHER] });
+
+      expect(screen.getByRole('tab', { name: 'Related 3' })).toBeInTheDocument();
+    });
+
+    it('gives Related no count, not a 0, while a list it needs has not arrived', () => {
+      renderInspector({ incidents: [], cameras: null });
+
+      expect(tabNames()).toEqual(['Details', 'Related', 'Telemetry', 'Timeline']);
+    });
+
+    it.each([
+      ['while it loads', () => renderUncached()],
+      [
+        'when it does not exist',
+        () => {
+          answers = [() => apiError(404, 'Asset CT-01 was not found')];
+          renderUncached();
+        },
+      ],
+    ])('keeps Details as the only tab, with no tab list, %s', async (_when, setUp) => {
+      setUp();
+      await screen.findByText(/Loading asset…|This asset no longer exists\./);
+
+      expect(screen.queryByRole('tablist')).toBeNull();
+    });
+
+    it('opens a sibling from Related, with the focus of its building', () => {
+      renderInspector({ incidents: [], assets: [DETAIL, BESIDE] });
+      openTab(/^Related/);
+      fireEvent.click(screen.getByRole('button', { name: /Cooling tower 2/ }));
+
+      // `App` keys the sheet by the selected asset, so the next one mounts on its first tab; here
+      // the store is what proves the sibling was chosen, with the focus of its building.
+      expect(useConsole.getState()).toMatchObject({
+        selectedAssetCode: 'CT-02',
+        focusZoneId: zone.id,
+      });
+    });
+
+    describe('Telemetry', () => {
+      it('holds every point, the headline and ruled first and the rest under "All points"', () => {
+        renderInspector({ incidents: [] });
+        openTab('Telemetry');
+
+        expect(screen.getByRole('tabpanel', { name: 'Telemetry' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+        expect(screen.getByText('All points (4)')).toBeInTheDocument();
+        expect(within(readingRow('Fan speed')).getByText('1,420 rpm')).toBeInTheDocument();
+      });
+
+      it('says "Last readings" once on Details and once on Telemetry for a stale asset', () => {
+        hold({ assets: { 'CT-01': entry() }, afterMs: 72_000 });
+        renderInspector({ incidents: [] });
+
+        expect(screen.getAllByRole('region', { name: 'Last readings' })).toHaveLength(1);
+        openTab('Telemetry');
+        expect(screen.getAllByRole('region', { name: 'Last readings' })).toHaveLength(1);
+        expect(screen.getByText('1 min 12 s old')).toBeInTheDocument();
+      });
+    });
+
+    describe('Related', () => {
+      it('lists the asset’s incident, the camera that sees it and the assets beside it', () => {
+        renderInspector({ incidents: [INCIDENT], assets: [DETAIL, BESIDE], cameras: [WATCHER] });
+        openTab(/^Related/);
+
+        expect(screen.getByRole('heading', { name: 'Incidents · 1' })).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { name: 'Cameras covering it · 1' }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { name: 'Assets in this zone · 1' }),
+        ).toBeInTheDocument();
+        expect(screen.getByText('Roof camera')).toBeInTheDocument();
+      });
+
+      it('opens the incident that was chosen, in place of the asset', () => {
+        renderInspector({ incidents: [INCIDENT] });
+        openTab(/^Related/);
+        fireEvent.click(screen.getByRole('button', { name: /Motor over temperature/ }));
+
+        expect(useConsole.getState().selectedIncidentId).toBe('inc-1');
+        expect(useConsole.getState().selectedAssetCode).toBeNull();
+      });
+
+      it('says nothing else is related when the lists arrived and held nothing', () => {
+        renderInspector({ incidents: [] });
+        openTab(/^Related/);
+
+        expect(screen.getByText('Nothing else is related to this asset.')).toBeInTheDocument();
+      });
+    });
+
+    describe('Timeline', () => {
+      it('lists the incidents of every status, newest first', () => {
+        renderInspector({ incidents: [earlier({}), INCIDENT] });
+        openTab('Timeline');
+
+        const codes = within(screen.getByRole('tabpanel'))
+          .getAllByRole('listitem')
+          .map((item) => within(item).getByText(/^INC-/).textContent);
+        expect(codes).toEqual(['INC-000108', 'INC-000090']);
+      });
+
+      it('says so when the asset has raised none, and says how far back it looks', () => {
+        renderInspector({ incidents: [] });
+        openTab('Timeline');
+
+        expect(
+          screen.getByText('No incidents have been raised by this asset.'),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/up to the latest 200 on site/)).toBeInTheDocument();
+      });
+
+      it('opens the incident that was chosen, in place of the asset', () => {
+        renderInspector({ incidents: [earlier({}), INCIDENT] });
+        openTab('Timeline');
+        fireEvent.click(screen.getByRole('button', { name: /INC-000090$/ }));
+
+        expect(useConsole.getState().selectedIncidentId).toBe('inc-0');
+        expect(useConsole.getState().selectedAssetCode).toBeNull();
+      });
+    });
+
+    describe('what a tab change leaves alone', () => {
+      it('keeps the header, the state pill and the foot on every tab', () => {
+        signInAs('operator');
+        renderInspector({ incidents: [INCIDENT] });
+        const chips = headerOf().chips;
+
+        for (const name of [/^Related/, 'Telemetry', 'Timeline', 'Details']) {
+          openTab(name);
+          expect(headerOf().chips).toEqual(chips);
+          expect(
+            screen.getByRole('button', { name: 'Report a fault on CT-01' }),
+          ).toBeInTheDocument();
+        }
+      });
+
+      it('is read only and the same for a viewer: four tabs and the view-only note on each', () => {
+        signInAs('viewer');
+        renderInspector({ incidents: [] });
+
+        expect(tabNames()).toHaveLength(4);
+        for (const name of ['Details', /^Related/, 'Telemetry', 'Timeline']) {
+          openTab(name);
+          expect(screen.getByRole('note')).toHaveAttribute('data-footer', 'view-only');
+        }
+      });
+
+      // The callout belongs to the scene: leaving Details does not clear it (V2-15.11 stays as built).
+      it('closes a part’s callout first with Escape, from a tab other than Details', () => {
+        useConsole.getState().selectAsset('CT-01', null);
+        useConsole.getState().selectPart('FanBlade');
+        renderInspector({ incidents: [] });
+        openTab('Telemetry');
+
+        fireEvent.keyDown(screen.getByRole('complementary', { name: 'Asset CT-01' }), {
+          key: 'Escape',
+        });
+
+        expect(useConsole.getState()).toMatchObject({
+          selectedPart: null,
+          selectedAssetCode: 'CT-01',
+        });
+      });
+
+      it('closes the asset and the part at once with Close, from a tab other than Details', () => {
+        useConsole.getState().selectAsset('CT-01', null);
+        useConsole.getState().selectPart('FanBlade');
+        renderInspector({ incidents: [] });
+        openTab('Timeline');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Close asset' }));
+
+        expect(useConsole.getState()).toMatchObject({
+          selectedPart: null,
+          selectedAssetCode: null,
+        });
+      });
     });
   });
 
@@ -1259,7 +1505,7 @@ describe('AssetInspector', () => {
       expect(
         screen.getByRole('heading', { level: 2, name: 'Cooling tower 1' }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
       await waitFor(() =>
         expect(fetchMock).toHaveBeenCalledWith(TOWER_URL, { headers: { Range: 'bytes=0-65535' } }),
       );
@@ -1271,7 +1517,7 @@ describe('AssetInspector', () => {
       expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
       expect(screen.queryByText('Loading parts…')).toBeNull();
       expect(screen.queryByText('No 3D model')).toBeNull();
-      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
     });
 
     it('leaves the Parts section out when the model cannot be read, the sheet still working', async () => {
@@ -1287,7 +1533,7 @@ describe('AssetInspector', () => {
       expect(screen.queryByRole('heading', { name: 'Parts' })).toBeNull();
       expect(screen.queryByText('No 3D model')).toBeNull();
       expect(screen.queryByRole('heading', { name: 'In the twin' })).toBeNull();
-      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
     });
   });
 
@@ -1543,7 +1789,7 @@ describe('AssetInspector', () => {
 
       renderInspector({ incidents: [INCIDENT] });
 
-      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Live data' })).toBeInTheDocument();
       expect(screen.getByRole('tree', { name: 'Parts of CT-01' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Open INC-000108' })).toBeInTheDocument();
     });
@@ -1673,6 +1919,8 @@ describe('AssetInspector', () => {
       client.setQueryData(queryKeys.asset('CT-01'), DETAIL);
       client.setQueryData(queryKeys.zones, [zone]);
       client.setQueryData(queryKeys.incidents, []);
+      client.setQueryData(queryKeys.assets, [DETAIL]);
+      client.setQueryData(queryKeys.cameras, []);
       client.setQueryData(queryKeys.model(TOWER_URL), TOWER_TREE);
       renderWithQueryClient(
         <Profiler id="inspector" onRender={onRender}>
@@ -1715,8 +1963,8 @@ describe('AssetInspector', () => {
         })),
       );
       expect(onRender.mock.calls.length).toBeGreaterThan(before);
-      // The parts list shows the fan blade's reading too: scope to the readings row.
-      expect(within(readingRow('Fan speed')).getByText('1,500 rpm')).toBeInTheDocument();
+      // The parts list shows the fan blade's reading too: read the fan speed's tile.
+      expect(screen.getByText('Fan speed').parentElement).toHaveTextContent('1,500');
     });
   });
 });

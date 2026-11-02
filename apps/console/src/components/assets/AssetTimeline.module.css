@@ -1,0 +1,149 @@
+/*
+ * The asset sheet's Timeline tab (V3-09.8): a column of entries, one button each, under the tab
+ * list. The entry keeps the feed row's look at a smaller size (`IncidentRow.module.css`): the type
+ * in a tile hued by the severity's tint and border pairs that `scripts/contrast.ts` checks, a
+ * resolved incident stepping back to neutral. Frame 04 draws no content for this tab.
+ */
+
+.section {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--section-pad-y) var(--space-5);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Tile, then the type and severity on line 1, the time and status on line 2, the code on line 3. */
+.entry {
+  display: grid;
+  grid-template-columns: calc(40px * var(--ui-scale)) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.entry:hover {
+  background: var(--surface-2);
+}
+
+.entry[data-severity='critical'] {
+  --entry-tint: var(--sev-critical-bg);
+  --entry-edge: var(--sev-critical-border);
+}
+
+.entry[data-severity='high'] {
+  --entry-tint: var(--sev-high-bg);
+  --entry-edge: var(--sev-high-border);
+}
+
+.entry[data-severity='medium'] {
+  --entry-tint: var(--sev-medium-bg);
+  --entry-edge: var(--sev-medium-border);
+}
+
+.entry[data-severity='low'] {
+  --entry-tint: var(--sev-low-bg);
+  --entry-edge: var(--sev-low-border);
+}
+
+.tile {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  border: 1px solid var(--entry-edge);
+  border-radius: var(--radius-m);
+  background: var(--entry-tint);
+  color: var(--sev);
+}
+
+/* A resolved incident needs nothing more: its tile steps back to neutral, the words stay. */
+.entry[data-status='resolved'] .tile {
+  border-color: var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-tertiary);
+}
+
+/* Wrapped, not cut off: the type is what tells two entries apart. */
+.type {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-l);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-l);
+  overflow-wrap: anywhere;
+}
+
+.entry[data-status='resolved'] .type {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+.severity {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+/* The clock and the age, in numerals that do not shift as the age ticks. */
+.time {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.status {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+}
+
+.code {
+  grid-column: 2 / 4;
+  grid-row: 3;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+/* Loading: as tall as an entry, so nothing jumps when the list arrives. */
+.skeletonEntry {
+  height: calc(72px * var(--ui-scale));
+  border-radius: var(--radius-m);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
