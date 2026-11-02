@@ -20,7 +20,12 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { fetchGlbJson, nodeInfos } from '../lib/twin-core/glbJson';
-import { mergeIncidentLists, newerIncident, upsertIncident } from '../lib/incidents/incidents';
+import {
+  INCIDENT_LIST_LIMIT,
+  mergeIncidentLists,
+  newerIncident,
+  upsertIncident,
+} from '../lib/incidents/incidents';
 import type { NodeInfo } from '../lib/twin-core/twinBindings';
 import { api, ApiRequestError } from './client';
 
@@ -164,7 +169,7 @@ export const useAssetHistory = (code: string | null, range?: AssetHistoryRange) 
 export const useIncidents = () =>
   useQuery({
     queryKey: queryKeys.incidents,
-    queryFn: () => api.get<Incident[]>('/incidents?limit=200'),
+    queryFn: () => api.get<Incident[]>(`/incidents?limit=${INCIDENT_LIST_LIMIT}`),
     staleTime: Infinity, // kept fresh by WebSocket events, refetched on reconnect
     // A refetch can be older than events applied while it was in flight: merge, never roll back.
     structuralSharing: (cached, fetched) =>
