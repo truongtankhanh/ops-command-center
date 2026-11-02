@@ -1,10 +1,13 @@
 import type { RefObject } from 'react';
 import { ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR } from '../lib/twin-core/twinCamera';
 import { twinCommands } from '../lib/twin-core/twinCommands';
+import { focusSelection } from '../lib/twin-core/twinFocus';
 import { resetView } from '../lib/twin-core/twinFlight';
+import { useFocusableSelection } from '../lib/twin-core/useFocusableSelection';
 import { Button } from '../ui/Button';
 import { useConsole } from '../store';
-import { Hand, House, Minus, Orbit, Plus, RotateCcw, RotateCw } from '../ui/icons';
+import { Crosshair, Hand, House, Minus, Orbit, Plus, RotateCcw, RotateCw } from '../ui/icons';
+import { Panel } from '../ui/Panel';
 import styles from './TwinControls.module.css';
 
 /**
@@ -23,21 +26,32 @@ interface TwinControlsProps {
 }
 
 /**
- * The 3D stage's camera controls (V2-12.10, frame 01), bottom-right beside the open sheet: the compass, which
- * faces north in one press, the drag tool (Orbit or Pan, V3-29), and zoom, rotate and reset. Everything goes through `twinCommands`, so this knows
- * nothing of the canvas, and a press does nothing while no rig is registered (the chunk is still loading, or
- * the scene is empty).
+ * The 3D stage's camera controls (V2-12.10, frame 01; a rail since V3-10.2): one floating `Panel` down the **left**
+ * edge of the stage, below the stage bar, so the open sheet, which lies over the right, never covers it and it needs
+ * no `--sheet-inset`. In the order they are tabbed to: the compass, which faces north in one press, the drag tool
+ * (Orbit or Pan, V3-29), zoom, rotate and reset, and, only while an asset or part is selected and the scene draws
+ * it, "Focus". Everything goes through `twinCommands`, so this knows nothing of the canvas, and a press does nothing
+ * while no rig is registered (the chunk is still loading, or the scene is empty).
  *
  * The compass is named "Face north" and, once the view is turned, says by how much ("Face north — the view
  * is rotated 60°", frame 00); the needle is a shape (north is the accent half), so direction is not colour
- * alone. The same for every role: moving the camera is not an action on the site.
+ * alone. `CompassSync` finds the needle as the button's one `svg` and renames the button, so both stay as they are.
+ *
+ * "Focus" is `AssetFoot`'s button and command (`focusSelection`, the same `focusAvailable` rule through
+ * `useFocusableSelection`): a second entry, not a second behaviour, so an asset's sheet and the rail can both offer it.
+ * It is icon-only like its neighbours, so `F` is announced through `aria-keyshortcuts` while single-key shortcuts
+ * are on (as Pan does for `P`); the labelled button in the inspector's foot is where the key is drawn. `TwinShortcuts`
+ * owns the key itself.
+ *
+ * The same for every role: moving the camera is not an action on the site.
  */
 export function TwinControls({ compassRef }: TwinControlsProps) {
   const panTool = useConsole((s) => s.panTool);
   const setPanTool = useConsole((s) => s.setPanTool);
   const keysOn = useConsole((s) => s.keyboardShortcuts);
+  const focusTarget = useFocusableSelection();
   return (
-    <div className={styles.cluster}>
+    <Panel variant="floating" className={styles.rail}>
       <button
         type="button"
         ref={compassRef}
@@ -116,6 +130,18 @@ export function TwinControls({ compassRef }: TwinControlsProps) {
           onClick={resetView}
         />
       </div>
-    </div>
+      {focusTarget && (
+        <div role="group" aria-label="Selection" className={styles.group}>
+          <Button
+            variant="ghost"
+            icon={Crosshair}
+            aria-label="Focus"
+            aria-keyshortcuts={keysOn ? 'F' : undefined}
+            className={styles.button}
+            onClick={() => focusSelection(focusTarget.assetCode, focusTarget.part)}
+          />
+        </div>
+      )}
+    </Panel>
   );
 }

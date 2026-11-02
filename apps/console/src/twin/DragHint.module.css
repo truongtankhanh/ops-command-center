@@ -1,11 +1,12 @@
 /*
- * Frame 01's `.tw-drag-hint`: a 30 px pill, bottom of the 3D stage, to the left of the camera controls (a 40 px
- * column with its gap and edge: 52 px from the right). The sheet (`--sheet-inset`, set on the stage) moves it
- * with the controls, and `data-at='top'` lifts it to the top of the part the sheet leaves visible.
+ * Frame 01's `.tw-drag-hint`: a 30 px pill, bottom of the 3D stage, at the right edge. The camera controls used to stand
+ * there and the hint cleared them by 52 px; they are a rail on the left since V3-10.2, so it sits flush. The legends'
+ * move to the bottom-right (V3-10.4) will place it again. The sheet (`--sheet-inset`, set on the stage) moves it,
+ * and `data-at='top'` lifts it to the top of the part the sheet leaves visible.
  */
 .hint {
   position: absolute;
-  right: calc(var(--sheet-inset, 0px) + var(--space-3) + 52px * var(--ui-scale));
+  right: calc(var(--sheet-inset, 0px) + var(--space-3));
   bottom: var(--space-3);
   display: inline-flex;
   align-items: center;
