@@ -1,15 +1,13 @@
 /*
  * Frame 01's and 09's legend (V3-10.4): bottom-right, beside the open sheet (`--sheet-inset`, set on the stage), so the
  * bottom-left is the scale bar's. A floating `Panel` supplies the surface (hairline, radius, glass, shadow), so none is
- * restated here; this is the layout: the toggle on top, the entries in a column below it.
- *
- * It stands above the 2D zoom controls, which are in the same corner until V3-10.5 moves them to a rail, by
- * `--map-controls-clearance` (`CampusMap.module.css`, set on the map; V3-10.5 deletes it).
+ * restated here; this is the layout: the toggle on top, the entries in a column below it. The corner is its own: the zoom
+ * controls are a rail at the top-left since V3-10.5.
  */
 .legend {
   position: absolute;
   right: calc(var(--sheet-inset, 0px) + var(--space-3));
-  bottom: calc(var(--space-3) + var(--map-controls-clearance, 0px));
+  bottom: var(--space-3);
   display: flex;
   flex-direction: column;
   align-items: flex-start;

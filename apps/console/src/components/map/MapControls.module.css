@@ -1,37 +1,30 @@
 /*
- * Frame 01's map controls. No `overflow: hidden` on the group (the frame clips its corners that
- * way): it would also clip the buttons' focus ring. The end buttons round their own corners.
- * `--sheet-inset` (set on the stage, App.module.css) moves them beside the open sheet (frame 02).
+ * Frame 09's `.rail` (V3-10.5): the 2D map's zoom and fit buttons as one compact column down the left edge, under the
+ * stage bar (`StageView.module.css .tools`, which ends at 54 px, so 64 px clears it), where the 3D view's camera rail
+ * stands (`twin/TwinControls.module.css`, V3-10.2), so a switch of view does not move it. It repeats that rail's few
+ * lines because the 2D map is main-chunk code and cannot import from `src/twin/` (ADR-0020). It is a floating `Panel`,
+ * which supplies the surface, the hairline, the large radius and the shadow, so none is restated here. The open sheet
+ * lies over the right, so there is no `--sheet-inset` offset.
+ *
+ * Three `--control-dense` buttons make it about 126 px tall. No `overflow: hidden`: it would clip the focus rings.
  */
 .controls {
   position: absolute;
-  right: calc(var(--sheet-inset, 0px) + var(--space-3));
-  bottom: var(--space-3);
-  display: grid;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
-  background: var(--surface-1);
-  box-shadow: var(--shadow-2);
+  top: calc(64px * var(--ui-scale));
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
 }
 
 /* Higher specificity than `Button`'s own rule, so the override does not depend on CSS order. */
 .controls .button {
-  width: calc(38px * var(--ui-scale));
-  height: calc(38px * var(--ui-scale));
+  width: var(--control-dense);
+  height: var(--control-dense);
   padding: 0;
-  border-radius: 0;
-}
-
-.controls .button:first-child {
-  border-radius: calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px) 0 0;
-}
-
-.controls .button:last-child {
-  border-radius: 0 0 calc(var(--radius-m) - 1px) calc(var(--radius-m) - 1px);
-}
-
-.controls .button + .button {
-  box-shadow: inset 0 1px 0 var(--border-subtle);
+  border-radius: var(--radius-s);
 }
 
 /* The look of `Button`'s `:disabled`, for a button that keeps its focus at a zoom limit. */

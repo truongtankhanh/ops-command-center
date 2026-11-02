@@ -26,7 +26,10 @@ import {
  * The map's marker images, drawn from the same glyphs as the rest of the console (docs/design/icons.md,
  * "Map glyphs"). Each marker form is one pre-composed image — disc and glyph together — so a
  * single symbol layer can order overlapping markers correctly, and glyphs stay crisp at 12–14 px.
- * Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam` in docs/design/mockups/console.css).
+ * Geometry follows frames 01, 02 and 04 (`.mk-*`, `.pl-cam` in docs/design/mockups/console.css); the incident's thin
+ * ring and soft halo and the asset's live edge follow frame 09 (V3-10.5), drawn inside the same boxes: the 3D beacons
+ * use these bitmaps as their base and place their rings and tags from `MARKER_BOX` and `discRadiusOf`, so neither
+ * moves with the look.
  */
 
 export type MarkerForm =
@@ -70,9 +73,18 @@ const GLYPH_SIZE: Record<IncidentSeverity, number> = {
   high: 13,
   critical: 14,
 };
+/** The ring of an active incident, open (ground edge on the lit core) or acknowledged (severity ring on the ground). */
+const INCIDENT_RING = 2.5;
+/**
+ * The halo's strength where it starts, at the ring's outer edge; it fades to nothing at the box edge. It fills only
+ * what the ring leaves of the box (about 2.75 px for Low and Medium down to 0.75 px for Critical, whose pulse layers
+ * carry its emphasis), and every severity uses the same strength. A starting value, tuned on screen at DPR 1 and 2.
+ */
+const HALO_OPACITY = 0.35;
 /**
  * Smaller than every severity step (10 to 12), because Low is a neutral ring now (ADR-0022) and an acknowledged Low
- * and a resolved incident are otherwise the same disc: ground fill, a 3 px ring, the type glyph.
+ * and a resolved incident are otherwise close: a ground fill, a ring and the type glyph. The resolved one has the
+ * smaller disc, the neutral ring and no halo.
  */
 const RESOLVED = { radius: 8, glyph: 10 };
 
@@ -193,9 +205,11 @@ function shapeSvg(form: MarkerForm, centre: number): string {
     case 'incident': {
       const hue = mapColors.severity[form.severity];
       const radius = DISC_RADIUS[form.severity];
-      return form.status === 'open'
-        ? disc(centre, radius, hue, mapColors.ground, 2.5)
-        : disc(centre, radius, mapColors.ground, hue, 3);
+      const body =
+        form.status === 'open'
+          ? disc(centre, radius, hue, mapColors.ground, INCIDENT_RING)
+          : disc(centre, radius, mapColors.ground, hue, INCIDENT_RING);
+      return halo(centre, radius + INCIDENT_RING / 2, hue) + body;
     }
     case 'cluster-severity':
       // Ground-coloured edge, like an open marker, so the badge stands off the cluster's ring.
@@ -206,9 +220,24 @@ function shapeSvg(form: MarkerForm, centre: number): string {
 }
 
 /**
- * The asset's look is fill, edge and dash, so no colour is the only cue: normal is a light edge, a
- * fault is the incident's severity (a tint and an edge in that hue), no data is a dim dashed edge
- * (frame 14 `.is-stale`; stale is the dash, not a brighter outline).
+ * A soft glow in the severity's hue around an active incident (frame 09 `.m2`): a radial gradient that starts at the
+ * ring's outer edge (`inner`, in px from the centre) and fades to nothing at the box edge, drawn under the disc. Each
+ * image is its own SVG document, so the gradient's id cannot collide with another marker's.
+ */
+function halo(centre: number, inner: number, hue: string): string {
+  return [
+    '<defs><radialGradient id="halo" cx="50%" cy="50%" r="50%">',
+    `<stop offset="${inner / centre}" stop-color="${hue}" stop-opacity="${HALO_OPACITY}"/>`,
+    `<stop offset="1" stop-color="${hue}" stop-opacity="0"/>`,
+    '</radialGradient></defs>',
+    `<circle cx="${centre}" cy="${centre}" r="${centre}" fill="url(#halo)"/>`,
+  ].join('');
+}
+
+/**
+ * The asset's look is fill, edge and dash, so no colour is the only cue: normal is a `--signal` edge (frame 09; the
+ * diamond, not a colour, is what tells it from an incident), a fault is the incident's severity (a tint and an edge in
+ * that hue), no data is a dim dashed edge (frame 14 `.is-stale`; stale is the dash, not a brighter outline).
  */
 function diamond(centre: number, form: Extract<MarkerForm, { kind: 'asset' }>): string {
   const half = ASSET_SIDE / 2;
@@ -219,7 +248,7 @@ function diamond(centre: number, form: Extract<MarkerForm, { kind: 'asset' }>): 
     `stroke="${colour}" stroke-width="${ASSET_STROKE}"${extra}`;
   switch (form.look) {
     case 'normal':
-      return rect(`fill="${mapColors.surface2}" ${edge(mapColors.textSecondary)}`);
+      return rect(`fill="${mapColors.surface2}" ${edge(mapColors.signal)}`);
     case 'nodata':
       return rect(
         `fill="${mapColors.surface2}" ${edge(mapColors.staleEdge, ' stroke-dasharray="2 2"')}`,

@@ -2,11 +2,13 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { useEffect, useState } from 'react';
 import { Button } from '../../ui/Button';
 import { Minus, Plus, Scan } from '../../ui/icons';
+import { Panel } from '../../ui/Panel';
 import styles from './MapControls.module.css';
 
 /**
- * Frame 01's zoom and fit buttons, bottom-right, in place of MapLibre's white `NavigationControl`.
- * The canvas keeps MapLibre's own keyboard zoom (`+` / `-`) while it has focus.
+ * The map's zoom and fit buttons in place of MapLibre's white `NavigationControl`: a floating `Panel` rail down the
+ * left edge under the stage bar, the look of the 3D view's camera rail (V3-10.2) and where frame 09 draws it, so a
+ * switch of view does not move it. The canvas keeps MapLibre's own keyboard zoom (`+` / `-`) while it has focus.
  *
  * At a zoom limit the button is `aria-disabled`, not `disabled`: a disabled button drops keyboard
  * focus, so pressing Zoom in until the limit would throw the operator out of the group. MapLibre
@@ -34,7 +36,7 @@ export function MapControls({ map, onFit }: { map: MapLibreMap | null; onFit: ()
   }, [map]);
 
   return (
-    <div role="group" aria-label="Map view" className={styles.controls}>
+    <Panel variant="floating" role="group" aria-label="Map view" className={styles.controls}>
       <Button
         variant="ghost"
         icon={Plus}
@@ -61,6 +63,6 @@ export function MapControls({ map, onFit }: { map: MapLibreMap | null; onFit: ()
         disabled={!map}
         onClick={onFit}
       />
-    </div>
+    </Panel>
   );
 }

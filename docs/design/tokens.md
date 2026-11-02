@@ -378,6 +378,9 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--accent`          | `map zone sports`                              | 3.66  | 3       | pass                                                                                       |
 | `--accent`          | `map zone utility`                             | 4.28  | 3       | pass                                                                                       |
 | `--accent`          | `map zone water`                               | 4.31  | 3       | pass                                                                                       |
+| `--signal`          | `--surface-2`                                  | 10.27 | 3       | pass                                                                                       |
+| `--signal`          | `map ground`                                   | 12.65 | 3       | pass                                                                                       |
+| `--signal`          | `map boundary`                                 | 11.45 | 3       | pass                                                                                       |
 | `--sev-critical`    | `--surface-3`                                  | 3.87  | 3       | pass                                                                                       |
 | `--sev-high`        | `--surface-3`                                  | 7.00  | 3       | pass                                                                                       |
 | `--sev-medium`      | `--surface-3`                                  | 8.60  | 3       | pass                                                                                       |
@@ -478,6 +481,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `mapColors.surface2` (src/styles/tokens.ts)                | #12263b                                 | #12263b                                 | match  |
 | `mapColors.surface3` (src/styles/tokens.ts)                | #1a3250                                 | #1a3250                                 | match  |
 | `mapColors.accent` (src/styles/tokens.ts)                  | #3185ff                                 | #3185ff                                 | match  |
+| `mapColors.signal` (src/styles/tokens.ts)                  | #35e7ff                                 | #35e7ff                                 | match  |
 | `mapColors.onAccent` (src/styles/tokens.ts)                | #07111f                                 | #07111f                                 | match  |
 | `mapColors.textPrimary` (src/styles/tokens.ts)             | #e7f2ff                                 | #e7f2ff                                 | match  |
 | `mapColors.textSecondary` (src/styles/tokens.ts)           | #a6b8c5                                 | #a6b8c5                                 | match  |
