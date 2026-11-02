@@ -2,11 +2,14 @@
  * Frame 01's legend. It wraps instead of running under the map controls at the bottom-right
  * (40 px wide with their border, `--space-3` from the edge), which sit beside the open sheet
  * (`--sheet-inset`, set on the stage).
+ *
+ * It stands above the scale bar (V3-10.3) by `--scale-bar-clearance`, which `CampusMap.module.css` sets on the map. V3-10.4
+ * moves the legend to the bottom-right and takes the clearance off.
  */
 .legend {
   position: absolute;
   left: var(--space-3);
-  bottom: var(--space-3);
+  bottom: calc(var(--space-3) + var(--scale-bar-clearance, 0px));
   display: flex;
   align-items: center;
   gap: var(--space-3);

@@ -57,6 +57,7 @@ import styles from './CampusMap.module.css';
 import { LoadFailed, RateLimited } from '../shell/LoadStates';
 import { MapControls } from './MapControls';
 import { MapLegend } from './MapLegend';
+import { MapScale } from './MapScale';
 import { MapTooltip } from './MapTooltip';
 
 /**
@@ -278,6 +279,12 @@ export function CampusMap({ wall = false }: { wall?: boolean } = {}) {
         <>
           <MapTooltip map={map} />
           <MapLegend />
+          {/* Frame 09's scale bar, true at the site's latitude (V3-10.3); the legend is raised above it (`.map`). */}
+          <MapScale
+            map={map}
+            latitude={(sitePlan?.center ?? zones?.[0]?.center)?.[1]}
+            className={styles.scale}
+          />
           <MapControls map={map} onFit={() => map && fitCampus(map, sheetOpen, focusMs)} />
         </>
       )}

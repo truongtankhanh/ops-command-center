@@ -31,6 +31,7 @@ import { PixelRatio } from './PixelRatio';
 import { Pointer } from './Pointer';
 import { ReportPin } from './ReportPin';
 import { Rig } from './Rig';
+import { ScaleSync } from './ScaleSync';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
 import { ZoneHighlight } from './ZoneHighlight';
@@ -91,6 +92,8 @@ interface TwinCanvasProps {
   labelLayer: RefObject<HTMLDivElement | null>;
   /** The compass button `TwinControls` renders, which `CompassSync` turns and renames from the camera. */
   compassRef: RefObject<HTMLButtonElement | null>;
+  /** The scale bar `TwinScale` renders, whose width and label `ScaleSync` writes from the camera (V3-10.3). */
+  scaleRef: RefObject<HTMLDivElement | null>;
   /**
    * The part callout's leader (V2-15.10), which `LeaderProjector` (under `Equipment`) draws from the card to the selected
    * part: the overlay's line and dot (`LeaderOverlay`) and where the line starts, the card's edge.
@@ -102,7 +105,7 @@ interface TwinCanvasProps {
   hudRef: RefObject<HTMLDListElement | null>;
   /**
    * The video wall's canvas (V2-21.6): the rig is locked, the pixel ratio is pinned to 1.0, the markers are drawn at the
-   * wall's scale, and nothing that takes input is mounted (`PickLayer`, `Pointer`, `ReportPin`, `CompassSync`).
+   * wall's scale, and nothing that takes input is mounted (`PickLayer`, `Pointer`, `ReportPin`, `CompassSync`, `ScaleSync`).
    */
   wall?: boolean;
 }
@@ -146,7 +149,8 @@ interface TwinCanvasProps {
  * - The leader of the part callout (V2-15.10) is an SVG beside the canvas, drawn by `LeaderProjector` under `Equipment` from
  *   the selected part's bounds on each drawn frame, through refs, with no React render.
  * - The compass is a DOM button beside the canvas; `CompassSync` turns and renames it from the camera on each
- *   drawn frame, through a ref.
+ *   drawn frame, through a ref. The scale bar (V3-10.3) is the same: `ScaleSync` writes its width and label from the
+ *   camera on each drawn frame, through a ref.
  * - The zone labels are DOM elements outside the canvas; `LabelProjector` is the one thing inside it
  *   that touches them, placing them from the camera on each drawn frame.
  * - `frameloop="demand"`: a frame is drawn only when something asks for one (a moving part, an
@@ -160,7 +164,7 @@ interface TwinCanvasProps {
  *   clamps the display's ratio into the range, so the canvas draws at `min(devicePixelRatio, ratio)`. The step is
  *   remembered for the life of the page (`rememberDprStep`), so a switch to 2D and back does not start again at 1.5.
  * - **On a video wall** (`wall`, V2-21.6) it draws the picture and takes nothing: no `PickLayer` (what is drawn registers no
- *   pick: `usePicker` is `null` outside one), no `Pointer`, no `ReportPin`, no `CompassSync`, and a locked `Rig` that sets the
+ *   pick: `usePicker` is `null` outside one), no `Pointer`, no `ReportPin`, no `CompassSync`, no `ScaleSync`, and a locked `Rig` that sets the
  *   home view once and moves only for a command. The pixel ratio starts at `WALL_DPR` and `PixelRatio` is pinned there
  *   (`wall`), whatever the display's ratio, and `FrameGuard` gives the 3D view up for the 2D map when frames stay too slow (V2-21.9); the camera markers and the beacons are drawn at the wall's scale
  *   (`markerScale.ts`), as the DOM labels are by `--ui-scale`.
@@ -180,6 +184,7 @@ export function TwinCanvas({
   onInvalidate,
   labelLayer,
   compassRef,
+  scaleRef,
   leaderLineRef,
   leaderDotRef,
   leaderStartRef,
@@ -257,6 +262,7 @@ export function TwinCanvas({
             <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
             <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
             {!wall && <CompassSync compassRef={compassRef} />}
+            {!wall && <ScaleSync scaleRef={scaleRef} />}
           </FrameDriver>
         </MarkerScaleContext.Provider>
       )}
