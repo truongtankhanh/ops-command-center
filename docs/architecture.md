@@ -188,14 +188,15 @@ Incidents are drawn in the 3D stage, the camera moves for them only when the ope
 
 Two sets of constants in the console decide what it flags about the incident list. Both are **display only**: derived in the browser from the incidents and the asset catalogue it already holds, the same on every console, stored nowhere, enforced by no server and read by every role. Neither is an SLA, and both are **provisional (`unverified`)** until operations has read them against real incidents.
 
-| Constant (`lib/incidents/`)               | Value                                     | Meaning                                                                                           |
-| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `ATTENTION_THRESHOLD_MS` (`incidents.ts`) | critical 2 min, high 5, medium 15, low 30 | An open (unacknowledged) incident older than this is flagged in the feed; acknowledging clears it |
-| `ALARM_RATE_WINDOW_MS` (`alarmLoad.ts`)   | 10 min                                    | The window the rate "Alarms N / 10 min" counts the incidents raised in, of any source             |
-| `FLOOD_START_ABOVE`, `FLOOD_END_BELOW`    | above 10 starts a flood, below 5 ends it  | The figures ISA-18.2 and EEMUA 191 give for process plants, held between the two (hysteresis)     |
-| `ALARM_HISTORY_MS`, `RAISED_BUCKETS`      | 3 h, 18 buckets of 10 min                 | How far back the flood is replayed and the panel's chart reaches                                  |
-| `NOISY_WINDOW_MS`, `NOISY_TOP`            | 24 h, five assets                         | The assets that raised the most incidents, listed in the panel                                    |
-| `INCIDENT_LIST_LIMIT` (`incidents.ts`)    | 200                                       | The page of incidents the console loads; a full page makes every alarm-load figure a lower bound  |
+| Constant (`lib/incidents/`)                         | Value                                     | Meaning                                                                                                     |
+| --------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `ATTENTION_THRESHOLD_MS` (`attentionCountdown.ts`)  | critical 2 min, high 5, medium 15, low 30 | An open (unacknowledged) incident older than this is flagged in the feed; acknowledging clears it           |
+| `ATTENTION_SOON_FRACTION` (`attentionCountdown.ts`) | 0.25                                      | An open incident with this share of its threshold left, or less, counts down as "soon" before it is overdue |
+| `ALARM_RATE_WINDOW_MS` (`alarmLoad.ts`)             | 10 min                                    | The window the rate "Alarms N / 10 min" counts the incidents raised in, of any source                       |
+| `FLOOD_START_ABOVE`, `FLOOD_END_BELOW`              | above 10 starts a flood, below 5 ends it  | The figures ISA-18.2 and EEMUA 191 give for process plants, held between the two (hysteresis)               |
+| `ALARM_HISTORY_MS`, `RAISED_BUCKETS`                | 3 h, 18 buckets of 10 min                 | How far back the flood is replayed and the panel's chart reaches                                            |
+| `NOISY_WINDOW_MS`, `NOISY_TOP`                      | 24 h, five assets                         | The assets that raised the most incidents, listed in the panel                                              |
+| `INCIDENT_LIST_LIMIT` (`incidents.ts`)              | 200                                       | The page of incidents the console loads; a full page makes every alarm-load figure a lower bound            |
 
 A flood raises nothing and notifies no one: the status bar shows the rate, a banner offers "Group by zone" (a view of the feed, not stored), and the panel behind the status bar's segment lists the measures. The video wall shows the rate as text and draws neither the banner nor the panel. No endpoint, event, permission or environment variable is involved.
 

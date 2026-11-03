@@ -16,6 +16,7 @@ import {
   type ZoneKind,
   type ZoneUse,
 } from '@occ/contracts';
+import { attentionCountdown } from './attentionCountdown';
 
 /** The longest title the API accepts for a reported incident; the report form's limit. */
 export const REPORT_TITLE_MAX = 160;
@@ -224,25 +225,15 @@ export function countActiveBySeverity(incidents: Incident[]): SeverityCounts {
   return counts;
 }
 
-const MINUTE_MS = 60_000;
+// The thresholds moved with the countdown that uses them (V3-22.1); importers of this module still find them here.
+export { ATTENTION_THRESHOLD_MS } from './attentionCountdown';
 
 /**
- * How long an incident may stay open (not acknowledged) before the feed flags its age. Provisional
- * values from the design brief (Approved decision 3), still to be confirmed with operations.
- * Display only, not an SLA: nothing enforces it server-side, and OCC-26 replaces it with the
- * server's SLA.
+ * An open incident waiting past its attention threshold. Acknowledging it clears the flag. The one rule is the countdown's:
+ * `overdue` from the deadline on.
  */
-export const ATTENTION_THRESHOLD_MS: Readonly<Record<IncidentSeverity, number>> = {
-  critical: 2 * MINUTE_MS,
-  high: 5 * MINUTE_MS,
-  medium: 15 * MINUTE_MS,
-  low: 30 * MINUTE_MS,
-};
-
-/** An open incident waiting past its attention threshold. Acknowledging it clears the flag. */
 export const isPastAttention = (incident: Incident, now: number): boolean =>
-  incident.status === 'open' &&
-  now - Date.parse(incident.reportedAt) >= ATTENTION_THRESHOLD_MS[incident.severity];
+  attentionCountdown(incident, now)?.state === 'overdue';
 
 /** Compact age for scanning a list: `now`, `45s`, `12m`, `3h`, `2d`. */
 export function formatAge(fromIso: string, now: number): string {
