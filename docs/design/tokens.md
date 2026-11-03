@@ -434,11 +434,11 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-medium`      | `--sev-medium-bg` over `--surface-2`           | 7.19  | 3       | pass                                                                                       |
 | `--text-primary`    | `--sev-low-bg` over `--surface-2`              | 10.50 | 4.5     | pass                                                                                       |
 | `--sev-low`         | `--sev-low-bg` over `--surface-2`              | 4.53  | 3       | pass                                                                                       |
-| `--danger`          | `--row-selected-bg`                            | 5.56  | 3       | pass                                                                                       |
-| `--danger`          | `--sev-critical-bg` over `--surface-1`         | 6.49  | 3       | pass                                                                                       |
-| `--danger`          | `--sev-high-bg` over `--surface-1`             | 5.64  | 3       | pass                                                                                       |
-| `--danger`          | `--sev-medium-bg` over `--surface-1`           | 5.35  | 3       | pass                                                                                       |
-| `--danger`          | `--sev-low-bg` over `--surface-1`              | 5.85  | 3       | pass                                                                                       |
+| `--danger`          | `--row-selected-bg`                            | 5.56  | 4.5     | pass                                                                                       |
+| `--danger`          | `--sev-critical-bg` over `--surface-1`         | 6.49  | 4.5     | pass                                                                                       |
+| `--danger`          | `--sev-high-bg` over `--surface-1`             | 5.64  | 4.5     | pass                                                                                       |
+| `--danger`          | `--sev-medium-bg` over `--surface-1`           | 5.35  | 4.5     | pass                                                                                       |
+| `--danger`          | `--sev-low-bg` over `--surface-1`              | 5.85  | 4.5     | pass                                                                                       |
 | `--text-secondary`  | `--sev-critical-bg` over `--row-selected-bg`   | 5.59  | 3       | pass                                                                                       |
 | `--warning`         | `--sev-critical-bg` over `--row-selected-bg`   | 6.45  | 3       | pass                                                                                       |
 | `--danger`          | `--sev-critical-bg` over `--row-selected-bg`   | 4.98  | 3       | pass                                                                                       |

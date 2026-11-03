@@ -1,17 +1,27 @@
 import type { Incident } from '@occ/contracts';
 import type { ComponentProps } from 'react';
 import {
+  attentionCountdown,
+  countdownSpeech,
+  formatCountdown,
+} from '../../lib/incidents/attentionCountdown';
+import {
   formatAge,
   isPastAttention,
   severityLabel,
   typeLabel,
 } from '../../lib/incidents/incidents';
 import { useConsole } from '../../store';
+import { CountdownRing } from '../../ui/CountdownRing';
 import { Icon } from '../../ui/Icon';
 import { Clock, incidentTypeIcon } from '../../ui/icons';
 import { SeverityBadge } from '../../ui/SeverityBadge';
 import { StatusChip } from '../../ui/StatusChip';
 import styles from './IncidentRow.module.css';
+
+/** An overdue time already reads "+m:ss over"; only a time still left needs its word (frame 17: "4:02 left"). */
+const countdownLabel = (remainingMs: number): string =>
+  remainingMs > 0 ? `${formatCountdown(remainingMs)} left` : formatCountdown(remainingMs);
 
 /**
  * One incident in the feed (frames 01 and 02). The tile shows the incident's type in the severity's hue; the
@@ -33,6 +43,15 @@ import styles from './IncidentRow.module.css';
  *
  * `readOnly` (the video wall's list, V2-21.5) draws the same row as text: not a button, so nothing to press or tab
  * to, no selection and no hover. It also counts the incident the wall holds in focus as fresh, for as long as it is.
+ *
+ * `countdown` (V3-22.3, frame 17) adds the time an open incident has left before its attention threshold: a ring and
+ * `m:ss left`, then `+m:ss over`, on the chip's line under the age. It is off by default and only the feed and the wall
+ * turn it on: the other lists that draw this row (the sheets' Related tabs) keep a 15 s clock, which would show a figure
+ * standing still and then jumping. The block is `aria-hidden` and never a live region; the row's name carries the
+ * coarse sentence of `countdownSpeech` instead, which changes once a minute, so a focused row is not read out again
+ * every second. The age keeps its late look (V3-07.2); the block's own `Clock` is only for `soon`, because an overdue row
+ * already has the age's clock, the word "over" and a full danger ring. Colour never says it alone. The figure is an
+ * attention threshold, display only and not an SLA: nothing enforces it on the server (V1 Approved decision 3).
  */
 export function IncidentRow({
   incident,
@@ -43,18 +62,25 @@ export function IncidentRow({
   tabIndex,
   onFocus,
   readOnly = false,
+  countdown = false,
 }: {
   incident: Incident;
   zone?: string;
   tag?: string;
   now: number;
   readOnly?: boolean;
+  countdown?: boolean;
 } & Pick<ComponentProps<'button'>, 'ref' | 'tabIndex' | 'onFocus'>) {
   const selected = useConsole((s) => s.selectedIncidentId === incident.id);
   const fresh = useConsole((s) => s.fresh.has(incident.id));
   const focusedOnWall = useConsole((s) => s.wallFocusId === incident.id);
   const select = useConsole((s) => s.select);
   const late = isPastAttention(incident, now);
+  // `null` for an acknowledged or resolved incident, so acknowledging removes the block with the next render.
+  const left = countdown ? attentionCountdown(incident, now) : null;
+  // One hidden phrase after the age, one text node. With a countdown it is the coarse sentence, which already says
+  // "past attention time" once overdue; without one, the V3-07.2 words.
+  const spoken = left ? countdownSpeech(left) : late ? 'past attention time' : null;
 
   const body = (
     <>
@@ -73,8 +99,15 @@ export function IncidentRow({
       <time className={styles.age} dateTime={incident.reportedAt} data-late={late}>
         {late && <Icon glyph={Clock} size={14} />}
         {formatAge(incident.reportedAt, now)}
-        {late && <span className={styles.hidden}>, past attention time</span>}
+        {spoken && <span className={styles.hidden}>{`, ${spoken}`}</span>}
       </time>
+      {left && (
+        <span className={styles.countdown} aria-hidden="true" data-attention={left.state}>
+          <CountdownRing fraction={left.fraction} state={left.state} />
+          {left.state === 'soon' && <Icon glyph={Clock} size={14} />}
+          <span>{countdownLabel(left.remainingMs)}</span>
+        </span>
+      )}
       <StatusChip status={incident.status} className={styles.status} />
       <span className={styles.foot}>
         {zone && (

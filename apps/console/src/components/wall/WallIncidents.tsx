@@ -19,6 +19,10 @@ const LOADING_ROWS = 5;
  * selection, no filter and no scroll. It shows as many rows as fit; the heading over it (`WallApp`) counts all of them.
  * The incident the wall holds in focus keeps the row's "fresh" look while it does (V2-21.8 sets it).
  *
+ * Each open incident also shows its attention countdown (V3-22.3, frame 17), as text: a ring and the time left, nothing to
+ * focus. The wall's clock is `useNow(5000)`, five seconds being enough for the soon and overdue states, so the `m:ss`
+ * steps every 5 s here and not every second as in the feed.
+ *
  * The list is a `ul`; it is not announced when it changes, because the wall's own focus banner is what announces a new
  * critical incident (V2-21.8), and a list that reads itself out on every update would talk all day.
  */
@@ -64,6 +68,7 @@ export function WallIncidents() {
             zone={zoneName.get(incident.zoneId)}
             now={now}
             readOnly
+            countdown
           />
         </li>
       ))}
