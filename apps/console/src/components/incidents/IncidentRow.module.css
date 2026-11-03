@@ -147,6 +147,38 @@
   font-weight: var(--weight-semibold);
 }
 
+/*
+ * The attention countdown (V3-22.3, frame 17): ring and time left, on the chip's line in the age's column, so the row
+ * keeps its three lines and its height (the frame stacks it under the age, which would grow line 1). The ring is 18 px
+ * and the line 20 px, the chip's own height. Column 4 is `auto`, so it now sizes to this block and the title gives up
+ * some width. The status below spans columns 3 and 4 but sits at the start of its cell, so the two do not touch.
+ * Tabular figures keep the digits from jittering each second. State is an attribute (ADR-0016); the ring and the text
+ * are decorative (`aria-hidden`), the row's name has the sentence.
+ */
+.countdown {
+  grid-column: 4;
+  grid-row: 2;
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.countdown[data-attention='soon'] {
+  color: var(--warning);
+}
+
+.countdown[data-attention='overdue'] {
+  color: var(--danger);
+  font-weight: var(--weight-semibold);
+}
+
 /* Line 2: the severity chip (`SeverityBadge`, size `s`), then the status. */
 .severity {
   grid-column: 2;

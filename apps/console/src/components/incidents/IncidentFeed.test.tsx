@@ -475,6 +475,76 @@ describe('IncidentFeed', () => {
     });
   });
 
+  // V3-22.3 (frame 17): the rows count down on the clock of `useCountdownNow`: one second under ten minutes, else 15 s.
+  describe('attention countdown', () => {
+    // Only the clock's timers are faked, as in the grouped case below; the faked clock stands still until advanced.
+    const fakeClock = () => vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    const reportedAgo = (ageMs: number) => new Date(Date.now() - ageMs).toISOString();
+    const doorRow = () => screen.getByRole('button', { name: /Door forced open/ });
+    const blockIn = (element: HTMLElement) => element.querySelector('[data-attention]');
+
+    afterEach(() => vi.useRealTimers());
+
+    it('ticks every second while an open incident is within ten minutes of its threshold', () => {
+      fakeClock();
+      // High: 5 minutes. One minute old leaves 4:00.
+      renderFeed([{ ...incidents[0]!, reportedAt: reportedAgo(60_000) }]);
+      expect(blockIn(doorRow())).toHaveTextContent('4:00 left');
+
+      act(() => vi.advanceTimersByTime(1000));
+
+      expect(blockIn(doorRow())).toHaveTextContent('3:59 left');
+    });
+
+    it('ticks every 15 s when no open incident is that close', () => {
+      fakeClock();
+      // Low: 30 minutes. One minute old leaves 29:00, far from the threshold.
+      renderFeed([
+        { ...incidents[0]!, severity: 'low', title: 'Slow one', reportedAt: reportedAgo(60_000) },
+      ]);
+      const slow = () => screen.getByRole('button', { name: /Slow one/ });
+      expect(blockIn(slow())).toHaveTextContent('29:00 left');
+
+      act(() => vi.advanceTimersByTime(14_000));
+      expect(blockIn(slow())).toHaveTextContent('29:00 left');
+
+      act(() => vi.advanceTimersByTime(1000));
+      expect(blockIn(slow())).toHaveTextContent('28:45 left');
+    });
+
+    it('takes the countdown off the row at once when the incident is acknowledged', async () => {
+      const client = createTestQueryClient();
+      const open = { ...incidents[0]!, reportedAt: reportedAgo(60_000) };
+      client.setQueryData(queryKeys.incidents, [open]);
+      client.setQueryData(queryKeys.zones, [zone]);
+      renderWithQueryClient(<IncidentFeed />, client);
+      expect(blockIn(doorRow())).not.toBeNull();
+
+      // A newer version, or the cached copy is kept (`mergeIncidentLists`).
+      act(() =>
+        client.setQueryData(queryKeys.incidents, [
+          { ...open, status: 'acknowledged', acknowledgedAt: new Date().toISOString(), version: 2 },
+        ]),
+      );
+
+      // TanStack tells its observers on a timer, so the row follows a tick later: wait for it, as RTL does.
+      await waitFor(() => expect(doorRow()).toHaveAttribute('data-status', 'acknowledged'));
+      expect(blockIn(doorRow())).toBeNull();
+    });
+
+    it('shows none on the acknowledged or resolved rows of the list', async () => {
+      renderFeed([
+        ...incidents,
+        { ...incidents[0]!, id: 'd', title: 'Done too', status: 'resolved' },
+      ]);
+      await userEvent.click(screen.getByRole('tab', { name: /^All/ }));
+
+      // Four rows, and only the open one counts down.
+      expect(screen.getAllByRole('button', { name: /severity,/ })).toHaveLength(4);
+      expect(document.querySelectorAll('[data-attention]')).toHaveLength(1);
+    });
+  });
+
   describe('tab counts', () => {
     it('counts each tab', () => {
       renderFeed();
@@ -1115,6 +1185,20 @@ describe('IncidentFeed', () => {
 
         expect(gymRow).toHaveAttribute('aria-expanded', 'false');
         expect(incidentRow('g1')).toBeNull();
+      });
+
+      it('counts down on the incident rows of the opened group, not on its group row', async () => {
+        renderFlood();
+        choose();
+        const gymRow = screen.getByRole('button', { name: GYM });
+        expect(document.querySelector('[data-attention]')).toBeNull();
+
+        await userEvent.click(gymRow);
+
+        // g1, g2 and g3 are open; g4 is acknowledged.
+        expect(document.querySelectorAll('[data-attention]')).toHaveLength(3);
+        expect(gymRow.querySelector('[data-attention]')).toBeNull();
+        expect(incidentRow('g4')!.querySelector('[data-attention]')).toBeNull();
       });
 
       it('opens the incident of an opened group as a row does anywhere', async () => {

@@ -218,12 +218,18 @@ const PAIRS: Pair[] = [
       { fg: sev, bg: `${sev}-bg`, over: under, min: UI },
     ]),
   ),
-  // The countdown ring (V3-22.2, frame 17) sits at the right of the feed row and in the inspector header: its arc is a graphic (3:1) in
-  // `--text-secondary` (normal), `--warning` (soon) or `--danger` (overdue). On `--surface-1..3` the three are text pairs above; this adds
-  // `--danger` on the selected row and the three strokes on a severity tint, a fresh row's over `--surface-1`, and a selected or hovered
-  // fresh row's over `--row-selected-bg` and `--surface-2`. The `+m:ss over` text in `--danger` on the tints is V3-22.3's pair.
-  { fg: '--danger', bg: '--row-selected-bg', min: UI },
-  ...SEVERITIES.map((sev) => ({ fg: '--danger', bg: `${sev}-bg`, over: '--surface-1', min: UI })),
+  // The countdown (V3-22.2, V3-22.3, frame 17) sits at the right of the feed row and in the inspector header, in `--text-secondary`
+  // (normal), `--warning` (soon) or `--danger` (overdue): the ring's arc is a graphic (3:1) and the `m:ss left` / `+m:ss over` beside it
+  // is text (4.5:1), in the same colour. On `--surface-1..3` the three are text pairs above. The row's text sits on a ground of three
+  // kinds: the selected surface (`--danger` here, the other two above), a fresh row's tint over `--surface-1` (`--danger` here, the other
+  // two above), and the hover surface (above). Those are held at the text bar.
+  { fg: '--danger', bg: '--row-selected-bg', min: TEXT },
+  ...SEVERITIES.map((sev) => ({ fg: '--danger', bg: `${sev}-bg`, over: '--surface-1', min: TEXT })),
+  // A fresh row's tint is set with `background`, so it replaces the selected and the hover surface instead of layering on it
+  // (`IncidentRow.module.css`: the `arrive` keyframes and the fresh critical rule out-rank `[aria-current]` and `:hover`). The tint
+  // over those two is therefore not a ground the row's text sits on; it stays at the graphic bar the ring was proved at (V3-22.2),
+  // and the text is proved on the tint over `--surface-1` above. Decided with the tech lead on 2026-11-03 (V3-22.3): at the text bar
+  // `--danger` reads 3.99 – 4.35 and `--text-secondary` 4.48 on three of these.
   ...['--row-selected-bg', '--surface-2'].flatMap((under) =>
     SEVERITIES.flatMap((sev) =>
       ['--text-secondary', '--warning', '--danger'].map((fg) => ({

@@ -105,6 +105,40 @@ describe('WallIncidents', () => {
     expect(container.querySelectorAll('button, a[href], input, [tabindex]')).toHaveLength(0);
   });
 
+  // V3-22.3 (frame 17): each open incident shows its attention countdown as text; the wall's clock steps every 5 s.
+  it('shows the countdown of an open incident, and none for an acknowledged one', () => {
+    renderList({
+      incidents: [
+        incident('open', { severity: 'critical' }),
+        incident('handled', { severity: 'critical', status: 'acknowledged' }),
+      ],
+    });
+
+    const openRow = screen.getByText(/Title open/).closest('li')!;
+    const block = openRow.querySelector('[data-attention]');
+    expect(block).not.toBeNull();
+    expect(block?.querySelector('svg[data-state]')).not.toBeNull();
+    // These incidents were reported weeks ago, so a critical one is long past its two minutes.
+    expect(block).toHaveAttribute('data-attention', 'overdue');
+    expect(block).toHaveTextContent(/^\+.* over$/);
+    expect(
+      screen
+        .getByText(/Title handled/)
+        .closest('li')!
+        .querySelector('[data-attention]'),
+    ).toBeNull();
+  });
+
+  it('shows the time left of a new incident, and still has nothing to press or tab to', () => {
+    const { container } = renderList({
+      incidents: [incident('new', { severity: 'critical', reportedAt: new Date().toISOString() })],
+    });
+
+    expect(container.querySelector('[data-attention]')).toHaveTextContent(/^\d:\d\d left$/);
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    expect(container.querySelectorAll('button, a[href], input, [tabindex]')).toHaveLength(0);
+  });
+
   it('draws only the rows that can fit, and the heading above it counts them all', () => {
     renderList({
       incidents: Array.from({ length: WALL_LIST_LIMIT + 5 }, (_, i) =>

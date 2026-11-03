@@ -22,8 +22,8 @@ import {
 import { groupByZone, groupedEntries, groupIdOf } from '../../lib/incidents/groupByZone';
 import { nextRowIndex } from '../../lib/incidents/rowNavigation';
 import { useAlarmLoad } from '../../lib/incidents/useAlarmLoad';
+import { useCountdownNow } from '../../lib/incidents/useCountdownNow';
 import { formatClockTime } from '../../lib/shared/time';
-import { useNow } from '../../lib/shared/useNow';
 import { useShortcut } from '../../lib/shell/useShortcut';
 import { useConsole } from '../../store';
 import { Button } from '../../ui/Button';
@@ -60,7 +60,6 @@ export function IncidentFeed() {
   const setGroupByZone = useConsole((s) => s.setGroupByZone);
   const { flood } = useAlarmLoad();
   const selectedId = useConsole((s) => s.selectedIncidentId);
-  const now = useNow();
   const [query, setQuery] = useState('');
   const [focusId, setFocusId] = useState<string | null>(null);
   // The zones the operator opened in the grouped list. Feed-local and kept when grouping is switched off and on again.
@@ -100,6 +99,9 @@ export function IncidentFeed() {
   const visible = (incidents ?? []).filter(
     (incident) => matchesFilter(incident, filter, scope) && matches(incident),
   );
+  // The rows' clock (V3-22.3): one timer for the list, every second only while an open incident is within ten minutes of its
+  // attention threshold or past it, else every 15 s (V3-22.2). It is read after `visible`, which it watches; the counts take no clock.
+  const now = useCountdownNow(visible);
   const counts = loaded && incidents ? countByFilter(incidents, matches, scope) : null;
   const tabs = counts ? offered.map((tab) => ({ ...tab, count: counts[tab.value] })) : offered;
   const matchStatus =
@@ -263,6 +265,7 @@ export function IncidentFeed() {
                         zone={zoneName.get(entry.incident.zoneId)}
                         tag={tagged ? categoryTag(entry.incident, scope) : undefined}
                         now={now}
+                        countdown
                         ref={(element) => {
                           rowRefs.current[index] = element;
                         }}
@@ -279,6 +282,7 @@ export function IncidentFeed() {
                       zone={zoneName.get(incident.zoneId)}
                       tag={tagged ? categoryTag(incident, scope) : undefined}
                       now={now}
+                      countdown
                       ref={(element) => {
                         rowRefs.current[index] = element;
                       }}

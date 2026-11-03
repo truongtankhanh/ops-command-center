@@ -2,7 +2,7 @@ import type { Incident } from '@occ/contracts';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useConsole } from '../../store';
-import { renderWithQueryClient, resetStore } from '../../test-utils';
+import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../../test-utils';
 import { IncidentRow } from './IncidentRow';
 
 const incident: Incident = {
@@ -125,6 +125,140 @@ describe('IncidentRow', () => {
 
       expect(screen.getByText('5m')).toHaveAttribute('data-late', 'false');
       expect(screen.queryByText(/past attention time/)).toBeNull();
+    });
+  });
+
+  // V3-22.3 (frame 17): the time left before the attention threshold, which is 2 minutes for a critical incident.
+  describe('attention countdown', () => {
+    const REPORTED = Date.parse(incident.reportedAt);
+    const renderAt = (ageMs: number, overrides: Partial<Incident> = {}) =>
+      renderWithQueryClient(
+        <IncidentRow incident={{ ...incident, ...overrides }} now={REPORTED + ageMs} countdown />,
+      );
+    const blockOf = (container: HTMLElement) => container.querySelector('[data-attention]');
+
+    it('shows a neutral ring and the time left, with no clock, on a new critical incident', () => {
+      const { container } = renderAt(30_000);
+
+      const block = blockOf(container);
+      expect(block).toHaveAttribute('data-attention', 'normal');
+      expect(block).toHaveTextContent('1:30 left');
+      expect(block?.querySelector('svg[data-state]')).toHaveAttribute('data-state', 'normal');
+      // The ring alone: the clock is for soon.
+      expect(block?.querySelectorAll('svg')).toHaveLength(1);
+    });
+
+    it('is still neutral with 31 s left', () => {
+      const { container } = renderAt(89_000);
+
+      expect(blockOf(container)).toHaveAttribute('data-attention', 'normal');
+      expect(blockOf(container)).toHaveTextContent('0:31 left');
+    });
+
+    it('turns to the warning state, with a clock and the words, at a quarter left (30 s)', () => {
+      const { container } = renderAt(90_000);
+
+      const block = blockOf(container);
+      expect(block).toHaveAttribute('data-attention', 'soon');
+      expect(block).toHaveTextContent('0:30 left');
+      expect(block?.querySelector('svg[data-state]')).toHaveAttribute('data-state', 'soon');
+      expect(block?.querySelectorAll('svg')).toHaveLength(2);
+    });
+
+    it('reads the time over in the danger state, a full ring, and the age keeps its late look', () => {
+      const { container } = renderAt(125_000);
+
+      const block = blockOf(container);
+      expect(block).toHaveAttribute('data-attention', 'overdue');
+      expect(block).toHaveTextContent('+0:05 over');
+      expect(block?.querySelector('svg[data-state]')).toHaveAttribute('data-state', 'overdue');
+      // The clock beside the age is the age's (V3-07.2), not a second one in the countdown.
+      expect(block?.querySelectorAll('svg')).toHaveLength(1);
+      const age = container.querySelector('time');
+      expect(age).toHaveAttribute('data-late', 'true');
+      expect(age?.querySelector('svg')).not.toBeNull();
+    });
+
+    it.each(['acknowledged', 'resolved'] as const)('shows none on a %s incident', (status) => {
+      const { container } = renderAt(30_000, { status });
+
+      expect(blockOf(container)).toBeNull();
+    });
+
+    it('is off unless asked for, as in the lists of the sheets', () => {
+      const { container } = renderWithQueryClient(<IncidentRow incident={incident} now={NOW} />);
+
+      expect(blockOf(container)).toBeNull();
+      expect(
+        screen.getByRole('button', { name: /5m,\s*past attention time\s*Open/ }),
+      ).toBeInTheDocument();
+    });
+
+    it('is drawn on the wall’s read-only row, with nothing to focus', () => {
+      const { container } = renderWithQueryClient(
+        <IncidentRow incident={incident} now={REPORTED + 30_000} readOnly countdown />,
+      );
+
+      expect(blockOf(container)).toHaveTextContent('1:30 left');
+      expect(container.querySelectorAll('button, a[href], input, [tabindex]')).toHaveLength(0);
+    });
+
+    it('is hidden from assistive tech and is not a live region', () => {
+      const { container } = renderAt(30_000);
+
+      const block = blockOf(container);
+      expect(block).toHaveAttribute('aria-hidden', 'true');
+      expect(block?.querySelector('[role], [aria-live]')).toBeNull();
+      expect(screen.queryByRole('status')).toBeNull();
+    });
+
+    describe('the name', () => {
+      it('holds one sentence in whole minutes, the same for a second and different by the minute', () => {
+        const { rerender } = renderAt(30_000);
+        expect(
+          screen.getByRole('button', { name: /30s,\s*attention time in 2 minutes\s*Open/ }),
+        ).toBeInTheDocument();
+
+        // 31 s: the figure on screen moved, the sentence did not.
+        rerender(<IncidentRow incident={incident} now={REPORTED + 31_000} countdown />);
+        expect(
+          screen.getByRole('button', { name: /31s,\s*attention time in 2 minutes\s*Open/ }),
+        ).toBeInTheDocument();
+
+        // 59 s left: less than a minute.
+        rerender(<IncidentRow incident={incident} now={REPORTED + 61_000} countdown />);
+        expect(
+          screen.getByRole('button', { name: /1m,\s*attention time in less than a minute\s*Open/ }),
+        ).toBeInTheDocument();
+      });
+
+      it('says "past attention time" once when overdue, in minutes', () => {
+        renderWithQueryClient(<IncidentRow incident={incident} now={NOW} countdown />);
+
+        const row = screen.getByRole('button', {
+          name: /5m,\s*past attention time by 3 minutes\s*Open/,
+        });
+        expect(row.textContent?.match(/past attention time/g)).toHaveLength(1);
+      });
+
+      it('says "just past" in the first minute over', () => {
+        renderAt(125_000);
+
+        expect(
+          screen.getByRole('button', { name: /2m,\s*just past attention time\s*Open/ }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('has no axe violations with a soon row and an overdue row', async () => {
+      renderWithQueryClient(
+        <>
+          <IncidentRow incident={{ ...incident, id: 'soon' }} now={REPORTED + 90_000} countdown />
+          <IncidentRow incident={{ ...incident, id: 'over' }} now={REPORTED + 125_000} countdown />
+        </>,
+      );
+
+      await expectNoAxeViolations();
     });
   });
 
