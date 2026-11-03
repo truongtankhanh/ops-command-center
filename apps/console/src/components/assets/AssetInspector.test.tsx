@@ -578,6 +578,16 @@ describe('AssetInspector', () => {
       expect(headerOf().chips).toEqual(['Data Center · roof', 'No open incidents']);
     });
 
+    // V3-22.4: the attention countdown is the incident sheet's chip; an asset's header has none, even with an open incident.
+    it('draws no attention countdown, even with an open incident on the asset', () => {
+      renderInspector({ incidents: [INCIDENT] });
+
+      const { header } = headerOf();
+      expect(header.querySelector('[data-attention]')).toBeNull();
+      expect(within(header).queryByText(/to attention|attention time/)).toBeNull();
+      expect(document.querySelector('[data-attention]')).toBeNull();
+    });
+
     it('has the asset name as the sheet’s only level-2 heading', () => {
       renderInspector({ incidents: [] });
 

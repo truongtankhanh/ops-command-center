@@ -20,6 +20,7 @@ import { SeverityBadge } from '../../ui/SeverityBadge';
 import { Skeleton } from '../../ui/Skeleton';
 import { StatusChip } from '../../ui/StatusChip';
 import { CameraTile } from '../cameras/CameraTile';
+import { AttentionChip } from './AttentionChip';
 import styles from './IncidentDetail.module.css';
 import { IncidentDevice } from './IncidentDevice';
 import { IncidentEvidence } from './IncidentEvidence';
@@ -238,8 +239,9 @@ function reporterLabel(source: Detail['source']): string {
 /**
  * The header of the sheet (frame 02): the type's icon in a tile of the severity's hue, the title, the
  * code and the zone, Close, then the chips: severity, how long ago it was reported, the status (the
- * stepper in the body says the same in full), the type, the category and the source. The type and
- * the status are words as well as glyphs, so the tile is decorative.
+ * stepper in the body says the same in full), while the incident is open the time left before its
+ * attention threshold (V3-22.4), the type, the category and the source. The type and the status are
+ * words as well as glyphs, so the tile is decorative.
  */
 function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: ReactNode }) {
   const { data: zones = [] } = useZones();
@@ -268,6 +270,7 @@ function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: 
       <SeverityBadge severity={incident.severity} />
       <IncidentAge reportedAt={incident.reportedAt} />
       <StatusChip status={incident.status} form="pill" />
+      <AttentionChip incident={incident} />
       <span className={styles.chip}>
         <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
         {typeLabel(incident.type)}
