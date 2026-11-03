@@ -60,6 +60,12 @@ const fetchMock = vi.fn<typeof fetch>();
 /** What the next `GET /incidents` answer, one factory each; once empty, a request stays pending. */
 let incidentAnswers: (() => Response)[] = [];
 
+const urlOf = (input: Parameters<typeof fetch>[0]): string =>
+  typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+/** How many times the feed asked for the incident list, whatever else it asked for. */
+const incidentRequests = () =>
+  fetchMock.mock.calls.filter(([input]) => urlOf(input).includes('/incidents')).length;
+
 /** A body can be read only once, so build one per call. */
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
@@ -81,13 +87,16 @@ describe('IncidentFeed', () => {
       filter: 'active',
       severity: null,
       category: null,
+      groupByZone: false,
       selectedIncidentId: null,
       reporting: false,
       fresh: new Set(),
       offlineSince: null,
     });
     incidentAnswers = [];
-    fetchMock.mockReset().mockImplementation(() => {
+    fetchMock.mockReset().mockImplementation((input) => {
+      // Only the incident list is answered. The catalogue that the alarm load reads (V3-21.4) stays pending, as before it was read.
+      if (!urlOf(input).includes('/incidents')) return new Promise<Response>(() => {});
       const answer = incidentAnswers.shift();
       return answer ? Promise.resolve(answer()) : new Promise<Response>(() => {});
     });
@@ -626,7 +635,7 @@ describe('IncidentFeed', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
       expect(await screen.findByText('Door forced open')).toBeInTheDocument();
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(incidentRequests()).toBe(2);
     });
 
     it('waits calmly while too many requests are retried', async () => {
@@ -952,6 +961,289 @@ describe('IncidentFeed', () => {
 
       expect(useConsole.getState().selectedIncidentId).toBe('a');
       expect(row(/Door forced open/)).toHaveAttribute('aria-current', 'true');
+    });
+  });
+
+  // V3-21.4: during an alarm flood the feed can show one row per zone. It is a view of the same incidents: the flood comes from
+  // the list and the clock (`useAlarmLoad`), the choice from the banner's switch, and the filters still apply to the rows.
+  describe('grouped by zone', () => {
+    const gym: Zone = { ...zone, id: 'z2', code: 'BLD-GYM', name: 'Gym' };
+    const dorm: Zone = { ...zone, id: 'z3', code: 'BLD-DORM', name: 'Dormitory' };
+
+    const raisedIncident = (
+      id: string,
+      zoneId: string,
+      severity: Incident['severity'],
+      status: Incident['status'] = 'open',
+      ageMs = 60_000,
+    ): Incident => ({
+      ...base,
+      id,
+      title: `Incident ${id}`,
+      zoneId,
+      severity,
+      status,
+      reportedAt: new Date(Date.now() - ageMs).toISOString(),
+    });
+
+    /** 12 in the last minute: Gym 4 (worst critical, 3 open), Dormitory 2 (critical, 2 open), Library 6 (high, 6 open). */
+    const flood = (ageMs = 60_000): Incident[] => [
+      raisedIncident('g1', 'z2', 'critical', 'open', ageMs),
+      raisedIncident('g2', 'z2', 'medium', 'open', ageMs),
+      raisedIncident('g3', 'z2', 'medium', 'open', ageMs),
+      raisedIncident('g4', 'z2', 'medium', 'acknowledged', ageMs),
+      raisedIncident('d1', 'z3', 'critical', 'open', ageMs),
+      raisedIncident('d2', 'z3', 'high', 'open', ageMs),
+      ...['l1', 'l2', 'l3', 'l4', 'l5', 'l6'].map((id) =>
+        raisedIncident(id, 'z1', 'high', 'open', ageMs),
+      ),
+    ];
+
+    /** `zones: null` leaves the zones unanswered, as when they have not arrived. */
+    function renderFlood(list: Incident[] = flood(), zones: Zone[] | null = [zone, gym, dorm]) {
+      const client = new QueryClient();
+      client.setQueryData(queryKeys.incidents, list);
+      if (zones) client.setQueryData(queryKeys.zones, zones);
+      return render(
+        <QueryClientProvider client={client}>
+          <IncidentFeed />
+        </QueryClientProvider>,
+      );
+    }
+
+    const choose = () => act(() => useConsole.setState({ groupByZone: true }));
+    const groupRows = () => screen.queryAllByRole('button', { name: /, worst / });
+    const groupNames = () => groupRows().map((button) => button.getAttribute('aria-label'));
+    const GYM = /^Gym, /;
+    const DORM = /^Dormitory, /;
+    const LIBRARY = /^Library, /;
+    const incidentRow = (id: string) =>
+      screen.queryByRole('button', { name: new RegExp(`Incident ${id}`) });
+
+    afterEach(() => vi.useRealTimers());
+
+    it('draws the plain list in a flood until the operator chooses to group', () => {
+      renderFlood();
+
+      expect(groupRows()).toHaveLength(0);
+      expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+      expect(incidentRow('g1')).toBeInTheDocument();
+    });
+
+    it('draws one row per zone, the worst first, then the larger, then by name', () => {
+      renderFlood();
+      choose();
+
+      expect(groupNames()).toEqual([
+        'Gym, 4 incidents, worst Critical, 3 open',
+        'Dormitory, 2 incidents, worst Critical, 2 open',
+        'Library, 6 incidents, worst High, 6 open',
+      ]);
+      expect(incidentRow('g1')).toBeNull();
+    });
+
+    it('says the list is grouped, with a way back that is not a live region', () => {
+      renderFlood();
+      choose();
+
+      const notice = screen.getByText(/Grouped by zone/);
+      expect(notice.closest('[role="status"]')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Show all' })).toBeInTheDocument();
+    });
+
+    it('leaves the tab counts as they were: they count incidents, not groups', () => {
+      renderFlood();
+      choose();
+
+      expect(screen.getByRole('tab', { name: /^Active/ })).toHaveTextContent('12');
+    });
+
+    it('draws the plain list when nothing is flooding, whatever was chosen', () => {
+      renderFeed();
+      choose();
+
+      expect(groupRows()).toHaveLength(0);
+      expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+      expect(screen.getByRole('button', { name: /Door forced open/ })).toBeInTheDocument();
+    });
+
+    it('draws the plain list until the zones are known, never a list of "Other zone"', () => {
+      renderFlood(flood(), null);
+      choose();
+
+      expect(groupRows()).toHaveLength(0);
+      expect(screen.queryByText(/Other zone/)).toBeNull();
+      expect(incidentRow('g1')).toBeInTheDocument();
+    });
+
+    it('puts an incident whose zone is not known in "Other zone"', () => {
+      renderFlood(flood(), [zone]);
+      choose();
+
+      expect(groupNames()).toEqual([
+        'Other zone, 6 incidents, worst Critical, 5 open',
+        'Library, 6 incidents, worst High, 6 open',
+      ]);
+    });
+
+    it('keeps the severity filter working on the rows', () => {
+      renderFlood();
+      act(() => useConsole.setState({ severity: 'critical' }));
+      choose();
+
+      expect(groupNames()).toEqual([
+        'Dormitory, 1 incident, worst Critical, 1 open',
+        'Gym, 1 incident, worst Critical, 1 open',
+      ]);
+    });
+
+    describe('opening a group', () => {
+      it('lists that zone’s incidents under it, and closes again', async () => {
+        renderFlood();
+        choose();
+        const gymRow = screen.getByRole('button', { name: GYM });
+        expect(gymRow).toHaveAttribute('aria-expanded', 'false');
+
+        await userEvent.click(gymRow);
+
+        expect(gymRow).toHaveAttribute('aria-expanded', 'true');
+        for (const id of ['g1', 'g2', 'g3', 'g4']) expect(incidentRow(id)).toBeInTheDocument();
+        expect(incidentRow('d1')).toBeNull();
+        expect(incidentRow('l1')).toBeNull();
+
+        await userEvent.click(gymRow);
+
+        expect(gymRow).toHaveAttribute('aria-expanded', 'false');
+        expect(incidentRow('g1')).toBeNull();
+      });
+
+      it('opens the incident of an opened group as a row does anywhere', async () => {
+        renderFlood();
+        choose();
+        await userEvent.click(screen.getByRole('button', { name: GYM }));
+
+        await userEvent.click(incidentRow('g1')!);
+
+        expect(useConsole.getState().selectedIncidentId).toBe('g1');
+      });
+
+      it('keeps a zone open when grouping is turned off and on again', async () => {
+        renderFlood();
+        choose();
+        await userEvent.click(screen.getByRole('button', { name: GYM }));
+
+        await userEvent.click(screen.getByRole('button', { name: 'Show all' }));
+        choose();
+
+        expect(screen.getByRole('button', { name: GYM })).toHaveAttribute('aria-expanded', 'true');
+      });
+    });
+
+    describe('going back', () => {
+      it('restores the list with "Show all", and puts focus on the selected tab', async () => {
+        renderFlood();
+        choose();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Show all' }));
+
+        expect(useConsole.getState().groupByZone).toBe(false);
+        expect(groupRows()).toHaveLength(0);
+        expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+        expect(incidentRow('g1')).toBeInTheDocument();
+        expect(screen.getByRole('tab', { selected: true })).toHaveFocus();
+      });
+
+      it('restores the list when the flood ends, whatever the stored choice says', () => {
+        // The flood ends when the clock moves the burst out of the 10-minute window; only the clock's timers are faked.
+        vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+        renderFlood(flood(10 * 60_000 - 10_000));
+        choose();
+        expect(groupRows()).toHaveLength(3);
+
+        act(() => vi.advanceTimersByTime(15_000));
+
+        expect(groupRows()).toHaveLength(0);
+        expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+        expect(incidentRow('g1')).toBeInTheDocument();
+        // Clearing the choice is the flood banner's job; the feed draws the list without it.
+        expect(useConsole.getState().groupByZone).toBe(true);
+      });
+    });
+
+    describe('keyboard', () => {
+      it('is a single Tab stop, on the first group', () => {
+        renderFlood();
+        choose();
+
+        expect(screen.getByRole('button', { name: GYM })).toHaveAttribute('tabindex', '0');
+        expect(screen.getByRole('button', { name: DORM })).toHaveAttribute('tabindex', '-1');
+        expect(screen.getByRole('button', { name: LIBRARY })).toHaveAttribute('tabindex', '-1');
+      });
+
+      it('puts the Tab stop on the group of a selected incident that is inside a closed one', () => {
+        useConsole.setState({ selectedIncidentId: 'd1' });
+        renderFlood();
+        choose();
+
+        expect(screen.getByRole('button', { name: DORM })).toHaveAttribute('tabindex', '0');
+        expect(screen.getByRole('button', { name: GYM })).toHaveAttribute('tabindex', '-1');
+        expect(incidentRow('d1')).toBeNull();
+      });
+
+      it('moves through the groups with the arrow keys, Home and End', async () => {
+        renderFlood();
+        choose();
+        act(() => screen.getByRole('button', { name: GYM }).focus());
+
+        await userEvent.keyboard('{ArrowDown}');
+        expect(screen.getByRole('button', { name: DORM })).toHaveFocus();
+
+        await userEvent.keyboard('{End}');
+        expect(screen.getByRole('button', { name: LIBRARY })).toHaveFocus();
+
+        // A list does not wrap.
+        await userEvent.keyboard('{ArrowDown}');
+        expect(screen.getByRole('button', { name: LIBRARY })).toHaveFocus();
+
+        await userEvent.keyboard('{Home}');
+        expect(screen.getByRole('button', { name: GYM })).toHaveFocus();
+        expect(useConsole.getState().selectedIncidentId).toBeNull();
+      });
+
+      it('goes on into an opened group’s incidents and back out of them', async () => {
+        renderFlood();
+        choose();
+        await userEvent.click(screen.getByRole('button', { name: GYM }));
+        act(() => screen.getByRole('button', { name: GYM }).focus());
+
+        await userEvent.keyboard('{ArrowDown}');
+        // Within a zone the list is in the feed's order: the critical one first.
+        expect(incidentRow('g1')).toHaveFocus();
+        expect(incidentRow('g1')).toHaveAttribute('tabindex', '0');
+
+        await userEvent.keyboard('{ArrowUp}');
+        expect(screen.getByRole('button', { name: GYM })).toHaveFocus();
+
+        await userEvent.keyboard('{End}');
+        expect(screen.getByRole('button', { name: LIBRARY })).toHaveFocus();
+      });
+
+      it('opens and closes the focused group with Enter and Space', async () => {
+        renderFlood();
+        choose();
+        act(() => screen.getByRole('button', { name: DORM }).focus());
+
+        await userEvent.keyboard('{Enter}');
+        expect(screen.getByRole('button', { name: DORM })).toHaveAttribute('aria-expanded', 'true');
+        expect(incidentRow('d1')).toBeInTheDocument();
+
+        await userEvent.keyboard(' ');
+        expect(screen.getByRole('button', { name: DORM })).toHaveAttribute(
+          'aria-expanded',
+          'false',
+        );
+        expect(incidentRow('d1')).toBeNull();
+      });
     });
   });
 });

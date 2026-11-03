@@ -188,6 +188,29 @@ describe('WallApp', () => {
     expect(within(bar).queryAllByRole('button')).toHaveLength(0);
   });
 
+  // V3-21.4: the wall is for watching. It reads the alarm load as text in its bar, and draws no banner, no switch and no grouped list.
+  it('draws neither the flood banner nor the grouping in a flood, even if grouping was chosen (V3-21.4)', () => {
+    const raised = Array.from({ length: 12 }, (_, index) => ({
+      ...incident(`w${index}`, 'open'),
+      reportedAt: new Date(Date.now() - 60_000).toISOString(),
+    }));
+    useConsole.setState({ groupByZone: true });
+
+    renderWall(raised);
+
+    expect(screen.queryByText(/^Alarm flood:/)).toBeNull();
+    expect(screen.queryAllByRole('switch')).toHaveLength(0);
+    expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+    expect(screen.queryAllByRole('button', { name: /, worst / })).toHaveLength(0);
+    // The list is the wall's own and counts every active incident; the bar says the flood in words.
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Active incidents · 12' }),
+    ).toBeInTheDocument();
+    const bar = screen.getByRole('contentinfo', { name: 'System status' });
+    expect(bar).toHaveTextContent('Alarm flood · 12 / 10 min');
+    expect(bar.querySelectorAll('button, [role="switch"]')).toHaveLength(0);
+  });
+
   it('says a lost events link and paused telemetry in the bar (V3-06.4)', () => {
     renderWall();
 

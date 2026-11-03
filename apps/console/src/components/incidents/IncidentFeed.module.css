@@ -75,6 +75,14 @@
 }
 
 /*
+ * The grouped feed (V3-21.4): an opened zone's incidents sit under its group row, set in from it by one step so the two levels
+ * read apart. The group's own row is `ZoneGroupRow`'s; the "Grouped by zone · Show all" line is the notice above, with its button.
+ */
+.list > li[data-grouped='true'] {
+  padding-left: var(--space-4);
+}
+
+/*
  * Loading: a row's tile, title, chip line and foot line (`IncidentRow`), as tall as that row so nothing jumps when data
  * arrives (V3-07.4). The tracks are the row's three lines (title `--leading-l`, the 20 px chip, foot `--leading-s`), the
  * gap, padding and 1 px border are the row's, so the height is 22 + 20 + 18 + 8 + 16 + 2 = 86 px by arithmetic and follows

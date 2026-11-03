@@ -4,6 +4,7 @@ import { AssetFeed } from './components/assets/AssetFeed';
 import { AssetInspector } from './components/assets/AssetInspector';
 import { CameraStrip } from './components/cameras/CameraStrip';
 import { CameraViewer } from './components/cameras/CameraViewer';
+import { FloodBanner } from './components/incidents/FloodBanner';
 import { Header } from './components/shell/Header';
 import { IncidentDetail } from './components/incidents/IncidentDetail';
 import { IncidentFeed } from './components/incidents/IncidentFeed';
@@ -177,6 +178,8 @@ function Console() {
             <div className={styles.banners}>
               <OfflineBanner />
               <TelemetryBanner />
+              {/* A flood is workload, not a fault (V3-21.4): after the two that say the data may be stale. */}
+              <FloodBanner />
               {/* Last: the one that matters least, and the one the operator can dismiss. */}
               <TwinFallbackBanner />
             </div>
