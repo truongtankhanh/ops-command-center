@@ -638,6 +638,64 @@ describe('useConsole', () => {
     });
   });
 
+  // V3-21.4: the operator's choice, during an alarm flood, to see the feed as one row per zone.
+  describe('group by zone', () => {
+    it('starts off, and a reset puts it back: it is not remembered', () => {
+      expect(state().groupByZone).toBe(false);
+
+      state().setGroupByZone(true);
+      expect(state().groupByZone).toBe(true);
+      resetStore(useConsole);
+
+      expect(state().groupByZone).toBe(false);
+    });
+
+    it('turns on and off', () => {
+      state().setGroupByZone(true);
+      expect(state().groupByZone).toBe(true);
+
+      state().setGroupByZone(false);
+      expect(state().groupByZone).toBe(false);
+    });
+
+    it('is a plain choice: it can be set again to the same value', () => {
+      state().setGroupByZone(true);
+      state().setGroupByZone(true);
+
+      expect(state().groupByZone).toBe(true);
+    });
+
+    // A view of the same incidents: it moves nothing the operator is looking at.
+    it('leaves the tab, the filters, the selection and the side panel as they were', () => {
+      state().toggleSeverity('high');
+      state().setFilter('all');
+      state().setCategory('security');
+      state().setSidePanel('assets');
+      state().select('inc-1');
+      const before = {
+        filter: state().filter,
+        severity: state().severity,
+        category: state().category,
+        sidePanel: state().sidePanel,
+        selectedIncidentId: state().selectedIncidentId,
+        focusZoneId: state().focusZoneId,
+        view: state().view,
+      };
+
+      state().setGroupByZone(true);
+
+      expect({
+        filter: state().filter,
+        severity: state().severity,
+        category: state().category,
+        sidePanel: state().sidePanel,
+        selectedIncidentId: state().selectedIncidentId,
+        focusZoneId: state().focusZoneId,
+        view: state().view,
+      }).toEqual(before);
+    });
+  });
+
   describe('severity filter', () => {
     it('filters by a severity and shows the active tab, which the KPI tiles count', () => {
       state().setFilter('resolved');

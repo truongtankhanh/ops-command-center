@@ -1,0 +1,122 @@
+/*
+ * A zone group in the grouped feed (V3-21.4, frame 16 `.grp`): a tile in the worst severity's hue, the zone's name and its
+ * count, a second line with the worst severity in words and how many are open, and a chevron. The row takes the height of an
+ * `IncidentRow` (two lines beside a 40 px tile, the same padding and radius), so the list does not jump when grouping is
+ * switched on or off. Severity is an attribute (`data-severity`), expansion is `aria-expanded` (ADR-0016); the pairs are the
+ * ones `IncidentRow` uses over `--surface-1` (`scripts/contrast.ts`). No glow, no animation: the chevron turns, it does not move.
+ */
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: calc(44px * var(--ui-scale)) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  width: 100%;
+  padding: var(--row-pad-y) var(--space-3) var(--row-pad-y) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row[data-severity='critical'] {
+  --row-tint: var(--sev-critical-bg);
+  --row-edge: var(--sev-critical-border);
+}
+
+.row[data-severity='high'] {
+  --row-tint: var(--sev-high-bg);
+  --row-edge: var(--sev-high-border);
+}
+
+.row[data-severity='medium'] {
+  --row-tint: var(--sev-medium-bg);
+  --row-edge: var(--sev-medium-border);
+}
+
+.row[data-severity='low'] {
+  --row-tint: var(--sev-low-bg);
+  --row-edge: var(--sev-low-border);
+}
+
+.row:hover {
+  background: var(--surface-2);
+}
+
+/* The worst severity beside both lines. */
+.tile {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--ui-scale));
+  height: calc(40px * var(--ui-scale));
+  border: 1px solid var(--row-edge);
+  border-radius: var(--radius-m);
+  background: var(--row-tint);
+  color: var(--sev);
+}
+
+.name {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-weight: var(--weight-semibold);
+  font-size: var(--type-l);
+  line-height: var(--leading-l);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The number of incidents: text on a neutral pill, so its contrast does not depend on the severity hue. */
+.count {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: calc(24px * var(--ui-scale));
+  padding: 0 var(--space-1-5);
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+  line-height: calc(20px * var(--ui-scale));
+  text-align: center;
+}
+
+.meta {
+  grid-column: 2 / 4;
+  grid-row: 2;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  color: var(--text-secondary);
+}
+
+/* Open: the chevron points down. A change of angle, not a movement, so it needs no reduced-motion variant. */
+.row[aria-expanded='true'] .chevron {
+  transform: rotate(90deg);
+}
+
+/* Touch screens: a row stays a 44 px target even in compact density (as `IncidentRow`). */
+@media (pointer: coarse) {
+  .row {
+    min-height: calc(44px * var(--ui-scale));
+  }
+}
