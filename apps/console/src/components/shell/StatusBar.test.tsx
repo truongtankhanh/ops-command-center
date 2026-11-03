@@ -1,6 +1,8 @@
-import { ROLES } from '@occ/contracts';
-import { act, render, screen, within } from '@testing-library/react';
+import { type Asset, type Incident, ROLES } from '@occ/contracts';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { api } from '../../api/client';
+import { queryKeys } from '../../api/queries';
 import { useSession } from '../../auth/store';
 import type * as CriticalCue from '../../lib/incidents/criticalCue';
 import { unlockAudio } from '../../lib/incidents/criticalCue';
@@ -9,7 +11,14 @@ import { initialTelemetryState, type TelemetryPillState } from '../../lib/teleme
 import { TWIN_UNAVAILABLE_COPY } from '../../lib/twin-core/twinCapability';
 import { useTelemetryStore } from '../../realtime/telemetryStore';
 import { useConsole } from '../../store';
-import { expectNoAxeViolations, resetStore, stubTwinAvailable, unstubTwin } from '../../test-utils';
+import {
+  createTestQueryClient,
+  expectNoAxeViolations,
+  renderWithQueryClient,
+  resetStore,
+  stubTwinAvailable,
+  unstubTwin,
+} from '../../test-utils';
 import { StatusBar } from './StatusBar';
 
 // jsdom has no Web Audio; the sound preference itself is stored by the real module (as `Header.test.tsx`).
@@ -40,8 +49,57 @@ function allGood() {
 
 const bar = () => screen.getByRole('contentinfo', { name: 'System status' });
 const summary = () => within(bar()).getByRole('status');
-const segment = (id: 'engine' | 'events' | 'telemetry') =>
+const segment = (id: 'engine' | 'events' | 'telemetry' | 'alarms') =>
   bar().querySelector<HTMLElement>(`[data-segment="${id}"]`)!;
+
+// The alarm-load segment reads the incident list and the catalogue (V3-21.2). Unseeded, a query waits on a request that never
+// settles, which is "not loaded yet"; a case that needs a list seeds the client it renders with.
+const reportedAgo = (ms: number) => new Date(Date.now() - ms).toISOString();
+let sequence = 0;
+const incident = (overrides: Partial<Incident> = {}): Incident => {
+  sequence += 1;
+  return {
+    id: `i${sequence}`,
+    code: `INC-${sequence}`,
+    type: 'fire_alarm',
+    severity: 'medium',
+    status: 'open',
+    title: 'Test',
+    description: null,
+    zoneId: 'z1',
+    position: [108.44, 11.95],
+    source: 'operator',
+    reportedAt: reportedAgo(60_000),
+    acknowledgedAt: null,
+    resolvedAt: null,
+    version: 1,
+    ...overrides,
+  };
+};
+const ROUTER: Asset = {
+  id: 'asset-rt-01',
+  code: 'RT-01',
+  name: 'Core router',
+  class: {
+    id: 'class-router',
+    code: 'router',
+    name: 'Router',
+    modelUrl: null,
+    footprintM: { width: 1, depth: 1, height: 1 },
+  },
+  zoneId: 'z1',
+  position: [108.44, 11.95],
+  elevationM: 0,
+  headingDeg: 0,
+  headline: [],
+};
+/** A client with the incident list (and, if given, the catalogue) already in it, so the segment is "loaded". */
+function seededClient(incidents: Incident[], assets?: Asset[]) {
+  const client = createTestQueryClient();
+  client.setQueryData(queryKeys.incidents, incidents);
+  if (assets) client.setQueryData(queryKeys.assets, assets);
+  return client;
+}
 
 describe('StatusBar', () => {
   // The stores are module-level singletons: without a reset, one case's state leaks into the next.
@@ -49,11 +107,16 @@ describe('StatusBar', () => {
     resetStore(useConsole);
     resetStore(useSession);
     holdTelemetry('connecting');
+    sequence = 0;
+    vi.spyOn(api, 'get').mockReturnValue(new Promise(() => undefined));
   });
-  afterEach(unstubTwin);
+  afterEach(() => {
+    unstubTwin();
+    vi.restoreAllMocks();
+  });
 
   it('is the console\'s footer, named "System status"', () => {
-    render(<StatusBar />);
+    renderWithQueryClient(<StatusBar />);
 
     expect(bar()).toBeInTheDocument();
   });
@@ -61,7 +124,7 @@ describe('StatusBar', () => {
   describe('when everything is good', () => {
     it('says the system is healthy, with the three states behind it', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       expect(bar()).toHaveAttribute('data-level', 'healthy');
       expect(summary()).toHaveTextContent('System healthy');
@@ -76,7 +139,7 @@ describe('StatusBar', () => {
     it('says 2D map when the operator chose the map on a device that could draw 3D', () => {
       allGood();
       act(() => useConsole.setState({ view: '2d' }));
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       expect(summary()).toHaveTextContent('System healthy');
       expect(segment('engine')).toHaveTextContent('2D map');
@@ -89,7 +152,7 @@ describe('StatusBar', () => {
       "says it for events %s, in the pill's words",
       (connection) => {
         allGood();
-        render(<StatusBar />);
+        renderWithQueryClient(<StatusBar />);
 
         act(() => useConsole.getState().setConnection(connection));
 
@@ -104,7 +167,7 @@ describe('StatusBar', () => {
       "says it for telemetry %s, in the pill's words",
       (pill) => {
         allGood();
-        render(<StatusBar />);
+        renderWithQueryClient(<StatusBar />);
 
         holdTelemetry(pill);
 
@@ -119,7 +182,7 @@ describe('StatusBar', () => {
       "says it when the 3D view fails (%s), in the fallback banner's words",
       (fault) => {
         allGood();
-        render(<StatusBar />);
+        renderWithQueryClient(<StatusBar />);
 
         act(() => useConsole.getState().markTwinLost(fault));
 
@@ -132,7 +195,7 @@ describe('StatusBar', () => {
 
     it('says the session expired, with every segment still fine', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       act(() => useSession.getState().expire());
 
@@ -147,7 +210,7 @@ describe('StatusBar', () => {
       // No `stubTwinAvailable`: jsdom has no WebGL 2.
       act(() => useConsole.getState().setConnection('live'));
       holdTelemetry('live');
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       expect(bar()).toHaveAttribute('data-level', 'healthy');
       expect(summary()).toHaveTextContent('System healthy');
@@ -159,7 +222,7 @@ describe('StatusBar', () => {
       allGood();
       act(() => useConsole.getState().setConnection('connecting'));
       holdTelemetry('connecting');
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       expect(bar()).toHaveAttribute('data-level', 'healthy');
       expect(segment('events')).toHaveTextContent(CONNECTION_LABEL.connecting);
@@ -170,7 +233,7 @@ describe('StatusBar', () => {
   describe('when several things are wrong', () => {
     it('summarises the first in the order session, events, telemetry, engine, and shows every state', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       act(() => {
         useSession.getState().expire();
@@ -187,7 +250,7 @@ describe('StatusBar', () => {
 
     it('falls to the events, then the telemetry, as the earlier ones clear', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       act(() => useConsole.getState().setConnection('offline'));
       holdTelemetry('paused');
 
@@ -202,7 +265,7 @@ describe('StatusBar', () => {
   describe('the live region', () => {
     it('is the summary alone, mounted for good, and the segments hold none', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       const regions = within(bar()).getAllByRole('status');
       expect(regions).toHaveLength(1);
@@ -216,7 +279,7 @@ describe('StatusBar', () => {
 
     it('keeps the same element when the sentence changes, so the change is announced', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       const before = summary();
 
       act(() => useConsole.getState().setConnection('offline'));
@@ -227,18 +290,20 @@ describe('StatusBar', () => {
   });
 
   describe('what it leaves out', () => {
-    it('draws one action, Settings, and no FPS or bare number', () => {
+    it('draws two actions, the alarm load and Settings, and no FPS or other bare number', () => {
       allGood();
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
-      // The segments are text; the only control is the Settings button, and its switches are in the closed panel.
+      // The three health segments are text; the controls are the alarm-load button and Settings, and both panels are closed.
       expect(within(bar()).getAllByRole('button')).toEqual([
+        within(bar()).getByRole('button', { name: /^Alarms / }),
         within(bar()).getByRole('button', { name: 'Settings' }),
       ]);
       for (const role of ['link', 'switch', 'checkbox', 'menuitem'] as const) {
         expect(within(bar()).queryAllByRole(role), role).toHaveLength(0);
       }
-      const text = bar().textContent ?? '';
+      // The alarm rate is a count the console already shows (V3-21.2 amends V3-06.2); every other number is still out.
+      const text = (bar().textContent ?? '').replace(segment('alarms').textContent ?? '', '');
       expect(text).not.toMatch(/fps/i);
       expect(text).not.toMatch(/(^|\s)\d+([.,]\d+)?(\s|$)/);
     });
@@ -248,13 +313,157 @@ describe('StatusBar', () => {
       (role) => {
         useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
         allGood();
-        render(<StatusBar />);
+        renderWithQueryClient(<StatusBar />);
 
         expect(bar()).toHaveAttribute('data-level', 'healthy');
         expect(summary()).toHaveTextContent('System healthy');
         expect(segment('events')).toHaveTextContent('Events Live');
       },
     );
+  });
+
+  // V3-21.2 and V3-21.3: the workload beside the health. The panel's own rows are `AlarmLoadPanel.test.tsx`'s.
+  describe('the alarm load', () => {
+    const alarmButton = () => within(bar()).getByRole('button', { name: /^Alarm/ });
+    const panel = () => screen.queryByRole('group', { name: 'Alarm load' });
+    const calm = () => seededClient([incident(), incident(), incident()], [ROUTER]);
+    const flood = () =>
+      seededClient(
+        Array.from({ length: 11 }, () => incident()),
+        [ROUTER],
+      );
+
+    beforeEach(allGood);
+
+    it('reads a dash until the list is loaded, never a 0', () => {
+      renderWithQueryClient(<StatusBar />);
+
+      expect(alarmButton()).toHaveAccessibleName('Alarms — / 10 min');
+      expect(segment('alarms')).toHaveAttribute('data-state', 'ok');
+    });
+
+    it('reads the rate once the list is loaded, neutral', () => {
+      renderWithQueryClient(<StatusBar />, calm());
+
+      expect(alarmButton()).toHaveAccessibleName('Alarms 3 / 10 min');
+      expect(segment('alarms')).toHaveAttribute('data-state', 'ok');
+    });
+
+    it('reads 0 for a quiet list that is known', () => {
+      renderWithQueryClient(<StatusBar />, seededClient([]));
+
+      expect(alarmButton()).toHaveAccessibleName('Alarms 0 / 10 min');
+    });
+
+    it('says a flood in words and state above ten in ten minutes', () => {
+      renderWithQueryClient(<StatusBar />, flood());
+
+      expect(alarmButton()).toHaveAccessibleName('Alarm flood · 11 / 10 min');
+      expect(segment('alarms')).toHaveAttribute('data-state', 'warn');
+    });
+
+    it('is workload, not a fault: the summary stays healthy during a flood', () => {
+      renderWithQueryClient(<StatusBar />, flood());
+
+      expect(bar()).toHaveAttribute('data-level', 'healthy');
+      expect(summary()).toHaveTextContent('System healthy');
+    });
+
+    it('is not a live region, so a flood is announced by the banner and not here', () => {
+      renderWithQueryClient(<StatusBar />, flood());
+
+      expect(within(bar()).getAllByRole('status')).toEqual([summary()]);
+      expect(segment('alarms').closest('[role="status"]')).toBeNull();
+    });
+
+    it('is closed at first, and announces no popup it does not have', () => {
+      renderWithQueryClient(<StatusBar />, calm());
+
+      expect(alarmButton()).toHaveAttribute('aria-expanded', 'false');
+      expect(alarmButton()).not.toHaveAttribute('aria-haspopup');
+      expect(panel()).toBeNull();
+    });
+
+    it('opens the panel upward, with the four measures', async () => {
+      renderWithQueryClient(<StatusBar />, calm());
+
+      await userEvent.click(alarmButton());
+
+      expect(alarmButton()).toHaveAttribute('aria-expanded', 'true');
+      expect(panel()).toHaveAttribute('data-placement', 'above');
+      const group = within(panel()!);
+      expect(group.getByText(/raised in 10 min/)).toBeInTheDocument();
+      expect(group.getByText(/open past their attention time/)).toBeInTheDocument();
+      expect(group.getByRole('img', { name: /^Raised per 10 minutes/ })).toBeInTheDocument();
+    });
+
+    it('closes on Escape and gives focus back to the alarm button', async () => {
+      renderWithQueryClient(<StatusBar />, calm());
+      await userEvent.click(alarmButton());
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(panel()).toBeNull();
+      expect(alarmButton()).toHaveFocus();
+    });
+
+    it('opens an asset from a noisy row, closed first, focus on the alarm button', async () => {
+      const client = seededClient([incident({ assetId: ROUTER.id })], [ROUTER]);
+      renderWithQueryClient(<StatusBar />, client);
+      await userEvent.click(alarmButton());
+
+      await userEvent.click(within(panel()!).getByRole('button', { name: /^RT-01/ }));
+
+      expect(useConsole.getState().selectedAssetCode).toBe('RT-01');
+      expect(panel()).toBeNull();
+      expect(alarmButton()).toHaveFocus();
+    });
+
+    it.each(ROLES)(
+      'is offered to a %s: reading the load is not an action on the site',
+      async (role) => {
+        useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
+        renderWithQueryClient(<StatusBar />, calm());
+
+        await userEvent.click(alarmButton());
+
+        expect(panel()).toBeInTheDocument();
+      },
+    );
+
+    it('opens one panel at a time with Settings, each its own', async () => {
+      renderWithQueryClient(<StatusBar />, calm());
+      await userEvent.click(alarmButton());
+
+      await userEvent.click(within(bar()).getByRole('button', { name: 'Settings' }));
+
+      expect(panel()).toBeNull();
+      expect(screen.getByRole('group', { name: 'Settings' })).toBeInTheDocument();
+    });
+
+    it('leaves the summary as the only live region while it is open', async () => {
+      renderWithQueryClient(<StatusBar />, flood());
+
+      await userEvent.click(alarmButton());
+
+      expect(within(bar()).getAllByRole('status')).toEqual([summary()]);
+      expect(screen.getAllByRole('status')).toEqual([summary()]);
+    });
+
+    it('has no axe violations, loading, calm, flooding or open', async () => {
+      const loading = renderWithQueryClient(<StatusBar />);
+      await expectNoAxeViolations();
+      loading.unmount();
+
+      const calmBar = renderWithQueryClient(<StatusBar />, calm());
+      await expectNoAxeViolations();
+      calmBar.unmount();
+
+      renderWithQueryClient(<StatusBar />, flood());
+      await expectNoAxeViolations();
+      await userEvent.click(alarmButton());
+      await expectNoAxeViolations();
+    });
   });
 
   // V3-06.4: the video wall's foot. The console's sentence and segments, with nothing to press (`WallApp.test.tsx` mounts it there).
@@ -264,7 +473,7 @@ describe('StatusBar', () => {
 
     it('says what the console does, with nothing to press or tab to', () => {
       allGood();
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       expect(bar()).toHaveAttribute('data-level', 'healthy');
       expect(summary()).toHaveTextContent('System healthy');
@@ -278,7 +487,7 @@ describe('StatusBar', () => {
     it.each(ROLES)('offers no Settings to a %s', (role) => {
       useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
       allGood();
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       expect(within(bar()).queryByRole('button', { name: 'Settings' })).toBeNull();
       expect(summary()).toHaveTextContent('System healthy');
@@ -286,7 +495,7 @@ describe('StatusBar', () => {
 
     it("says a lost events link and paused telemetry in the console's words", () => {
       allGood();
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       act(() => useConsole.getState().setConnection('offline'));
       holdTelemetry('paused');
@@ -299,15 +508,37 @@ describe('StatusBar', () => {
 
     it('keeps the summary as the only live region', () => {
       allGood();
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       expect(within(bar()).getAllByRole('status')).toEqual([summary()]);
+    });
+
+    it('draws the alarm load as text only: no button, no panel, nothing to tab to', () => {
+      allGood();
+      renderWithQueryClient(<StatusBar readOnly />, seededClient([incident(), incident()]));
+
+      expect(segment('alarms')).toHaveTextContent('Alarms 2 / 10 min');
+      expect(segment('alarms').closest('button')).toBeNull();
+      expect(within(bar()).queryByRole('button', { name: /^Alarm/ })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Alarm load' })).toBeNull();
+    });
+
+    it('says a flood on the wall in the console’s words, and keeps the summary healthy', () => {
+      allGood();
+      renderWithQueryClient(
+        <StatusBar readOnly />,
+        seededClient(Array.from({ length: 11 }, () => incident())),
+      );
+
+      expect(segment('alarms')).toHaveTextContent('Alarm flood · 11 / 10 min');
+      expect(segment('alarms')).toHaveAttribute('data-state', 'warn');
+      expect(summary()).toHaveTextContent('System healthy');
     });
 
     it("reads 3D view on a wall whatever 2D/3D choice is stored for the console's operators", () => {
       allGood();
       act(() => useConsole.setState({ wall: 2, view: '2d' }));
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       expect(segment('engine')).toHaveTextContent('3D 3D view');
       expect(segment('engine')).toHaveAttribute('data-state', 'ok');
@@ -317,7 +548,7 @@ describe('StatusBar', () => {
     it('still says a 3D fault on a wall, in the fallback banner’s words', () => {
       allGood();
       act(() => useConsole.setState({ wall: 2 }));
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
 
       act(() => useConsole.getState().markTwinLost('too-slow'));
 
@@ -328,7 +559,7 @@ describe('StatusBar', () => {
 
     it('has no axe violations, healthy or degraded', async () => {
       allGood();
-      render(<StatusBar readOnly />);
+      renderWithQueryClient(<StatusBar readOnly />);
       await expectNoAxeViolations();
 
       act(() => useConsole.getState().setConnection('offline'));
@@ -349,7 +580,7 @@ describe('StatusBar', () => {
     });
 
     it('is closed at first, with no switch on the page', () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       expect(settingsButton()).toHaveAttribute('aria-expanded', 'false');
       expect(panel()).toBeNull();
@@ -357,7 +588,7 @@ describe('StatusBar', () => {
     });
 
     it('opens to the three switches and the help button, upward', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       await open();
 
@@ -373,7 +604,7 @@ describe('StatusBar', () => {
     });
 
     it("changes the same state as the account menu's switches", async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       await open();
       const group = within(panel()!);
 
@@ -391,7 +622,7 @@ describe('StatusBar', () => {
     });
 
     it('closes on Escape and gives focus back to the Settings button', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       await open();
 
       await userEvent.keyboard('{Escape}');
@@ -401,7 +632,7 @@ describe('StatusBar', () => {
     });
 
     it('opens the shortcuts help from the panel, closed first, focus on the Settings button', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       await open();
 
       await userEvent.click(within(panel()!).getByRole('button', { name: 'Keyboard shortcuts' }));
@@ -412,7 +643,7 @@ describe('StatusBar', () => {
     });
 
     it('shows the help key only while the single-key shortcuts are on', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
       await open();
       const help = () => within(panel()!).getByRole('button', { name: 'Keyboard shortcuts' });
       expect(help()).toHaveAttribute('aria-keyshortcuts', '?');
@@ -424,7 +655,7 @@ describe('StatusBar', () => {
 
     it.each(ROLES)('is offered to a %s: these are display preferences', async (role) => {
       useSession.setState({ status: 'signed-in', user: { displayName: 'Test', roles: [role] } });
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       await open();
 
@@ -432,7 +663,7 @@ describe('StatusBar', () => {
     });
 
     it('leaves the summary as the only live region while it is open', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       await open();
 
@@ -440,7 +671,7 @@ describe('StatusBar', () => {
     });
 
     it('has no axe violations open', async () => {
-      render(<StatusBar />);
+      renderWithQueryClient(<StatusBar />);
 
       await open();
 
@@ -450,7 +681,7 @@ describe('StatusBar', () => {
 
   it('has no axe violations, healthy or degraded', async () => {
     allGood();
-    render(<StatusBar />);
+    renderWithQueryClient(<StatusBar />);
     await expectNoAxeViolations();
 
     act(() => useConsole.getState().setConnection('offline'));

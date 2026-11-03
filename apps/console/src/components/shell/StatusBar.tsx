@@ -13,6 +13,7 @@ import {
   telemetryIcon,
 } from '../../ui/icons';
 import { Popover } from '../../ui/Popover';
+import { AlarmLoadPanel } from './AlarmLoadPanel';
 import { SettingsSwitches } from './SettingsSwitches';
 import styles from './StatusBar.module.css';
 import { useSystemHealth } from './useSystemHealth';
@@ -34,9 +35,9 @@ import { useSystemHealth } from './useSystemHealth';
  *   the banner (V3-21.4), not here: the segment is not a live region.
  * - **Same bar for every role**: reading the state is not an action on the site, and the settings are display
  *   preferences.
- * - **Seams.** The alarm-load slot follows `.segments` and is outside it, so the panel V3-21.3 opens upward from the
- *   button is not clipped by `.segments`' `overflow` (as Settings); the engine's tier word (V3-18) goes in the engine
- *   segment's text and is not drawn yet.
+ * - **Seams.** The alarm-load slot follows `.segments` and is outside it, so the panel it opens upward (V3-21.3) is not
+ *   clipped by `.segments`' `overflow` (as Settings); the engine's tier word (V3-18) goes in the engine segment's text and
+ *   is not drawn yet.
  *
  * `readOnly` (the video wall's foot, V3-06.4) draws the same sentence and segments with `SettingsEntry` left out, so the
  * bar has nothing to press or tab to, as `KpiTiles`'s: nobody at a wall can use a control.
@@ -97,34 +98,37 @@ function alarmLoadText({ loaded, rate, flood }: AlarmLoad): string {
 
 /**
  * The alarm load in the foot (V3-21.2, frame 16): "Alarms 3 / 10 min", or "Alarm flood · 14 / 10 min" with the warning glyph
- * and `data-state="warn"` while it lasts. A button on the console, for every role (reading the load is not an action on the
- * site); it has no popup attribute until V3-21.3 gives it a panel, since a button that announces a popup and opens none
- * misleads a screen reader. On the wall (`readOnly`) it is text: nothing there can be pressed or tabbed to.
+ * and `data-state="warn"` while it lasts. On the console it is the trigger of a popover that opens upward (V3-21.3, as
+ * Settings), for every role (reading the load is not an action on the site); the popover writes `aria-expanded` and
+ * `aria-controls` and its panel is a group, so there is no `aria-haspopup`. On the wall (`readOnly`) it is text: nothing there
+ * can be pressed or tabbed to, and there is no panel.
+ *
+ * `data-segment` and `data-state` sit on an inner span, the same in both forms: the popover renders its own button and takes
+ * no attributes for it, and the state is the content's (colour, glyph and words), not the button's.
  */
 function AlarmLoadSegment({ load, readOnly }: { load: AlarmLoad; readOnly: boolean }) {
-  const state = load.flood.flooding ? 'warn' : 'ok';
   const content = (
-    <>
+    <span
+      className={styles.alarm}
+      data-segment="alarms"
+      data-state={load.flood.flooding ? 'warn' : 'ok'}
+    >
       <Icon glyph={alarmLoadIcon(load.flood.flooding)} size={14} />
       {alarmLoadText(load)}
-    </>
+    </span>
   );
-  if (readOnly) {
-    return (
-      <span className={styles.alarm} data-segment="alarms" data-state={state}>
-        {content}
-      </span>
-    );
-  }
+  if (readOnly) return content;
   return (
-    <button
-      type="button"
-      className={`${styles.alarm} ${styles.alarmButton}`}
-      data-segment="alarms"
-      data-state={state}
+    <Popover
+      placement="above"
+      panelLabel="Alarm load"
+      className={styles.alarmRoot}
+      triggerClassName={styles.alarmTrigger}
+      panelClassName={styles.alarmPanel}
+      trigger={content}
     >
-      {content}
-    </button>
+      {(close) => <AlarmLoadPanel load={load} close={close} />}
+    </Popover>
   );
 }
 
