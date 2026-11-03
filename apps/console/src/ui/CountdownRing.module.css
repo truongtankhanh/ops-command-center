@@ -1,0 +1,36 @@
+/*
+ * CountdownRing (V3-22.2, frame 17). State is an attribute (`data-state`, ADR-0016): neutral by default, `--warning` for soon,
+ * `--danger` for overdue. The arc's strokes are graphics and are checked at 3:1 on the feed row's surfaces in
+ * `scripts/contrast.ts`; the track is decorative. No animation and no transition: the ring is set at each tick, so
+ * `prefers-reduced-motion` has nothing to turn off.
+ */
+
+.ring {
+  display: block;
+  flex: none;
+  width: calc(18px * var(--ui-scale));
+  height: calc(18px * var(--ui-scale));
+}
+
+.track,
+.arc {
+  fill: none;
+  stroke-width: 3;
+}
+
+.track {
+  stroke: var(--border-subtle);
+}
+
+.arc {
+  stroke: var(--text-secondary);
+  stroke-linecap: round;
+}
+
+.ring[data-state='soon'] .arc {
+  stroke: var(--warning);
+}
+
+.ring[data-state='overdue'] .arc {
+  stroke: var(--danger);
+}
