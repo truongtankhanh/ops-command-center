@@ -184,6 +184,21 @@ Incidents are drawn in the 3D stage, the camera moves for them only when the ope
 - **A location is picked in the scene.** While the report form's "Pick in 3D" is on, a click hits the nearest of the building shells (roofs included) and the ground plane, nothing else, and the point goes through the rule the 2D map uses (`zoneAt`, the API's own): inside a zone the pin is placed there and that zone is selected, outside every zone the pin stays and the form says so. The pin is a screen-sized sprite at the roof's height when its position is inside a building's footprint, stays put while the camera orbits and can be dragged without the camera moving; Escape stops picking. The API still refuses a pin outside its zone, and `incident:report` still decides who can report.
 - **Reaching them without the canvas.** The canvas is hidden from assistive technology and pointer-only. The incident feed lists every incident a beacon stands for, the stage's summary counts the active incidents by the same rule, and the sheet's buttons, the toast's actions and the form's zone select and "Pick in 3D" toggle are ordinary buttons, so everything a beacon or the pin does can be done from them.
 
+### Attention thresholds and alarm load
+
+Two sets of constants in the console decide what it flags about the incident list. Both are **display only**: derived in the browser from the incidents and the asset catalogue it already holds, the same on every console, stored nowhere, enforced by no server and read by every role. Neither is an SLA, and both are **provisional (`unverified`)** until operations has read them against real incidents.
+
+| Constant (`lib/incidents/`)               | Value                                     | Meaning                                                                                           |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `ATTENTION_THRESHOLD_MS` (`incidents.ts`) | critical 2 min, high 5, medium 15, low 30 | An open (unacknowledged) incident older than this is flagged in the feed; acknowledging clears it |
+| `ALARM_RATE_WINDOW_MS` (`alarmLoad.ts`)   | 10 min                                    | The window the rate "Alarms N / 10 min" counts the incidents raised in, of any source             |
+| `FLOOD_START_ABOVE`, `FLOOD_END_BELOW`    | above 10 starts a flood, below 5 ends it  | The figures ISA-18.2 and EEMUA 191 give for process plants, held between the two (hysteresis)     |
+| `ALARM_HISTORY_MS`, `RAISED_BUCKETS`      | 3 h, 18 buckets of 10 min                 | How far back the flood is replayed and the panel's chart reaches                                  |
+| `NOISY_WINDOW_MS`, `NOISY_TOP`            | 24 h, five assets                         | The assets that raised the most incidents, listed in the panel                                    |
+| `INCIDENT_LIST_LIMIT` (`incidents.ts`)    | 200                                       | The page of incidents the console loads; a full page makes every alarm-load figure a lower bound  |
+
+A flood raises nothing and notifies no one: the status bar shows the rate, a banner offers "Group by zone" (a view of the feed, not stored), and the panel behind the status bar's segment lists the measures. The video wall shows the rate as text and draws neither the banner nor the panel. No endpoint, event, permission or environment variable is involved.
+
 ## 6. Camera sources
 
 ```ts

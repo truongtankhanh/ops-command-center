@@ -196,9 +196,14 @@ describe('WallApp', () => {
     }));
     useConsole.setState({ groupByZone: true });
 
-    renderWall(raised);
+    const { container } = renderWall(raised);
 
     expect(screen.queryByText(/^Alarm flood:/)).toBeNull();
+    expect(
+      container.querySelectorAll(
+        'button, a[href], input, select, textarea, summary, [tabindex], [role="button"]',
+      ),
+    ).toHaveLength(0);
     expect(screen.queryAllByRole('switch')).toHaveLength(0);
     expect(screen.queryByText(/Grouped by zone/)).toBeNull();
     expect(screen.queryAllByRole('button', { name: /, worst / })).toHaveLength(0);

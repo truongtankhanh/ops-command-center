@@ -2279,4 +2279,124 @@ describe('the console', () => {
       });
     });
   });
+
+  // V3-21.5: the alarm load (frame 16) seen from the whole console. The model, the segment, the panel and the banner have
+  // their own specs; this is every role, the live regions of one page, motion, and axe with the banner and the panel up.
+  describe('alarm load', () => {
+    const ALL_ROLES: readonly Role[] = ['operator', 'supervisor', 'technician', 'viewer'];
+    /** The three incidents above and ten more reported a minute ago on one asset: 13 in 10 minutes, above the 10 that start a flood. */
+    const flooded = (): Incident[] => [
+      ...INCIDENTS,
+      ...Array.from({ length: 10 }, (_, index) =>
+        incident({
+          id: `flood-${index}`,
+          code: `INC-0002${index}`,
+          severity: 'medium',
+          title: `Raised ${index}`,
+          assetId: 'asset-0',
+          reportedAt: new Date(Date.now() - 60_000).toISOString(),
+        }),
+      ),
+    ];
+    const bar = () => screen.getByRole('contentinfo', { name: 'System status' });
+    const alarmButton = () => within(bar()).getByRole('button', { name: /^Alarm/ });
+    const panel = () => screen.getByRole('group', { name: 'Alarm load' });
+    /** The banner is the one live region that names the flood; the segment's words have a colon-less form. */
+    const banners = () =>
+      screen.getAllByRole('status').filter((node) => /Alarm flood:/.test(node.textContent ?? ''));
+    const writes = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.map(([, init]) => (init?.method ?? 'GET').toUpperCase())
+        .filter((method) => method !== 'GET');
+    const checkPage = () => expectNoAxeViolations(document.body, { screen: true });
+
+    it.each(ALL_ROLES)(
+      'shows a %s the same segment, banner and panel, and none of them acts on the site',
+      async (role) => {
+        renderConsole({ role, incidents: flooded() });
+
+        expect(alarmButton()).toHaveTextContent('Alarm flood · 13 / 10 min');
+        expect(banners()).toHaveLength(1);
+        expect(banners()[0]).toHaveTextContent('Alarm flood: 13 raised in 10 min');
+        // The banner's one action is the display switch: no dismiss, nothing that touches an incident.
+        expect(within(banners()[0]!).queryAllByRole('button')).toHaveLength(0);
+        expect(within(banners()[0]!).getAllByRole('switch')).toHaveLength(1);
+
+        await userEvent.click(alarmButton());
+
+        expect(panel()).toHaveTextContent('13 raised in 10 min');
+        expect(panel()).toHaveTextContent(/Flood since/);
+        // The only buttons are the noisy devices' rows, and a row selects an asset: it is not a write.
+        const rows = within(panel()).getAllByRole('button');
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toHaveAccessibleName('CT-01, Cooling tower 1, 10 raised');
+        await userEvent.click(rows[0]!);
+        expect(useConsole.getState().selectedAssetCode).toBe('CT-01');
+        await userEvent.click(screen.getByRole('switch', { name: 'Group by zone' }));
+        expect(useConsole.getState().groupByZone).toBe(true);
+        expect(writes()).toEqual([]);
+      },
+    );
+
+    it('has one live region for the flood: the banner, and none in the segment or the panel', async () => {
+      renderConsole({ incidents: flooded() });
+      const live = '[role="status"], [role="alert"], [aria-live]:not([aria-live="off"])';
+
+      expect(banners()).toHaveLength(1);
+      // The bar's one live region is its summary, and a flood does not touch it.
+      expect(within(bar()).getAllByRole('status')).toHaveLength(1);
+      expect(within(bar()).getByRole('status')).not.toHaveTextContent(/flood/i);
+      expect(alarmButton().closest(live)).toBeNull();
+
+      await userEvent.click(alarmButton());
+
+      expect(panel().closest(live)).toBeNull();
+      expect(panel().querySelector(live)).toBeNull();
+      expect(banners()).toHaveLength(1);
+      expectNoTickingAgeAnnounced();
+    });
+
+    it('has no axe violations with the banner showing, grouped by zone, and with the panel open', async () => {
+      renderConsole({ incidents: flooded() });
+
+      expect(banners()).toHaveLength(1);
+      await checkPage();
+
+      await userEvent.click(screen.getByRole('switch', { name: 'Group by zone' }));
+
+      expect(screen.getByText(/Grouped by zone/)).toBeInTheDocument();
+      await checkPage();
+
+      await userEvent.click(alarmButton());
+
+      expect(panel()).toBeInTheDocument();
+      await checkPage();
+    });
+
+    it('has no axe violations with the panel open on a calm list', async () => {
+      renderConsole();
+
+      await userEvent.click(alarmButton());
+
+      expect(panel()).toHaveTextContent('Normal');
+      expect(
+        screen.queryAllByRole('status').filter((n) => /flood/i.test(n.textContent ?? '')),
+      ).toHaveLength(0);
+      await checkPage();
+    });
+
+    // `prefers-reduced-motion`: the work added no animation. The chart is a static SVG; the stylesheets are not read here
+    // (`?raw` on a CSS module reaches the test as the module's class map): the only transition is the banner switch thumb's,
+    // which `FloodBanner.module.css` switches off under the preference.
+    it('draws the chart without a single animated element', async () => {
+      renderConsole({ incidents: flooded() });
+
+      await userEvent.click(alarmButton());
+
+      const chart = within(panel()).getByRole('img', { name: /^Raised per 10 minutes/ });
+      expect(chart.querySelector('animate, animateTransform, animateMotion, set')).toBeNull();
+      expect(chart.closest('[style*="animation"]')).toBeNull();
+    });
+  });
 });
