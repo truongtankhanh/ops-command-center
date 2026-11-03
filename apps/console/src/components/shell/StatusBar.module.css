@@ -4,7 +4,7 @@
  * trigger's focus ring is drawn outside it; only `.segments` clips, where the engine text ends in an ellipsis.
  * No z-index: the sheet, the banners and the toasts live inside the stage, and the session banner is fixed at the top,
  * so nothing overlaps the bar. Only pairs that `scripts/contrast.ts` already checks on `--surface-1` are used
- * (`--text-primary`, `--text-secondary`, `--text-tertiary`, `--warning`).
+ * (`--text-primary`, `--text-secondary`, `--text-tertiary`, `--warning`), and on `--surface-2` for the alarm button's hover.
  */
 .bar {
   display: flex;
@@ -41,10 +41,13 @@
   background: var(--border-subtle);
 }
 
-/* Takes the free width, so the settings entry (V3-06.3) sits at the right end. */
+/*
+ * Takes what it needs and gives way first (V3-21.2): the alarm-load slot follows it as frame 16 draws it, and `.settings` has
+ * `margin-left: auto`, so the Settings entry (V3-06.3) still sits at the right end.
+ */
 .segments {
   display: flex;
-  flex: 1;
+  flex: 0 1 auto;
   align-items: center;
   gap: var(--space-4);
   min-width: 0;
@@ -82,6 +85,46 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/*
+ * The alarm-load slot (V3-21.2, frame 16): outside `.segments`, so the panel V3-21.3 opens upward is not clipped by its
+ * `overflow` (as Settings), and visible on a phone, where the segments are not. It never shrinks: the engine title does.
+ * `warn` is said by the words and the glyph as well; `--warning` is the colour of the other segments in that state.
+ */
+.alarm {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1-5);
+  color: var(--text-secondary);
+}
+
+.alarm[data-state='warn'] {
+  color: var(--warning);
+}
+
+/*
+ * The console's button, the same 24 px target as `.settingsTrigger` (the focus ring, 2 px at an offset of 2 px, then fits the
+ * 32 px bar) and the `Popover` trigger's hover. The wall's text carries `.alarm` only: nothing there is pressed.
+ */
+.alarmButton {
+  height: calc(24px * var(--ui-scale));
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-m);
+  background: none;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.alarmButton:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-2);
+}
+
+.alarmButton:not([data-state='warn']):hover {
+  color: var(--text-primary);
 }
 
 /* The Settings entry (V3-06.3); `margin-left: auto` keeps it at the right end when the segments are hidden. */
