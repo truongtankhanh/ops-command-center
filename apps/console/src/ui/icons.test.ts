@@ -12,6 +12,7 @@ import {
 } from '@occ/contracts';
 import {
   actorKindIcon,
+  alarmLoadIcon,
   assetClassIcon,
   assetStateIcon,
   Box,
@@ -95,6 +96,27 @@ describe('health glyphs', () => {
   it('shares the resolved status glyph and the high severity glyph, on purpose', () => {
     expect(healthIcon('healthy')).toBe(statusIcon('resolved'));
     expect(healthIcon('degraded')).toBe(severityIcon('high'));
+  });
+});
+
+// The status bar's alarm-load segment (V3-21.2). The flood's triangle is shared on purpose with another meaning, and written in
+// docs/design/icons.md: pinned here, so a slip that moves one fails.
+describe('alarm load glyphs', () => {
+  it('gives a calm load and a flood their own glyphs', () => {
+    expect(alarmLoadIcon(false)).not.toBe(alarmLoadIcon(true));
+  });
+
+  it('shares the warning triangle with the high severity and the degraded health, on purpose', () => {
+    expect(alarmLoadIcon(true)).toBe(severityIcon('high'));
+    expect(alarmLoadIcon(true)).toBe(healthIcon('degraded'));
+  });
+
+  it('does not draw a calm load with the glyph of a severity or a status', () => {
+    const others = new Set<Glyph>([
+      ...INCIDENT_SEVERITIES.map(severityIcon),
+      ...INCIDENT_STATUSES.map(statusIcon),
+    ]);
+    expect(others.has(alarmLoadIcon(false))).toBe(false);
   });
 });
 

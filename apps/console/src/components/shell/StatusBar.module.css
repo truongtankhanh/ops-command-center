@@ -88,10 +88,16 @@
 }
 
 /*
- * The alarm-load slot (V3-21.2, frame 16): outside `.segments`, so the panel V3-21.3 opens upward is not clipped by its
+ * The alarm-load slot (V3-21.2, frame 16): outside `.segments`, so the panel it opens upward (V3-21.3) is not clipped by its
  * `overflow` (as Settings), and visible on a phone, where the segments are not. It never shrinks: the engine title does.
- * `warn` is said by the words and the glyph as well; `--warning` is the colour of the other segments in that state.
+ * `.alarm` is the content, the same inner span on the console and on the wall (the popover renders its own button and takes no
+ * attributes for it). `warn` is said by the words and the glyph as well; `--warning` is the colour of the other segments in
+ * that state.
  */
+.alarmRoot {
+  flex: none;
+}
+
 .alarm {
   display: inline-flex;
   flex: none;
@@ -106,25 +112,29 @@
 
 /*
  * The console's button, the same 24 px target as `.settingsTrigger` (the focus ring, 2 px at an offset of 2 px, then fits the
- * 32 px bar) and the `Popover` trigger's hover. The wall's text carries `.alarm` only: nothing there is pressed.
+ * 32 px bar). The `Popover`'s own trigger rule sets the border, the hover and the open fill. The wall's text carries `.alarm`
+ * only: nothing there is pressed.
  */
-.alarmButton {
+.alarmTrigger {
+  display: inline-flex;
+  align-items: center;
   height: calc(24px * var(--ui-scale));
   padding: 0 var(--space-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-m);
-  background: none;
   font-weight: var(--weight-medium);
-  cursor: pointer;
 }
 
-.alarmButton:hover {
-  border-color: var(--border-subtle);
-  background: var(--surface-2);
-}
-
-.alarmButton:not([data-state='warn']):hover {
+.alarmTrigger:hover .alarm[data-state='ok'],
+.alarmTrigger[aria-expanded='true'] .alarm[data-state='ok'] {
   color: var(--text-primary);
+}
+
+/*
+ * The panel is wider than the popover's 300 px (frame 16: a code, a name and a count on one row). The doubled class lifts these
+ * rules over the popover's own `.panel` rule, whatever the order the two sheets load in; no other `Popover` consumer sizes its
+ * panel, so there is no precedent to follow.
+ */
+.alarmPanel.alarmPanel {
+  width: calc(392px * var(--ui-scale));
 }
 
 /* The Settings entry (V3-06.3); `margin-left: auto` keeps it at the right end when the segments are hidden. */
@@ -157,5 +167,20 @@
   .divider,
   .segments {
     display: none;
+  }
+
+  /*
+   * The button sits mid-bar here, so a panel right-aligned to it could run off the left edge. It is fixed to the viewport's
+   * edges instead, just above the bar (the bar itself has no transform, so `fixed` is the viewport's). The third class lifts
+   * it over the popover's `[data-placement='above']` rule.
+   */
+  .alarmPanel.alarmPanel[data-placement='above'] {
+    position: fixed;
+    top: auto;
+    right: var(--space-4);
+    bottom: calc(var(--statusbar-height) + var(--space-2));
+    left: var(--space-4);
+    width: auto;
+    max-width: none;
   }
 }
