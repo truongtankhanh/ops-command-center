@@ -1,5 +1,5 @@
 import { type Incident, IncidentEvents, type Role } from '@occ/contracts';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { queryKeys } from './api/queries';
 import { App } from './App';
 import { reauthenticate } from './auth/session';
@@ -97,6 +97,17 @@ const CRITICAL: Incident = {
   version: 1,
 };
 
+/** Twelve incidents raised a minute ago: above the ten in ten minutes that start an alarm flood (V3-21). None is critical, so the camera stays put. */
+const flooded = (): Incident[] =>
+  Array.from({ length: 12 }, (_, index) => ({
+    ...CRITICAL,
+    id: `flood-${index}`,
+    code: `INC-0002${index}`,
+    severity: 'medium',
+    title: `Raised ${index}`,
+    reportedAt: new Date(Date.now() - 60_000).toISOString(),
+  }));
+
 /** What the page's live link does when the API sends a new incident: the handler `useLiveIncidents` registered. */
 function receive(incident: Incident): void {
   const call = fake.socket.on.mock.calls.findLast(([event]) => event === IncidentEvents.Created);
@@ -109,11 +120,11 @@ function receive(incident: Incident): void {
 const methods = () =>
   vi.mocked(fetch).mock.calls.map(([, init]) => (init?.method ?? 'GET').toUpperCase());
 
-function renderWall(role: Role) {
+function renderWall(role: Role, incidents: Incident[] = []) {
   useSession.getState().signedIn({ displayName: 'Demo User', roles: [role] });
   useConsole.setState({ wall: 2 });
   const client = createTestQueryClient();
-  client.setQueryData(queryKeys.incidents, []);
+  client.setQueryData(queryKeys.incidents, incidents);
   client.setQueryData(queryKeys.assets, []);
   return renderWithQueryClient(
     <AuthGate>
@@ -254,6 +265,39 @@ describe('the console on a video wall screen', () => {
       await expectNoAxeViolations(document.body, { screen: true });
     },
   );
+
+  // V3-21.5: the wall is for watching. In a flood it reads the load as text in its bar, whatever the role, and the console's
+  // banner, switch, panel and grouped list are not there to press (`WallApp.test.tsx` and `StatusBar.test.tsx` hold the pieces).
+  describe('in an alarm flood', () => {
+    // Grouping is chosen on purpose: what keeps a wall ungrouped is the wall, not the stored choice.
+    beforeEach(() => useConsole.setState({ groupByZone: true }));
+
+    it.each(ROLES)(
+      'reads the load as text in the bar, with no banner, no panel and nothing to press, for a %s',
+      (role) => {
+        const { container } = renderWall(role, flooded());
+
+        const bar = screen.getByRole('contentinfo', { name: 'System status' });
+        expect(bar).toHaveTextContent('Alarm flood · 12 / 10 min');
+        expect(bar.querySelector('[data-segment="alarms"]')?.closest('button')).toBeNull();
+        expect(screen.queryByText(/^Alarm flood:/)).toBeNull();
+        expect(screen.queryByRole('group', { name: 'Alarm load' })).toBeNull();
+        expect(screen.queryByText(/Grouped by zone/)).toBeNull();
+        expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
+        for (const name of CONTROL_ROLES) expect(screen.queryAllByRole(name), name).toHaveLength(0);
+        // One live region in the bar, the summary; the flood is not announced there, and there is no banner to announce it.
+        expect(within(bar).getAllByRole('status')).toHaveLength(1);
+        expect(within(bar).getByRole('status')).not.toHaveTextContent(/flood/i);
+        expect(methods().filter((method) => method !== 'GET')).toEqual([]);
+      },
+    );
+
+    it('has no axe violations', async () => {
+      renderWall('viewer', flooded());
+
+      await expectNoAxeViolations(document.body, { screen: true });
+    });
+  });
 
   it.each(ROLES)('asks for data and writes none, for a %s', (role) => {
     renderWall(role);
