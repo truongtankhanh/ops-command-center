@@ -381,6 +381,92 @@ describe('IncidentDetail', () => {
     });
   });
 
+  // V3-22.4 (frame 17c): the time left before the attention threshold, in the header's chip row. The suite runs on the
+  // real clock, so the exact figures are `AttentionChip.test.tsx`'s; here the chip is present, in place, or gone.
+  describe('attention chip', () => {
+    beforeEach(() => signInAs('operator'));
+
+    const chip = () => document.querySelector('[data-attention]');
+
+    it('shows an open incident’s time to attention in the header, right after the status', () => {
+      // High severity: 5 minutes, so one minute after the report there are four left.
+      renderDetail(detail({ reportedAt: minutesAgo(1) }));
+
+      expect(chip()).toHaveAttribute('data-attention', 'normal');
+      expect(screen.getByText(/^\d:\d\d to attention$/)).toBeInTheDocument();
+      const sentence = screen.getByText('attention time in 4 minutes');
+      expect(follows(screen.getByText('Open'), sentence)).toBe(true);
+      expect(follows(sentence, screen.getByText('Intrusion'))).toBe(true);
+      // Not a live region, and no role of its own.
+      expect(chip()).not.toHaveAttribute('role');
+      expect(chip()?.querySelector('[role], [aria-live]')).toBeNull();
+    });
+
+    it('reads the time over for an incident past its attention time, beside the lifecycle’s flag', () => {
+      // The default incident was reported weeks ago.
+      renderDetail();
+
+      expect(chip()).toHaveAttribute('data-attention', 'overdue');
+      expect(screen.getByText(/^\+.* over$/)).toBeInTheDocument();
+      expect(screen.getByText(/^past attention time by \d+ minutes$/)).toBeInTheDocument();
+      // The stepper's own flag is unchanged.
+      expect(metric('Open for')).toHaveAttribute('data-late');
+      expect(metric('Open for')).toHaveTextContent('past attention time');
+    });
+
+    it.each<Detail['status']>(['acknowledged', 'resolved'])(
+      'shows none on a %s incident',
+      (status) => {
+        renderDetail(
+          detail({
+            status,
+            reportedAt: minutesAgo(14),
+            acknowledgedAt: minutesAgo(10),
+            ...(status === 'resolved' ? { resolvedAt: minutesAgo(5) } : {}),
+          }),
+        );
+
+        expect(chip()).toBeNull();
+        expect(screen.queryByText(/attention time/)).toBeNull();
+        expect(screen.queryByText(/to attention/)).toBeNull();
+      },
+    );
+
+    it('shows none while the incident loads, or for one that no longer exists', async () => {
+      getAnswers = [() => apiError(404, 'Not found')];
+
+      renderUncached();
+      expect(chip()).toBeNull();
+
+      expect(await screen.findByText('This incident no longer exists.')).toBeInTheDocument();
+      expect(chip()).toBeNull();
+    });
+
+    it('goes when the incident is acknowledged, and the sheet stays open', async () => {
+      postResponse = () =>
+        json(
+          detail({
+            status: 'acknowledged',
+            reportedAt: minutesAgo(1),
+            acknowledgedAt: minutesAgo(0),
+            version: 2,
+          }),
+        );
+      renderDetail(detail({ reportedAt: minutesAgo(1) }));
+      expect(chip()).not.toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Acknowledge' }));
+
+      // TanStack tells its observers on a timeout, so wait for the cache change to reach the header.
+      await waitFor(() => expect(chip()).toBeNull());
+      expect(screen.queryByText(/attention time/)).toBeNull();
+      expect(
+        screen.getByRole('complementary', { name: 'Incident INC-000042' }),
+      ).toBeInTheDocument();
+      expect(postCalls()).toHaveLength(1);
+    });
+  });
+
   // V3-09.5: the sheet is Details, Related and Timeline once the incident is there.
   describe('tabs', () => {
     beforeEach(() => signInAs('operator'));

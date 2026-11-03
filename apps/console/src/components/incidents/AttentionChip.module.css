@@ -1,0 +1,41 @@
+/*
+ * The countdown chip in the inspector's header (V3-22.4, frame 17c). Plain text in the chip row, like `.age`, so it needs
+ * no surface of its own: it sits on the sheet (`--surface-1`), where `--text-secondary`, `--warning` and `--danger` are text
+ * pairs in `scripts/contrast.ts`. State is an attribute (ADR-0016). The ring and the text are decorative (`aria-hidden`); the
+ * sentence is `.hidden`. Tabular figures keep the digits from jittering each second. No animation and no transition.
+ */
+
+.attention {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.attention[data-attention='soon'] {
+  color: var(--warning);
+}
+
+.attention[data-attention='overdue'] {
+  color: var(--danger);
+  font-weight: var(--weight-semibold);
+}
+
+.figure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Read by assistive tech, not drawn. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
