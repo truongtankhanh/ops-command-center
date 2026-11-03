@@ -218,6 +218,22 @@ const PAIRS: Pair[] = [
       { fg: sev, bg: `${sev}-bg`, over: under, min: UI },
     ]),
   ),
+  // The countdown ring (V3-22.2, frame 17) sits at the right of the feed row and in the inspector header: its arc is a graphic (3:1) in
+  // `--text-secondary` (normal), `--warning` (soon) or `--danger` (overdue). On `--surface-1..3` the three are text pairs above; this adds
+  // `--danger` on the selected row and the three strokes on a severity tint, a fresh row's over `--surface-1`, and a selected or hovered
+  // fresh row's over `--row-selected-bg` and `--surface-2`. The `+m:ss over` text in `--danger` on the tints is V3-22.3's pair.
+  { fg: '--danger', bg: '--row-selected-bg', min: UI },
+  ...SEVERITIES.map((sev) => ({ fg: '--danger', bg: `${sev}-bg`, over: '--surface-1', min: UI })),
+  ...['--row-selected-bg', '--surface-2'].flatMap((under) =>
+    SEVERITIES.flatMap((sev) =>
+      ['--text-secondary', '--warning', '--danger'].map((fg) => ({
+        fg,
+        bg: `${sev}-bg`,
+        over: under,
+        min: UI,
+      })),
+    ),
+  ),
   // The glyph of a pressed toggle (`Button` `aria-pressed`, frame 14's `3D / 2D` switch): the accent
   // on its own tint (a graphic, 3:1). The label stays `--text-primary`, the pair above.
   { fg: '--accent', bg: '--accent-tint', over: '--surface-1', min: UI },

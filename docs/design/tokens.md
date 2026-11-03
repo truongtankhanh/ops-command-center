@@ -434,6 +434,35 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `--sev-medium`      | `--sev-medium-bg` over `--surface-2`           | 7.19  | 3       | pass                                                                                       |
 | `--text-primary`    | `--sev-low-bg` over `--surface-2`              | 10.50 | 4.5     | pass                                                                                       |
 | `--sev-low`         | `--sev-low-bg` over `--surface-2`              | 4.53  | 3       | pass                                                                                       |
+| `--danger`          | `--row-selected-bg`                            | 5.56  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-critical-bg` over `--surface-1`         | 6.49  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-high-bg` over `--surface-1`             | 5.64  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-medium-bg` over `--surface-1`           | 5.35  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-low-bg` over `--surface-1`              | 5.85  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-critical-bg` over `--row-selected-bg`   | 5.59  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-critical-bg` over `--row-selected-bg`   | 6.45  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-critical-bg` over `--row-selected-bg`   | 4.98  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-high-bg` over `--row-selected-bg`       | 4.75  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-high-bg` over `--row-selected-bg`       | 5.48  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-high-bg` over `--row-selected-bg`       | 4.23  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-medium-bg` over `--row-selected-bg`     | 4.48  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-medium-bg` over `--row-selected-bg`     | 5.18  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-medium-bg` over `--row-selected-bg`     | 3.99  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-low-bg` over `--row-selected-bg`        | 4.88  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-low-bg` over `--row-selected-bg`        | 5.64  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-low-bg` over `--row-selected-bg`        | 4.35  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-critical-bg` over `--surface-2`         | 6.56  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-critical-bg` over `--surface-2`         | 7.58  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-critical-bg` over `--surface-2`         | 5.85  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-high-bg` over `--surface-2`             | 5.62  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-high-bg` over `--surface-2`             | 6.49  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-high-bg` over `--surface-2`             | 5.01  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-medium-bg` over `--surface-2`           | 5.32  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-medium-bg` over `--surface-2`           | 6.14  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-medium-bg` over `--surface-2`           | 4.74  | 3       | pass                                                                                       |
+| `--text-secondary`  | `--sev-low-bg` over `--surface-2`              | 5.83  | 3       | pass                                                                                       |
+| `--warning`         | `--sev-low-bg` over `--surface-2`              | 6.73  | 3       | pass                                                                                       |
+| `--danger`          | `--sev-low-bg` over `--surface-2`              | 5.19  | 3       | pass                                                                                       |
 | `--accent`          | `--accent-tint` over `--surface-1`             | 4.04  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-critical`                               | 5.64  | 3       | pass                                                                                       |
 | `--on-accent`       | `--sev-high`                                   | 10.20 | 3       | pass                                                                                       |
