@@ -232,4 +232,23 @@ describe('AttentionChip', () => {
       expect(vi.getTimerCount()).toBe(0);
     });
   });
+
+  // V3-22.5: nothing to reduce under `prefers-reduced-motion`. A test cannot read the CSS module (it reaches vitest as the class
+  // map), so this holds the DOM to it; `AttentionChip.module.css` has no animation or transition either (read, V3-22.5 log).
+  describe('motion', () => {
+    it.each([
+      ['soon', 225 * SECOND],
+      ['overdue', 5 * MINUTE + 5 * SECOND],
+    ])('has no animated element and no inline motion when %s', (state, ageMs) => {
+      const { container } = render(<AttentionChip incident={reportedAgo(ageMs)} />);
+
+      const chip = chipOf(container);
+      expect(chip).toHaveAttribute('data-attention', state);
+      expect(chip).not.toHaveAttribute('style');
+      expect(chip?.querySelector('animate, animateTransform, animateMotion, set')).toBeNull();
+      for (const element of chip?.querySelectorAll('*') ?? []) {
+        expect(element.getAttribute('style') ?? '').not.toMatch(/transition|animation/);
+      }
+    });
+  });
 });

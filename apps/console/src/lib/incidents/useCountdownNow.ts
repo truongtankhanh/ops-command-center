@@ -30,6 +30,9 @@ const neverHidden = () => false;
  * reads the figures, so a background tab is not woken for them, and `now` is set again the moment the tab is back so it never
  * shows a figure from before it was hidden. The period is decided from the last `now`, so an incident that enters its last ten
  * minutes is noticed at the next slow tick, up to 15 s late, when the text is still a round `10:00` or so.
+ *
+ * What it ticks for is an attention threshold, display only and not an SLA: nothing enforces it on the server (V1 Approved
+ * decision 3), so a figure up to a tick old is a display matter, never a missed deadline.
  */
 export function useCountdownNow(incidents: readonly Incident[]): number {
   const [now, setNow] = useState(() => Date.now());

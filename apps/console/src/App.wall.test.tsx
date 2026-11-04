@@ -299,6 +299,75 @@ describe('the console on a video wall screen', () => {
     });
   });
 
+  // V3-22.5: the wall shows the attention countdown (frame 17) as text, for every role, with nothing to press and nothing announced.
+  // Medium incidents (15 min), so the 13-minute one is "soon" with two minutes of margin on the real clock; none is critical, so the
+  // camera stays put, and three in twenty minutes is no flood.
+  describe('the attention countdown', () => {
+    const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    const countdownIncidents = (): Incident[] => [
+      {
+        ...CRITICAL,
+        id: 'soon',
+        code: 'INC-000501',
+        severity: 'medium',
+        title: 'Leak under the stairs',
+        reportedAt: minutesAgo(13),
+      },
+      {
+        ...CRITICAL,
+        id: 'over',
+        code: 'INC-000502',
+        severity: 'medium',
+        title: 'Leak in the plant room',
+        reportedAt: minutesAgo(20),
+      },
+      {
+        ...CRITICAL,
+        id: 'handled',
+        code: 'INC-000503',
+        severity: 'medium',
+        status: 'acknowledged',
+        title: 'Leak by the lifts',
+        reportedAt: minutesAgo(20),
+        acknowledgedAt: minutesAgo(18),
+      },
+    ];
+    const list = () => screen.getByRole('region', { name: /^Active incidents/ });
+    const blockOf = (title: string) =>
+      within(list()).getByText(title).closest('li')?.querySelector('[data-attention]') ?? null;
+    const LIVE = '[role="status"], [role="alert"], [aria-live]:not([aria-live="off"])';
+
+    it.each(ROLES)(
+      'reads the time left and the time over as text, with nothing to press, for a %s',
+      (role) => {
+        const { container } = renderWall(role, countdownIncidents());
+
+        const soon = blockOf('Leak under the stairs');
+        const over = blockOf('Leak in the plant room');
+        expect(soon).toHaveAttribute('data-attention', 'soon');
+        expect(soon).toHaveTextContent(/^\d+:\d\d left$/);
+        expect(over).toHaveAttribute('data-attention', 'overdue');
+        expect(over).toHaveTextContent(/^\+\d+:\d\d over$/);
+        expect(blockOf('Leak by the lifts')).toBeNull();
+        // Not read out as it steps: no countdown is inside a live region.
+        for (const block of [soon!, over!]) expect(block.closest(LIVE)).toBeNull();
+        expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
+        for (const name of CONTROL_ROLES) expect(screen.queryAllByRole(name), name).toHaveLength(0);
+        expect(document.body.textContent).not.toMatch(/\bSLA\b/);
+        expect(methods().filter((method) => method !== 'GET')).toEqual([]);
+      },
+    );
+
+    // Once: the wall draws the same list for every role (the session does not reach `WallIncidents`), as the flood's case above.
+    it('has no axe violations with a soon and an overdue row', async () => {
+      renderWall('viewer', countdownIncidents());
+
+      expect(blockOf('Leak under the stairs')).toHaveAttribute('data-attention', 'soon');
+      expect(blockOf('Leak in the plant room')).toHaveAttribute('data-attention', 'overdue');
+      await expectNoAxeViolations(document.body, { screen: true });
+    });
+  });
+
   it.each(ROLES)('asks for data and writes none, for a %s', (role) => {
     renderWall(role);
 
