@@ -260,6 +260,28 @@ describe('IncidentRow', () => {
 
       await expectNoAxeViolations();
     });
+
+    // V3-22.5: nothing in the block moves or can be acted on. The stylesheet is read, not tested (a CSS module reaches vitest as
+    // its class map): `.countdown` has no animation or transition; the row's own animations are the fresh row's.
+    it.each([
+      ['soon', 90_000],
+      ['overdue', 125_000],
+    ])('holds no motion and no control in the block when %s', (state, ageMs) => {
+      const { container } = renderAt(ageMs);
+
+      const block = blockOf(container);
+      expect(block).toHaveAttribute('data-attention', state);
+      expect(block).not.toHaveAttribute('style');
+      expect(block?.querySelector('animate, animateTransform, animateMotion, set')).toBeNull();
+      for (const element of block?.querySelectorAll('*') ?? []) {
+        expect(element.getAttribute('style') ?? '').not.toMatch(/transition|animation/);
+      }
+      expect(
+        block?.querySelector(
+          'button, a[href], input, select, textarea, [tabindex], [role], [aria-live]',
+        ),
+      ).toBeNull();
+    });
   });
 
   // The video wall's row (V2-21.5): the same words, and nothing to press.

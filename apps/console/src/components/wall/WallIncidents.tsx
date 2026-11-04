@@ -21,7 +21,8 @@ const LOADING_ROWS = 5;
  *
  * Each open incident also shows its attention countdown (V3-22.3, frame 17), as text: a ring and the time left, nothing to
  * focus. The wall's clock is `useNow(5000)`, five seconds being enough for the soon and overdue states, so the `m:ss`
- * steps every 5 s here and not every second as in the feed.
+ * steps every 5 s here and not every second as in the feed. The figure is an attention threshold, display only and not an
+ * SLA: nothing enforces it on the server (V1 Approved decision 3).
  *
  * The list is a `ul`; it is not announced when it changes, because the wall's own focus banner is what announces a new
  * critical incident (V2-21.8), and a list that reads itself out on every update would talk all day.

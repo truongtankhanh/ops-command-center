@@ -17,6 +17,9 @@ const round = (n: number): number => Math.round(n * 100) / 100;
  * the countdown's text (`m:ss`, `+m:ss over`) and its glyph sit beside it, and the row's name carries the sentence
  * (`countdownSpeech`). The look follows `state` (neutral, `--warning`, `--danger`), and there is no animation or transition: the
  * ring is set at each tick, so `prefers-reduced-motion` has nothing to turn off.
+ *
+ * The time it is a share of is an attention threshold, display only and not an SLA: nothing enforces it on the server (V1
+ * Approved decision 3).
  */
 export function CountdownRing({
   fraction,

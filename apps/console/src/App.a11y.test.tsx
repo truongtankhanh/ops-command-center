@@ -2399,4 +2399,137 @@ describe('the console', () => {
       expect(chart.closest('[style*="animation"]')).toBeNull();
     });
   });
+
+  // V3-22.5: the attention countdown (frame 17) seen from the whole console. The states, the clocks and the sentence are the specs of
+  // `attentionCountdown`, `useCountdownNow`, `IncidentRow` and `AttentionChip`; here every role sees the rows' countdown and the
+  // sheet's chip, none acts from them, and axe passes with a soon and an overdue one. The incidents are Facilities, so a technician
+  // has them in scope, and medium (15 min), so "soon" lasts from 11:15 to 15:00 old: built per case from the real clock, the
+  // 13-minute one keeps two minutes of margin.
+  describe('attention countdown', () => {
+    const ALL_ROLES: readonly Role[] = ['operator', 'supervisor', 'technician', 'viewer'];
+    const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    const countdownIncidents = (): Incident[] => [
+      incident({
+        id: 'soon',
+        code: 'INC-000501',
+        type: 'water_leak',
+        severity: 'medium',
+        title: 'Leak under the stairs',
+        reportedAt: minutesAgo(13),
+      }),
+      incident({
+        id: 'over',
+        code: 'INC-000502',
+        type: 'water_leak',
+        severity: 'medium',
+        title: 'Leak in the plant room',
+        reportedAt: minutesAgo(20),
+      }),
+      incident({
+        id: 'handled',
+        code: 'INC-000503',
+        type: 'water_leak',
+        severity: 'medium',
+        status: 'acknowledged',
+        title: 'Leak by the lifts',
+        reportedAt: minutesAgo(20),
+        acknowledgedAt: minutesAgo(18),
+      }),
+    ];
+    const feed = () => screen.getByRole('region', { name: 'Incidents' });
+    const rowOf = (title: string) =>
+      within(feed()).getByRole('button', { name: new RegExp(title) });
+    const blockOf = (element: Element) => element.querySelector('[data-attention]');
+    const sheetOf = (code: string) =>
+      screen.getByRole('complementary', { name: `Incident ${code}` });
+    /** Anything inside a countdown a person could press, type into, tab to, or that a screen reader would treat as a widget or a live region. */
+    const CONTROLS =
+      'button, a[href], input, select, textarea, summary, [tabindex], [role], [aria-live]';
+    const LIVE = '[role="status"], [role="alert"], [aria-live]:not([aria-live="off"])';
+    const writes = () =>
+      vi
+        .mocked(fetch)
+        .mock.calls.map(([, init]) => (init?.method ?? 'GET').toUpperCase())
+        .filter((method) => method !== 'GET');
+    const checkPage = () => expectNoAxeViolations(document.body, { screen: true });
+
+    it.each(ALL_ROLES)(
+      'shows a %s the countdown on the open rows, and none acts from it',
+      async (role) => {
+        renderConsole({ role, incidents: countdownIncidents() });
+
+        const soon = blockOf(rowOf('Leak under the stairs'));
+        const over = blockOf(rowOf('Leak in the plant room'));
+        expect(soon).toHaveAttribute('data-attention', 'soon');
+        expect(over).toHaveAttribute('data-attention', 'overdue');
+        expect(blockOf(rowOf('Leak by the lifts'))).toBeNull();
+        for (const block of [soon!, over!]) {
+          expect(block.querySelector(CONTROLS)).toBeNull();
+          expect(block.closest(LIVE)).toBeNull();
+        }
+        // The figure is display only, and never named an SLA anywhere on the page.
+        expect(document.body.textContent).not.toMatch(/\bSLA\b/);
+
+        // A click on the countdown is a click on its row: it selects the incident, as since V1, and writes nothing.
+        await userEvent.click(soon!);
+
+        expect(useConsole.getState().selectedIncidentId).toBe('soon');
+        expect(writes()).toEqual([]);
+      },
+    );
+
+    it.each(ALL_ROLES)(
+      'shows a %s the chip in the open sheet, whatever the foot, and none acts from it',
+      async (role) => {
+        renderConsole({ role, incidents: countdownIncidents() });
+
+        act(() => useConsole.getState().select('soon'));
+
+        const sheet = sheetOf('INC-000501');
+        const chips = sheet.querySelectorAll('[data-attention]');
+        expect(chips).toHaveLength(1);
+        const chip = chips[0]!;
+        expect(chip).toHaveAttribute('data-attention', 'soon');
+        expect(within(sheet).getByText('attention time in 2 minutes')).toBeInTheDocument();
+        expect(chip.querySelector(CONTROLS)).toBeNull();
+        expect(chip.closest(LIVE)).toBeNull();
+        // The foot is the role's; the chip is the same for all of them.
+        if (role === 'viewer') expect(screen.getByRole('note')).toHaveTextContent('View only');
+        else expect(screen.getByRole('form', { name: 'Response' })).toBeInTheDocument();
+        expect(document.body.textContent).not.toMatch(/\bSLA\b/);
+
+        await userEvent.click(chip);
+
+        expect(useConsole.getState().selectedIncidentId).toBe('soon');
+        expect(writes()).toEqual([]);
+      },
+    );
+
+    it('has no axe violations with a soon and an overdue row in the feed', async () => {
+      renderConsole({ incidents: countdownIncidents() });
+
+      expect(blockOf(rowOf('Leak under the stairs'))).toHaveAttribute('data-attention', 'soon');
+      expect(blockOf(rowOf('Leak in the plant room'))).toHaveAttribute('data-attention', 'overdue');
+      await checkPage();
+    });
+
+    it('has no axe violations with the sheet open on a soon chip, then on an overdue one', async () => {
+      renderConsole({ incidents: countdownIncidents() });
+
+      act(() => useConsole.getState().select('soon'));
+
+      expect(sheetOf('INC-000501').querySelector('[data-attention]')).toHaveAttribute(
+        'data-attention',
+        'soon',
+      );
+      await checkPage();
+
+      act(() => useConsole.getState().select('over'));
+
+      const chip = sheetOf('INC-000502').querySelector('[data-attention]');
+      expect(chip).toHaveAttribute('data-attention', 'overdue');
+      expect(chip?.firstElementChild).toHaveTextContent(/^\+\d+:\d\d over$/);
+      await checkPage();
+    });
+  });
 });
