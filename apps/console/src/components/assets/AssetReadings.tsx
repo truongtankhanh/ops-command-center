@@ -10,8 +10,10 @@ import {
   SPARKLINE_WINDOW_MS,
 } from '../../lib/assets/assetInspector';
 import { formatReading, limitLine } from '../../lib/assets/readings';
+import type { ReadingRange } from '../../lib/telemetry/readingRange';
 import { ageMs as readingAgeMs } from '../../lib/telemetry/telemetryFreshness';
 import type { AssetTelemetryState } from '../../lib/telemetry/telemetryState';
+import type { ReadingSeries } from '../../lib/telemetry/useReadingSeries';
 import { useAssetSeries } from '../../realtime/telemetryStore';
 import { Hint } from '../../ui/Hint';
 import { Clock } from '../../ui/icons';
@@ -41,6 +43,14 @@ const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
  *
  * `serverNow` is read once by the caller and passed down. The freshness text sits outside any live
  * region, so it does not announce every second.
+ *
+ * `range` other than `15m` (V3-23.2, frame 18) draws each row's sparkline from `history`, the
+ * fetched buckets the caller got from `useReadingSeries`: one request for the asset, however many
+ * rows. The buckets are drawn as they are over the window they were read for, never extended to
+ * now (V2-09.7) and with no live point, and Around the alarm marks the raised time. The value, the
+ * rule line, the over-limit tint and the stale dimming stay the live ones. History comes from the
+ * database, not from the watch, so `ended` does not hide a past range's chart. With `15m` (the
+ * default) `history` is ignored and the rows draw the live ring as before.
  */
 export function AssetReadings({
   assetCode,
@@ -49,6 +59,8 @@ export function AssetReadings({
   serverNow,
   stale,
   ended = false,
+  range = '15m',
+  history,
 }: {
   assetCode: string;
   rows: InspectorRows;
@@ -59,7 +71,12 @@ export function AssetReadings({
   stale: boolean;
   /** The readings are no longer being fed because the thing that watched them is over. */
   ended?: boolean;
+  /** Which window the sparklines show; `15m` is the live ring. */
+  range?: ReadingRange;
+  /** The fetched series of a past range; read only when `range` is not `15m`. */
+  history?: ReadingSeries;
 }) {
+  const past = range !== '15m';
   const age =
     entry !== undefined && serverNow !== null ? readingAgeMs(entry.receivedAt, serverNow) : null;
   const freshness = ended ? null : freshnessText(age, stale);
@@ -72,6 +89,8 @@ export function AssetReadings({
       serverNow={serverNow}
       stale={stale}
       ended={ended}
+      history={past ? history : undefined}
+      past={past}
     />
   );
 
@@ -107,6 +126,8 @@ function ReadingRow({
   serverNow,
   stale,
   ended,
+  history,
+  past,
 }: {
   assetCode: string;
   row: InspectorRow;
@@ -114,25 +135,37 @@ function ReadingRow({
   serverNow: number | null;
   stale: boolean;
   ended: boolean;
+  history: ReadingSeries | undefined;
+  past: boolean;
 }) {
   const { point, rule } = row;
   // Reads only its own key's series: a stored reference that changes when this key is re-posted.
+  // Still subscribed in a past range (a hook is not called conditionally), and not drawn there.
   const series = useAssetSeries(assetCode, point.key);
   // The freshest copy wins, as the list's row value: frames are laid over the overview's headline.
   const value: TelemetryValue | undefined = entry?.values[point.key] ?? entry?.headline[point.key];
   const latest = encodedLatest(point, value);
   // A number and a boolean have a series; an enum has none (the engine has no `enumValues`), and
   // a kind from a newer API is shown as its value only.
-  // An ended watch has no series to draw, and `drawnSeries` would add a live-looking point to none.
-  const drawable = !ended && (point.kind === 'number' || point.kind === 'boolean');
+  // An ended watch has no live series to draw, and `drawnSeries` would add a live-looking point to
+  // none; a past range is read from the database, so it is drawn whatever the watch.
+  const drawable = (past || !ended) && (point.kind === 'number' || point.kind === 'boolean');
   const live = !stale && serverNow !== null;
-  const drawn = useMemo(
-    () =>
-      drawable && value !== undefined && serverNow !== null
-        ? drawnSeries(series, latest, serverNow, live)
-        : null,
-    [drawable, value, serverNow, series, latest, live],
-  );
+  // A key with no number in the range has no column and draws nothing: no gap is invented.
+  const column = history?.byKey.get(point.key);
+  const drawn = useMemo(() => {
+    if (!drawable) return null;
+    if (past) return column === undefined ? null : { times: column.t, values: column.v };
+    return value !== undefined && serverNow !== null
+      ? drawnSeries(series, latest, serverNow, live)
+      : null;
+  }, [drawable, past, column, value, serverNow, series, latest, live]);
+  // The window drawn: the buckets' own for a past range, the last 15 minutes up to now otherwise.
+  const shown = past
+    ? (history?.window ?? null)
+    : serverNow === null
+      ? null
+      : { from: serverNow - SPARKLINE_WINDOW_MS, to: serverNow };
   const over = overSeverity(rule, latest);
   const ruleLine = rule === null ? null : limitLine(rule, point);
 
@@ -147,12 +180,13 @@ function ReadingRow({
         {ruleLine !== null && <span className={styles.rule}>{ruleLine}</span>}
       </span>
       <span className={styles.chart}>
-        {drawn !== null && serverNow !== null && (
+        {drawn !== null && shown !== null && (
           <Sparkline
             times={drawn.times}
             values={drawn.values}
-            from={serverNow - SPARKLINE_WINDOW_MS}
-            to={serverNow}
+            from={shown.from}
+            to={shown.to}
+            marker={past ? (history?.markerAt ?? null) : undefined}
             // A boolean rule's 0.5 is an encoding, not a limit an operator reads (V2-09.1).
             limit={point.kind === 'number' && rule !== null ? rule.limit : null}
             range={point.kind === 'boolean' ? BOOLEAN_RANGE : { min: point.min, max: point.max }}

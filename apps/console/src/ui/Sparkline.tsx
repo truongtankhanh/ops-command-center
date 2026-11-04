@@ -31,6 +31,11 @@ const round = (n: number): number => Math.round(n * 100) / 100;
  * `secondary` (`--accent-2`, a second series on the same area). `data-tone` is set only for
  * `secondary`, like `data-severity` and `data-stale`. `over` and `stale` win over either tone in
  * CSS, and the tone alone never says anything the value beside the drawing does not.
+ *
+ * `marker` is a time drawn as a vertical dashed line across the height, under the series: Around
+ * the alarm's raised time (V3-23.2, frame 18b). Neutral (`--text-secondary`), so it never reads as
+ * a severity, and untouched by tone, severity and stale. Still decorative: the tab says the range
+ * in words.
  */
 export function Sparkline({
   stale = false,
@@ -44,7 +49,7 @@ export function Sparkline({
   tone?: SparklineTone;
   className?: string;
 }) {
-  const { points, dot, limitY } = sparklineGeometry(series);
+  const { points, dot, limitY, markerX } = sparklineGeometry(series);
   return (
     <svg
       className={className ? `${styles.spark} ${className}` : styles.spark}
@@ -55,6 +60,15 @@ export function Sparkline({
       data-severity={over}
       data-tone={tone === 'secondary' ? 'secondary' : undefined}
     >
+      {markerX !== undefined && (
+        <line
+          className={styles.marker}
+          x1={round(markerX)}
+          x2={round(markerX)}
+          y1={0}
+          y2={SPARK_HEIGHT}
+        />
+      )}
       {limitY !== null && (
         <line
           className={styles.limit}

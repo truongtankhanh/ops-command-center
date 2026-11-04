@@ -153,17 +153,23 @@ export interface AssetHistoryRange {
  * The live path seeds its own rings from this route (`telemetryClient`); this is for a reader that
  * asks for a range of its own. A 404 (an older replica without the route, or an unknown code) stays
  * an error with `data` undefined: the caller says "no history". Not `STATIC`: history moves.
+ *
+ * The key is `['assets', code, 'history', from, to]`; `isSameSlide` (`useReadingSeries`) reads
+ * that layout, so a change here changes it there.
  */
-export const useAssetHistory = (code: string | null, range?: AssetHistoryRange) =>
-  useQuery({
+export const assetHistoryQuery = (code: string, range?: AssetHistoryRange) =>
+  queryOptions({
     // Every value the request depends on is in the key, so two ranges never share an entry.
-    queryKey: [...queryKeys.assetHistory(code ?? ''), range?.from ?? null, range?.to ?? null],
+    queryKey: [...queryKeys.assetHistory(code), range?.from ?? null, range?.to ?? null],
     queryFn: () => {
       const query = range ? `?${new URLSearchParams({ from: range.from, to: range.to })}` : '';
-      return api.get<AssetTelemetry>(`/assets/${encodeURIComponent(code ?? '')}/telemetry${query}`);
+      return api.get<AssetTelemetry>(`/assets/${encodeURIComponent(code)}/telemetry${query}`);
     },
-    enabled: code !== null,
   });
+
+/** `assetHistoryQuery` with the defaults; no request is sent without a code. */
+export const useAssetHistory = (code: string | null, range?: AssetHistoryRange) =>
+  useQuery({ ...assetHistoryQuery(code ?? '', range), enabled: code !== null });
 
 /** The whole recent list; filtering happens client-side so live events can patch one cache. */
 export const useIncidents = () =>

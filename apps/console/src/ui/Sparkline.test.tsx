@@ -161,6 +161,48 @@ describe('Sparkline', () => {
     });
   });
 
+  // V3-23.2: Around the alarm's raised time.
+  describe('marker', () => {
+    /** The vertical lines of a drawing: the limit is horizontal, so it is never one of them. */
+    const verticals = (svg: SVGSVGElement) =>
+      [...svg.querySelectorAll('line')].filter(
+        (line) => line.getAttribute('x1') === line.getAttribute('x2'),
+      );
+
+    it('draws no marker without one', () => {
+      expect(verticals(draw({ limit: 0.5 }))).toHaveLength(0);
+    });
+
+    it('draws a vertical line across the whole height at the marked time', () => {
+      const [marker, ...others] = verticals(draw({ marker: WINDOW / 2 }));
+
+      expect(others).toHaveLength(0);
+      expect(marker).toHaveAttribute('x1', '48');
+      expect(marker).toHaveAttribute('y1', '0');
+      expect(marker).toHaveAttribute('y2', '28');
+    });
+
+    it('draws it under the limit and the series', () => {
+      const svg = draw({ marker: WINDOW / 4, limit: 0.5 });
+      const parts = [...svg.children].map((child) => child.tagName.toLowerCase());
+
+      expect(parts).toEqual(['line', 'line', 'polyline', 'circle']);
+      expect(svg.querySelector('line')).toHaveAttribute('x1', '24');
+    });
+
+    it('draws no marker outside the window', () => {
+      expect(verticals(draw({ marker: WINDOW + 1 }))).toHaveLength(0);
+    });
+
+    it('stays decorative: hidden, with no text', async () => {
+      const svg = draw({ marker: WINDOW / 2 });
+
+      expect(svg).toHaveAttribute('aria-hidden', 'true');
+      expect(svg.textContent).toBe('');
+      await expectNoAxeViolations(svg.parentElement as HTMLElement);
+    });
+  });
+
   it("keeps the caller's class", () => {
     expect(draw({ className: 'spaced' })).toHaveClass('spaced');
   });
