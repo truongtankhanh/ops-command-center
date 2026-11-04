@@ -8,6 +8,10 @@
  * The line and the dot are `--signal` (live data, V3-04.6, brief § Inspector) and `--accent-2` for
  * `data-tone='secondary'`; `--accent` is for interaction and is not used here. The rules below
  * all have the same specificity, so their order is the contract: tone, then severity, then stale.
+ *
+ * `.marker` (Around the alarm's raised time, V3-23.2) is neutral and outside that order: no state
+ * recolours it. `--text-secondary` is held to 4.5:1 on every surface as text, above the 3:1 a
+ * graphic needs, so it adds no contrast pair.
  */
 
 .spark {
@@ -35,6 +39,12 @@
 
 .dot {
   fill: var(--signal);
+}
+
+.marker {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
 }
 
 /* Before the severity and stale rules on purpose: they must win over the tone. */

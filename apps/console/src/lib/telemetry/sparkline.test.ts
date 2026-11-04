@@ -222,4 +222,58 @@ describe('sparklineGeometry', () => {
       expect(g.points).toHaveLength(2);
     });
   });
+  // V3-23.2: Around the alarm's raised time, drawn as a vertical line.
+  describe('marker', () => {
+    const SERIES = { times: [0, WINDOW / 2, WINDOW], values: [1, 3, 2], limit: 2.5 };
+
+    it('has no marker, not even a null one, when none is given', () => {
+      expect('markerX' in sparklineGeometry(input(SERIES))).toBe(false);
+      expect('markerX' in sparklineGeometry(input({ ...SERIES, marker: null }))).toBe(false);
+    });
+
+    it('places the marker on the same time scale as the readings', () => {
+      expect(sparklineGeometry(input({ ...SERIES, marker: WINDOW / 2 })).markerX).toBe(
+        SPARK_WIDTH / 2,
+      );
+      expect(sparklineGeometry(input({ ...SERIES, marker: WINDOW / 4 })).markerX).toBe(
+        SPARK_WIDTH / 4,
+      );
+    });
+
+    it('keeps a marker on either edge of the window', () => {
+      expect(sparklineGeometry(input({ ...SERIES, marker: 0 })).markerX).toBe(0);
+      expect(sparklineGeometry(input({ ...SERIES, marker: WINDOW })).markerX).toBe(SPARK_WIDTH);
+    });
+
+    it.each([
+      ['before the window', -1],
+      ['after the window', WINDOW + 1],
+      ['not a number', Number.NaN],
+      ['infinite', Number.POSITIVE_INFINITY],
+    ])('drops a marker %s', (_label, marker) => {
+      expect('markerX' in sparklineGeometry(input({ ...SERIES, marker }))).toBe(false);
+    });
+
+    it('drops the marker of an empty window', () => {
+      expect('markerX' in sparklineGeometry(input({ ...SERIES, from: 5, to: 5, marker: 5 }))).toBe(
+        false,
+      );
+    });
+
+    it('keeps the marker of a window with no readings in it', () => {
+      expect(sparklineGeometry(input({ marker: WINDOW / 2 }))).toEqual({
+        points: [],
+        dot: null,
+        limitY: null,
+        markerX: SPARK_WIDTH / 2,
+      });
+    });
+
+    it('changes nothing else in the drawing', () => {
+      const { markerX, ...rest } = sparklineGeometry(input({ ...SERIES, marker: WINDOW / 2 }));
+
+      expect(markerX).toBe(SPARK_WIDTH / 2);
+      expect(rest).toEqual(sparklineGeometry(input(SERIES)));
+    });
+  });
 });

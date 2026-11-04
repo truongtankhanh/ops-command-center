@@ -31,6 +31,8 @@ export interface SparklineInput {
   range?: { min: number | null; max: number | null } | null;
   /** Hold the value until the next reading, then a vertical edge: booleans and enums. */
   step?: boolean;
+  /** A time to mark with a vertical line, epoch ms on the same clock: Around the alarm's raised time (V3-23.2). */
+  marker?: number | null;
 }
 
 export interface SparklineGeometry {
@@ -40,9 +42,12 @@ export interface SparklineGeometry {
   dot: { x: number; y: number } | null;
   /** The limit's y; `null` when there is no finite limit. */
   limitY: number | null;
+  /**
+   * The marker's x. Absent with no marker, or one that is not finite or falls outside the window, so the geometry of a
+   * sparkline without a marker is exactly what it was before markers existed.
+   */
+  markerX?: number;
 }
-
-const NOTHING: SparklineGeometry = { points: [], dot: null, limitY: null };
 
 /**
  * Scales a series into the viewBox.
@@ -58,13 +63,24 @@ const NOTHING: SparklineGeometry = { points: [], dot: null, limitY: null };
  *   are skipped.
  */
 export function sparklineGeometry(input: SparklineInput): SparklineGeometry {
-  const { times, values, from, to, step = false, range } = input;
+  const { times, values, from, to, step = false, range, marker } = input;
   const limit =
     input.limit !== undefined && input.limit !== null && Number.isFinite(input.limit)
       ? input.limit
       : null;
 
   const windowMs = to - from;
+  // The marker does not depend on the readings: a window with none still shows when the alarm was raised.
+  const markerPart =
+    marker !== undefined &&
+    marker !== null &&
+    Number.isFinite(marker) &&
+    Number.isFinite(windowMs) &&
+    windowMs > 0 &&
+    marker >= from &&
+    marker <= to
+      ? { markerX: ((marker - from) / windowMs) * SPARK_WIDTH }
+      : {};
   const kept: { t: number; v: number }[] = [];
   if (Number.isFinite(windowMs) && windowMs > 0) {
     const count = Math.min(times.length, values.length);
@@ -85,7 +101,7 @@ export function sparklineGeometry(input: SparklineInput): SparklineGeometry {
     low = Math.min(low, limit);
     high = Math.max(high, limit);
   }
-  if (low > high) return NOTHING;
+  if (low > high) return { points: [], dot: null, limitY: null, ...markerPart };
 
   if (range && range.min !== null && range.max !== null) {
     const rangeSpan = range.max - range.min;
@@ -128,5 +144,6 @@ export function sparklineGeometry(input: SparklineInput): SparklineGeometry {
     points,
     dot: last ? { x: xOf(last.t), y: yOf(last.v) } : null,
     limitY: limit === null ? null : yOf(limit),
+    ...markerPart,
   };
 }
