@@ -22,6 +22,13 @@ import styles from './AssetReadings.module.css';
 
 const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
 
+/** The eyebrow of live (or past) readings, by range; stale and ended read "Last readings" whatever the range. */
+const RANGE_HEADING: Readonly<Record<ReadingRange, string>> = {
+  '15m': 'Live readings',
+  '1h': 'Readings, last hour',
+  alarm: 'Readings around the alarm',
+};
+
 /**
  * The readings of the inspected asset (frames 03, 05, 08): one row per point with its rule line, a
  * sparkline of the last 15 minutes and the value, headline and ruled points first and the rest
@@ -51,6 +58,11 @@ const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
  * rule line, the over-limit tint and the stale dimming stay the live ones. History comes from the
  * database, not from the watch, so `ended` does not hide a past range's chart. With `15m` (the
  * default) `history` is ignored and the rows draw the live ring as before.
+ *
+ * On a past range the eyebrow names it ("Readings, last hour", "Readings around the alarm", V3-23.3)
+ * and the freshness line is hidden: a past window has no freshness. A stale asset and an ended watch
+ * still read "Last readings". The eyebrow is a heading, not a live region: a range switch is said by
+ * the switch itself.
  */
 export function AssetReadings({
   assetCode,
@@ -79,7 +91,7 @@ export function AssetReadings({
   const past = range !== '15m';
   const age =
     entry !== undefined && serverNow !== null ? readingAgeMs(entry.receivedAt, serverNow) : null;
-  const freshness = ended ? null : freshnessText(age, stale);
+  const freshness = ended || past ? null : freshnessText(age, stale);
   const row = (item: InspectorRow) => (
     <ReadingRow
       key={item.point.key}
@@ -97,7 +109,7 @@ export function AssetReadings({
   return (
     <section className={styles.section} aria-labelledby="asset-readings-title">
       <div className={styles.head}>
-        <h3 id="asset-readings-title">{stale || ended ? 'Last readings' : 'Live readings'}</h3>
+        <h3 id="asset-readings-title">{stale || ended ? 'Last readings' : RANGE_HEADING[range]}</h3>
         {freshness !== null && (
           <span className={styles.freshness} data-stale={stale ? 'true' : undefined}>
             <span className={styles.dot} aria-hidden="true" />

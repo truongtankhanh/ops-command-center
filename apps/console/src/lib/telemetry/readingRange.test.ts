@@ -6,9 +6,11 @@ import {
   READING_RANGES,
   type ReadingRange,
   type ReadingRangeContext,
+  rangeCaption,
   rangeOffered,
   rangeWindow,
 } from './readingRange';
+import { formatClockTime } from '../shared/time';
 
 const T0 = Date.parse('2026-11-04T08:00:00.000Z');
 const SECOND = 1000;
@@ -224,5 +226,48 @@ describe('rangeOffered', () => {
     const offered = incident({ reportedAt: iso(T0 - 20 * MINUTE) });
     expect(rangeOffered('alarm', offered)).toBe(true);
     expect(rangeWindow('alarm', T0, offered.reportedAt)).not.toBeNull();
+  });
+});
+
+// V3-23.3: the line under the switch. The clock times are the browser's own (`formatClockTime`), so the
+// expected strings are built with it rather than written for one time zone.
+describe('rangeCaption', () => {
+  const HOUR_WINDOW = { from: T0 - HOUR, to: T0 };
+  const ALARM_WINDOW = { from: T0 - 30 * MINUTE, to: T0 - 15 * MINUTE };
+  const at = (t: number) => formatClockTime(t);
+
+  it('says nothing for 15 min: the live ring has no fixed window', () => {
+    expect(rangeCaption('15m', HOUR_WINDOW, null)).toBeNull();
+  });
+
+  it.each(['1h', 'alarm'] as const)('says nothing for %s while no window is known', (range) => {
+    expect(rangeCaption(range, null, T0)).toBeNull();
+  });
+
+  it('gives the hour as two clock times joined by an en dash', () => {
+    expect(rangeCaption('1h', HOUR_WINDOW, null)).toBe(`${at(T0 - HOUR)}–${at(T0)}`);
+  });
+
+  it('names the raised time around the alarm', () => {
+    expect(rangeCaption('alarm', ALARM_WINDOW, T0 - 20 * MINUTE)).toBe(
+      `${at(T0 - 30 * MINUTE)}–${at(T0 - 15 * MINUTE)} · raised ${at(T0 - 20 * MINUTE)}`,
+    );
+  });
+
+  it.each([
+    ['none', null],
+    ['not a number', Number.NaN],
+  ])('gives only the window around the alarm when the raised time is %s', (_label, markerAt) => {
+    expect(rangeCaption('alarm', ALARM_WINDOW, markerAt)).toBe(
+      `${at(T0 - 30 * MINUTE)}–${at(T0 - 15 * MINUTE)}`,
+    );
+  });
+
+  it('never names a raised time on 1 h', () => {
+    expect(rangeCaption('1h', HOUR_WINDOW, T0 - 20 * MINUTE)).toBe(`${at(T0 - HOUR)}–${at(T0)}`);
+  });
+
+  it('writes HH:MM times', () => {
+    expect(rangeCaption('1h', HOUR_WINDOW, null)).toMatch(/^\d{2}:\d{2}–\d{2}:\d{2}$/);
   });
 });

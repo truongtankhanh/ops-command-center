@@ -1,12 +1,20 @@
 import type { AssetDetail, Incident } from '@occ/contracts';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { inspectorRows, readingIsStale } from '../../lib/assets/assetInspector';
 import { isActive } from '../../lib/incidents/incidents';
 import type { TelemetryTabState } from '../../lib/incidents/useIncidentTelemetry';
+import {
+  rangeCaption,
+  rangeOffered,
+  READING_RANGES,
+  type ReadingRange,
+} from '../../lib/telemetry/readingRange';
 import { staleAfterMs } from '../../lib/telemetry/telemetryFreshness';
+import { useReadingSeries } from '../../lib/telemetry/useReadingSeries';
 import { useAssetState, useServerNow } from '../../realtime/telemetryStore';
 import { Skeleton } from '../../ui/Skeleton';
 import { AssetReadings } from '../assets/AssetReadings';
+import { RangeSwitch } from '../telemetry/RangeSwitch';
 import styles from './IncidentTelemetry.module.css';
 
 /**
@@ -28,8 +36,14 @@ import styles from './IncidentTelemetry.module.css';
  * Not built here, on purpose: a second hue for a series (`Sparkline` `tone="secondary"`) and the
  * severity-coloured end marker on the part of a line that broke a rule (it needs the per-point rule
  * result and a change to `Sparkline`'s geometry). Today the whole line takes the rule's severity
- * while the reading is over its limit, and the value says so in words. V3-23.3 adds the range
- * switch to this tab.
+ * while the reading is over its limit, and the value says so in words.
+ *
+ * The range switch (V3-23.3, frame 18) offers 15 min, 1 h and Around the alarm: ten minutes before
+ * the incident was raised to five after, with the raise marked, so an operator can read the alarm
+ * back. The choice is the tab's own state, starts on 15 min and is not remembered (a new incident
+ * keys a new sheet; a return to the tab starts again). A past range reads the history route once
+ * for the asset, and it is read from the database, not from the watch, so a resolved incident draws
+ * it too and follows the clock while it does.
  */
 export function IncidentTelemetry({
   incident,
@@ -40,7 +54,7 @@ export function IncidentTelemetry({
 }) {
   if (state.status === 'none') return null;
   if (state.status === 'loading') return <TelemetrySkeleton />;
-  return <ReadingsBlock detail={state.detail} ended={!isActive(incident)} />;
+  return <ReadingsBlock detail={state.detail} incident={incident} ended={!isActive(incident)} />;
 }
 
 /**
@@ -49,10 +63,30 @@ export function IncidentTelemetry({
  * `DeviceBody` and `LiveEvidence` are blocks of their own). It computes what the asset inspector
  * computes for the same asset, so the two never disagree.
  */
-function ReadingsBlock({ detail, ended }: { detail: AssetDetail; ended: boolean }) {
+function ReadingsBlock({
+  detail,
+  incident,
+  ended,
+}: {
+  detail: AssetDetail;
+  incident: Incident;
+  ended: boolean;
+}) {
   const entry = useAssetState(detail.code);
-  // An ended watch has nothing to age, so the clock is not followed (no render a second).
-  const serverNow = useServerNow(!ended);
+  const [range, setRange] = useState<ReadingRange>('15m');
+  // An ended watch has nothing to age, so the clock is not followed (no render a second), unless a
+  // past range is asked for: its window is cut at the server's now.
+  const serverNow = useServerNow(!ended || range !== '15m');
+  const history = useReadingSeries(detail.code, range, serverNow, incident.reportedAt);
+  const { assetId, reportedAt } = incident;
+  // The tab re-renders every second; the options change only with the incident's own fields.
+  const options = useMemo(
+    () =>
+      READING_RANGES.filter((option) =>
+        rangeOffered(option.id, { kind: 'incident', assetId, reportedAt }),
+      ),
+    [assetId, reportedAt],
+  );
   const stale =
     entry !== undefined && readingIsStale(entry, staleAfterMs(detail.headline), serverNow);
   // Stable `rows`, and no "All points" disclosure: `more` is left empty.
@@ -61,15 +95,25 @@ function ReadingsBlock({ detail, ended }: { detail: AssetDetail; ended: boolean 
     [detail],
   );
 
+  const caption = rangeCaption(range, history.window, history.markerAt);
+
   return (
-    <AssetReadings
-      assetCode={detail.code}
-      rows={rows}
-      entry={entry}
-      serverNow={serverNow}
-      stale={stale}
-      ended={ended}
-    />
+    <>
+      <div className={styles.range}>
+        <RangeSwitch options={options} value={range} onChange={setRange} />
+        {caption !== null && <p className={styles.window}>{caption}</p>}
+      </div>
+      <AssetReadings
+        assetCode={detail.code}
+        rows={rows}
+        entry={entry}
+        serverNow={serverNow}
+        stale={stale}
+        ended={ended}
+        range={range}
+        history={history}
+      />
+    </>
   );
 }
 

@@ -1,0 +1,55 @@
+/*
+ * The range switch (V3-23.3, frame 18 `.rg`): a pill row of equal options, the look of
+ * `SegmentedControl`'s row with the same tokens, so no colour pair is new. State is
+ * `aria-checked` (ADR-0016).
+ *
+ * It fits the 360 px sheet: 320 px of content, so three options are about 105 px, room for
+ * "Around the alarm" at `--type-s`.
+ */
+
+.switch {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+}
+
+.option {
+  min-width: 0;
+  /* The small control height (frame 18 draws 30 px); a token, so density and wall scale follow it. */
+  height: var(--control-s);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--type-s);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.option:hover {
+  color: var(--text-primary);
+}
+
+/* `SegmentedControl`'s checked face: the accent tint and its lit edge (ADR-0022 §4). */
+.option[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  box-shadow: var(--glow-edge);
+  color: var(--text-primary);
+  font-weight: var(--weight-semibold);
+}
+
+.option:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
