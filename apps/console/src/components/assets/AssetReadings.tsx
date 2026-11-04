@@ -1,5 +1,6 @@
 import type { TelemetryValue } from '@occ/contracts';
 import { useMemo } from 'react';
+import { ApiRequestError } from '../../api/client';
 import {
   drawnSeries,
   encodedLatest,
@@ -15,9 +16,12 @@ import { ageMs as readingAgeMs } from '../../lib/telemetry/telemetryFreshness';
 import type { AssetTelemetryState } from '../../lib/telemetry/telemetryState';
 import type { ReadingSeries } from '../../lib/telemetry/useReadingSeries';
 import { useAssetSeries } from '../../realtime/telemetryStore';
+import { EmptyState } from '../../ui/EmptyState';
 import { Hint } from '../../ui/Hint';
 import { Clock } from '../../ui/icons';
+import { Skeleton } from '../../ui/Skeleton';
 import { Sparkline } from '../../ui/Sparkline';
+import { LoadFailed, RateLimited } from '../shell/LoadStates';
 import styles from './AssetReadings.module.css';
 
 const BOOLEAN_RANGE = { min: 0, max: 1 } as const;
@@ -28,6 +32,29 @@ const RANGE_HEADING: Readonly<Record<ReadingRange, string>> = {
   '1h': 'Readings, last hour',
   alarm: 'Readings around the alarm',
 };
+
+/**
+ * Where a past range's request stands, as the section says it (V3-23.4, frame 18): `null` when the buckets are drawn
+ * (or on `15m`, which fetches nothing). At most one of these is on screen, so there is one status line at a time.
+ */
+type RangeState = 'loading' | 'rateLimited' | 'failed' | 'noHistory' | 'empty';
+
+function rangeState(history: ReadingSeries | undefined): RangeState | null {
+  if (history === undefined) return null;
+  switch (history.status) {
+    case 'loading':
+      return history.rateLimited ? 'rateLimited' : 'loading';
+    case 'error':
+      // An older replica without the route answers 404 (V3-23.2's risk): no retry would change it.
+      return history.error instanceof ApiRequestError && history.error.status === 404
+        ? 'noHistory'
+        : 'failed';
+    case 'ready':
+      return history.empty ? 'empty' : null;
+    default:
+      return null;
+  }
+}
 
 /**
  * The readings of the inspected asset (frames 03, 05, 08): one row per point with its rule line, a
@@ -63,6 +90,14 @@ const RANGE_HEADING: Readonly<Record<ReadingRange, string>> = {
  * and the freshness line is hidden: a past window has no freshness. A stale asset and an ended watch
  * still read "Last readings". The eyebrow is a heading, not a live region: a range switch is said by
  * the switch itself.
+ *
+ * A past range says where its request stands (V3-23.4, frame 18), one line at a time under the rows: while it loads
+ * each chart is a skeleton and a hidden status says "Loading readings…" (a 429 being retried says so instead,
+ * `RateLimited`); a failure is `LoadFailed` with Retry, which reads that range again and no other; a 404 is "No history
+ * for this asset." with no Retry; a range with no sample is "No readings in this range." with no chart. A range with
+ * readings, only none for one point, says "No readings" in that row. In every state the rows keep their label, rule
+ * line and live value, and the switch above stays usable: nothing is said by colour alone. The error keeps no 15 min
+ * chart (frame 18c draws one): the eyebrow names the range asked for, so a live chart under it would misread.
  */
 export function AssetReadings({
   assetCode,
@@ -92,6 +127,9 @@ export function AssetReadings({
   const age =
     entry !== undefined && serverNow !== null ? readingAgeMs(entry.receivedAt, serverNow) : null;
   const freshness = ended || past ? null : freshnessText(age, stale);
+  const state = past ? rangeState(history) : null;
+  // While the range loads (or a 429 is retried) each row keeps its place with a skeleton chart.
+  const loading = state === 'loading' || state === 'rateLimited';
   const row = (item: InspectorRow) => (
     <ReadingRow
       key={item.point.key}
@@ -103,8 +141,10 @@ export function AssetReadings({
       ended={ended}
       history={past ? history : undefined}
       past={past}
+      loading={loading}
     />
   );
+  const busy = loading ? 'true' : undefined;
 
   return (
     <section className={styles.section} aria-labelledby="asset-readings-title">
@@ -117,12 +157,40 @@ export function AssetReadings({
           </span>
         )}
       </div>
-      {rows.main.length > 0 && <ul className={styles.list}>{rows.main.map(row)}</ul>}
+      {rows.main.length > 0 && (
+        <ul className={styles.list} aria-busy={busy}>
+          {rows.main.map(row)}
+        </ul>
+      )}
       {rows.more.length > 0 && (
         <details className={styles.more}>
           <summary>All points ({rows.more.length})</summary>
-          <ul className={styles.list}>{rows.more.map(row)}</ul>
+          <ul className={styles.list} aria-busy={busy}>
+            {rows.more.map(row)}
+          </ul>
         </details>
+      )}
+      {state === 'loading' && (
+        // Outside the busy lists, so it is announced; the skeletons are what is seen.
+        <p role="status" className={styles.hidden}>
+          Loading readings…
+        </p>
+      )}
+      {state === 'rateLimited' && <RateLimited className={styles.rateLimited} />}
+      {state === 'failed' && history !== undefined && (
+        <LoadFailed
+          error={history.error}
+          fallback="Readings could not be loaded."
+          isFetching={history.fetching}
+          onRetry={history.refetch}
+          className={styles.state}
+        />
+      )}
+      {state === 'noHistory' && (
+        <EmptyState className={styles.state}>No history for this asset.</EmptyState>
+      )}
+      {state === 'empty' && (
+        <EmptyState className={styles.state}>No readings in this range.</EmptyState>
       )}
       {stale && !ended && (
         <Hint icon={Clock}>Charts stop at the last reading; the gap is the outage.</Hint>
@@ -140,6 +208,7 @@ function ReadingRow({
   ended,
   history,
   past,
+  loading,
 }: {
   assetCode: string;
   row: InspectorRow;
@@ -149,6 +218,8 @@ function ReadingRow({
   ended: boolean;
   history: ReadingSeries | undefined;
   past: boolean;
+  /** The past range is still being read: a skeleton holds the chart's place. */
+  loading: boolean;
 }) {
   const { point, rule } = row;
   // Reads only its own key's series: a stored reference that changes when this key is re-posted.
@@ -178,6 +249,10 @@ function ReadingRow({
     : serverNow === null
       ? null
       : { from: serverNow - SPARKLINE_WINDOW_MS, to: serverNow };
+  // The range has readings, only none for this point: the row says so in words, not with a blank cell. A range with
+  // none at all says it once for the section instead.
+  const missing =
+    drawable && past && column === undefined && history?.status === 'ready' && !history.empty;
   const over = overSeverity(rule, latest);
   const ruleLine = rule === null ? null : limitLine(rule, point);
 
@@ -192,6 +267,8 @@ function ReadingRow({
         {ruleLine !== null && <span className={styles.rule}>{ruleLine}</span>}
       </span>
       <span className={styles.chart}>
+        {loading && drawable && <Skeleton className={styles.chartSkeleton} />}
+        {missing && <span className={styles.noReadings}>No readings</span>}
         {drawn !== null && shown !== null && (
           <Sparkline
             times={drawn.times}

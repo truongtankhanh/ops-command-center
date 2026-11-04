@@ -4,9 +4,15 @@ import type {
   TelemetryPoint,
   TelemetryRule,
 } from '@occ/contracts';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import {
+  queryRetryDelay,
+  RATE_LIMITED_RETRYING,
+  shouldRetryQuery,
+  TOO_MANY_REQUESTS,
+} from '../../api/client';
 import { getAccessToken, renewSession } from '../../auth/session';
 import { formatClockTime } from '../../lib/shared/time';
 import {
@@ -123,20 +129,29 @@ const SAMPLES: AssetTelemetrySample[] = [
   { at: iso(RECEIVED_MS - 20 * MIN), values: { fanSpeedRpm: 1100 } },
 ];
 
-/** The route answers with the range it was asked, as the API serves it. */
-function serve() {
-  fetchMock.mockImplementation(async (input) => {
-    const url = new URL(String(input), 'http://console.test');
-    const body = {
-      assetCode: 'CT-01',
-      from: url.searchParams.get('from'),
-      to: url.searchParams.get('to'),
-      bucketS: 5,
-      samples: SAMPLES,
-    };
-    return new Response(JSON.stringify(body), { status: 200 });
-  });
+/** The route's answer for the range it was asked, as the API serves it. */
+function historyResponse(input: RequestInfo | URL, samples: AssetTelemetrySample[]): Response {
+  const url = new URL(String(input), 'http://console.test');
+  const body = {
+    assetCode: 'CT-01',
+    from: url.searchParams.get('from'),
+    to: url.searchParams.get('to'),
+    bucketS: 5,
+    samples,
+  };
+  return new Response(JSON.stringify(body), { status: 200 });
 }
+
+/** Every request is answered at once. */
+function serve(samples: AssetTelemetrySample[] = SAMPLES) {
+  fetchMock.mockImplementation(async (input) => historyResponse(input, samples));
+}
+
+/** Every request fails with `status`, as the API's error body. */
+const fail = (status: number) =>
+  fetchMock.mockImplementation(
+    async () => new Response(JSON.stringify({ statusCode: status, message: 'Failed' }), { status }),
+  );
 
 const requested = (call = 0): URL =>
   new URL(String(fetchMock.mock.calls[call]![0]), 'http://console.test');
@@ -260,6 +275,148 @@ describe('AssetTelemetry', () => {
 
     expect(screen.getByRole('radio', { name: '15 min' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+  });
+
+  // V3-23.4 (frame 18): where 1 h's request stands, through the real client and cache; `AssetReadings.test.tsx` has
+  // every state's details.
+  describe('the range states', () => {
+    const choose = (name: string) => userEvent.click(screen.getByRole('radio', { name }));
+    const LIVE = '[role="status"], [role="alert"], [aria-live]';
+
+    it('loads with a skeleton and one status line, and keeps the switch usable', async () => {
+      fetchMock.mockImplementation(() => new Promise<Response>(() => {}));
+      const { container } = renderTab();
+
+      await choose('1 h');
+
+      expect(screen.getByRole('status')).toHaveTextContent('Loading readings…');
+      expect(container.querySelectorAll(LIVE)).toHaveLength(1);
+      expect(rowOf('Fan speed')).toHaveTextContent('1,420');
+      expect(dotOf('Fan speed')).toBeUndefined();
+      await expectNoAxeViolations(container);
+
+      await choose('15 min');
+
+      expect(screen.queryByRole('status')).toBeNull();
+      expect(dotOf('Fan speed')).toBe('96');
+    });
+
+    it('says a failed range could not be loaded, and Retry reads that range again', async () => {
+      fail(500);
+      const { container } = renderTab();
+      await choose('1 h');
+
+      expect(await screen.findByText('Readings could not be loaded.')).toBeInTheDocument();
+      expect(rowOf('Fan speed')).toHaveTextContent('1,420');
+      await expectNoAxeViolations(container);
+
+      serve();
+      await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+      await waitFor(() => expect(dotOf('Fan speed')).toBe('64'));
+      expect(screen.queryByText('Readings could not be loaded.')).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(requested(1).search).toBe(requested(0).search);
+    });
+
+    it('keeps the switch usable after a failure', async () => {
+      fail(500);
+      renderTab();
+      await choose('1 h');
+      await screen.findByText('Readings could not be loaded.');
+
+      await choose('15 min');
+
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(screen.queryByText('Readings could not be loaded.')).toBeNull();
+      expect(dotOf('Fan speed')).toBe('96');
+    });
+
+    it('says the asset has no history on a 404, with no Retry', async () => {
+      fail(404);
+      const { container } = renderTab();
+      await choose('1 h');
+
+      expect(await screen.findByText('No history for this asset.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await expectNoAxeViolations(container);
+    });
+
+    it('waits calmly while a 429 is retried', async () => {
+      fail(429);
+      // The console's own policy: a 429 is retried after 2 s, which this case never waits for.
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay } },
+      });
+      const { container, unmount } = renderWithQueryClient(
+        <AssetTelemetry key="CT-01" detail={TOWER} />,
+        client,
+      );
+      await choose('1 h');
+
+      const retrying = await screen.findByText(RATE_LIMITED_RETRYING);
+      expect(retrying.closest('[role="status"]')).not.toBeNull();
+      expect(container.querySelectorAll(LIVE)).toHaveLength(1);
+      expect(screen.queryByText('Loading readings…')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+      await expectNoAxeViolations(container);
+
+      unmount();
+      await client.cancelQueries();
+    });
+
+    it('explains too many requests once the retries are over, with Retry', async () => {
+      fail(429);
+      const { container } = renderTab();
+      await choose('1 h');
+
+      expect(await screen.findByText(TOO_MANY_REQUESTS)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+      await expectNoAxeViolations(container);
+    });
+
+    it('says a range with no readings has none, with no chart and the live value kept', async () => {
+      serve([]);
+      const { container } = renderTab();
+      await choose('1 h');
+
+      expect(await screen.findByText('No readings in this range.')).toBeInTheDocument();
+      expect(dotOf('Fan speed')).toBeUndefined();
+      expect(rowOf('Fan speed')).toHaveTextContent('1,420');
+      await expectNoAxeViolations(container);
+    });
+
+    it('says "No readings" in the row of a point the range has none for', async () => {
+      serve([{ at: iso(RECEIVED_MS - 20 * MIN), values: { fanSpeedRpm: 1100 } }]);
+      renderTab();
+      await choose('1 h');
+
+      await waitFor(() => expect(rowOf('Motor temperature')).toHaveTextContent('No readings'));
+      expect(rowOf('Fan speed')).not.toHaveTextContent('No readings');
+    });
+
+    it('still reads "Last readings" for a stale asset on 1 h', async () => {
+      // Two minutes without a reading on a 1 s point: stale.
+      act(() =>
+        useTelemetryStore.setState((store) => ({
+          view: {
+            ...store.view,
+            state: {
+              ...store.view.state,
+              serverClock: { at: RECEIVED_MS + 2 * MIN, mono: performance.now() },
+            },
+          },
+        })),
+      );
+      renderTab();
+
+      await choose('1 h');
+
+      await waitFor(() => expect(dotOf('Fan speed')).toBeDefined());
+      expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Readings, last hour' })).toBeNull();
+    });
   });
 
   it('has no axe violations on 1 h', async () => {
