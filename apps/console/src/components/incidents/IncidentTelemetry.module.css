@@ -3,6 +3,24 @@
  * so nothing jumps when the asset arrives. The loaded look is `AssetReadings.module.css`'s.
  */
 
+/*
+ * The range block (V3-23.3, frame 18): the switch and the line saying which window is drawn, above
+ * `AssetReadings`' section, with the section's own side padding. The same rules as
+ * `AssetTelemetry.module.css` (one module per component, ADR-0016).
+ */
+.range {
+  display: grid;
+  gap: var(--space-1-5);
+  padding: var(--section-pad-y) var(--space-5) 0;
+}
+
+.window {
+  margin: 0;
+  font-size: var(--type-xs);
+  line-height: var(--leading-s);
+  color: var(--text-tertiary);
+}
+
 .skeleton {
   display: grid;
   gap: var(--space-3);

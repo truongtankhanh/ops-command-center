@@ -402,19 +402,27 @@ describe('the inspector sheet across its tabs', () => {
       expect(panel()).not.toHaveFocus();
     });
 
-    it('is a Tab stop on the Telemetry tab of an asset whose points all show', async () => {
+    // V3-23.3: a Telemetry panel of text only used to be the stop itself; it now opens on the range
+    // switch, so it gives way to it, and Tab from the tab reaches the checked range inside the panel.
+    it('gives way to the range switch on the Telemetry tab of an asset whose points all show', async () => {
       await show(ASSET);
       await openTab('Telemetry');
 
       expect(screen.queryByText(/^All points/)).toBeNull();
-      expect(panel()).toHaveAttribute('tabindex', '0');
+      expect(panel()).not.toHaveAttribute('tabindex');
+      act(() => tabNamed('Telemetry').focus());
+      await userEvent.tab();
+      expect(within(panel()).getByRole('radio', { name: '15 min' })).toHaveFocus();
     });
 
-    it('is a Tab stop on the Telemetry tab of an incident whose points all show', async () => {
+    it('gives way to the range switch on the Telemetry tab of an incident whose points all show', async () => {
       await show(TELEMETRY_INCIDENT);
       await openTab('Telemetry');
 
-      expect(panel()).toHaveAttribute('tabindex', '0');
+      expect(panel()).not.toHaveAttribute('tabindex');
+      act(() => tabNamed('Telemetry').focus());
+      await userEvent.tab();
+      expect(within(panel()).getByRole('radio', { name: '15 min' })).toHaveFocus();
     });
 
     it('is not one on a Timeline that lists the asset’s incidents, and is one on an empty one', async () => {

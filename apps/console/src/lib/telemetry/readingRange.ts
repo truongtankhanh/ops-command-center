@@ -1,4 +1,5 @@
 import type { AssetHistoryRange } from '../../api/queries';
+import { formatClockTime } from '../shared/time';
 
 /*
  * Reading range (V3-23.1, frame 18, brief § Operations aids): the `[from, to)` the Telemetry tabs ask
@@ -111,4 +112,22 @@ export function rangeOffered(range: ReadingRange, context: ReadingRangeContext):
     context.assetId !== '' &&
     Number.isFinite(Date.parse(context.reportedAt))
   );
+}
+
+/**
+ * The line under the switch that says which window a past range draws (frame 18): `14:42–15:42`, and for Around the
+ * alarm `15:29–15:44 · raised 15:39`. Clock times as every other in the console (`formatClockTime`: HH:MM, the
+ * browser's time zone). `null` for 15 min (the live ring has no fixed window) or while no window is known. Frame 18a's
+ * sentence about the provisional last bucket and the per-chart time axis are not drawn.
+ */
+export function rangeCaption(
+  range: ReadingRange,
+  shown: { readonly from: number; readonly to: number } | null,
+  markerAt: number | null,
+): string | null {
+  if (range === '15m' || shown === null) return null;
+  const span = `${formatClockTime(shown.from)}–${formatClockTime(shown.to)}`;
+  return range === 'alarm' && markerAt !== null && Number.isFinite(markerAt)
+    ? `${span} · raised ${formatClockTime(markerAt)}`
+    : span;
 }

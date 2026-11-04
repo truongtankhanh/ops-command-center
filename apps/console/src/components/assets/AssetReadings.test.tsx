@@ -338,6 +338,57 @@ describe('AssetReadings', () => {
       expect(withHistory).toBe(plain);
     });
 
+    // V3-23.3: the eyebrow names the range drawn, and a past window has no freshness.
+    describe('the eyebrow', () => {
+      it.each([
+        ['1h', 'Readings, last hour'],
+        ['alarm', 'Readings around the alarm'],
+      ] as const)('names %s', (range, heading) => {
+        renderReadings({ range, history: pastHour() });
+
+        expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Live readings' })).toBeNull();
+      });
+
+      it('stays "Live readings" on 15 min, with its freshness line', () => {
+        renderReadings({ history: pastHour() });
+
+        expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+        expect(screen.getByText(/^Updated/)).toBeInTheDocument();
+      });
+
+      it.each(['1h', 'alarm'] as const)('draws no freshness line on %s', (range) => {
+        renderReadings({ range, history: pastHour() });
+
+        expect(screen.queryByText(/^Updated/)).toBeNull();
+        expect(screen.queryByText(/ old$/)).toBeNull();
+      });
+
+      it('is "Last readings" for a stale asset, whatever the range', () => {
+        renderReadings({
+          range: '1h',
+          history: pastHour(),
+          stale: true,
+          entry: entry(NOW - 5 * MIN),
+        });
+
+        expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(screen.queryByText(/ old$/)).toBeNull();
+      });
+
+      it('is "Last readings" for an ended watch, whatever the range', () => {
+        renderReadings({ range: 'alarm', history: pastHour(), ended: true });
+
+        expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+      });
+
+      it('is a heading, not a live region', () => {
+        const { container } = renderReadings({ range: '1h', history: pastHour() });
+
+        expect(container.querySelector('[aria-live], [role="status"], [role="alert"]')).toBeNull();
+      });
+    });
+
     it('has no axe violations around the alarm', async () => {
       const { container } = renderReadings({
         range: 'alarm',

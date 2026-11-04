@@ -1,6 +1,16 @@
-import type { AssetDetail, Incident, TelemetryPoint, TelemetryRule } from '@occ/contracts';
-import { act, render, screen } from '@testing-library/react';
+import type {
+  AssetDetail,
+  AssetTelemetrySample,
+  Incident,
+  TelemetryPoint,
+  TelemetryRule,
+} from '@occ/contracts';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { act, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { getAccessToken, renewSession } from '../../auth/session';
 import type { TelemetryTabState } from '../../lib/incidents/useIncidentTelemetry';
+import { formatClockTime } from '../../lib/shared/time';
 import {
   type AssetTelemetryState,
   initialTelemetryState,
@@ -8,7 +18,7 @@ import {
 import { seriesKey, type SeriesView } from '../../realtime/telemetryClient';
 import type * as TelemetryStore from '../../realtime/telemetryStore';
 import { useServerNow, useTelemetryStore } from '../../realtime/telemetryStore';
-import { expectNoAxeViolations, resetStore } from '../../test-utils';
+import { expectNoAxeViolations, renderWithQueryClient, resetStore } from '../../test-utils';
 import { IncidentTelemetry } from './IncidentTelemetry';
 
 // Spies on the clock: an ended watch must not follow it, an open one must.
@@ -17,9 +27,13 @@ vi.mock('../../realtime/telemetryStore', async (importOriginal) => {
   return { ...actual, useServerNow: vi.fn(actual.useServerNow) };
 });
 
+// A past range (V3-23.3) reads the history route: the network is `fetch`, as in `queries.test.ts`.
+vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+
 const RECEIVED = '2026-10-16T08:00:00.000Z';
 const RECEIVED_MS = Date.parse(RECEIVED);
 const MIN = 60_000;
+const HOUR = 60 * MIN;
 
 const point = (overrides: Partial<TelemetryPoint> = {}): TelemetryPoint => ({
   key: 'fanSpeedRpm',
@@ -142,8 +156,9 @@ function hold(
   );
 }
 
+// Inside a QueryClient since V3-23.3: the tab reads a past range with `useReadingSeries` (15 min sends nothing).
 const renderTab = (state: TelemetryTabState = READY, raised: Incident = incident()) =>
-  render(<IncidentTelemetry incident={raised} state={state} />);
+  renderWithQueryClient(<IncidentTelemetry incident={raised} state={state} />);
 
 const rowOf = (label: string) => screen.getByText(label).closest('li') as HTMLElement;
 // The sparkline's viewBox; the glyphs beside it are 24 × 24 and also `aria-hidden`.
@@ -291,6 +306,171 @@ describe('IncidentTelemetry', () => {
 
     it('has no axe violations while loading', async () => {
       const { container } = renderTab({ status: 'loading' });
+
+      await expectNoAxeViolations(container);
+    });
+  });
+  // V3-23.3: 15 min | 1 h | Around the alarm.
+  describe('the range switch', () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    const iso = (t: number): string => new Date(t).toISOString();
+    const at = (t: number) => formatClockTime(t);
+    const RAISED_MS = RECEIVED_MS - 20 * MIN;
+    const RAISED = incident({ reportedAt: iso(RAISED_MS) });
+    const SAMPLES: AssetTelemetrySample[] = [
+      { at: iso(RECEIVED_MS - 50 * MIN), values: { fanSpeedRpm: 900 } },
+      { at: iso(RECEIVED_MS - 25 * MIN), values: { fanSpeedRpm: 1000, motorTempC: 70 } },
+      { at: iso(RECEIVED_MS - 17 * MIN), values: { fanSpeedRpm: 1300, motorTempC: 88 } },
+    ];
+    const requested = (call = 0): URL =>
+      new URL(String(fetchMock.mock.calls[call]![0]), 'http://console.test');
+    const dotOf = (label: string) =>
+      sparkOf(rowOf(label))?.querySelector('circle')?.getAttribute('cx');
+    const choose = (name: string) => userEvent.click(screen.getByRole('radio', { name }));
+
+    beforeEach(() => {
+      fetchMock.mockReset().mockImplementation(async (input) => {
+        const url = new URL(String(input), 'http://console.test');
+        const body = {
+          assetCode: 'CT-01',
+          from: url.searchParams.get('from'),
+          to: url.searchParams.get('to'),
+          bucketS: 5,
+          samples: SAMPLES,
+        };
+        return new Response(JSON.stringify(body), { status: 200 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      vi.mocked(getAccessToken).mockReset().mockResolvedValue(null);
+      vi.mocked(renewSession).mockReset().mockResolvedValue(false);
+      hold({ 'CT-01': entry({ fanSpeedRpm: 1420, motorTempC: 92 }) }, 400, {
+        fanSpeedRpm: series([10 * MIN, 1000], [5 * MIN, 1200], [0, 1420]),
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('offers 15 min, 1 h and Around the alarm, on 15 min', async () => {
+      renderTab(READY, RAISED);
+      await act(async () => {});
+
+      expect(screen.getByRole('radiogroup', { name: 'Reading range' })).toBeInTheDocument();
+      expect(screen.getAllByRole('radio').map((option) => option.textContent)).toEqual([
+        '15 min',
+        '1 h',
+        'Around the alarm',
+      ]);
+      expect(screen.getByRole('radio', { name: '15 min' })).toHaveAttribute('aria-checked', 'true');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('redraws every row from the last hour on 1 h', async () => {
+      renderTab(READY, RAISED);
+
+      await choose('1 h');
+
+      // The newest bucket is 17 minutes old: 43 of the hour's 60 minutes across 96 units.
+      await waitFor(() => expect(dotOf('Fan speed')).toBe('68.8'));
+      expect(dotOf('Motor temperature')).toBe('68.8');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(requested().searchParams.get('from')).toBe(iso(RECEIVED_MS - HOUR));
+      expect(screen.getByRole('heading', { name: 'Readings, last hour' })).toBeInTheDocument();
+      expect(screen.getByText(`${at(RECEIVED_MS - HOUR)}–${at(RECEIVED_MS)}`)).toBeInTheDocument();
+      expect(screen.queryByText(/^Updated/)).toBeNull();
+    });
+
+    it('reads the 15 minutes around the raised time and marks it', async () => {
+      renderTab(READY, RAISED);
+
+      await choose('Around the alarm');
+
+      await waitFor(() => expect(dotOf('Fan speed')).toBe('83.2'));
+      expect(requested().searchParams.get('from')).toBe(iso(RAISED_MS - 10 * MIN));
+      expect(requested().searchParams.get('to')).toBe(iso(RAISED_MS + 5 * MIN));
+      expect(
+        screen.getByRole('heading', { name: 'Readings around the alarm' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `${at(RAISED_MS - 10 * MIN)}–${at(RAISED_MS + 5 * MIN)} · raised ${at(RAISED_MS)}`,
+        ),
+      ).toBeInTheDocument();
+      // Raised 10 of the window's 15 minutes in.
+      const marker = [...(sparkOf(rowOf('Fan speed'))?.querySelectorAll('line') ?? [])].find(
+        (line) => line.getAttribute('x1') === line.getAttribute('x2'),
+      );
+      expect(marker).toHaveAttribute('x1', '64');
+    });
+
+    it('returns to the live rows on 15 min', async () => {
+      renderTab(READY, RAISED);
+      await choose('1 h');
+      await waitFor(() => expect(dotOf('Fan speed')).toBe('68.8'));
+
+      await choose('15 min');
+
+      expect(screen.getByRole('heading', { name: 'Live readings' })).toBeInTheDocument();
+      expect(dotOf('Fan speed')).toBe('96');
+      expect(screen.getByText(/^Updated/)).toBeInTheDocument();
+    });
+
+    it('says the change in the eyebrow, through no live region', async () => {
+      const { container } = renderTab(READY, RAISED);
+
+      await choose('1 h');
+
+      expect(screen.getByRole('heading', { name: 'Readings, last hour' })).toBeInTheDocument();
+      expect(container.querySelector('[aria-live], [role="status"], [role="alert"]')).toBeNull();
+    });
+
+    describe('a resolved incident', () => {
+      const RESOLVED_RAISED = incident({ ...RESOLVED, reportedAt: iso(RAISED_MS) });
+
+      it('reads the alarm back, following the clock only while a past range is shown', async () => {
+        renderTab(READY, RESOLVED_RAISED);
+        expect(useServerNow).toHaveBeenLastCalledWith(false);
+        expect(sparkOf(rowOf('Fan speed'))).toBeNull();
+
+        await choose('Around the alarm');
+
+        expect(useServerNow).toHaveBeenLastCalledWith(true);
+        await waitFor(() => expect(dotOf('Fan speed')).toBe('83.2'));
+        expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+
+        await choose('15 min');
+
+        expect(useServerNow).toHaveBeenLastCalledWith(false);
+        expect(sparkOf(rowOf('Fan speed'))).toBeNull();
+      });
+    });
+
+    it('starts on 15 min again for another incident (the sheet is keyed by its id)', async () => {
+      const { client, rerender } = renderTab(READY, RAISED);
+      await choose('Around the alarm');
+      expect(screen.getByRole('radio', { name: 'Around the alarm' })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      );
+
+      rerender(
+        <QueryClientProvider client={client}>
+          <IncidentTelemetry
+            key="incident-2"
+            incident={incident({ id: 'incident-2', reportedAt: iso(RAISED_MS) })}
+            state={READY}
+          />
+        </QueryClientProvider>,
+      );
+
+      expect(screen.getByRole('radio', { name: '15 min' })).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('has no axe violations around the alarm', async () => {
+      const { container } = renderTab(READY, RAISED);
+      await choose('Around the alarm');
+      await waitFor(() => expect(dotOf('Fan speed')).toBe('83.2'));
 
       await expectNoAxeViolations(container);
     });
