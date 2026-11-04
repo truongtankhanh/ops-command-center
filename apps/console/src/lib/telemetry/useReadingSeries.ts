@@ -1,5 +1,6 @@
 import type { AssetTelemetry } from '@occ/contracts';
 import { type QueryKey, useQuery } from '@tanstack/react-query';
+import { isRateLimited } from '../../api/client';
 import { type AssetHistoryRange, assetHistoryQuery } from '../../api/queries';
 import { seriesFromHistory } from '../../realtime/telemetryClient';
 import {
@@ -50,8 +51,18 @@ export interface ReadingSeries {
   /** Around the alarm's raised time, for the dashed marker; `null` for the other ranges. */
   readonly markerAt: number | null;
   readonly status: ReadingSeriesStatus;
-  /** The request's error, for V3-23.4 (404 "no history", 429, Retry). */
+  /**
+   * The buckets shown hold no sample at all (`samples: []`): the range says "No readings in this range." (V3-23.4).
+   * Not the same as an empty `byKey`, which is also what a range holding only enum readings gives.
+   */
+  readonly empty: boolean;
+  /** Nothing is shown yet and a `429` is being retried (`shouldRetryQuery`): `RateLimited`, not a skeleton's status. */
+  readonly rateLimited: boolean;
+  /** A request is under way (the first one, a slide or a Retry): Retry shows it and cannot be pressed twice. */
+  readonly fetching: boolean;
+  /** The request's error: a `404` is "no history", anything else `LoadFailed` (V3-23.4). */
   readonly error: unknown;
+  /** Reads the range shown again, and no other. */
   readonly refetch: () => void;
 }
 
@@ -60,6 +71,7 @@ const EMPTY: ReadonlyMap<string, SeriesColumn> = new Map();
 interface Selected {
   readonly window: ReadingWindow;
   readonly byKey: ReadonlyMap<string, SeriesColumn>;
+  readonly empty: boolean;
 }
 
 // Module-level, so TanStack memoises the result per response and a rerender gets the same `Map` (the rows memoise on
@@ -69,6 +81,7 @@ function selectSeries(history: AssetTelemetry): Selected {
   return {
     window: { from: Date.parse(history.from), to: Date.parse(history.to) },
     byKey: new Map(seriesFromHistory(history).map(({ key, t, v }) => [key, { t, v }])),
+    empty: history.samples.length === 0,
   };
 }
 
@@ -124,6 +137,9 @@ export function useReadingSeries(
       byKey: EMPTY,
       markerAt: null,
       status: 'live',
+      empty: false,
+      rateLimited: false,
+      fetching: false,
       error: null,
       refetch: query.refetch,
     };
@@ -139,6 +155,9 @@ export function useReadingSeries(
     byKey: data?.byKey ?? EMPTY,
     markerAt: Number.isFinite(raised) ? raised : null,
     status: data !== undefined ? 'ready' : query.isError ? 'error' : 'loading',
+    empty: data?.empty ?? false,
+    rateLimited: data === undefined && query.isPending && isRateLimited(query.failureReason),
+    fetching: query.isFetching,
     error: query.error,
     refetch: query.refetch,
   };

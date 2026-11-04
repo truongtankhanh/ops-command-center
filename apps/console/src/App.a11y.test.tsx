@@ -2532,4 +2532,86 @@ describe('the console', () => {
       await checkPage();
     });
   });
+
+  // V3-23.4: the reading range (frame 18) seen from the whole console. The states have their specs (`AssetReadings`,
+  // `AssetTelemetry`, `IncidentTelemetry`); here every role switches the range on both sheets, since it only reads: the
+  // one request is a GET, nothing is written, and axe passes with a range loading. `fetch` never answers here, so the
+  // range stays on its loading state.
+  describe('reading range', () => {
+    const ALL_ROLES: readonly Role[] = ['operator', 'supervisor', 'technician', 'viewer'];
+    const requests = () =>
+      vi.mocked(fetch).mock.calls.map(([input, init]) => ({
+        method: (init?.method ?? 'GET').toUpperCase(),
+        path: new URL(String(input), 'http://console.test').pathname,
+      }));
+    const history = () =>
+      requests().filter((request) => request.path === '/api/assets/CT-01/telemetry');
+    const writes = () => requests().filter((request) => request.method !== 'GET');
+    const checkPage = () => expectNoAxeViolations(document.body, { screen: true });
+
+    const openAssetTelemetry = (role: Role) => {
+      renderConsole({ role, details: [TOWER] });
+      holdTelemetry({ 'CT-01': { ageMs: 400, values: { fanSpeedRpm: 1420, motorTempC: 71 } } });
+      act(() => useConsole.getState().selectAsset('CT-01', null));
+      const sheet = screen.getByRole('complementary', { name: 'Asset CT-01' });
+      fireEvent.click(within(sheet).getByRole('tab', { name: 'Telemetry' }));
+      return sheet;
+    };
+
+    it.each(ALL_ROLES)(
+      'lets a %s read the last hour of an asset, and writes nothing',
+      async (role) => {
+        const sheet = openAssetTelemetry(role);
+
+        await userEvent.click(within(sheet).getByRole('radio', { name: '1 h' }));
+
+        expect(within(sheet).getByRole('radio', { name: '1 h' })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        );
+        expect(within(sheet).getByRole('heading', { name: 'Readings, last hour' })).toBeVisible();
+        expect(within(sheet).getByText('Loading readings…')).toHaveAttribute('role', 'status');
+        await waitFor(() => expect(history()).toHaveLength(1));
+        expect(history()[0]?.method).toBe('GET');
+        expect(writes()).toEqual([]);
+      },
+    );
+
+    it.each(ALL_ROLES)(
+      'lets a %s read around the alarm of a telemetry incident, and writes nothing',
+      async (role) => {
+        renderConsole({
+          role,
+          incidents: [...INCIDENTS, RAISED_BY_RULE],
+          incidentDetails: [raisedDetail()],
+          details: [TOWER],
+        });
+        holdTelemetry({ 'CT-01': { ageMs: 400, values: { motorTempC: 92 } } });
+        act(() => useConsole.getState().select('i-tel'));
+        const sheet = screen.getByRole('complementary', { name: 'Incident INC-000101' });
+        fireEvent.click(within(sheet).getByRole('tab', { name: 'Telemetry' }));
+
+        await userEvent.click(within(sheet).getByRole('radio', { name: 'Around the alarm' }));
+
+        expect(within(sheet).getByRole('radio', { name: 'Around the alarm' })).toHaveAttribute(
+          'aria-checked',
+          'true',
+        );
+        expect(
+          within(sheet).getByRole('heading', { name: 'Readings around the alarm' }),
+        ).toBeVisible();
+        await waitFor(() => expect(history()).toHaveLength(1));
+        expect(history()[0]?.method).toBe('GET');
+        expect(writes()).toEqual([]);
+      },
+    );
+
+    it('has no axe violations with a range loading', async () => {
+      const sheet = openAssetTelemetry('viewer');
+      await userEvent.click(within(sheet).getByRole('radio', { name: '1 h' }));
+      expect(within(sheet).getByText('Loading readings…')).toHaveAttribute('role', 'status');
+
+      await checkPage();
+    });
+  });
 });

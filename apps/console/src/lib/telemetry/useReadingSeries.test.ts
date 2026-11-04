@@ -1,5 +1,7 @@
 import type { AssetTelemetrySample } from '@occ/contracts';
+import { QueryClient } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { queryRetryDelay, shouldRetryQuery } from '../../api/client';
 import { queryKeys } from '../../api/queries';
 import { getAccessToken, renewSession } from '../../auth/session';
 import { createTestQueryClient, queryWrapper } from '../../test-utils';
@@ -300,6 +302,71 @@ describe('useReadingSeries', () => {
 
       await waitFor(() => expect(result.current.status).toBe('ready'));
       expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // V3-23.4: what the section needs to say where the range stands.
+  describe('the states', () => {
+    it('is empty for a range with no sample, and not for one with samples', async () => {
+      serve([]);
+      const { result } = renderSeries(ONE_HOUR);
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      expect(result.current.empty).toBe(true);
+
+      // A fresh client: nothing is shared with the empty range above.
+      serve();
+      const other = renderSeries(ONE_HOUR);
+      await waitFor(() => expect(other.result.current.status).toBe('ready'));
+      expect(other.result.current.empty).toBe(false);
+    });
+
+    it('is not empty for a range of enum readings only, which has no column either', async () => {
+      serve([{ at: iso(NOW - 10 * MIN), values: { stage: 'cooling' } }]);
+      const { result } = renderSeries(ONE_HOUR);
+
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      expect(result.current.byKey.size).toBe(0);
+      expect(result.current.empty).toBe(false);
+    });
+
+    it('is fetching while a request is under way, and not once it lands', async () => {
+      const release = holdNext();
+      const { result } = renderSeries(ONE_HOUR);
+
+      await waitFor(() => expect(result.current.fetching).toBe(true));
+      expect(result.current.status).toBe('loading');
+
+      release();
+      await waitFor(() => expect(result.current.status).toBe('ready'));
+      expect(result.current.fetching).toBe(false);
+    });
+
+    it('is rate limited while a 429 is retried, and an error once the retries are over', async () => {
+      fetchMock.mockImplementation(
+        async () => new Response(JSON.stringify({ statusCode: 429 }), { status: 429 }),
+      );
+      // The console's own policy: a 429 is retried after 2 s, which this case never waits for.
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: shouldRetryQuery, retryDelay: queryRetryDelay } },
+      });
+      const { result, unmount } = renderSeries(ONE_HOUR, client);
+
+      await waitFor(() => expect(result.current.rateLimited).toBe(true));
+      expect(result.current.status).toBe('loading');
+      unmount();
+      await client.cancelQueries();
+
+      // The test client does not retry: the 429 is the error at once, and no longer "retrying".
+      const exhausted = renderSeries(ONE_HOUR);
+      await waitFor(() => expect(exhausted.result.current.status).toBe('error'));
+      expect(exhausted.result.current.rateLimited).toBe(false);
+      expect(exhausted.result.current.error).toMatchObject({ status: 429 });
+    });
+
+    it('is none of them on 15 min', () => {
+      const { result } = renderSeries({ ...ONE_HOUR, range: '15m' });
+
+      expect(result.current).toMatchObject({ empty: false, rateLimited: false, fetching: false });
     });
   });
 

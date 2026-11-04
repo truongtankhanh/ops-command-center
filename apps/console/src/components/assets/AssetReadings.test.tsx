@@ -1,6 +1,8 @@
 import type { TelemetryPoint, TelemetryRule } from '@occ/contracts';
 import { act, cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
+import { ApiRequestError, RATE_LIMITED_RETRYING, TOO_MANY_REQUESTS } from '../../api/client';
 import type { InspectorRow } from '../../lib/assets/assetInspector';
 import {
   type AssetTelemetryState,
@@ -200,6 +202,9 @@ describe('AssetReadings', () => {
       byKey: new Map([['fanSpeedRpm', column([50 * MIN, 900], [20 * MIN, 1100])]]),
       markerAt: null,
       status: 'ready',
+      empty: false,
+      rateLimited: false,
+      fetching: false,
       error: null,
       refetch: () => undefined,
       ...overrides,
@@ -396,6 +401,222 @@ describe('AssetReadings', () => {
       });
 
       await expectNoAxeViolations(container);
+    });
+
+    // V3-23.4 (frame 18): where the range's request stands, one line at a time under the rows; the rows keep their
+    // label, rule line and live value in every state.
+    describe('the range states', () => {
+      const LOADING = pastHour({ byKey: new Map(), status: 'loading' });
+      const RATE_LIMITED = pastHour({ byKey: new Map(), status: 'loading', rateLimited: true });
+      const failed = (error: unknown, overrides: Partial<ReadingSeries> = {}) =>
+        pastHour({ byKey: new Map(), status: 'error', error, ...overrides });
+      const EMPTY = pastHour({ byKey: new Map(), empty: true });
+      const LIVE = '[role="status"], [role="alert"], [aria-live]';
+      const statusLines = (container: HTMLElement) => container.querySelectorAll(LIVE);
+      const skeletonsOf = (item: HTMLElement) => item.querySelectorAll('[aria-hidden="true"]');
+      const expectLiveRows = () => {
+        expect(rowOf('Fan speed')).toHaveTextContent('1,420');
+        expect(rowOf('Motor temperature')).toHaveTextContent('Limit 85 °C');
+        expect(rowOf('Motor temperature')).toHaveTextContent('over its limit');
+      };
+
+      describe('loading', () => {
+        it('holds each chart with a skeleton and says so once, out of the busy lists', () => {
+          const { container } = renderReadings({ range: '1h', history: LOADING });
+
+          const status = screen.getByRole('status');
+          expect(status).toHaveTextContent('Loading readings…');
+          expect(statusLines(container)).toHaveLength(1);
+          expect(status.closest('[aria-busy]')).toBeNull();
+          expect(container.querySelector('ul')).toHaveAttribute('aria-busy', 'true');
+          for (const label of ['Fan speed', 'Motor temperature']) {
+            expect(sparkOf(rowOf(label))).toBeNull();
+            expect(skeletonsOf(rowOf(label)).length).toBeGreaterThan(0);
+          }
+          expectLiveRows();
+        });
+
+        it('draws no skeleton for an enum, which never has a chart', () => {
+          const stage = row(
+            point({
+              key: 'stage',
+              label: 'Stage',
+              unit: null,
+              kind: 'enum',
+              enumValues: ['idle', 'cooling'],
+              headline: null,
+            }),
+          );
+          renderReadings({
+            rows: { main: [stage], more: [] },
+            entry: { ...entry(), values: { stage: 'cooling' } },
+            range: '1h',
+            history: LOADING,
+          });
+
+          expect(skeletonsOf(rowOf('Stage'))).toHaveLength(0);
+        });
+
+        it('is not busy once the buckets are there', () => {
+          const { container } = renderReadings({ range: '1h', history: pastHour() });
+
+          expect(container.querySelector('[aria-busy]')).toBeNull();
+          expect(screen.queryByText('Loading readings…')).toBeNull();
+        });
+      });
+
+      describe('rate limited', () => {
+        it('says it is retrying in place of the loading line, with no Retry', () => {
+          const { container } = renderReadings({ range: '1h', history: RATE_LIMITED });
+
+          expect(screen.getByRole('status')).toHaveTextContent(RATE_LIMITED_RETRYING);
+          expect(statusLines(container)).toHaveLength(1);
+          expect(screen.queryByText('Loading readings…')).toBeNull();
+          expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+          expect(skeletonsOf(rowOf('Fan speed')).length).toBeGreaterThan(0);
+          expectLiveRows();
+        });
+
+        it('explains too many requests once the retries are over, and offers Retry', () => {
+          renderReadings({ range: '1h', history: failed(new ApiRequestError(429, 'Too many')) });
+
+          expect(screen.getByText(TOO_MANY_REQUESTS)).toBeInTheDocument();
+          expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+        });
+      });
+
+      describe('failed', () => {
+        it('says the readings could not be loaded, with no chart and the live values kept', () => {
+          const { container } = renderReadings({
+            range: '1h',
+            history: failed(new ApiRequestError(500, 'Internal server error')),
+          });
+
+          expect(screen.getByText('Readings could not be loaded.')).toBeInTheDocument();
+          expect(statusLines(container)).toHaveLength(0);
+          expect(container.querySelector('[aria-busy]')).toBeNull();
+          expect(sparkOf(rowOf('Fan speed'))).toBeNull();
+          expect(skeletonsOf(rowOf('Fan speed'))).toHaveLength(0);
+          expectLiveRows();
+        });
+
+        it('reads the range again on Retry', async () => {
+          const refetch = vi.fn();
+          renderReadings({ range: '1h', history: failed(new Error('offline'), { refetch }) });
+
+          await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+          expect(refetch).toHaveBeenCalledTimes(1);
+        });
+
+        it('shows a retry under way on the button', () => {
+          renderReadings({
+            range: '1h',
+            history: failed(new Error('offline'), { fetching: true }),
+          });
+
+          expect(screen.getByRole('button', { name: /Retry/ })).toBeDisabled();
+        });
+      });
+
+      describe('no history', () => {
+        it('says the asset has none on a 404, and offers no Retry', () => {
+          renderReadings({ range: '1h', history: failed(new ApiRequestError(404, 'Not found')) });
+
+          expect(screen.getByText('No history for this asset.')).toBeInTheDocument();
+          expect(screen.queryByText('Readings could not be loaded.')).toBeNull();
+          expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+          expectLiveRows();
+        });
+      });
+
+      describe('empty', () => {
+        it('says the range has no readings once, with no chart and the live values kept', () => {
+          const { container } = renderReadings({ range: '1h', history: EMPTY });
+
+          expect(screen.getByText('No readings in this range.')).toBeInTheDocument();
+          // Said once for the section, not again in every row.
+          expect(screen.queryByText('No readings')).toBeNull();
+          expect(statusLines(container)).toHaveLength(0);
+          expect(sparkOf(rowOf('Fan speed'))).toBeNull();
+          expectLiveRows();
+        });
+      });
+
+      describe('a point with no readings in the range', () => {
+        it('says "No readings" in its own row, and draws the others', () => {
+          renderReadings({ range: '1h', history: pastHour() });
+
+          expect(rowOf('Motor temperature')).toHaveTextContent('No readings');
+          expect(rowOf('Fan speed')).not.toHaveTextContent('No readings');
+          expect(sparkOf(rowOf('Fan speed'))).not.toBeNull();
+          expect(screen.queryByText('No readings in this range.')).toBeNull();
+        });
+
+        it('says nothing for an enum, which never has a chart', () => {
+          const stage = row(
+            point({
+              key: 'stage',
+              label: 'Stage',
+              unit: null,
+              kind: 'enum',
+              enumValues: ['idle', 'cooling'],
+              headline: null,
+            }),
+          );
+          renderReadings({
+            rows: { main: [stage], more: [] },
+            entry: { ...entry(), values: { stage: 'cooling' } },
+            range: '1h',
+            history: pastHour(),
+          });
+
+          expect(rowOf('Stage')).not.toHaveTextContent('No readings');
+        });
+
+        it('says nothing while the range loads or after it failed', () => {
+          renderReadings({ range: '1h', history: LOADING });
+          expect(screen.queryByText('No readings')).toBeNull();
+          cleanup();
+
+          renderReadings({ range: '1h', history: failed(new Error('offline')) });
+          expect(screen.queryByText('No readings')).toBeNull();
+        });
+      });
+
+      it('says nothing on 15 min, whatever `history` holds', () => {
+        const { container } = renderReadings({ history: failed(new Error('offline')) });
+
+        expect(screen.queryByText('Readings could not be loaded.')).toBeNull();
+        expect(statusLines(container)).toHaveLength(0);
+        expect(container.querySelector('[aria-busy]')).toBeNull();
+      });
+
+      it('keeps "Last readings" and the gap hint for a stale asset in a failed range', () => {
+        renderReadings({
+          range: '1h',
+          history: failed(new Error('offline')),
+          stale: true,
+          entry: entry(NOW - 5 * MIN),
+        });
+
+        expect(screen.getByRole('heading', { name: 'Last readings' })).toBeInTheDocument();
+        expect(screen.getByText('Readings could not be loaded.')).toBeInTheDocument();
+        expect(screen.getByText(HINT)).toBeInTheDocument();
+      });
+
+      it.each([
+        ['loading', LOADING],
+        ['rate limited', RATE_LIMITED],
+        ['failed', failed(new ApiRequestError(500, 'Internal server error'))],
+        ['no history', failed(new ApiRequestError(404, 'Not found'))],
+        ['empty', EMPTY],
+        ['a point with no readings', pastHour()],
+      ] as const)('has no axe violations %s', async (_, history) => {
+        const { container } = renderReadings({ range: '1h', history });
+
+        await expectNoAxeViolations(container);
+      });
     });
   });
 });

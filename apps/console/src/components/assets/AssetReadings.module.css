@@ -117,6 +117,30 @@
   font-weight: var(--weight-medium);
 }
 
+/* A past range still loading (V3-23.4): the chart's own cell, so nothing jumps when the buckets land. */
+.chartSkeleton {
+  height: 100%;
+}
+
+/* A past range with readings, none of them for this point: said in words, in the chart's place. */
+.noReadings {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  font-size: var(--type-s);
+  color: var(--text-secondary);
+}
+
+/*
+ * A past range's one state line under the rows (V3-23.4): failed, no history, empty, rate limited. The element
+ * selectors win over `EmptyState`'s own padding, as the feeds do it.
+ */
+p.state,
+div.state,
+.rateLimited > p {
+  padding: var(--space-4) 0;
+}
+
 .more summary {
   cursor: pointer;
   padding: var(--space-1-5) 0;
