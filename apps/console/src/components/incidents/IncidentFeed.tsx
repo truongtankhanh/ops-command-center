@@ -6,6 +6,7 @@ import { nextRowIndex } from '../../lib/incidents/rowNavigation';
 import { useAlarmLoad } from '../../lib/incidents/useAlarmLoad';
 import { useCountdownNow } from '../../lib/incidents/useCountdownNow';
 import { useFeedRows } from '../../lib/incidents/useFeedRows';
+import { useIncidentTableShown } from '../../lib/incidents/useIncidentTableShown';
 import { formatClockTime } from '../../lib/shared/time';
 import { useShortcut } from '../../lib/shell/useShortcut';
 import { useConsole } from '../../store';
@@ -65,6 +66,8 @@ export function IncidentFeed() {
   const [expandedZones, setExpandedZones] = useState<ReadonlySet<string>>(() => new Set());
   // Both panels stay mounted (`SidePanel`), so the key belongs to the visible one only.
   const visiblePanel = useConsole((s) => s.sidePanel === 'incidents');
+  // While the table covers the stage, its count is the one announcement of a filter change (V3-24.6).
+  const tableShown = useIncidentTableShown();
   const feedRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const categoryButtonRef = useRef<HTMLButtonElement>(null);
@@ -140,9 +143,12 @@ export function IncidentFeed() {
         <FeedSearch value={query} onChange={setQuery} ref={searchRef} className={styles.search} />
         <CategoryFilter category={category} onChange={setCategory} triggerRef={categoryButtonRef} />
       </div>
-      {/* Always mounted: screen readers announce a change in an existing live region. */}
+      {/*
+        Always mounted: screen readers announce a change in an existing live region. Empty while the table shows, whose
+        toolbar announces the same search (V3-24.6), so a filter change is not read twice; back as soon as the table goes.
+      */}
       <p role="status" className={styles.hidden}>
-        {matchStatus}
+        {tableShown ? '' : matchStatus}
       </p>
       <Tabs
         label="Filter incidents"

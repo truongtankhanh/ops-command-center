@@ -214,6 +214,8 @@ The table covers the stage (the map or the 3D scene, its tools and the camera st
 
 A table row behaves as a list row: a click on it, or Enter / Space on its button, opens the incident in the inspector through the same store action, so whatever follows a selection from the list follows it from the table too, and a second press closes it; the selected row is `aria-current`. The rows are one Tab stop: the arrows and Home / End move focus without opening anything, and Tab leaves the table. The table is a view, not a dialog: Esc in it, with no inspector open, moves focus to the List | Table switch and keeps the table. `T` switches between the two views while the Incidents panel is shown on a wider screen; it is a single-key shortcut, listed in the help and turned off with the others (WCAG 2.1.4), and when it removes the table with focus in it, focus moves to the switch.
 
+A toolbar over the table shows how many incidents it lists and exports exactly those rows, in their order, as CSV: the file is built in the browser from the table's fields, which every role can already read, so it needs no request, permission or audit entry, and nothing is stored. A filter change is announced once, by the table while it shows (the list's own announcement is silent then); an incident arriving changes the count on screen without being announced.
+
 ## 6. Camera sources
 
 ```ts

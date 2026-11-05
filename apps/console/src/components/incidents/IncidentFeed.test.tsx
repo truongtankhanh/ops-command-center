@@ -89,6 +89,8 @@ describe('IncidentFeed', () => {
       category: null,
       // The search text is store state since V3-24.4 (`useFeedRows`): a case that types one must not leave it to the next.
       feedQuery: '',
+      // The view is store state too (V3-24.3): a case that shows the table must not leave it to the next.
+      feedView: 'list',
       groupByZone: false,
       selectedIncidentId: null,
       reporting: false,
@@ -588,6 +590,20 @@ describe('IncidentFeed', () => {
 
       expect(screen.getByText('Queue at gate')).toBeInTheDocument();
       expect(screen.queryByText('Door forced open')).not.toBeInTheDocument();
+    });
+
+    // V3-24.6: while the table covers the stage, its toolbar announces the same search; the list's line stays mounted and
+    // empty, so a filter change is read once, and speaks again as soon as the table goes.
+    it('leaves its match count to the table while the table shows, and takes it back after', async () => {
+      act(() => useConsole.getState().setFeedView('table'));
+      renderFeed();
+
+      await userEvent.type(searchbox(), 'door');
+      expect(screen.getByText('Door forced open')).toBeInTheDocument();
+      expect(screen.getByRole('status').textContent).toBe('');
+
+      act(() => useConsole.getState().setFeedView('list'));
+      expect(screen.getByRole('status')).toHaveTextContent('1 incident matches');
     });
 
     it('says when nothing matches, and clears back to the list', async () => {

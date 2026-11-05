@@ -1,5 +1,5 @@
 import type { Incident } from '@occ/contracts';
-import { type KeyboardEvent, type Ref, useRef, useState } from 'react';
+import { type KeyboardEvent, type Ref, useId, useRef, useState } from 'react';
 import { isRateLimited } from '../../api/client';
 import { attentionCountdown, formatCountdown } from '../../lib/incidents/attentionCountdown';
 import {
@@ -9,17 +9,25 @@ import {
   TABLE_COLUMNS,
   type TableColumnKey,
 } from '../../lib/incidents/incidentTable';
+import {
+  CSV_BOM,
+  csvFilename,
+  type IncidentCsvContext,
+  incidentsToCsv,
+} from '../../lib/incidents/incidentCsv';
 import { formatClock, sourceLabel, typeLabel } from '../../lib/incidents/incidents';
 import { nextRowIndex } from '../../lib/incidents/rowNavigation';
 import { useCountdownNow } from '../../lib/incidents/useCountdownNow';
 import { useFeedRows } from '../../lib/incidents/useFeedRows';
 import { INCIDENT_TABLE_ID } from '../../lib/incidents/useIncidentTableShown';
+import { downloadText } from '../../lib/shared/download';
 import { formatClockTime } from '../../lib/shared/time';
 import { useConsole } from '../../store';
+import { Button } from '../../ui/Button';
 import { CountdownRing } from '../../ui/CountdownRing';
 import { EmptyState } from '../../ui/EmptyState';
 import { Icon } from '../../ui/Icon';
-import { Clock, incidentTypeIcon, Search, sortIcon } from '../../ui/icons';
+import { Clock, Download, incidentTypeIcon, Search, sortIcon } from '../../ui/icons';
 import { SeverityBadge } from '../../ui/SeverityBadge';
 import { Skeleton } from '../../ui/Skeleton';
 import { StatusChip } from '../../ui/StatusChip';
@@ -29,6 +37,25 @@ import styles from './IncidentTable.module.css';
 
 /** As many placeholder rows as fill the stage's first screen at the table's row height. */
 const SKELETON_ROWS = 8;
+
+/** Why Export CSV does nothing: its title, and the description a keyboard or screen reader user hears. */
+const NO_EXPORT = 'No incidents to export';
+
+/** The toolbar's count: "1 incident", "37 incidents", "0 incidents". */
+const incidentCount = (count: number): string =>
+  `${count} ${count === 1 ? 'incident' : 'incidents'}`;
+
+/**
+ * Saves `rows` as CSV, named by the moment of the press. Outside the component, so reading the clock is plainly an event's
+ * work and never a render's (the React Compiler's purity rule cannot tell a handler's closure from render code).
+ */
+function saveCsv(rows: readonly Incident[], zoneName: IncidentCsvContext['zoneName']): void {
+  downloadText(
+    csvFilename(Date.now()),
+    CSV_BOM + incidentsToCsv(rows, { zoneName }),
+    'text/csv;charset=utf-8',
+  );
+}
 
 /**
  * The incident table over the stage (V3-24.4, frame 19, brief § Table mode): the same incidents the sidebar list shows, one
@@ -63,9 +90,18 @@ const SKELETON_ROWS = 8;
  *   is a view, not a dialog. With a sheet open it does nothing here, as on a list row; the sheet's own Escape acts only while
  *   focus is in the sheet, and gives focus back to the row that opened it.
  *
+ * - **The toolbar** (V3-24.6) is drawn in every state, above the rows. Its count is how many incidents the table lists, the
+ *   same number as the rows and the file. The table's one live region is a hidden line beside it that says the count as of
+ *   the last change of the tab, severity, category or search (or of the list arriving): a filter change is announced once
+ *   (the list's own line is silent while the table shows), and an incident arriving in a flood is not queued for a screen
+ *   reader. **Export CSV** saves exactly the rows shown, in their order, with the header, as CSV built in this browser
+ *   (`incidentsToCsv`, after `CSV_BOM` so Excel reads UTF-8; no request, nothing stored, no audit). Every role may use it:
+ *   the file holds only the table's fields, which every role already reads. With nothing to export it stays a Tab stop,
+ *   `aria-disabled` with its reason, as the 3D option of the view switch does, and a press does nothing.
+ *
  * Frame 19 also draws a head row (the tab chips, a search box, Export CSV, Close) and a foot line ("Esc closes the table").
  * They are left out on purpose: the sidebar's chips and search are the controls, the List | Table switch is the way in and
- * out, Esc keeps the table, and the count and Export CSV are V3-24.6's toolbar.
+ * out, Esc keeps the table, and Export CSV is in the toolbar.
  */
 export function IncidentTable() {
   const {
@@ -76,6 +112,9 @@ export function IncidentTable() {
     refetch,
     loaded,
     zoneName,
+    filter,
+    severity,
+    category,
     query,
     visible,
     emptyMessage,
@@ -92,9 +131,23 @@ export function IncidentTable() {
   const offlineSince = useConsole((s) => s.offlineSince);
   const [focusId, setFocusId] = useState<string | null>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const reasonId = useId();
 
   const rows = sortIncidents(visible, tableSort, { zoneName, now });
   const sortBy = (key: TableColumnKey) => setTableSort(nextSort(tableSort, key));
+  const count = loaded ? incidentCount(rows.length) : '';
+
+  // What the live line says: the count as of the last filter change, or of the list arriving. Adjusted during render when
+  // that key changes (no effect, so it is never a render late); an arrival changes the visible count only.
+  const filterKey = `${loaded}|${filter}|${severity ?? ''}|${category ?? ''}|${query}`;
+  const [announced, setAnnounced] = useState({ key: filterKey, text: count });
+  if (announced.key !== filterKey) setAnnounced({ key: filterKey, text: count });
+
+  // The very rows the body draws, so the count, the table and the file agree. Built on the press only, never in render.
+  const exportable = loaded && rows.length > 0;
+  const exportRows = () => {
+    if (exportable) saveCsv(rows, zoneName);
+  };
 
   // One Tab stop for the rows, as `IncidentFeed`'s (without its grouping): in the drawn order, which is the sorted one.
   const rowIds = rows.map((incident) => incident.id);
@@ -129,6 +182,28 @@ export function IncidentTable() {
       aria-busy={isPending || undefined}
       onKeyDown={onTableKeyDown}
     >
+      <div className={styles.toolbar}>
+        <p className={styles.count}>{count}</p>
+        <p role="status" className={styles.hidden}>
+          {announced.text}
+        </p>
+        <Button
+          variant="ghost"
+          size="dense"
+          icon={Download}
+          className={styles.export}
+          title={exportable ? undefined : NO_EXPORT}
+          aria-disabled={exportable ? undefined : true}
+          aria-describedby={exportable ? undefined : reasonId}
+          onClick={exportRows}
+        >
+          Export CSV
+        </Button>
+        {/* Always rendered, so the description is there the moment the button becomes unavailable. */}
+        <span id={reasonId} className={styles.hidden}>
+          {NO_EXPORT}
+        </span>
+      </div>
       {/* As the list says it (frame 05): while the live link is down, the rows may be stale. Not a live region. */}
       {loaded && offlineSince !== null && (
         <p className={styles.notice}>
