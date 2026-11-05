@@ -87,6 +87,8 @@ describe('IncidentFeed', () => {
       filter: 'active',
       severity: null,
       category: null,
+      // The search text is store state since V3-24.4 (`useFeedRows`): a case that types one must not leave it to the next.
+      feedQuery: '',
       groupByZone: false,
       selectedIncidentId: null,
       reporting: false,

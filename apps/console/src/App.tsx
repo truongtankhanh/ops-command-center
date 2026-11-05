@@ -8,6 +8,7 @@ import { FloodBanner } from './components/incidents/FloodBanner';
 import { Header } from './components/shell/Header';
 import { IncidentDetail } from './components/incidents/IncidentDetail';
 import { IncidentFeed } from './components/incidents/IncidentFeed';
+import { IncidentTable } from './components/incidents/IncidentTable';
 import { RegionFallback } from './components/shell/LoadStates';
 import { OfflineBanner } from './components/shell/OfflineBanner';
 import { ReportIncidentForm } from './components/incidents/ReportIncidentForm';
@@ -23,6 +24,7 @@ import { WallApp } from './components/wall/WallApp';
 import { useAudioUnlock } from './lib/incidents/criticalCue';
 import { useDensityAttribute } from './lib/shell/density';
 import { useAttentionBadge } from './lib/incidents/useAttentionBadge';
+import { useIncidentTableShown } from './lib/incidents/useIncidentTableShown';
 import { useLiveIncidents } from './realtime/useLiveIncidents';
 import { useTelemetry } from './realtime/useTelemetry';
 import { useConsole } from './store';
@@ -95,6 +97,7 @@ function Console() {
   const selectedAssetCode = useConsole((s) => s.selectedAssetCode);
   const reporting = useConsole((s) => s.reporting);
   const sheetOpen = reporting || selectedAssetCode !== null || selectedId !== null;
+  const tableShown = useIncidentTableShown();
   // What the sheet holds. The store keeps the three exclusive, so at most one of them applies.
   const sheet: SheetContent = reporting
     ? 'report'
@@ -139,16 +142,38 @@ function Console() {
           />
           {/* The sheet lies over the stage, so opening it never resizes the map. */}
           <div className={styles.stage} data-sheet={sheetOpen ? 'open' : undefined}>
-            <Region label="Campus map" message="The map stopped working.">
-              <StageView />
-            </Region>
-            <Region
-              label="Cameras"
-              message="The camera strip stopped working."
-              className={styles.stripFallback}
-            >
-              <CameraStrip />
-            </Region>
+            {/*
+              What the incident table covers (V3-24.4): the map or the 3D stage with its tools, and the camera strip. They
+              stay mounted under it, so nothing resizes and the map and the scene keep their state, but they are `inert`
+              while it shows: a control nobody can see must not take focus or be read out (WCAG 2.4.3). The wrapper draws
+              no box (`display: contents`), so the stage grid still places the map and the strip.
+            */}
+            <div className={styles.underTable} inert={tableShown || undefined}>
+              <Region label="Campus map" message="The map stopped working.">
+                <StageView />
+              </Region>
+              <Region
+                label="Cameras"
+                message="The camera strip stopped working."
+                className={styles.stripFallback}
+              >
+                <CameraStrip />
+              </Region>
+            </div>
+            {/*
+              The incident table over the stage (V3-24.4, V1 principle 6: an overlay never resizes the stage). After the map
+              and the strip and before the sheet, so the order alone paints it over the first and under the sheet, the
+              banners and the toasts, with no z-index. Its own region: a table that breaks leaves the list and the map working.
+            */}
+            {tableShown && (
+              <Region
+                label="Incident table"
+                message="The incident table stopped working."
+                className={styles.tableFallback}
+              >
+                <IncidentTable />
+              </Region>
+            )}
             {sheetOpen && (
               // Keyed by the content, so opening another incident, an asset or the report form
               // starts afresh after a crash.

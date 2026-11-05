@@ -27,6 +27,7 @@ import {
   incidentTypeIcon,
   severityIcon,
   sidePanelIcon,
+  sortIcon,
   statusIcon,
   telemetryIcon,
   Thermometer,
@@ -149,6 +150,29 @@ describe('feed view glyphs', () => {
 
     expect(taken.has(feedViewIcon('list'))).toBe(false);
     expect(taken.has(feedViewIcon('table'))).toBe(false);
+  });
+});
+
+describe('sort glyphs', () => {
+  it('gives ascending, descending and unsorted their own glyphs', () => {
+    const glyphs = new Set([sortIcon('ascending'), sortIcon('descending'), sortIcon('none')]);
+
+    expect(glyphs.size).toBe(3);
+  });
+
+  it('shares none with a severity, a status, a side panel tab or a feed view', () => {
+    const taken = new Set<Glyph>([
+      ...INCIDENT_SEVERITIES.map(severityIcon),
+      ...INCIDENT_STATUSES.map(statusIcon),
+      sidePanelIcon('incidents'),
+      sidePanelIcon('assets'),
+      feedViewIcon('list'),
+      feedViewIcon('table'),
+    ]);
+
+    for (const state of ['ascending', 'descending', 'none'] as const) {
+      expect(taken.has(sortIcon(state))).toBe(false);
+    }
   });
 });
 

@@ -204,6 +204,14 @@ The feed's and the wall's incident rows show the time left of each open incident
 
 A flood raises nothing and notifies no one: the status bar shows the rate, a banner offers "Group by zone" (a view of the feed, not stored), and the panel behind the status bar's segment lists the measures. The video wall shows the rate as text and draws neither the banner nor the panel. No endpoint, event, permission or environment variable is involved.
 
+### Incident list and table
+
+The incident sidebar has two views of one list: the **list** (the default, a column of rows) and the **table**, chosen with a List | Table switch at the right end of the side panel's tab row. The choice and the table's sort are remembered per browser (`lib/incidents/feedView.ts`, keys `occ.console.feedView` and `occ.console.tableSort`); storage is optional and a blocked one gives the defaults.
+
+Both views read their rows from one hook, `useFeedRows` (`lib/incidents/`): the tab (Active, Resolved or Mine to handle, All), the severity chip, the category and the search text are applied there once, so the table can never list other incidents than the list. The filters and the search text are store state; the sidebar's chips and search box are the only controls for them. The list adds its own grouping by zone during a flood and its roving tab stop; the table orders the rows by one column at a time (`lib/incidents/incidentTable.ts`): each header is a button with `aria-sort`, stepping through the column's first direction, the opposite and back to the list's order. Ties keep the list's order, and a missing or unknown value goes last both ways.
+
+The table covers the stage (the map or the 3D scene, its tools and the camera strip) and never resizes it: they stay mounted under it and are `inert` while it shows, and the inspector sheet, the banners and the toasts lie over it. Its end padding follows an open inspector, so every column stays readable; on a tablet's narrower stage the Place and Code columns give way. It is shown only on the Incidents panel and never on a phone width (`useIncidentTableShown`), and the video wall has neither the switch nor the table. Its Attention column shows the same time left as the list's rows, as plain text and never a live region, on a clock of its own. No endpoint, event or permission is involved: it reads the incident and zone lists the console already holds.
+
 ## 6. Camera sources
 
 ```ts

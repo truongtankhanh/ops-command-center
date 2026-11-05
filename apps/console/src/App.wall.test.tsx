@@ -299,6 +299,22 @@ describe('the console on a video wall screen', () => {
     });
   });
 
+  // V3-24.4: the table is chosen on purpose, as it is stored on an operator's console in the same browser. What keeps it off a
+  // wall is the wall, not the stored choice: the wall mounts neither the side panel nor the stage the table covers.
+  describe('with the table view stored', () => {
+    beforeEach(() => useConsole.setState({ feedView: 'table' }));
+
+    it.each(ROLES)('draws no table, no List | Table switch and nothing inert, for a %s', (role) => {
+      const { container } = renderWall(role);
+
+      expect(screen.queryByRole('region', { name: 'Incident table' })).toBeNull();
+      expect(screen.queryByRole('table')).toBeNull();
+      expect(screen.queryByRole('radiogroup', { name: 'Incident view' })).toBeNull();
+      expect(container.querySelector('[inert]')).toBeNull();
+      expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
+    });
+  });
+
   // V3-22.5: the wall shows the attention countdown (frame 17) as text, for every role, with nothing to press and nothing announced.
   // Medium incidents (15 min), so the 13-minute one is "soon" with two minutes of margin on the real clock; none is critical, so the
   // camera stays put, and three in twenty minutes is no flood.

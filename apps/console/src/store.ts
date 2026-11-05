@@ -86,6 +86,11 @@ interface ConsoleState extends ReportLocation {
   /** Feed filter by category, set from the search row's filter button (V3-07.3); `null` shows every category. Not remembered. */
   category: IncidentCategory | null;
   /**
+   * The incident search text (V3-07), here rather than in the feed since V3-24.4 so the list and the table read one value
+   * (`useFeedRows`). Not remembered: a reload, and so a sign-out (an OIDC redirect), clears it, as the feed's own state did.
+   */
+  feedQuery: string;
+  /**
    * The operator's choice, during an alarm flood, to see the feed as one row per zone (V3-21.4). Only a view: the feed groups
    * when this and the flood are both on, so a stale `true` shows nothing by itself; the flood banner clears it when the flood ends.
    * Not remembered.
@@ -248,6 +253,8 @@ interface ConsoleState extends ReportLocation {
   clearSeverity(): void;
   /** Chooses the one category the feed lists, or `null` for all. It leaves the tab, the severity and the panel as they are. */
   setCategory(category: IncidentCategory | null): void;
+  /** Sets the incident search text. It leaves the tab, the filters, the selection and the panel as they are. */
+  setFeedQuery(query: string): void;
   /** Turns the feed's grouping by zone on or off (V3-21.4). It leaves the tab, the filters, the selection and the panel as they are. */
   setGroupByZone(on: boolean): void;
   setSidePanel(tab: SidePanelTab): void;
@@ -355,6 +362,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   filter: 'active',
   severity: null,
   category: null,
+  feedQuery: '',
   groupByZone: false,
   connection: 'connecting',
   lastEventAt: null,
@@ -428,6 +436,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
     ),
   clearSeverity: () => set({ severity: null }),
   setCategory: (category) => set({ category }),
+  setFeedQuery: (feedQuery) => set({ feedQuery }),
   setGroupByZone: (groupByZone) => set({ groupByZone }),
   setSidePanel: (sidePanel) => set({ sidePanel }),
   selectAsset: (code: string | null, focusZoneId: string | null = null) =>
