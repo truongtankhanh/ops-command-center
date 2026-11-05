@@ -1177,6 +1177,44 @@ describe('useConsole', () => {
     });
   });
 
+  // The incident search text, lifted from the feed in V3-24.4 so the list and the table read one value.
+  describe('feed search text', () => {
+    it('is empty by default', () => {
+      expect(useConsole.getInitialState().feedQuery).toBe('');
+    });
+
+    it('changes only the search text: the tab, filters, selection, panel and view stay', () => {
+      useConsole.setState({
+        filter: 'all',
+        severity: 'high',
+        category: 'security',
+        selectedIncidentId: 'inc-1',
+        sidePanel: 'incidents',
+        feedView: 'table',
+      });
+      const before = state();
+
+      state().setFeedQuery('door');
+
+      const after = state();
+      expect(after.feedQuery).toBe('door');
+      expect(after.filter).toBe(before.filter);
+      expect(after.severity).toBe(before.severity);
+      expect(after.category).toBe(before.category);
+      expect(after.selectedIncidentId).toBe(before.selectedIncidentId);
+      expect(after.sidePanel).toBe(before.sidePanel);
+      expect(after.feedView).toBe(before.feedView);
+    });
+
+    it('is not remembered in this browser', () => {
+      localStorage.clear();
+
+      state().setFeedQuery('door');
+
+      expect(localStorage.length).toBe(0);
+    });
+  });
+
   describe('view', () => {
     const KEY = 'occ.console.view';
 

@@ -46,6 +46,25 @@
 }
 
 /*
+ * The map and the strip, wrapped only to make them `inert` while the incident table covers them (V3-24.4). No box of its
+ * own: its children stay the stage grid's items, and `--sheet-inset` still reaches them through the DOM.
+ */
+.underTable {
+  display: contents;
+}
+
+/*
+ * A broken incident table (`Region`) keeps the table's place over the stage, never a cell of the grid, so the stage keeps
+ * its layout and the Retry is where the table was (`IncidentTable.module.css .overlay`).
+ */
+.tableFallback {
+  position: absolute;
+  inset: 0;
+  padding-inline-end: var(--sheet-inset, 0px);
+  background: var(--surface-1);
+}
+
+/*
  * Top centre of the part of the stage the sheet leaves visible (`--sheet-inset`, set on the
  * stage), as the map's pick hint. The system banners (events, telemetry, the alarm flood's, the 3D view's) stack
  * here, in that order, so one never covers the other whatever its height. Placement only; the look is

@@ -17,6 +17,9 @@ import {
   Building2,
   Car,
   CarFront,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
   CircleAlert,
   CircleCheck,
   CircleDot,
@@ -88,6 +91,7 @@ import type {
 } from '@occ/contracts';
 import type { AssetState } from '../lib/assets/assets';
 import type { FeedView } from '../lib/incidents/feedView';
+import type { SortDirection } from '../lib/incidents/incidentTable';
 import type { SystemHealth } from '../lib/shell/systemHealth';
 import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import type { ConnectionState, SidePanelTab } from '../store';
@@ -248,6 +252,18 @@ const FEED_VIEW_ICONS: Record<FeedView, Glyph> = {
 };
 
 export const feedViewIcon = (view: FeedView) => FEED_VIEW_ICONS[view];
+
+// The incident table's sort mark (V3-24.4, frame 19), beside each header's word: the direction on the sorted column and the
+// two-way mark on the others, which all sort. Decorative: `aria-sort` on the header cell says the state. `ChevronDown` is
+// also the generic "opens or collapses" glyph (the user menu, the legends, the strip, the cards); here it sits only inside a
+// header with its word, so the two never meet. Written in icons.md.
+const SORT_ICONS: Record<SortDirection | 'none', Glyph> = {
+  ascending: ChevronUp,
+  descending: ChevronDown,
+  none: ChevronsUpDown,
+};
+
+export const sortIcon = (state: SortDirection | 'none') => SORT_ICONS[state];
 
 // An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
 // states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),

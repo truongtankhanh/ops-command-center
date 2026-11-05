@@ -2614,4 +2614,95 @@ describe('the console', () => {
       await checkPage();
     });
   });
+
+  // V3-24.4: the incident table over the stage, and what it covers.
+  describe('table mode', () => {
+    const tableRegion = () => screen.queryByRole('region', { name: 'Incident table' });
+    /** The nearest `inert` ancestor of a stage region, or `null` when it can be used. */
+    const inertAround = (name: string) => screen.getByRole('region', { name }).closest('[inert]');
+    const checkPage = () => expectNoAxeViolations(document.body, { screen: true });
+
+    afterEach(() => localStorage.clear());
+
+    it('draws no table, and leaves the map and the strip usable, in the list view', () => {
+      renderConsole();
+
+      expect(tableRegion()).toBeNull();
+      expect(inertAround('Campus map')).toBeNull();
+      expect(inertAround('Cameras')).toBeNull();
+    });
+
+    it('opens the table over the stage from the switch, and closes it again', async () => {
+      renderConsole();
+      const side = screen.getByRole('complementary', { name: 'Incidents and assets' });
+
+      await userEvent.click(within(side).getByRole('radio', { name: 'Table' }));
+
+      const main = screen.getByRole('main');
+      expect(within(main).getByRole('region', { name: 'Incident table' })).toBeInTheDocument();
+      expect(within(tableRegion() as HTMLElement).getByText('INC-000001')).toBeInTheDocument();
+      // The sidebar stays beside it.
+      expect(within(side).getByRole('region', { name: 'Incidents' })).toBeInTheDocument();
+
+      await userEvent.click(within(side).getByRole('radio', { name: 'List' }));
+
+      expect(tableRegion()).toBeNull();
+    });
+
+    it('makes the map, its tools and the strip inert while the table covers them', () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+
+      expect(tableRegion()).toBeInTheDocument();
+      expect(inertAround('Campus map')).not.toBeNull();
+      expect(inertAround('Cameras')).not.toBeNull();
+      // The table itself is not under the inert wrapper.
+      expect((tableRegion() as HTMLElement).closest('[inert]')).toBeNull();
+    });
+
+    it('keeps the table with the inspector open over it, the inspector usable', () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+
+      act(() => useConsole.getState().select('i1'));
+
+      expect(tableRegion()).toBeInTheDocument();
+      const sheet = screen.getByRole('complementary', { name: 'Incident INC-000001' });
+      expect(sheet.closest('[inert]')).toBeNull();
+    });
+
+    it('hides the table on the Assets panel, and brings it back with the Incidents panel', async () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Assets/ }));
+      expect(tableRegion()).toBeNull();
+      expect(inertAround('Campus map')).toBeNull();
+
+      await userEvent.click(screen.getByRole('tab', { name: /^Incidents/ }));
+      expect(tableRegion()).toBeInTheDocument();
+    });
+
+    it('has no axe violations with the table shown', async () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+      expect(tableRegion()).toBeInTheDocument();
+
+      await checkPage();
+    });
+
+    it('has no axe violations with the table sorted and the inspector open', async () => {
+      useConsole.setState({
+        feedView: 'table',
+        tableSort: { key: 'severity', direction: 'descending' },
+      });
+      renderConsole();
+      act(() => useConsole.getState().select('i1'));
+      expect(
+        screen.getByRole('complementary', { name: 'Incident INC-000001' }),
+      ).toBeInTheDocument();
+
+      await checkPage();
+    });
+  });
 });

@@ -5,6 +5,7 @@ import { type SidePanelTab, useConsole } from '../../store';
 import { Icon } from '../../ui/Icon';
 import { sidePanelIcon } from '../../ui/icons';
 import { nextTabIndex } from '../../ui/tabNavigation';
+import { FeedViewSwitch } from '../incidents/FeedViewSwitch';
 import styles from './SidePanel.module.css';
 
 const TABS: readonly { value: SidePanelTab; label: string }[] = [
@@ -26,6 +27,10 @@ const TABS: readonly { value: SidePanelTab; label: string }[] = [
  * The incident count is the active incidents, unfiltered (the KPI tiles' sum), not the feed's tab
  * count: that follows a severity chip and a search the switch cannot see. A count that is not known
  * yet (list loading or failed) is left out rather than drawn as 0.
+ *
+ * The incident list's List | Table switch (V3-24.3, mounted in V3-24.4) sits at the right end of the same row, frame 19's
+ * place, **outside** the `tablist`: it is its own radio group with its own keys, so the tabs' arrows still move between the
+ * two tabs only. It draws itself only on the Incidents panel and never on a phone.
  */
 export function SidePanel({ incidents, assets }: { incidents: ReactNode; assets: ReactNode }) {
   const panel = useConsole((s) => s.sidePanel);
@@ -57,36 +62,39 @@ export function SidePanel({ incidents, assets }: { incidents: ReactNode; assets:
 
   return (
     <aside id="side-panel" className={styles.side} aria-label="Incidents and assets">
-      <div role="tablist" aria-label="Side panel" className={styles.switch} onKeyDown={onKeyDown}>
-        {TABS.map((tab, index) => {
-          const count = counts[tab.value];
-          return (
-            <button
-              key={tab.value}
-              ref={(element) => {
-                tabRefs.current[index] = element;
-              }}
-              type="button"
-              role="tab"
-              id={tabId(tab.value)}
-              className={styles.tab}
-              aria-selected={panel === tab.value}
-              aria-controls={panelId(tab.value)}
-              tabIndex={panel === tab.value ? 0 : -1}
-              onClick={() => setPanel(tab.value)}
-            >
-              <Icon glyph={sidePanelIcon(tab.value)} size={16} />
-              {tab.label}
-              {/* The space keeps the accessible name "Incidents 8", not "Incidents8". */}
-              {count !== undefined && (
-                <>
-                  {' '}
-                  <span className={styles.count}>{count}</span>
-                </>
-              )}
-            </button>
-          );
-        })}
+      <div className={styles.head}>
+        <div role="tablist" aria-label="Side panel" className={styles.switch} onKeyDown={onKeyDown}>
+          {TABS.map((tab, index) => {
+            const count = counts[tab.value];
+            return (
+              <button
+                key={tab.value}
+                ref={(element) => {
+                  tabRefs.current[index] = element;
+                }}
+                type="button"
+                role="tab"
+                id={tabId(tab.value)}
+                className={styles.tab}
+                aria-selected={panel === tab.value}
+                aria-controls={panelId(tab.value)}
+                tabIndex={panel === tab.value ? 0 : -1}
+                onClick={() => setPanel(tab.value)}
+              >
+                <Icon glyph={sidePanelIcon(tab.value)} size={16} />
+                {tab.label}
+                {/* The space keeps the accessible name "Incidents 8", not "Incidents8". */}
+                {count !== undefined && (
+                  <>
+                    {' '}
+                    <span className={styles.count}>{count}</span>
+                  </>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <FeedViewSwitch />
       </div>
       {TABS.map((tab) => (
         <div

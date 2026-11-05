@@ -1,0 +1,268 @@
+/*
+ * The incident table over the stage (V3-24.4, frame 19). `App` mounts it inside the stage after the map and the strip, so it
+ * paints over both without a z-index and under the sheet, the banners and the toasts, which follow it. It covers the whole
+ * stage and never changes its size (V1 principle 6); the end padding is the open sheet's width (`--sheet-inset`, set on the
+ * stage), so an open inspector leaves every column readable. Opaque and without glow: it is a working surface, not a floating
+ * panel, and the 3D scene under it draws no frames while idle (`frameloop="demand"`).
+ */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-inline-end: var(--sheet-inset, 0px);
+  background: var(--surface-1);
+}
+
+/* The list's offline notice (`IncidentFeed.module.css .notice`), the same words and look. */
+.notice {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) var(--space-3) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-2);
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+}
+
+/* Its own stacking context, so the sticky header's `z-index` ranks it over the cells' positioned parts and nothing outside. */
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  isolation: isolate;
+}
+
+/*
+ * `separate` with no spacing, not `collapse`: a sticky header cell keeps its own bottom hairline only when the borders are
+ * not collapsed into the row below.
+ */
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-ui);
+  font-size: var(--type-m);
+  line-height: var(--leading-m);
+  color: var(--text-primary);
+}
+
+/* The header stays in view while the rows scroll under it. `--text-secondary` on `--surface-2` is a checked pair. */
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: var(--type-s);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-s);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* The whole header cell is the button, so the target is the column's width; the focus ring is `base.css`'s. */
+.sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: calc(36px * var(--ui-scale));
+  padding: 0 var(--space-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort:hover,
+th[aria-sort='ascending'] .sort,
+th[aria-sort='descending'] .sort {
+  color: var(--text-primary);
+}
+
+/* 36 – 40 px rows (frame 19): a 20 px line, the 20 px chips and 8 px above and below, plus the hairline. */
+.table td {
+  height: calc(38px * var(--ui-scale));
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* The severity's badge tint and border, as the list row's tile takes them (`IncidentRow.module.css`). */
+.table tr[data-severity='critical'] {
+  --row-tint: var(--sev-critical-bg);
+  --row-edge: var(--sev-critical-border);
+}
+
+.table tr[data-severity='high'] {
+  --row-tint: var(--sev-high-bg);
+  --row-edge: var(--sev-high-border);
+}
+
+.table tr[data-severity='medium'] {
+  --row-tint: var(--sev-medium-bg);
+  --row-edge: var(--sev-medium-border);
+}
+
+.table tr[data-severity='low'] {
+  --row-tint: var(--sev-low-bg);
+  --row-edge: var(--sev-low-border);
+}
+
+.table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+/*
+ * The selected incident (V3-24.5 adds the click): the list row's accent tint and the 3 px accent bar at the start, without
+ * glow. Declared after `:hover`, so a hovered selected row stays selected.
+ */
+.table tbody tr[aria-current='true'] {
+  background: var(--row-selected-bg);
+}
+
+.table tbody tr[aria-current='true'] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The incident cell: the type tile, then the title, which gives way with an ellipsis (its full text is the `title`). */
+.incident {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: calc(360px * var(--ui-scale));
+}
+
+.tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
+  border: 1px solid var(--row-edge);
+  border-radius: var(--radius-s);
+  background: var(--row-tint);
+  color: var(--sev);
+}
+
+/* A resolved incident's tile steps back to neutral, as in the list. */
+.table tr[data-status='resolved'] .tile {
+  border-color: var(--border-subtle);
+  background: var(--surface-2);
+  color: var(--text-tertiary);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--weight-semibold);
+}
+
+/* Times and codes: tabular figures, so the columns line up and a ticking countdown does not jitter. */
+.figure {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* The attention countdown (V3-22.3's colours): neutral, `soon` in the warning hue, overdue in the danger hue and bolder. */
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.countdown[data-attention='soon'] {
+  color: var(--warning);
+}
+
+.countdown[data-attention='overdue'] {
+  color: var(--danger);
+  font-weight: var(--weight-semibold);
+}
+
+.none {
+  color: var(--text-tertiary);
+}
+
+/* Loading: chip, title and meta bars at the rows' height, so nothing jumps when the list arrives. */
+.skeleton {
+  display: grid;
+  align-content: start;
+  padding: calc(36px * var(--ui-scale)) 0 0;
+}
+
+.skeletonRow {
+  display: grid;
+  grid-template-columns: calc(88px * var(--ui-scale)) minmax(0, 2fr) minmax(0, 3fr);
+  align-items: center;
+  gap: var(--space-4);
+  height: calc(38px * var(--ui-scale));
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.skeletonChip {
+  height: calc(20px * var(--ui-scale));
+  border-radius: var(--radius-s);
+}
+
+.skeletonTitle {
+  height: calc(14px * var(--ui-scale));
+}
+
+.skeletonMeta {
+  width: 60%;
+  height: calc(12px * var(--ui-scale));
+}
+
+/*
+ * Nothing to show, could not load, too many requests: the primitive's message, with the list's smaller padding. The element in
+ * the selector lifts it over the primitive's own padding whichever stylesheet loads last (`IncidentFeed.module.css .state`);
+ * `RateLimited`'s class lands on its wrapper, and the padding belongs to the message inside it.
+ */
+p.state,
+div.state,
+.rateLimited > p {
+  padding: var(--space-8) var(--space-4);
+}
+
+/* Read by assistive tech, not drawn: the caption, the type and title, "No countdown". */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Touch screens: the header buttons are 44 px targets, as the chips are (`Tabs`). */
+@media (pointer: coarse) {
+  .sort {
+    height: calc(44px * var(--ui-scale));
+  }
+}
+
+/* A tablet's narrower stage (≤ 1100 px): Place and Code give way first (V3-24.4); the rest stay readable. */
+@media (max-width: 1100px) {
+  .table [data-column='place'],
+  .table [data-column='code'] {
+    display: none;
+  }
+}

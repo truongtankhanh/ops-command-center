@@ -46,6 +46,7 @@ in the contract, open data rather than a union, so a class this build lacks is e
 | `alarmLoadIcon`                  | the status bar's alarm-load segment: calm / flooding                                                                 | `Bell` / `TriangleAlert` (the triangle is shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                            |
 | `sidePanelIcon`                  | the side column's tabs: `incidents` / `assets`                                                                       | `TriangleAlert` / `Box` (both shared on purpose, see [below](#the-side-panels-tabs-v3-071))                                                                           |
 | `feedViewIcon`                   | the incident sidebar's List \| Table switch: `list` / `table`                                                        | `List` / `Table` (used nowhere else, see [below](#the-list--table-switch-v3-243))                                                                                     |
+| `sortIcon`                       | the incident table's header sort mark: `ascending` / `descending` / `none`                                           | `ChevronUp` / `ChevronDown` / `ChevronsUpDown` (see [below](#the-incident-tables-sort-mark-v3-244))                                                                   |
 | `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                                                                                  |
 | `assetClassIcon`                 | the 16 catalogue class codes and the 3 of V3-A, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))    | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ThermometerSun` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` / `Siren` / `KeyRound` / `Router` |
 | `assetStateIcon`                 | `running` / `standby` / `nodata` / `offline` (a fault uses `severityIcon`; `unknown` has no glyph)                   | `Activity` / `Pause` / `Clock` / `Clock`                                                                                                                              |
@@ -110,6 +111,13 @@ The incident sidebar's switch draws `List` and `Table`, glyph only, as frame 19 
 side panel's tabs in a 320 px column. Neither glyph is used anywhere else, so each keeps one meaning; each option is named
 by its word ("List", "Table") in a visually hidden text node and carries a `title`. `feedViewIcon` is pinned in
 `icons.test.ts`.
+
+### The incident table's sort mark (V3-24.4)
+
+Each header of the incident table (frame 19) is a button with its word and a 14 px mark: `ChevronUp` or `ChevronDown` on
+the sorted column, `ChevronsUpDown` on the others, which all sort. The mark is decorative; `aria-sort` on the header cell
+says the state. `ChevronUp` and `ChevronsUpDown` are used nowhere else. `ChevronDown` is also a generic glyph (a menu or a
+section that opens), but here it is only ever inside a header beside its word. `sortIcon` is pinned in `icons.test.ts`.
 
 ### V2 values: frame deviations and choices (V2-02.2)
 

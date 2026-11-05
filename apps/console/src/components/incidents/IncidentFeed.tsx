@@ -1,28 +1,11 @@
-import type { Incident, Zone } from '@occ/contracts';
 import { type KeyboardEvent, useCallback, useRef, useState } from 'react';
 import { isRateLimited } from '../../api/client';
-import { useIncidents, useZones } from '../../api/queries';
-import { useRoles } from '../../auth/usePermission';
-import {
-  categoryLabel,
-  categoryTag,
-  countByFilter,
-  feedEmptyMessage,
-  feedFiltersFor,
-  handlingScope,
-  hasLimitedScope,
-  matchesCategory,
-  matchesFilter,
-  matchesQuery,
-  matchesSeverity,
-  offeredFilter,
-  searchTerms,
-  severityLabel,
-} from '../../lib/incidents/incidents';
+import { categoryLabel, categoryTag, severityLabel } from '../../lib/incidents/incidents';
 import { groupByZone, groupedEntries, groupIdOf } from '../../lib/incidents/groupByZone';
 import { nextRowIndex } from '../../lib/incidents/rowNavigation';
 import { useAlarmLoad } from '../../lib/incidents/useAlarmLoad';
 import { useCountdownNow } from '../../lib/incidents/useCountdownNow';
+import { useFeedRows } from '../../lib/incidents/useFeedRows';
 import { formatClockTime } from '../../lib/shared/time';
 import { useShortcut } from '../../lib/shell/useShortcut';
 import { useConsole } from '../../store';
@@ -44,23 +27,39 @@ import { ZoneGroupRow } from './ZoneGroupRow';
 const SKELETON_ROWS = 5;
 
 export function IncidentFeed() {
-  const { data: incidents, error, failureReason, isPending, isFetching, refetch } = useIncidents();
-  const { data: zoneList } = useZones();
+  // The rows, the tabs and their counts come from the hook the table over the stage reads too (V3-24.4), so the two views
+  // always list the same incidents. Grouping, the roving tab stop and the clock below are the list's own.
+  const {
+    error,
+    failureReason,
+    isPending,
+    isFetching,
+    refetch,
+    loaded,
+    zoneList,
+    zoneName,
+    filter,
+    tabs,
+    scope,
+    tagged,
+    severity,
+    category,
+    query,
+    visible,
+    matchStatus,
+    emptyMessage,
+  } = useFeedRows();
   const zones = zoneList ?? [];
-  const storedFilter = useConsole((s) => s.filter);
   const setFilter = useConsole((s) => s.setFilter);
-  const roles = useRoles();
-  const severity = useConsole((s) => s.severity);
   const clearSeverity = useConsole((s) => s.clearSeverity);
-  const category = useConsole((s) => s.category);
   const setCategory = useConsole((s) => s.setCategory);
+  const setQuery = useConsole((s) => s.setFeedQuery);
   const offlineSince = useConsole((s) => s.offlineSince);
   // The operator's choice to see one row per zone (V3-21.4); it groups only while a flood lasts, see `grouping` below.
   const groupingChosen = useConsole((s) => s.groupByZone);
   const setGroupByZone = useConsole((s) => s.setGroupByZone);
   const { flood } = useAlarmLoad();
   const selectedId = useConsole((s) => s.selectedIncidentId);
-  const [query, setQuery] = useState('');
   const [focusId, setFocusId] = useState<string | null>(null);
   // The zones the operator opened in the grouped list. Feed-local and kept when grouping is switched off and on again.
   const [expandedZones, setExpandedZones] = useState<ReadonlySet<string>>(() => new Set());
@@ -77,37 +76,9 @@ export function IncidentFeed() {
   }, []);
   useShortcut('/', focusSearch, visiblePanel);
 
-  // A technician's tabs are Active · Mine to handle · All, everyone else's Active · Resolved · All.
-  // The stored filter may be one the user is not offered (roles change on token renewal): show
-  // Active then, rather than a list under no selected tab.
-  const offered = feedFiltersFor(roles);
-  const filter = offeredFilter(storedFilter, offered);
-  const scope = handlingScope(roles);
-  const tagged = hasLimitedScope(roles);
-
-  const zoneName = new Map(zones.map((z: Zone) => [z.id, z.name]));
-  const terms = searchTerms(query);
-  // Severity, category and search apply to every tab, so the tab counts use them too: each count is the
-  // number of rows that tab would list.
-  const matches = (incident: Incident) =>
-    matchesSeverity(incident, severity) &&
-    matchesCategory(incident, category) &&
-    matchesQuery(incident, terms, zoneName.get(incident.zoneId));
-  // Data first: a failed background refetch keeps the list (TanStack keeps it), so only a list that
-  // never arrived counts as not loaded.
-  const loaded = incidents !== undefined;
-  const visible = (incidents ?? []).filter(
-    (incident) => matchesFilter(incident, filter, scope) && matches(incident),
-  );
   // The rows' clock (V3-22.3): one timer for the list, every second only while an open incident is within ten minutes of its
-  // attention threshold or past it, else every 15 s (V3-22.2). It is read after `visible`, which it watches; the counts take no clock.
+  // attention threshold or past it, else every 15 s (V3-22.2). It watches `visible`; the counts take no clock.
   const now = useCountdownNow(visible);
-  const counts = loaded && incidents ? countByFilter(incidents, matches, scope) : null;
-  const tabs = counts ? offered.map((tab) => ({ ...tab, count: counts[tab.value] })) : offered;
-  const matchStatus =
-    loaded && terms.length > 0
-      ? `${visible.length} ${visible.length === 1 ? 'incident matches' : 'incidents match'}`
-      : '';
 
   // Grouped by zone (V3-21.4) only while the operator asked for it, a flood lasts, the zones are known (before that every incident
   // would be "Other zone") and there is something to list. Made from `visible`, so the tab, severity, category and search keep
@@ -236,7 +207,7 @@ export function IncidentFeed() {
           />
         ) : visible.length === 0 ? (
           <FeedEmpty
-            message={feedEmptyMessage(filter, severity, query, scope, category)}
+            message={emptyMessage}
             searching={query.trim() !== ''}
             bySeverity={severity !== null}
             byCategory={category !== null}

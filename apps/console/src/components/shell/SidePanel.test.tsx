@@ -149,6 +149,71 @@ describe('SidePanel', () => {
     });
   });
 
+  // V3-24.4 mounts the List | Table switch (V3-24.3) at the right end of the tab row, outside the tablist.
+  describe('the List | Table switch', () => {
+    const viewSwitch = () => screen.queryByRole('radiogroup', { name: 'Incident view' });
+
+    afterEach(() => localStorage.clear());
+
+    it('sits in the side panel after the tabs, outside the tab list', () => {
+      render(stubs);
+
+      const group = viewSwitch();
+      expect(group).toBeInTheDocument();
+      const side = screen.getByRole('complementary', { name: 'Incidents and assets' });
+      expect(side).toContainElement(group);
+      expect(screen.getByRole('tablist', { name: 'Side panel' })).not.toContainElement(group);
+      expect(within(screen.getByRole('tablist')).queryAllByRole('radio')).toHaveLength(0);
+      // After the tab list in the reading and Tab order.
+      expect(
+        screen.getByRole('tablist').compareDocumentPosition(group as HTMLElement) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('leaves the arrow keys of the tabs moving between the two tabs only', async () => {
+      render(stubs);
+      act(() => tab('Incidents 2').focus());
+
+      await userEvent.keyboard('{ArrowRight}');
+      expect(tab('Assets 4')).toHaveFocus();
+
+      await userEvent.keyboard('{ArrowRight}');
+      expect(tab('Incidents 2')).toHaveFocus();
+      expect(useConsole.getState().feedView).toBe('list');
+    });
+
+    it('is not drawn while the Assets panel is shown, and comes back with the Incidents panel', async () => {
+      render(stubs);
+
+      await userEvent.click(tab(/^Assets/));
+      expect(viewSwitch()).toBeNull();
+
+      await userEvent.click(tab(/^Incidents/));
+      expect(viewSwitch()).toBeInTheDocument();
+    });
+
+    it('keeps the search text, the tab and the selection when the view is switched and back', async () => {
+      render(
+        <SidePanel
+          incidents={<IncidentFeed />}
+          assets={<button type="button">Asset slot</button>}
+        />,
+      );
+      await userEvent.type(screen.getByRole('searchbox', { name: 'Search incidents' }), 'door');
+      await userEvent.click(screen.getByRole('button', { name: /Door forced open/ }));
+
+      await userEvent.click(screen.getByRole('radio', { name: 'Table' }));
+      expect(useConsole.getState().feedView).toBe('table');
+      await userEvent.click(screen.getByRole('radio', { name: 'List' }));
+
+      expect(screen.getByRole('searchbox', { name: 'Search incidents' })).toHaveValue('door');
+      expect(useConsole.getState().feedQuery).toBe('door');
+      expect(useConsole.getState().filter).toBe('active');
+      expect(useConsole.getState().selectedIncidentId).toBe('a');
+    });
+  });
+
   describe('selecting a panel', () => {
     it('switches on click and records it in the store', async () => {
       render(stubs);

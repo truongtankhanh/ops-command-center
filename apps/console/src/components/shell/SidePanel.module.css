@@ -16,16 +16,28 @@
 }
 
 /*
- * The switch, in the V3 tab look of `ui/Tabs` (V3-04.3), written out here because `Tabs` has one panel for all its tabs
- * and this column keeps both mounted. Natural-width tabs on a hairline, left-aligned: the right side is left for the
- * List | Table switch of frame 01 (V3-24). No `overflow: hidden`, so the focus ring and the bar's glow are not clipped.
+ * The head row: the tabs on the hairline, then the incident list's List | Table switch at the right end (frame 19,
+ * V3-24.4), which centres itself in the row (`FeedViewSwitch.module.css`). The hairline is the row's, so it runs under the
+ * switch too. No `overflow: hidden`, so the focus rings and the bar's glow are not clipped.
  */
-.switch {
+.head {
   flex: none;
   display: flex;
-  gap: var(--space-1);
+  gap: var(--space-2);
   padding: 0 var(--space-3);
   box-shadow: inset 0 -1px 0 var(--border-subtle);
+}
+
+/*
+ * The switch, in the V3 tab look of `ui/Tabs` (V3-04.3), written out here because `Tabs` has one panel for all its tabs
+ * and this column keeps both mounted. Natural-width tabs, left-aligned; the list takes the row's free width, which puts
+ * the List | Table switch after it at the right end.
+ */
+.switch {
+  flex: 1 1 auto;
+  display: flex;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
 .tab {
