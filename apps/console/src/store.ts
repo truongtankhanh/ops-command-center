@@ -24,6 +24,7 @@ import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shell/short
 import { type TwinFault, twinCapability } from './lib/twin-core/twinCapability';
 import type { SceneLayerKey, SceneLayers } from './lib/twin-core/twinLayers';
 import { levelOf } from './lib/twin-core/twinLevel';
+import type { TwinTier } from './lib/twin-core/twinTier';
 import {
   effectiveView,
   readViewChoice,
@@ -204,6 +205,12 @@ interface ConsoleState extends ReportLocation {
    */
   twinFault: TwinFault | null;
   /**
+   * The 3D view's quality tier (V3-11.3, brief § Quality tiers). `'high'` until V3-18 decides it; nothing moves it
+   * before then. A value of this session, never written to storage: V3-18 keeps the step for the page, as
+   * `rememberDprStep` does. Not the `data-twin-tier` attribute, which only V3-18.3 sets.
+   */
+  twinTier: TwinTier;
+  /**
    * The video wall screen this window is (`?wall=N`, V2-21.2), or `null` for the console people operate. Read once,
    * when the store is created, and never changed in a session: a wall is a different window, not a mode that is
    * switched. In wall mode the console mounts nothing interactive, makes no toast and plays no sound.
@@ -348,6 +355,7 @@ interface ConsoleState extends ReportLocation {
    * device allow. Nothing calls it yet; a context that restores in time never raises the fault.
    */
   clearTwinLost(): void;
+  setTwinTier(tier: TwinTier): void;
   toggleLayer(key: SceneLayerKey): void;
   /** Turns a layer on and does nothing when it is. There is no "hide": only the toggle hides. */
   showLayer(key: SceneLayerKey): void;
@@ -394,6 +402,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   view: effectiveView(readViewChoice(), twinCapability()),
   panTool: false,
   twinFault: null,
+  twinTier: 'high',
   wall: WALL,
   wallFocusId: null,
   layers: { incidents: true, cameras: true, assets: true, inside: true, heat: false },
@@ -587,6 +596,7 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   markTwinLost: (fault = 'context-lost') => set({ twinFault: fault, view: '2d' }),
   clearTwinLost: () =>
     set({ twinFault: null, view: effectiveView(readViewChoice(), twinCapability()) }),
+  setTwinTier: (twinTier) => set({ twinTier }),
   toggleLayer: (key) =>
     set((state) => ({ layers: { ...state.layers, [key]: !state.layers[key] } })),
   showLayer: (key) =>

@@ -1718,4 +1718,36 @@ describe('useConsole', () => {
       setItem.mockRestore();
     });
   });
+
+  // The 3D view's quality tier (V3-11.3): `'high'` until V3-18 decides it, a session value with no reader yet.
+  describe('quality tier', () => {
+    it('starts as High', () => {
+      expect(useConsole.getState().twinTier).toBe('high');
+    });
+
+    it('is set to each tier', () => {
+      useConsole.getState().setTwinTier('standard');
+      expect(useConsole.getState().twinTier).toBe('standard');
+
+      useConsole.getState().setTwinTier('low');
+      expect(useConsole.getState().twinTier).toBe('low');
+    });
+
+    it('goes back to High when the store is reset', () => {
+      useConsole.getState().setTwinTier('low');
+
+      resetStore(useConsole);
+
+      expect(useConsole.getState().twinTier).toBe('high');
+    });
+
+    it('is not remembered: nothing is written to storage', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+      useConsole.getState().setTwinTier('standard');
+
+      expect(setItem).not.toHaveBeenCalled();
+      setItem.mockRestore();
+    });
+  });
 });
