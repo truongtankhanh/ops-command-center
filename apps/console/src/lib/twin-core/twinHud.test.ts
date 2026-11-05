@@ -11,11 +11,14 @@ const reading = (overrides: Partial<HudReading> = {}): HudReading => ({
   pixelRatio: 1.25,
   geometries: 37,
   textures: 4,
+  frameCostP95Ms: 7.4,
+  gpuP95Ms: null,
+  tier: 'High',
   ...overrides,
 });
 
 describe('HUD_ROWS', () => {
-  it('lists frame 00’s six rows in its order and words, then the pixel ratio of V2-19.3 and the memory of V2-19.6', () => {
+  it('lists frame 00’s six rows in its order and words, then the pixel ratio of V2-19.3, the memory of V2-19.6, and the cost and tier of V3-11.2', () => {
     expect(HUD_ROWS.map(({ label }) => label)).toEqual([
       'FPS',
       'Frame (p95)',
@@ -26,6 +29,8 @@ describe('HUD_ROWS', () => {
       'Pixel ratio',
       'Geometries',
       'Textures',
+      'Frame cost (p95)',
+      'Quality tier',
     ]);
   });
 
@@ -55,6 +60,8 @@ describe('formatHud', () => {
       ratio: '1.25',
       geometries: '37',
       textures: '4',
+      cost: '7.4 ms',
+      tier: 'High',
     });
   });
 
@@ -68,6 +75,24 @@ describe('formatHud', () => {
   it('shows the p95 with one decimal', () => {
     expect(formatHud(reading({ frameP95Ms: 11.84 })).frame).toBe('11.8 ms');
     expect(formatHud(reading({ frameP95Ms: 14 })).frame).toBe('14.0 ms');
+  });
+
+  it('shows the cost with one decimal, and the GPU time beside it when there is one (V3-11.2)', () => {
+    expect(formatHud(reading({ frameCostP95Ms: 7.44 })).cost).toBe('7.4 ms');
+    expect(formatHud(reading({ frameCostP95Ms: 14 })).cost).toBe('14.0 ms');
+    expect(formatHud(reading({ frameCostP95Ms: 7.4, gpuP95Ms: 5.06 })).cost).toBe(
+      '7.4 ms · GPU 5.1',
+    );
+  });
+
+  it('shows no GPU time without a cost: the cell is a dash', () => {
+    expect(formatHud(reading({ frameCostP95Ms: null, gpuP95Ms: 5 })).cost).toBe(NO_VALUE);
+  });
+
+  it('shows the tier’s word, and a dash for none (V3-11.2)', () => {
+    expect(formatHud(reading({ tier: 'Standard' })).tier).toBe('Standard');
+    expect(formatHud(reading({ tier: null })).tier).toBe(NO_VALUE);
+    expect(formatHud(reading({ tier: '' })).tier).toBe(NO_VALUE);
   });
 
   it.each([
@@ -122,6 +147,9 @@ describe('formatHud', () => {
         pixelRatio: null,
         geometries: null,
         textures: null,
+        frameCostP95Ms: null,
+        gpuP95Ms: null,
+        tier: null,
       }),
     );
 
@@ -132,6 +160,8 @@ describe('formatHud', () => {
     expect(shown.ratio).toBe(NO_VALUE);
     expect(shown.geometries).toBe(NO_VALUE);
     expect(shown.textures).toBe(NO_VALUE);
+    expect(shown.cost).toBe(NO_VALUE);
+    expect(shown.tier).toBe(NO_VALUE);
   });
 
   it('shows a dash for NaN and for infinity, never the word', () => {
@@ -146,6 +176,9 @@ describe('formatHud', () => {
         pixelRatio: Number.NaN,
         geometries: Number.NaN,
         textures: Number.POSITIVE_INFINITY,
+        frameCostP95Ms: Number.NaN,
+        gpuP95Ms: Number.POSITIVE_INFINITY,
+        tier: null,
       }),
     );
 

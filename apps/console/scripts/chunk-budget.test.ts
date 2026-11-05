@@ -263,8 +263,27 @@ describe('debugMarkerProblems', () => {
     ).toHaveLength(2);
   });
 
+  it('finds the frame cost row of V3-11.2, which "Frame (p95)" does not cover', () => {
+    const problems = debugMarkerProblems([
+      { file: 'assets/HudProbe-d.js', code: '{id:"cost",label:"Frame cost (p95)"}' },
+    ]);
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toContain('assets/HudProbe-d.js');
+    expect(problems[0]).toContain('Frame cost (p95)');
+  });
+
+  it('does not treat the tier’s words as a marker: shipped UI may say them (V3-18)', () => {
+    expect(
+      debugMarkerProblems([{ file: 'assets/index-a.js', code: '"Quality tier","3D · High"' }]),
+    ).toEqual([]);
+  });
+
   it('looks for words the HUD really has, so renaming one fails here and not in a build', () => {
+    const labels = HUD_ROWS.map(({ label }) => label);
+
     expect(HUD_LABEL).toContain(DEBUG_MARKERS[0]);
-    expect(HUD_ROWS.map(({ label }) => label)).toContain(DEBUG_MARKERS[1]);
+    expect(labels).toContain(DEBUG_MARKERS[1]);
+    expect(labels).toContain(DEBUG_MARKERS[2]);
   });
 });

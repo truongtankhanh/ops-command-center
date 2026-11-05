@@ -1,8 +1,15 @@
-import { useFrame, useThree } from '@react-three/fiber';
+import { addAfterEffect, addEffect, useFrame, useThree } from '@react-three/fiber';
 import { type RefObject, useEffect, useMemo } from 'react';
+import { createGpuTimer, type GpuTimer } from '../lib/twin-core/twinGpuTimer';
 import { formatBudgetWarning, formatHud, HUD_ROWS } from '../lib/twin-core/twinHud';
-import { createBudgetGuard, createPerfSampler } from '../lib/twin-core/twinPerf';
+import {
+  createBudgetGuard,
+  createFrameCostClock,
+  createPerfSampler,
+} from '../lib/twin-core/twinPerf';
+import { tierWord } from '../lib/twin-core/twinTier';
 import { useTelemetryStore } from '../realtime/telemetryStore';
+import { useConsole } from '../store';
 
 /** How often the figures are rewritten (V2-19.1: twice a second). */
 const TICK_MS = 500;
@@ -20,7 +27,19 @@ interface HudProbeProps {
  *   increment and one array store, no allocation. **Never give it a priority above 0**: R3F then stops rendering
  *   the scene itself and the stage goes blank. With `frameloop="demand"` a delta spans the idle time before the
  *   frame, so the sampler drops what is too long to be a frame (`MAX_FRAME_GAP_MS`) and takes FPS from the frames
- *   drawn per window: an idle canvas reads 0.
+ *   drawn per window: an idle canvas reads 0. That delta is the **interval** between frames, which a 60 Hz display
+ *   holds near 16.7 ms whatever a frame costs.
+ * - **Frame cost** (V3-11.2, V3-11.1's metric). A global `addEffect` starts a clock before R3F's loop runs the
+ *   `useFrame` subscribers and `gl.render`, a global `addAfterEffect` stops it after them: the CPU time of the frame,
+ *   WebGL submission included. Global effects fire on every tick, also one that drew nothing, so the span counts only
+ *   when this probe's `useFrame` ran in it (`createFrameCostClock`). Both are removed on unmount: they are module-level
+ *   in R3F and would otherwise outlive the canvas (StrictMode mounts twice in development).
+ * - **GPU time**, where `EXT_disjoint_timer_query_webgl2` exists: a `TIME_ELAPSED` query around the same span
+ *   (`createGpuTimer`), kept under the same drawn-frame rule, read twice a second as the results come back (its own
+ *   interval, beside the tick), shown in the cost's cell. Without it, one
+ *   `console.debug` per mount and the CPU figure alone; nothing throws.
+ * - **Tier** (V3-11.2). The store's `twinTier` (V3-11.3) as its word, read in the tick like the telemetry counts, so no
+ *   React render follows a frame. It reads "High" until V3-18 moves it.
  * - **Draw calls and triangles** are read from the timer, between frames: `gl.info.render` then still holds the last
  *   completed frame (it is reset when the next render starts), whereas a `useFrame` callback would see the frame
  *   before. The figures cover the whole scene, ground and markers included.
@@ -44,16 +63,46 @@ interface HudProbeProps {
  * has none); `Hud.test.tsx` drives it with a stubbed `useFrame` and `gl.info`. A default export for `React.lazy`.
  *
  * Frame demand: none. It only observes the frames that others asked for; its `useFrame` stays at the default
- *   priority, which keeps R3F rendering the scene.
+ *   priority, which keeps R3F rendering the scene, and its global effects ask for no frame either.
  */
 export default function HudProbe({ listRef }: HudProbeProps) {
   const gl = useThree((state) => state.gl);
   const sampler = useMemo(() => createPerfSampler(), []);
   const guard = useMemo(() => createBudgetGuard(), []);
+  const clock = useMemo(() => createFrameCostClock(), []);
 
   useFrame((_state, delta) => {
     sampler.frame(delta * 1000);
+    clock.drew();
   });
+
+  useEffect(() => {
+    const timer = startGpuTimer(gl);
+    if (timer === null)
+      console.debug('Twin HUD: no GPU timer here; the frame cost is the CPU’s alone.');
+    const stopBefore = addEffect(() => {
+      clock.begin(performance.now());
+      timer?.begin();
+    });
+    const stopAfter = addAfterEffect(() => {
+      const cost = clock.end(performance.now());
+      // A tick that drew nothing keeps neither figure.
+      timer?.end(cost !== null);
+      if (cost !== null) sampler.cost(cost);
+    });
+    const poll =
+      timer === null
+        ? null
+        : setInterval(() => {
+            for (const ms of timer.poll()) sampler.gpu(ms);
+          }, TICK_MS);
+    return () => {
+      stopBefore();
+      stopAfter();
+      if (poll !== null) clearInterval(poll);
+      timer?.dispose();
+    };
+  }, [clock, gl, sampler]);
 
   useEffect(() => {
     const tick = () => {
@@ -74,6 +123,7 @@ export default function HudProbe({ listRef }: HudProbeProps) {
           pixelRatio,
           geometries,
           textures,
+          tier: tierWord(useConsole.getState().twinTier),
         }),
       );
       for (const { id } of HUD_ROWS) {
@@ -96,4 +146,16 @@ export default function HudProbe({ listRef }: HudProbeProps) {
   }, [gl, guard, listRef, sampler]);
 
   return null;
+}
+
+/**
+ * The GPU timer for the renderer's context, or `null`. The renderer's context is WebGL 2 (three needs it); anything that
+ * is not one, or throws when asked (a stubbed renderer has no `getContext`), reads as "no timer".
+ */
+function startGpuTimer(gl: { getContext(): unknown }): GpuTimer | null {
+  try {
+    return createGpuTimer(gl.getContext() as WebGL2RenderingContext);
+  } catch {
+    return null;
+  }
 }

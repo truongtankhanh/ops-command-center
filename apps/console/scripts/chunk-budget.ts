@@ -36,11 +36,12 @@ export const HEAVY_MARKERS = ['WebGLRenderer', 'BufferGeometry', 'Object3D'] as 
 
 /**
  * Text that only the developer HUD (V2-19.1) contains: its accessible name (`HUD_LABEL`, which holds the address
- * that switches it on) and the label of one of its rows. Neither is in shipped code, so either one in `dist` means the
- * development-only HUD reached a production build. `chunk-budget.test.ts` keeps them in step with the HUD's words
- * (`src/lib/twin-core/twinHud.ts`).
+ * that switches it on) and the labels of two of its rows, V2's interval and V3-11.2's frame cost. None is in shipped
+ * code, so any one in `dist` means the development-only HUD reached a production build. "Quality tier" is not a marker:
+ * shipped UI may say it one day (V3-18), and a false marker would fail a good build. `chunk-budget.test.ts` keeps them
+ * in step with the HUD's words (`src/lib/twin-core/twinHud.ts`).
  */
-export const DEBUG_MARKERS = ['debug=twin', 'Frame (p95)'] as const;
+export const DEBUG_MARKERS = ['debug=twin', 'Frame (p95)', 'Frame cost (p95)'] as const;
 
 /** The part of Vite's manifest this check reads (`ManifestChunk` in vite's types). */
 export interface ManifestChunk {

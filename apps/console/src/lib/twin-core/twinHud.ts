@@ -20,7 +20,9 @@ export type HudRowId =
   | 'posts'
   | 'ratio'
   | 'geometries'
-  | 'textures';
+  | 'textures'
+  | 'cost'
+  | 'tier';
 
 /**
  * The rows in frame 00's order and words. A list so that V2-19.3 (pixel ratio) and V2-19.6 (geometries and textures)
@@ -38,6 +40,10 @@ export const HUD_ROWS: readonly { id: HudRowId; label: string }[] = [
   // Added in V2-19.6 (brief § Performance: memory is "checked in the dev HUD"): `gl.info.memory`'s counters.
   { id: 'geometries', label: 'Geometries' },
   { id: 'textures', label: 'Textures' },
+  // Added in V3-11.2, after V2's nine so those keep their places. The cost is V3-11.1's frame-time metric (the interval
+  // above is fixed by the display's rate); "Frame cost (p95)" is also a marker of `scripts/chunk-budget.ts`.
+  { id: 'cost', label: 'Frame cost (p95)' },
+  { id: 'tier', label: 'Quality tier' },
 ];
 
 /** What a row shows when it has no value. */
@@ -45,14 +51,21 @@ export const NO_VALUE = '–';
 
 const isValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
-/** Frame 00's figures: `60`, `11.8 ms`, `96`, `182 k`, `84`, `1 / frame`, and `1.25` for the ratio. No value, or `NaN`, is a dash. */
+/**
+ * Frame 00's figures: `60`, `11.8 ms`, `96`, `182 k`, `84`, `1 / frame`, and `1.25` for the ratio. No value, or `NaN`, is a
+ * dash. V3-11.2: the cost reads `7.4 ms`, or `7.4 ms · GPU 5.1` where a GPU timer has a figure (one cell, so the HUD
+ * keeps two new rows); a GPU figure with no cost is not shown. The tier is its word, or a dash.
+ */
 export function formatHud(reading: HudReading): Record<HudRowId, string> {
   const whole = (value: number | null): string =>
     isValue(value) ? String(Math.round(value)) : NO_VALUE;
+  const ms = (value: number | null): string =>
+    isValue(value) ? `${value.toFixed(1)} ms` : NO_VALUE;
   const triangles = Math.round(reading.triangles);
+  const cost = ms(reading.frameCostP95Ms);
   return {
     fps: whole(reading.fps),
-    frame: isValue(reading.frameP95Ms) ? `${reading.frameP95Ms.toFixed(1)} ms` : NO_VALUE,
+    frame: ms(reading.frameP95Ms),
     calls: whole(reading.calls),
     triangles: !Number.isFinite(triangles)
       ? NO_VALUE
@@ -66,6 +79,11 @@ export function formatHud(reading: HudReading): Record<HudRowId, string> {
     ratio: isValue(reading.pixelRatio) ? String(Number(reading.pixelRatio.toFixed(2))) : NO_VALUE,
     geometries: whole(reading.geometries),
     textures: whole(reading.textures),
+    cost:
+      cost !== NO_VALUE && isValue(reading.gpuP95Ms)
+        ? `${cost} · GPU ${reading.gpuP95Ms.toFixed(1)}`
+        : cost,
+    tier: reading.tier !== null && reading.tier !== '' ? reading.tier : NO_VALUE,
   };
 }
 

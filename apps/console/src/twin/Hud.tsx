@@ -9,7 +9,9 @@ interface HudProps {
 
 /**
  * The developer HUD of the 3D view (V2-19.1, frame 00, ADR-0020 § Budgets): FPS, p95 frame time, draw calls,
- * triangles, telemetry messages per second and worker posts per frame. It draws labels and dashes and **nothing
+ * triangles, telemetry messages per second and worker posts per frame, then the pixel ratio, the GPU's geometries and
+ * textures, and (V3-11.2) the p95 frame cost with the GPU time where there is a timer, and the quality tier. The rows are
+ * `HUD_ROWS`, so a row is added there and not here. It draws labels and dashes and **nothing
  * else**: the figures come from `HudProbe`, which writes them into the cells by `textContent` twice a second, so no
  * React render follows a frame.
  *
