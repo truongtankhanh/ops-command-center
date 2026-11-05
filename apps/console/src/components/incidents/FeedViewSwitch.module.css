@@ -1,0 +1,65 @@
+/*
+ * The List | Table switch (V3-24.3, frame 19 `.seg`): two glyph options in a pill row, the look of `RangeSwitch` and
+ * `SegmentedControl`'s row with the same tokens, so no colour pair is new. State is `aria-checked` (ADR-0016).
+ *
+ * Frame 19 draws it at the right end of the side panel's tab row, 28 px options beside 44 px tabs; `align-self` centres
+ * it in that row (V3-24.4 mounts it there).
+ */
+
+.switch {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  gap: var(--space-0-5);
+  padding: var(--space-0-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-0);
+}
+
+.option {
+  display: inline-grid;
+  place-items: center;
+  width: calc(28px * var(--ui-scale));
+  height: calc(28px * var(--ui-scale));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.option:hover {
+  color: var(--text-primary);
+}
+
+/* `SegmentedControl`'s checked face: the accent tint and its lit edge (ADR-0022 §4), and the brighter glyph. */
+.option[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  box-shadow: var(--glow-edge);
+  color: var(--text-primary);
+}
+
+.option:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* A coarse pointer gets the 44 px target the feed's chip tabs get (V3-07.4). */
+@media (pointer: coarse) {
+  .option {
+    width: calc(44px * var(--ui-scale));
+    height: calc(44px * var(--ui-scale));
+  }
+}
+
+/* The option's word: its accessible name, not drawn (the glyph and the `title` are). */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

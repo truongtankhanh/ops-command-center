@@ -41,6 +41,7 @@ import {
   HeartPulse,
   Info,
   KeyRound,
+  List,
   type LucideIcon,
   OctagonAlert,
   Package,
@@ -55,6 +56,7 @@ import {
   SprayCan,
   SquareParking,
   Stethoscope,
+  Table,
   Thermometer,
   ThermometerSun,
   Tornado,
@@ -85,6 +87,7 @@ import type {
   ZoneKind,
 } from '@occ/contracts';
 import type { AssetState } from '../lib/assets/assets';
+import type { FeedView } from '../lib/incidents/feedView';
 import type { SystemHealth } from '../lib/shell/systemHealth';
 import type { TelemetryPillState } from '../lib/telemetry/telemetryState';
 import type { ConnectionState, SidePanelTab } from '../store';
@@ -236,6 +239,15 @@ const SIDE_PANEL_ICONS: Record<SidePanelTab, Glyph> = {
 };
 
 export const sidePanelIcon = (tab: SidePanelTab) => SIDE_PANEL_ICONS[tab];
+
+// The incident sidebar's List | Table switch (V3-24.3, frame 19). Glyph-only options, each named by its word in a hidden
+// text node; neither glyph is used anywhere else, so each keeps one meaning. Written in icons.md.
+const FEED_VIEW_ICONS: Record<FeedView, Glyph> = {
+  list: List,
+  table: Table,
+};
+
+export const feedViewIcon = (view: FeedView) => FEED_VIEW_ICONS[view];
 
 // An asset class and what it shares, by meaning (V2-09.4, docs/design/icons.md § Asset classes and
 // states). A share is deliberate and has one meaning each: `Fan` air handling (also `hvac_fault`),

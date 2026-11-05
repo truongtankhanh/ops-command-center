@@ -45,6 +45,7 @@ in the contract, open data rather than a union, so a class this build lacks is e
 | `healthIcon`                     | the status bar's summary: `healthy` / `degraded`                                                                     | `CircleCheck` / `TriangleAlert` (both shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                                |
 | `alarmLoadIcon`                  | the status bar's alarm-load segment: calm / flooding                                                                 | `Bell` / `TriangleAlert` (the triangle is shared on purpose, see [below](#the-status-bars-summary-v3-062))                                                            |
 | `sidePanelIcon`                  | the side column's tabs: `incidents` / `assets`                                                                       | `TriangleAlert` / `Box` (both shared on purpose, see [below](#the-side-panels-tabs-v3-071))                                                                           |
+| `feedViewIcon`                   | the incident sidebar's List \| Table switch: `list` / `table`                                                        | `List` / `Table` (used nowhere else, see [below](#the-list--table-switch-v3-243))                                                                                     |
 | `cameraIcon`                     | `online: true` / `false`                                                                                             | `Video` / `VideoOff`                                                                                                                                                  |
 | `assetClassIcon`                 | the 16 catalogue class codes and the 3 of V3-A, by `Asset.class.code` ([below](#asset-classes-and-states-v2-094))    | `Fan` / `Zap` / `Battery` / `Power` / `Thermometer` / `ThermometerSun` / `ArrowUpDown` / `Fence` / `Droplet` / `Cylinder` / `Gauge` / `Siren` / `KeyRound` / `Router` |
 | `assetStateIcon`                 | `running` / `standby` / `nodata` / `offline` (a fault uses `severityIcon`; `unknown` has no glyph)                   | `Activity` / `Pause` / `Clock` / `Clock`                                                                                                                              |
@@ -102,6 +103,13 @@ meaning elsewhere: `TriangleAlert` is the `high` severity and the degraded healt
 model. The share is deliberate and holds because a tab always carries its word and its count beside the glyph, draws it in the tab's
 text colour (`--text-secondary`, `--text-primary` when selected) and never in a severity hue, and it names a place to look, not a state.
 `sidePanelIcon` is pinned in `icons.test.ts`.
+
+### The List | Table switch (V3-24.3)
+
+The incident sidebar's switch draws `List` and `Table`, glyph only, as frame 19 does: two words do not fit beside the
+side panel's tabs in a 320 px column. Neither glyph is used anywhere else, so each keeps one meaning; each option is named
+by its word ("List", "Table") in a visually hidden text node and carries a `title`. `feedViewIcon` is pinned in
+`icons.test.ts`.
 
 ### V2 values: frame deviations and choices (V2-02.2)
 
