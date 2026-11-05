@@ -304,15 +304,19 @@ describe('the console on a video wall screen', () => {
   describe('with the table view stored', () => {
     beforeEach(() => useConsole.setState({ feedView: 'table' }));
 
-    it.each(ROLES)('draws no table, no List | Table switch and nothing inert, for a %s', (role) => {
-      const { container } = renderWall(role);
+    it.each(ROLES)(
+      'draws no table, no Export CSV, no List | Table switch and nothing inert, for a %s',
+      (role) => {
+        const { container } = renderWall(role);
 
-      expect(screen.queryByRole('region', { name: 'Incident table' })).toBeNull();
-      expect(screen.queryByRole('table')).toBeNull();
-      expect(screen.queryByRole('radiogroup', { name: 'Incident view' })).toBeNull();
-      expect(container.querySelector('[inert]')).toBeNull();
-      expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
-    });
+        expect(screen.queryByRole('region', { name: 'Incident table' })).toBeNull();
+        expect(screen.queryByRole('table')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Export CSV' })).toBeNull();
+        expect(screen.queryByRole('radiogroup', { name: 'Incident view' })).toBeNull();
+        expect(container.querySelector('[inert]')).toBeNull();
+        expect(container.querySelectorAll(INTERACTIVE)).toHaveLength(0);
+      },
+    );
   });
 
   // V3-22.5: the wall shows the attention countdown (frame 17) as text, for every role, with nothing to press and nothing announced.

@@ -344,6 +344,7 @@ export {
   CircleX,
   Clock,
   Crosshair,
+  Download,
   Eye,
   Fan,
   Flag,

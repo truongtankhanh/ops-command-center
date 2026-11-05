@@ -119,6 +119,13 @@ the sorted column, `ChevronsUpDown` on the others, which all sort. The mark is d
 says the state. `ChevronUp` and `ChevronsUpDown` are used nowhere else. `ChevronDown` is also a generic glyph (a menu or a
 section that opens), but here it is only ever inside a header beside its word. `sortIcon` is pinned in `icons.test.ts`.
 
+### The incident table's Export CSV (V3-24.6)
+
+The toolbar over the incident table (frame 19) has an **Export CSV** button with `Download` before its words, as the frame
+draws it. The glyph is decorative (`Button` hides it; the name is the words) and is used nowhere else, so it keeps one
+meaning: a file is saved in this browser. It is a generic glyph, re-exported by name from `icons.ts`, and pinned in
+`icons.test.ts`.
+
 ### V2 values: frame deviations and choices (V2-02.2)
 
 [ADR-0021](../adr/0021-incident-categories-zone-uses-and-technician-role.md) added 18 incident types, six categories

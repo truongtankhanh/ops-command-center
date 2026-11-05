@@ -1,10 +1,12 @@
 import type { Incident, Zone } from '@occ/contracts';
 import { QueryClient } from '@tanstack/react-query';
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { queryRetryDelay, RATE_LIMITED_RETRYING, shouldRetryQuery } from '../../api/client';
 import { queryKeys } from '../../api/queries';
 import { useSession } from '../../auth/store';
+import { CSV_BOM, csvFilename, incidentsToCsv } from '../../lib/incidents/incidentCsv';
+import { downloadText } from '../../lib/shared/download';
 import { useConsole } from '../../store';
 import {
   createTestQueryClient,
@@ -18,6 +20,9 @@ import { IncidentTable } from './IncidentTable';
 
 // No token in these cases; the API client only asks for one.
 vi.mock('../../auth/session', () => ({ getAccessToken: vi.fn(), renewSession: vi.fn() }));
+// The file itself is `download.test.ts`'s (jsdom has no `URL.createObjectURL`): here only what Export hands it.
+vi.mock('../../lib/shared/download', () => ({ downloadText: vi.fn() }));
+const download = vi.mocked(downloadText);
 
 const MINUTE = 60_000;
 
@@ -130,12 +135,36 @@ const header = (name: string) => screen.getByRole('columnheader', { name });
 const rowButton = (code: string) => within(rowOf(code)).getByRole('button');
 const rowButtons = () => bodyRows().map((row) => within(row).getByRole('button'));
 const selected = () => useConsole.getState().selectedIncidentId;
+const exportButton = () => within(table()).getByRole('button', { name: 'Export CSV' });
+/** The table's one live region, the toolbar's hidden line. */
+const status = () => within(table()).getByRole('status');
+/** The visible count: the toolbar's text with these words that is not the live line. */
+const shownCount = (text: string) =>
+  within(table())
+    .queryAllByText(text)
+    .filter((node) => node.getAttribute('role') !== 'status');
+const zoneNames = new Map(zones.map((zone) => [zone.id, zone.name]));
+/** The incidents in the order the table draws them. */
+const drawn = () => codes().map((code) => list.find((incident) => incident.code === code)!);
+/** What Export handed to `downloadText`: the file name, the text and the type. */
+const exported = () => {
+  expect(download).toHaveBeenCalledTimes(1);
+  const [filename, text, type] = download.mock.calls[0]!;
+  return { filename, text, type };
+};
+/** The CSV's codes, header excluded: the first cell of each line after the first. */
+const csvCodes = (text: string) =>
+  text
+    .split('\r\n')
+    .slice(1, -1)
+    .map((line) => line.split(',')[0]);
 
 describe('IncidentTable', () => {
   beforeEach(() => {
     localStorage.clear();
     resetStore(useConsole);
     incidentAnswers = [];
+    download.mockClear();
     fetchMock.mockReset().mockImplementation((input) => {
       // Only the incident list is answered; anything else the feed reads (the catalogue, for the alarm load) stays pending.
       if (!urlOf(input).includes('/incidents')) return new Promise<Response>(() => {});
@@ -271,10 +300,12 @@ describe('IncidentTable', () => {
       expect(within(attention).getByText('—')).toHaveAttribute('aria-hidden', 'true');
     });
 
-    it('is never a live region, so the ticking figures are not read out', () => {
+    // V3-24.6 added the toolbar's line, the table's one live region; the rows and their ticking figures stay out of it.
+    it("has one live region, the toolbar's, so the ticking figures are not read out", () => {
       renderTable();
 
-      expect(within(table()).queryByRole('status')).toBeNull();
+      expect(within(table()).getAllByRole('status')).toHaveLength(1);
+      expect(within(screen.getByRole('table')).queryByRole('status')).toBeNull();
       expect(table().querySelector('[aria-live]')).toBeNull();
     });
 
@@ -457,9 +488,11 @@ describe('IncidentTable', () => {
       expect(tabStops()).toEqual([rowButton('INC-000002')]);
     });
 
-    it('reaches the rows after the eight sort buttons, and leaves the table with the next Tab', async () => {
+    it('reaches the rows after Export CSV and the eight sort buttons, and leaves the table with the next Tab', async () => {
       renderTable();
 
+      await userEvent.tab();
+      expect(exportButton()).toHaveFocus();
       for (let press = 0; press < 8; press += 1) await userEvent.tab();
       expect(within(header('Code')).getByRole('button')).toHaveFocus();
 
@@ -558,6 +591,16 @@ describe('IncidentTable', () => {
       expect(checkedView()).toHaveFocus();
     });
 
+    it('moves focus from Export CSV to the switch too (V3-24.6)', async () => {
+      renderWithSwitch();
+      exportButton().focus();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(checkedView()).toHaveFocus();
+      expect(download).not.toHaveBeenCalled();
+    });
+
     it('does nothing while an incident is open in the inspector', async () => {
       useConsole.setState({ selectedIncidentId: 'a' });
       renderWithSwitch();
@@ -580,13 +623,185 @@ describe('IncidentTable', () => {
     });
   });
 
+  describe('the toolbar (V3-24.6)', () => {
+    /** The table over a cache the case can change, as a live event would. */
+    function renderLive(rows: Incident[] = list) {
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.incidents, rows);
+      client.setQueryData(queryKeys.zones, zones);
+      renderWithQueryClient(<IncidentTable />, client);
+      return client;
+    }
+
+    it('counts the incidents the table lists', () => {
+      renderTable();
+
+      expect(bodyRows()).toHaveLength(4);
+      expect(shownCount('4 incidents')).toHaveLength(1);
+    });
+
+    it('says "1 incident" and "0 incidents"', () => {
+      useConsole.setState({ feedQuery: 'pipe' });
+      const { unmount } = renderTable();
+      expect(shownCount('1 incident')).toHaveLength(1);
+      unmount();
+
+      useConsole.setState({ feedQuery: 'zzz' });
+      renderTable();
+      expect(shownCount('0 incidents')).toHaveLength(1);
+    });
+
+    it('shows no count and offers no export while the incidents load', () => {
+      renderUncached();
+
+      expect(screen.queryByText(/incidents?$/)).toBeNull();
+      expect(exportButton()).toHaveAttribute('aria-disabled', 'true');
+    });
+
+    it('exports exactly the shown rows, in the shown order, with the header and the BOM', async () => {
+      renderTable();
+      const before = Date.now();
+
+      await userEvent.click(exportButton());
+
+      const after = Date.now();
+      const { filename, text, type } = exported();
+      expect(text).toBe(CSV_BOM + incidentsToCsv(drawn(), { zoneName: zoneNames }));
+      expect(text.startsWith(`${CSV_BOM}Code,Severity,Type,Title,`)).toBe(true);
+      expect(csvCodes(text)).toEqual(codes());
+      expect(type).toBe('text/csv;charset=utf-8');
+      // Named by the moment of the press, in local time.
+      expect([csvFilename(before), csvFilename(after)]).toContain(filename);
+    });
+
+    it('follows the sort and the filters', async () => {
+      useConsole.setState({
+        filter: 'all',
+        severity: 'medium',
+        tableSort: { key: 'code', direction: 'descending' },
+      });
+      renderTable();
+      expect(codes()).toEqual(['INC-000004', 'INC-000002']);
+
+      await userEvent.click(exportButton());
+
+      expect(csvCodes(exported().text)).toEqual(['INC-000004', 'INC-000002']);
+    });
+
+    it('agrees with the count', async () => {
+      useConsole.setState({ filter: 'all' });
+      renderTable();
+      expect(shownCount('5 incidents')).toHaveLength(1);
+
+      await userEvent.click(exportButton());
+
+      expect(csvCodes(exported().text)).toHaveLength(5);
+    });
+
+    it('makes no request', async () => {
+      renderTable();
+      const calls = fetchMock.mock.calls.length;
+
+      await userEvent.click(exportButton());
+
+      expect(fetchMock.mock.calls.length).toBe(calls);
+    });
+
+    it('is offered, with no reason, while there are rows', () => {
+      renderTable();
+
+      expect(exportButton()).not.toHaveAttribute('aria-disabled');
+      expect(exportButton()).not.toHaveAttribute('title');
+      expect(exportButton()).not.toHaveAccessibleDescription();
+    });
+
+    it('stays reachable with its reason, and does nothing, when no row is shown', async () => {
+      useConsole.setState({ feedQuery: 'zzz' });
+      renderTable();
+
+      expect(exportButton()).toHaveAttribute('aria-disabled', 'true');
+      expect(exportButton()).toHaveAttribute('title', 'No incidents to export');
+      expect(exportButton()).toHaveAccessibleDescription('No incidents to export');
+
+      await userEvent.tab();
+      expect(exportButton()).toHaveFocus();
+      await userEvent.click(exportButton());
+      await userEvent.keyboard('{Enter}');
+
+      expect(download).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      [
+        'an operator',
+        'operator',
+        'active',
+        ['INC-000005', 'INC-000001', 'INC-000002', 'INC-000003'],
+      ],
+      [
+        'a supervisor',
+        'supervisor',
+        'active',
+        ['INC-000005', 'INC-000001', 'INC-000002', 'INC-000003'],
+      ],
+      ['a viewer', 'viewer', 'active', ['INC-000005', 'INC-000001', 'INC-000002', 'INC-000003']],
+      // A technician acts on Facilities and Environment (ADR-0021): the water leak is the one open incident to handle.
+      ['a technician on Mine to handle', 'technician', 'mine', ['INC-000002']],
+    ] as const)('lets %s export the rows of the tab shown', async (_, role, filter, expected) => {
+      act(() => useSession.getState().signedIn({ displayName: 'Demo user', roles: [role] }));
+      useConsole.setState({ filter });
+      renderTable();
+      expect(codes()).toEqual(expected);
+
+      await userEvent.click(exportButton());
+
+      expect(csvCodes(exported().text)).toEqual(expected);
+    });
+
+    it('announces a filter change once, and not an incident arriving', async () => {
+      const client = renderLive();
+      expect(status()).toHaveTextContent('4 incidents');
+
+      act(() =>
+        client.setQueryData(queryKeys.incidents, [
+          incident({ id: 'f', code: 'INC-000006', title: 'Lift stuck', severity: 'low' }),
+          ...list,
+        ]),
+      );
+      // TanStack tells its observers on a timer, so the count follows a tick later: wait for it, as RTL does. The live line
+      // keeps what it last said.
+      await waitFor(() => expect(shownCount('5 incidents')).toHaveLength(1));
+      expect(status()).toHaveTextContent('4 incidents');
+
+      act(() => useConsole.setState({ severity: 'high' }));
+      expect(status()).toHaveTextContent('1 incident');
+      expect(shownCount('1 incident')).toHaveLength(1);
+    });
+
+    it('announces the count once the incidents arrive', async () => {
+      incidentAnswers = [() => json(list)];
+      renderUncached();
+      expect(status()).toBeEmptyDOMElement();
+
+      expect(await screen.findAllByText('4 incidents')).toHaveLength(2);
+      expect(status()).toHaveTextContent('4 incidents');
+    });
+
+    it('has no axe violations with nothing to export', async () => {
+      useConsole.setState({ feedQuery: 'zzz' });
+      const { container } = renderTable();
+
+      await expectNoAxeViolations(container);
+    });
+  });
+
   describe('states', () => {
     it('shows placeholder rows while the incidents load, busy and silent', () => {
       renderUncached();
 
       expect(table()).toHaveAttribute('aria-busy', 'true');
-      // The list's skeleton says "Loading incidents…"; the table must not say it twice.
-      expect(within(table()).queryByRole('status')).toBeNull();
+      // The list's skeleton says "Loading incidents…"; the table must not say it twice: its live line is empty.
+      expect(status()).toBeEmptyDOMElement();
       expect(within(table()).queryByRole('table')).toBeNull();
     });
 
@@ -623,7 +838,9 @@ describe('IncidentTable', () => {
 
       expect(within(table()).getByText('No active incidents match "zzz".')).toBeInTheDocument();
       expect(within(table()).queryByRole('table')).toBeNull();
-      expect(within(table()).queryByRole('button')).toBeNull();
+      // No button but Export CSV, which has nothing to export (V3-24.6).
+      expect(within(table()).getAllByRole('button')).toEqual([exportButton()]);
+      expect(exportButton()).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('says how old the rows are while the live link is down', () => {

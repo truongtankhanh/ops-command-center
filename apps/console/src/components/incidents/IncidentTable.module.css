@@ -15,6 +15,41 @@
   background: var(--surface-1);
 }
 
+/* The toolbar (V3-24.6, frame 19): the count at the start, Export CSV at the end, over a hairline. Drawn in every state. */
+.toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Tabular figures, so the count does not jitter as incidents arrive. `--text-secondary` on `--surface-1` is a checked pair. */
+.count {
+  margin: 0;
+  font-size: var(--type-s);
+  line-height: var(--leading-s);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/*
+ * `Button`'s `:disabled` look, for an Export that keeps its focus and its reason (`aria-disabled`, nothing to export), as the
+ * view switch's 3D option does (`ViewSwitch.module.css`). The second copy: move it into `Button` when a third appears.
+ */
+/* The toolbar's class in front, so these outrank `Button`'s ghost hover (`.button[data-variant]:hover:not(:disabled)`). */
+.toolbar .export[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar .export[aria-disabled='true']:hover:not(:disabled) {
+  background: none;
+  color: var(--text-secondary);
+}
+
 /* The list's offline notice (`IncidentFeed.module.css .notice`), the same words and look. */
 .notice {
   flex: none;

@@ -19,6 +19,7 @@ import {
   cameraIcon,
   categoryIcon,
   connectionIcon,
+  Download,
   eventKindIcon,
   Fan,
   feedViewIcon,
@@ -173,6 +174,23 @@ describe('sort glyphs', () => {
     for (const state of ['ascending', 'descending', 'none'] as const) {
       expect(taken.has(sortIcon(state))).toBe(false);
     }
+  });
+});
+
+// V3-24.6: the incident table's Export CSV, beside its words. Used nowhere else, so it keeps one meaning.
+describe('export glyph', () => {
+  it('shares nothing with a severity, a status, a view or a sort mark', () => {
+    const taken = new Set<Glyph>([
+      ...INCIDENT_SEVERITIES.map(severityIcon),
+      ...INCIDENT_STATUSES.map(statusIcon),
+      feedViewIcon('list'),
+      feedViewIcon('table'),
+      sortIcon('ascending'),
+      sortIcon('descending'),
+      sortIcon('none'),
+    ]);
+
+    expect(taken.has(Download)).toBe(false);
   });
 });
 

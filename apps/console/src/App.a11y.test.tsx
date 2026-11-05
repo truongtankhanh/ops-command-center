@@ -2711,6 +2711,31 @@ describe('the console', () => {
       expect(tableRegion()).toBeInTheDocument();
     });
 
+    // V3-24.6: the ticket's cases. Every role sees the table and may export what it shows (brief § Table mode).
+    it.each(['operator', 'supervisor', 'technician', 'viewer'] as const)(
+      'draws the table and Export CSV for a %s, with one live region',
+      (role) => {
+        useConsole.setState({ feedView: 'table' });
+        renderConsole({ role });
+
+        const table = tableRegion() as HTMLElement;
+        expect(within(table).getByRole('table')).toBeInTheDocument();
+        expect(within(table).getByRole('button', { name: 'Export CSV' })).toBeInTheDocument();
+        expect(within(table).getAllByRole('status')).toHaveLength(1);
+      },
+    );
+
+    // `prefers-reduced-motion`: the toolbar and the table added no animation. As the alarm chart's case, the stylesheets are
+    // not read here (`?raw` on a CSS module reaches the test as its class map): no SVG animation and no inline `animation`.
+    it('draws the table and its toolbar without a single animated element', () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+
+      const table = tableRegion() as HTMLElement;
+      expect(table.querySelector('animate, animateTransform, animateMotion, set')).toBeNull();
+      expect(table.querySelector('[style*="animation"], [style*="transition"]')).toBeNull();
+    });
+
     it('has no axe violations with the table shown', async () => {
       useConsole.setState({ feedView: 'table' });
       renderConsole();
