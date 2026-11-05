@@ -5,6 +5,8 @@
  * WebGL. V2-19.2 added `needsFrame`; V2-19.3 the pixel-ratio controller; V2-19.4 the budget guard: every export stands
  * alone, so the build keeps only what shipped code imports (the guard is imported by the development-only probe, so it
  * never reaches `dist`). The labels, formats and warning text of the HUD are in `twinHud.ts`, on purpose not here (see there).
+ * V3-11.2 added the frame **cost** (V3-11.1's metric: the CPU time of one turn of R3F's loop, `createFrameCostClock`), the
+ * GPU time where a timer exists, and the quality tier's word; only the development-only probe imports them too.
  */
 
 /**
@@ -117,6 +119,16 @@ export interface HudReading {
    */
   geometries: number | null;
   textures: number | null;
+  /**
+   * 95th percentile of the accepted frame **costs**, in milliseconds (V3-11.1): the CPU time from before R3F's loop runs
+   * its `useFrame` subscribers to after `gl.render` returns. Unlike `frameP95Ms` it is not fixed by the display's rate,
+   * so it is the figure the "p95 ≤ 14 ms" target is read from.
+   */
+  frameCostP95Ms: number | null;
+  /** 95th percentile of the GPU time of a drawn frame, where `EXT_disjoint_timer_query_webgl2` exists; else `null`. */
+  gpuP95Ms: number | null;
+  /** The quality tier's word (`tierWord`), passed through from the input. */
+  tier: string | null;
 }
 
 /** What `read` is given besides the time: `gl.info.render`, and the client's counts (`null` without a client). */
@@ -129,6 +141,8 @@ export interface HudInput {
   /** `gl.info.memory.geometries` and `.textures`, or `null` when there is no renderer to ask. */
   geometries: number | null;
   textures: number | null;
+  /** The quality tier's word (`tierWord(twinTier)`, V3-11.3), or `null` for none. */
+  tier: string | null;
 }
 
 /**
@@ -137,9 +151,15 @@ export interface HudInput {
  * canvas reads 0 (V2-19.2 expects it); the p95 is over the accepted frame times only, so a gap is a frame for FPS
  * and not a data point. A counter that has not moved for `staleMs` reads 0 (no messages is a rate of zero), and
  * without a client both telemetry fields are `null` and the trackers start over.
+ *
+ * `cost(ms)` and `gpu(ms)` (V3-11.2) feed two more windows of the same size and gap rule: a cost above 250 ms is a
+ * shader-compile stall on a first frame, not continuous motion, which is what the p95 describes. GPU times arrive
+ * frames late, so the two windows do not hold the same frames; each p95 is of its own.
  */
 export function createPerfSampler({ staleMs = 2500 } = {}) {
   const times = createFrameWindow();
+  const costs = createFrameWindow();
+  const gpuTimes = createFrameWindow();
   const messages = createChangeTracker({ maxSpanMs: staleMs });
   const posts = createChangeTracker({ maxSpanMs: staleMs });
   let framesInWindow = 0;
@@ -154,9 +174,15 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
       totalFrames += 1;
       times.push(dtMs);
     },
+    cost(ms: number): void {
+      costs.push(ms);
+    },
+    gpu(ms: number): void {
+      gpuTimes.push(ms);
+    },
     read(
       now: number,
-      { calls, triangles, stats, pixelRatio, geometries, textures }: HudInput,
+      { calls, triangles, stats, pixelRatio, geometries, textures, tier }: HudInput,
     ): HudReading {
       let fps: number | null = null;
       if (windowStart !== null && now > windowStart) {
@@ -180,10 +206,9 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
         if ((posts.idleMs(now) ?? 0) > staleMs) postRatio = 0;
       }
 
-      const p95 = times.p95();
       return {
         fps,
-        frameP95Ms: Number.isNaN(p95) ? null : p95,
+        frameP95Ms: p95OrNull(times),
         calls,
         triangles,
         messagesPerSecond: messageRate,
@@ -191,7 +216,47 @@ export function createPerfSampler({ staleMs = 2500 } = {}) {
         pixelRatio,
         geometries,
         textures,
+        frameCostP95Ms: p95OrNull(costs),
+        gpuP95Ms: p95OrNull(gpuTimes),
+        tier,
       };
+    },
+  };
+}
+
+/** A window's p95, or `null` while it is empty (its `NaN`). */
+function p95OrNull(window: { p95(): number }): number | null {
+  const p95 = window.p95();
+  return Number.isNaN(p95) ? null : p95;
+}
+
+/**
+ * Times one turn of R3F's loop for the frame cost (V3-11.2, V3-11.1's metric). `begin` is called from a global
+ * `addEffect` (before the loop runs the `useFrame` subscribers and `gl.render`), `end` from a global `addAfterEffect`
+ * (after them), so the span is exactly the frame's work on the main thread, WebGL command submission included.
+ *
+ * Global effects fire on every tick of the loop, also on one whose root did not update (`frames === 0`, an inactive
+ * root): that tick drew nothing and would add a near-zero sample that pulls the p95 down. So a span counts only when
+ * `drew()` was called in it, from the probe's own `useFrame`, which runs only on a frame that is drawn. `end` returns
+ * the cost in milliseconds, or `null` when there was no `begin` or nothing was drawn; either way the next span starts
+ * clean. Pure: the caller passes the clock.
+ */
+export function createFrameCostClock() {
+  let startedAt: number | null = null;
+  let drawn = false;
+  return {
+    begin(now: number): void {
+      startedAt = now;
+      drawn = false;
+    },
+    drew(): void {
+      drawn = true;
+    },
+    end(now: number): number | null {
+      const cost = startedAt !== null && drawn ? now - startedAt : null;
+      startedAt = null;
+      drawn = false;
+      return cost;
     },
   };
 }

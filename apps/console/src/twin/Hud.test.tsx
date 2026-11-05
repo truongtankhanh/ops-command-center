@@ -4,24 +4,31 @@ import type { MockInstance } from 'vitest';
 import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twin-core/twinHud';
 import type { TelemetryClient, TelemetryStats } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
-import { expectNoAxeViolations } from '../test-utils';
+import { useConsole } from '../store';
+import { expectNoAxeViolations, resetStore } from '../test-utils';
 import Hud from './Hud';
 import HudProbe from './HudProbe';
 
 /*
- * `useFrame` and `useThree` are replaced: the probe's frame callback is captured so a test can "draw" frames, and
- * `gl.info.render` is a plain object a test sets. jsdom has no WebGL, so this is as close as a unit test gets.
+ * `useFrame`, `useThree` and R3F's global `addEffect` / `addAfterEffect` are replaced: the probe's frame callback and
+ * its loop effects are captured so a test can "draw" frames and run the loop around them, and `gl.info.render` is a
+ * plain object a test sets. `gl.getContext` is absent unless a case gives it a fake WebGL 2 context (a GPU timer).
+ * jsdom has no WebGL, so this is as close as a unit test gets.
  */
+type LoopEffect = (timestamp: number) => void;
 const canvas = vi.hoisted(() => ({
   frame: null as ((state: unknown, delta: number) => void) | null,
   priority: undefined as unknown,
   pixelRatio: 1.25,
+  before: new Set<(timestamp: number) => void>(),
+  after: new Set<(timestamp: number) => void>(),
   gl: {
     info: {
       render: { calls: 0, triangles: 0 },
       memory: { geometries: 0, textures: 0 },
     },
     getPixelRatio: (): number => canvas.pixelRatio,
+    getContext: undefined as (() => unknown) | undefined,
   },
 }));
 
@@ -31,6 +38,14 @@ vi.mock('@react-three/fiber', () => ({
     canvas.priority = priority;
   },
   useThree: (select: (state: { gl: typeof canvas.gl }) => unknown) => select({ gl: canvas.gl }),
+  addEffect: (callback: LoopEffect) => {
+    canvas.before.add(callback);
+    return () => canvas.before.delete(callback);
+  },
+  addAfterEffect: (callback: LoopEffect) => {
+    canvas.after.add(callback);
+    return () => canvas.after.delete(callback);
+  },
 }));
 
 function Harness() {
@@ -50,6 +65,24 @@ const values = () => HUD_ROWS.map(({ id }) => cell(id));
 const draw = (count: number, ms = 16.7) => {
   for (let i = 0; i < count; i += 1) canvas.frame?.({}, ms / 1000);
 };
+/** The clock `performance.now()` reads while a case controls it (`useClock`). */
+let clockMs = 0;
+const useClock = () => vi.spyOn(performance, 'now').mockImplementation(() => clockMs);
+
+/**
+ * `count` turns of R3F's loop costing `costMs` each: the global effects before, the frame (unless `drawn` is false: a
+ * tick whose root drew nothing), the global effects after.
+ */
+const loop = (count: number, costMs: number, { drawn = true } = {}) => {
+  for (let i = 0; i < count; i += 1) {
+    for (const effect of canvas.before) effect(clockMs);
+    if (drawn) canvas.frame?.({}, 16.7 / 1000);
+    clockMs += costMs;
+    for (const effect of canvas.after) effect(clockMs);
+    clockMs += 16.7 - costMs;
+  }
+};
+
 /** Lets the probe's timer run for `ms`. */
 const advance = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
 
@@ -60,7 +93,7 @@ const clientWith = (read: () => TelemetryStats) =>
   ({ getStats: read }) as unknown as TelemetryClient;
 
 describe('Hud (the readout)', () => {
-  it('is a named group of nine labelled values, in frame 00 order, then the pixel ratio and the memory, each a dash before the first sample', () => {
+  it('is a named group of eleven labelled values, in frame 00 order, then the pixel ratio, the memory, the cost and the tier, each a dash before the first sample', () => {
     render(<Hud listRef={{ current: null }} />);
 
     const group = screen.getByRole('group', { name: HUD_LABEL });
@@ -78,6 +111,8 @@ describe('Hud (the readout)', () => {
       'Pixel ratio',
       'Geometries',
       'Textures',
+      'Frame cost (p95)',
+      'Quality tier',
     ]);
     expect(
       within(group)
@@ -101,10 +136,18 @@ describe('Hud (the readout)', () => {
 });
 
 describe('HudProbe (the measuring)', () => {
+  let debug: MockInstance<typeof console.debug>;
   beforeEach(() => {
     vi.useFakeTimers();
+    // Without a GPU timer the probe says so once; the cases about it read this spy.
+    debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    resetStore(useConsole);
     canvas.frame = null;
     canvas.priority = undefined;
+    canvas.before.clear();
+    canvas.after.clear();
+    canvas.gl.getContext = undefined;
+    clockMs = 0;
     canvas.gl.info.render = { calls: 96, triangles: 182_000 };
     canvas.gl.info.memory = { geometries: 31, textures: 4 };
     canvas.pixelRatio = 1.25;
@@ -114,8 +157,10 @@ describe('HudProbe (the measuring)', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     Reflect.deleteProperty(document, 'hidden');
     useTelemetryStore.setState({ client: null });
+    resetStore(useConsole);
   });
 
   it('subscribes to the frame loop at the default priority, which keeps R3F rendering the scene', () => {
@@ -410,6 +455,124 @@ describe('HudProbe (the measuring)', () => {
       advance(500);
 
       expect(warn).toHaveBeenCalledTimes(2);
+    });
+
+    it('marks neither the cost nor the tier: they have no budget here (V3-18.5 owns per-tier budgets)', () => {
+      canvas.gl.info.render = { calls: 151, triangles: 250_001 };
+      useClock();
+      render(<Harness />);
+      loop(30, 30);
+
+      advance(500);
+
+      expect(over('cost')).toBeNull();
+      expect(over('tier')).toBeNull();
+    });
+  });
+
+  describe('the frame cost (V3-11.2)', () => {
+    beforeEach(() => {
+      useClock();
+    });
+
+    it('shows the p95 of what drawn frames cost, apart from the interval', () => {
+      render(<Harness />);
+
+      loop(30, 7.4);
+      advance(500);
+
+      expect(cell('cost')).toBe('7.4 ms');
+      expect(cell('frame')).toBe('16.7 ms');
+    });
+
+    it('adds nothing for a tick of the loop that drew nothing', () => {
+      render(<Harness />);
+
+      loop(30, 0.1, { drawn: false });
+      advance(500);
+      expect(cell('cost')).toBe(NO_VALUE);
+
+      loop(30, 6.2);
+      advance(500);
+      expect(cell('cost')).toBe('6.2 ms');
+    });
+
+    it('subscribes once before and once after the loop, and removes both on unmount, under StrictMode too', () => {
+      const { unmount } = render(
+        <StrictMode>
+          <Harness />
+        </StrictMode>,
+      );
+      expect(canvas.before.size).toBe(1);
+      expect(canvas.after.size).toBe(1);
+
+      unmount();
+
+      expect(canvas.before.size).toBe(0);
+      expect(canvas.after.size).toBe(0);
+    });
+
+    it('shows the CPU figure alone without a GPU timer, says so once, and throws nothing', () => {
+      render(<Harness />);
+
+      expect(() => {
+        loop(30, 7.4);
+        advance(1000);
+      }).not.toThrow();
+
+      expect(cell('cost')).toBe('7.4 ms');
+      expect(debug).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the GPU time beside the cost where a timer exists, and keeps the frames that drew nothing out of it', () => {
+      const TIME_ELAPSED_EXT = 0x88bf;
+      const GPU_DISJOINT_EXT = 0x8fbb;
+      let created = 0;
+      let ends = 0;
+      const context = {
+        QUERY_RESULT: 0x8866,
+        QUERY_RESULT_AVAILABLE: 0x8867,
+        getExtension: (name: string) =>
+          name === 'EXT_disjoint_timer_query_webgl2'
+            ? { TIME_ELAPSED_EXT, GPU_DISJOINT_EXT }
+            : null,
+        createQuery: () => ({ id: (created += 1) }),
+        beginQuery: () => {},
+        endQuery: () => {
+          ends += 1;
+        },
+        getParameter: () => false,
+        // Every result is back at once. The first query timed the tick that drew nothing: 50 ms, which would own the
+        // p95 if it were kept. The others are 5.1 ms.
+        getQueryParameter: (query: { id: number }, pname: number) =>
+          pname === 0x8867 ? true : query.id === 1 ? 50_000_000 : 5_100_000,
+        deleteQuery: () => {},
+      };
+      canvas.gl.getContext = () => context;
+      render(<Harness />);
+
+      loop(1, 0.1, { drawn: false });
+      loop(1, 7.4);
+      advance(500);
+      loop(1, 7.4);
+      advance(500);
+
+      expect(cell('cost')).toBe('7.4 ms · GPU 5.1');
+      expect(debug).not.toHaveBeenCalled();
+      expect(ends).toBe(3);
+    });
+  });
+
+  describe('the quality tier (V3-11.2)', () => {
+    it('shows the store’s tier as its word at the first tick, and follows a change', () => {
+      render(<Harness />);
+      advance(500);
+      expect(cell('tier')).toBe('High');
+
+      act(() => useConsole.getState().setTwinTier('standard'));
+      advance(500);
+
+      expect(cell('tier')).toBe('Standard');
     });
   });
 });

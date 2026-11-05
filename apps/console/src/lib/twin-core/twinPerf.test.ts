@@ -5,6 +5,7 @@ import {
   createChangeTracker,
   createDprController,
   createFallbackDetector,
+  createFrameCostClock,
   createFrameDemand,
   createFrameWindow,
   createPerfSampler,
@@ -163,6 +164,7 @@ describe('createPerfSampler', () => {
     pixelRatio: 1.25,
     geometries: 31,
     textures: 4,
+    tier: 'High',
     ...overrides,
   });
   const drawFrames = (sampler: ReturnType<typeof createPerfSampler>, count: number, dt = 16.7) => {
@@ -308,6 +310,119 @@ describe('createPerfSampler', () => {
     // The new client starts at 0: the first sample is a baseline, never a negative rate.
     const restarted = sampler.read(2000, input({ stats: { messages: 5, targetPosts: 1 } }));
     expect(restarted.messagesPerSecond).toBeNull();
+  });
+
+  // V3-11.2: the frame cost and the GPU time, each in a window of its own, and the tier's word.
+  it('reads one field per row, the cost, the GPU time and the tier included', () => {
+    const sampler = createPerfSampler();
+    sampler.read(0, input());
+    drawFrames(sampler, 30);
+    sampler.cost(7.4);
+    sampler.gpu(5.1);
+
+    expect(sampler.read(500, input())).toEqual({
+      fps: 60,
+      frameP95Ms: 16.7,
+      calls: 96,
+      triangles: 182_000,
+      messagesPerSecond: null,
+      postsPerFrame: null,
+      pixelRatio: 1.25,
+      geometries: 31,
+      textures: 4,
+      frameCostP95Ms: 7.4,
+      gpuP95Ms: 5.1,
+      tier: 'High',
+    });
+  });
+
+  it('has no cost and no GPU time before a sample, whatever frames were drawn', () => {
+    const sampler = createPerfSampler();
+    drawFrames(sampler, 30);
+
+    const reading = sampler.read(0, input());
+
+    expect(reading.frameP95Ms).toBe(16.7);
+    expect(reading.frameCostP95Ms).toBeNull();
+    expect(reading.gpuP95Ms).toBeNull();
+  });
+
+  it('takes the p95 of the costs, apart from the intervals', () => {
+    const sampler = createPerfSampler();
+    drawFrames(sampler, 100, 16.7);
+    for (let i = 1; i <= 100; i += 1) sampler.cost(i / 10);
+
+    const reading = sampler.read(0, input());
+
+    expect(reading.frameCostP95Ms).toBe(9.5);
+    expect(reading.frameP95Ms).toBe(16.7);
+  });
+
+  it('leaves a cost above the gap out of the p95, as it does an interval', () => {
+    const sampler = createPerfSampler();
+    for (let i = 0; i < 20; i += 1) sampler.cost(6);
+    sampler.cost(MAX_FRAME_GAP_MS + 1);
+    sampler.cost(0);
+    sampler.cost(Number.NaN);
+
+    expect(sampler.read(0, input()).frameCostP95Ms).toBe(6);
+  });
+
+  it('keeps the GPU times in a window of their own, with the same gap rule', () => {
+    const sampler = createPerfSampler();
+    sampler.cost(9);
+    for (let i = 0; i < 20; i += 1) sampler.gpu(4);
+    sampler.gpu(MAX_FRAME_GAP_MS + 1);
+
+    const reading = sampler.read(0, input());
+
+    expect(reading.gpuP95Ms).toBe(4);
+    expect(reading.frameCostP95Ms).toBe(9);
+  });
+
+  it('passes the tier through, and a missing one as null', () => {
+    expect(createPerfSampler().read(0, input({ tier: 'Standard' })).tier).toBe('Standard');
+    expect(createPerfSampler().read(0, input({ tier: null })).tier).toBeNull();
+  });
+});
+
+describe('createFrameCostClock (V3-11.2)', () => {
+  it('times a tick in which a frame was drawn', () => {
+    const clock = createFrameCostClock();
+
+    clock.begin(100);
+    clock.drew();
+
+    expect(clock.end(107.5)).toBe(7.5);
+  });
+
+  it('counts nothing for a tick that drew nothing', () => {
+    const clock = createFrameCostClock();
+
+    clock.begin(100);
+
+    expect(clock.end(100.2)).toBeNull();
+  });
+
+  it('counts nothing without a begin, even after a drawn frame', () => {
+    const clock = createFrameCostClock();
+
+    clock.drew();
+
+    expect(clock.end(50)).toBeNull();
+  });
+
+  it('starts each tick clean: a second end, and a drawn frame of the tick before, count nothing', () => {
+    const clock = createFrameCostClock();
+    clock.begin(0);
+    clock.drew();
+    expect(clock.end(8)).toBe(8);
+    expect(clock.end(9)).toBeNull();
+
+    clock.drew();
+    clock.begin(20);
+
+    expect(clock.end(21)).toBeNull();
   });
 });
 
