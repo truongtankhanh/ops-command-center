@@ -39,7 +39,7 @@ describe('ShortcutHelp', () => {
     await userEvent.keyboard('?');
 
     expect(help()).not.toBeNull();
-    for (const key of ['N', '/', '?', 'A', 'R']) expect(keys(key)).toHaveLength(1);
+    for (const key of ['N', '/', 'T', '?', 'A', 'R']) expect(keys(key)).toHaveLength(1);
     for (const name of ['Incident and asset lists', 'Tabs', '2D map, while it has focus']) {
       expect(within(help()!).getByRole('heading', { name })).toBeInTheDocument();
     }
@@ -104,9 +104,20 @@ describe('ShortcutHelp', () => {
 
     openFromMenu();
     expect(help()).toHaveAccessibleDescription(OFF_INTRO);
-    for (const key of ['N', '/', '?', 'A', 'R']) expect(keys(key)).toHaveLength(0);
+    for (const key of ['N', '/', 'T', '?', 'A', 'R']) expect(keys(key)).toHaveLength(0);
     // Keys that only act where focus is are not character keys: still listed.
     for (const key of ['Home', 'Esc', 'Tab']) expect(keys(key).length).toBeGreaterThan(0);
+  });
+
+  it('describes T as the switch between the list and the table, under "Anywhere" (V3-24.5)', async () => {
+    renderHelp();
+
+    await userEvent.keyboard('?');
+
+    // A row is a `div` of the key (`dt`) and its description (`dd`), in its group's `dl` after the group's heading.
+    const row = keys('T')[0]?.closest('div');
+    expect(row).toHaveTextContent('Switch the incident list between list and table');
+    expect(row?.closest('dl')?.previousElementSibling).toHaveTextContent('Anywhere');
   });
 
   it('ignores ? typed in a text field', async () => {
@@ -125,7 +136,8 @@ describe('ShortcutHelp', () => {
     await userEvent.keyboard('?');
 
     for (const key of ['N', 'A', 'R']) expect(keys(key)).toHaveLength(0);
-    for (const key of ['/', '?']) expect(keys(key)).toHaveLength(1);
+    // Switching the incident view acts on nothing, so every role has `T`.
+    for (const key of ['/', 'T', '?']) expect(keys(key)).toHaveLength(1);
     // Its Esc row needs no role, so the group stays.
     expect(within(help()!).getByRole('heading', { name: 'Incident panel' })).toBeInTheDocument();
   });

@@ -1,6 +1,8 @@
-import { type KeyboardEvent, useRef } from 'react';
+import { type KeyboardEvent, useCallback, useRef } from 'react';
 import type { FeedView } from '../../lib/incidents/feedView';
+import { INCIDENT_TABLE_ID } from '../../lib/incidents/useIncidentTableShown';
 import { useDisplayMode } from '../../lib/shell/useDisplayMode';
+import { useShortcut } from '../../lib/shell/useShortcut';
 import { useConsole } from '../../store';
 import { Icon } from '../../ui/Icon';
 import { feedViewIcon } from '../../ui/icons';
@@ -40,13 +42,34 @@ const VERTICAL_AS_HORIZONTAL: Readonly<Record<string, string>> = {
  * Rendered only where it can act: not on a phone width, where the list is the only view (`effectiveFeedView`), and not
  * while the Assets panel is shown, since it switches the incident view. The same for every role: a view changes nothing
  * on the site. V3-24.4 mounts it at the right end of `SidePanel`'s tab row, outside the tab list.
+ *
+ * `T` toggles the view (V3-24.5, brief § Table mode). A character key, so `useShortcut` turns it off with the account
+ * menu's switch (WCAG 2.1.4) and ignores it in text fields; the help lists it under "Anywhere". It is enabled exactly where
+ * the switch is drawn (the Incidents panel, not a phone width) and never on the wall, which mounts no side panel anyway:
+ * elsewhere it would change the stored choice with nothing to see. Glyph-only, so the key is announced through
+ * `aria-keyshortcuts` on the group, with no visible hint, as the 3D drag tool's `P` is. When `T` removes the table while
+ * focus is in it, focus moves to the radio that is now checked, so it never drops to the page.
  */
 export function FeedViewSwitch() {
   const feedView = useConsole((s) => s.feedView);
   const setFeedView = useConsole((s) => s.setFeedView);
   const sidePanel = useConsole((s) => s.sidePanel);
+  const onWall = useConsole((s) => s.wall !== null);
+  const keysOn = useConsole((s) => s.keyboardShortcuts);
   const mode = useDisplayMode();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Reads the store at the moment of the press, so its identity never changes and `useShortcut` keeps one listener.
+  const toggleView = useCallback(() => {
+    const { feedView: current, setFeedView: setView } = useConsole.getState();
+    const next: FeedView = current === 'table' ? 'list' : 'table';
+    const table = document.getElementById(INCIDENT_TABLE_ID);
+    const focusInTable = table !== null && table.contains(document.activeElement);
+    setView(next);
+    // The radio element stays the same across the re-render, so it can take focus before the table unmounts.
+    if (focusInTable) refs.current[OPTIONS.findIndex((option) => option.view === next)]?.focus();
+  }, []);
+  useShortcut('t', toggleView, sidePanel === 'incidents' && mode !== 'phone' && !onWall);
 
   if (mode === 'phone' || sidePanel !== 'incidents') return null;
 
@@ -67,6 +90,7 @@ export function FeedViewSwitch() {
       id={FEED_VIEW_SWITCH_ID}
       role="radiogroup"
       aria-label="Incident view"
+      aria-keyshortcuts={keysOn ? 'T' : undefined}
       className={styles.switch}
       onKeyDown={onKeyDown}
     >

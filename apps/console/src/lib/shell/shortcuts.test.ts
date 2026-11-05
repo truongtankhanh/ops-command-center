@@ -9,13 +9,14 @@ const rowsOf = (key: string) => rows.filter((row) => row.keys.includes(key));
  * `V` and `F` come with the 3D view, and `F` is listed in three places (anywhere, the incident
  * panel, the asset inspector) because it flies to a different thing in each. A letter added later
  * turns this red on purpose, so the help dialog, the `useShortcut` registration and the WCAG 2.1.4
- * switch in the account menu are decided together (`.claude/rules/console.md`).
+ * switch in the account menu are decided together (`.claude/rules/console.md`). `T` (V3-24.5) switches the
+ * incident list between list and table.
  */
 describe('the keyboard shortcuts', () => {
   it('has these single-character keys, each listed once or more', () => {
     const characterKeys = rows.filter((row) => row.character).flatMap((row) => row.keys);
 
-    expect([...new Set(characterKeys)]).toEqual(['N', '/', 'V', 'F', 'P', '?', 'A', 'R']);
+    expect([...new Set(characterKeys)]).toEqual(['N', '/', 'T', 'V', 'F', 'P', '?', 'A', 'R']);
   });
 
   it('gives each of them the permission it needs, and V and F none', () => {
@@ -24,7 +25,7 @@ describe('the keyboard shortcuts', () => {
     expect(permissionOf('N')).toBe('incident:report');
     expect(permissionOf('A')).toBe('incident:acknowledge');
     expect(permissionOf('R')).toBe('incident:resolve');
-    for (const key of ['/', '?', 'V', 'F']) expect(permissionOf(key)).toBeUndefined();
+    for (const key of ['/', 'T', '?', 'V', 'F']) expect(permissionOf(key)).toBeUndefined();
   });
 
   it('marks every letter or digit key as a character key, so none can slip past the switch', () => {
@@ -46,6 +47,19 @@ describe('the keyboard shortcuts', () => {
       expect(row.character).toBe(true);
       expect(row.requires).toBe('twin');
     }
+  });
+
+  it('lists T once, in "Anywhere" right after /, a character key for every role and every view', () => {
+    const anywhere = group('Anywhere')!.rows.map((row) => row.keys.join(' '));
+    const [t, ...others] = rowsOf('T');
+
+    expect(others).toEqual([]);
+    expect(anywhere.indexOf('T')).toBe(anywhere.indexOf('/') + 1);
+    expect(t).toEqual({
+      keys: ['T'],
+      description: 'Switch the incident list between list and table',
+      character: true,
+    });
   });
 
   it("follows frame 16's order of groups, with the 2D map before the tabs", () => {

@@ -82,6 +82,13 @@ export const SHORTCUTS: readonly ShortcutGroup[] = [
         permission: 'incident:report',
       },
       { keys: ['/'], description: 'Search incidents or assets', character: true },
+      // Acts only while the Incidents panel is shown, as `/` acts on the visible list only; the help has no panel
+      // condition, so the row is listed with the others (V3-24.5).
+      {
+        keys: ['T'],
+        description: 'Switch the incident list between list and table',
+        character: true,
+      },
       {
         keys: ['V'],
         description: 'Switch between 3D and 2D',
