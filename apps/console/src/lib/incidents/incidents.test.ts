@@ -45,6 +45,7 @@ import {
   openDuration,
   searchTerms,
   severityLabel,
+  sourceLabel,
   typeLabel,
   typeLabelInSentence,
   typesInCategory,
@@ -880,6 +881,20 @@ describe('typesInCategory', () => {
 describe('severityLabel', () => {
   it('names every severity in title case, in contract order', () => {
     expect(INCIDENT_SEVERITIES.map(severityLabel)).toEqual(['Low', 'Medium', 'High', 'Critical']);
+  });
+});
+
+describe('sourceLabel', () => {
+  it.each([
+    ['operator', 'Operator'],
+    ['telemetry', 'Telemetry rule'],
+    ['simulator', 'Simulator'],
+  ] as const)('names the %s source "%s"', (source, label) => {
+    expect(sourceLabel(source)).toBe(label);
+  });
+
+  it('shows an unknown source as its raw id', () => {
+    expect(sourceLabel('drone' as Incident['source'])).toBe('drone');
   });
 });
 
