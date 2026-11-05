@@ -12,6 +12,7 @@ import {
   renderWithQueryClient,
   resetStore,
 } from '../../test-utils';
+import { FeedViewSwitch } from './FeedViewSwitch';
 import { IncidentFeed } from './IncidentFeed';
 import { IncidentTable } from './IncidentTable';
 
@@ -125,6 +126,10 @@ const rowOf = (code: string) => {
   return row;
 };
 const header = (name: string) => screen.getByRole('columnheader', { name });
+/** A row's one button, in its Incident cell. */
+const rowButton = (code: string) => within(rowOf(code)).getByRole('button');
+const rowButtons = () => bodyRows().map((row) => within(row).getByRole('button'));
+const selected = () => useConsole.getState().selectedIncidentId;
 
 describe('IncidentTable', () => {
   beforeEach(() => {
@@ -367,6 +372,211 @@ describe('IncidentTable', () => {
 
       await userEvent.click(button);
       expect(codes().at(-1)).toBe('INC-000003');
+    });
+  });
+
+  describe('opening a row (V3-24.5)', () => {
+    it('opens the incident on a click anywhere on its row, and closes it on a second click', async () => {
+      renderTable();
+      // The Code cell: not the row's button, so the row itself takes the click.
+      const code = cellsOf(rowOf('INC-000001'))[CODE]!;
+
+      await userEvent.click(code);
+      expect(selected()).toBe('a');
+
+      await userEvent.click(code);
+      expect(selected()).toBeNull();
+    });
+
+    it("opens on a click on the row's button, once, not once for the button and again for the row", async () => {
+      renderTable();
+
+      await userEvent.click(rowButton('INC-000002'));
+
+      expect(selected()).toBe('b');
+    });
+
+    it("opens with Enter and with Space on the row's button, and closes with a second press", async () => {
+      renderTable();
+      rowButton('INC-000001').focus();
+
+      await userEvent.keyboard('{Enter}');
+      expect(selected()).toBe('a');
+      await userEvent.keyboard('{Enter}');
+      expect(selected()).toBeNull();
+
+      await userEvent.keyboard(' ');
+      expect(selected()).toBe('a');
+      await userEvent.keyboard(' ');
+      expect(selected()).toBeNull();
+    });
+
+    it('opens another incident in place of the open one', async () => {
+      useConsole.setState({ selectedIncidentId: 'a' });
+      renderTable();
+
+      await userEvent.click(rowButton('INC-000002'));
+
+      expect(selected()).toBe('b');
+    });
+
+    it('marks the opened row and its button as current, and no other', async () => {
+      renderTable();
+
+      await userEvent.click(rowButton('INC-000002'));
+
+      expect(rowOf('INC-000002')).toHaveAttribute('aria-current', 'true');
+      expect(rowButton('INC-000002')).toHaveAttribute('aria-current', 'true');
+      for (const code of ['INC-000005', 'INC-000001', 'INC-000003']) {
+        expect(rowOf(code)).not.toHaveAttribute('aria-current');
+        expect(rowButton(code)).not.toHaveAttribute('aria-current');
+      }
+    });
+
+    it("names the row's button by the type and the title", () => {
+      renderTable();
+
+      expect(rowButton('INC-000001')).toHaveAccessibleName('Intrusion: Door forced open');
+    });
+  });
+
+  describe('the keys over the rows (V3-24.5)', () => {
+    const tabStops = () => rowButtons().filter((button) => button.tabIndex === 0);
+
+    it('is one Tab stop, on the first row when nothing is selected', () => {
+      renderTable();
+
+      expect(tabStops()).toEqual([rowButton('INC-000005')]);
+      expect(rowButtons().filter((button) => button.tabIndex === -1)).toHaveLength(3);
+    });
+
+    it('puts the Tab stop on the selected row', () => {
+      useConsole.setState({ selectedIncidentId: 'b' });
+      renderTable();
+
+      expect(tabStops()).toEqual([rowButton('INC-000002')]);
+    });
+
+    it('reaches the rows after the eight sort buttons, and leaves the table with the next Tab', async () => {
+      renderTable();
+
+      for (let press = 0; press < 8; press += 1) await userEvent.tab();
+      expect(within(header('Code')).getByRole('button')).toHaveFocus();
+
+      await userEvent.tab();
+      expect(rowButton('INC-000005')).toHaveFocus();
+
+      await userEvent.tab();
+      expect(table()).not.toContainElement(document.activeElement as HTMLElement);
+    });
+
+    it('moves focus with ↑, ↓, Home and End, stopping at the ends, and never opens a row', async () => {
+      renderTable();
+      rowButton('INC-000005').focus();
+
+      await userEvent.keyboard('{ArrowDown}');
+      expect(rowButton('INC-000001')).toHaveFocus();
+      await userEvent.keyboard('{End}');
+      expect(rowButton('INC-000003')).toHaveFocus();
+      await userEvent.keyboard('{ArrowDown}');
+      expect(rowButton('INC-000003')).toHaveFocus();
+      await userEvent.keyboard('{ArrowUp}');
+      expect(rowButton('INC-000002')).toHaveFocus();
+      await userEvent.keyboard('{Home}');
+      expect(rowButton('INC-000005')).toHaveFocus();
+      await userEvent.keyboard('{ArrowUp}');
+      expect(rowButton('INC-000005')).toHaveFocus();
+
+      expect(selected()).toBeNull();
+    });
+
+    it('moves the Tab stop with focus', async () => {
+      renderTable();
+      rowButton('INC-000005').focus();
+
+      await userEvent.keyboard('{ArrowDown}');
+
+      expect(tabStops()).toEqual([rowButton('INC-000001')]);
+    });
+
+    it('keeps the Tab stop on the focused incident when the rows are sorted again', async () => {
+      renderTable();
+      rowButton('INC-000005').focus();
+      await userEvent.keyboard('{ArrowDown}');
+
+      act(() => useConsole.setState({ tableSort: { key: 'code', direction: 'descending' } }));
+
+      expect(codes()).toEqual(['INC-000005', 'INC-000003', 'INC-000002', 'INC-000001']);
+      expect(tabStops()).toEqual([rowButton('INC-000001')]);
+    });
+
+    it('leaves the arrows on a sort button alone', async () => {
+      renderTable();
+      const sort = within(header('Code')).getByRole('button');
+      sort.focus();
+
+      await userEvent.keyboard('{ArrowDown}');
+
+      expect(sort).toHaveFocus();
+    });
+  });
+
+  describe('Esc (V3-24.5)', () => {
+    /** The table and the switch it hands focus to, as the console draws them with the table chosen. */
+    function renderWithSwitch() {
+      act(() => useConsole.getState().setFeedView('table'));
+      const client = createTestQueryClient();
+      client.setQueryData(queryKeys.incidents, list);
+      client.setQueryData(queryKeys.zones, zones);
+      return renderWithQueryClient(
+        <>
+          <FeedViewSwitch />
+          <IncidentTable />
+        </>,
+        client,
+      );
+    }
+    const checkedView = () => screen.getByRole('radio', { name: 'Table' });
+
+    it('moves focus from a row to the switch and keeps the table', async () => {
+      renderWithSwitch();
+      rowButton('INC-000001').focus();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(checkedView()).toHaveFocus();
+      expect(useConsole.getState().feedView).toBe('table');
+      expect(table()).toBeInTheDocument();
+    });
+
+    it('moves focus from a sort button to the switch too', async () => {
+      renderWithSwitch();
+      within(header('Code')).getByRole('button').focus();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(checkedView()).toHaveFocus();
+    });
+
+    it('does nothing while an incident is open in the inspector', async () => {
+      useConsole.setState({ selectedIncidentId: 'a' });
+      renderWithSwitch();
+      rowButton('INC-000001').focus();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(rowButton('INC-000001')).toHaveFocus();
+      expect(selected()).toBe('a');
+    });
+
+    it('does nothing while the report form is open', async () => {
+      useConsole.setState({ reporting: true });
+      renderWithSwitch();
+      rowButton('INC-000001').focus();
+
+      await userEvent.keyboard('{Escape}');
+
+      expect(rowButton('INC-000001')).toHaveFocus();
     });
   });
 

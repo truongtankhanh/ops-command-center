@@ -1794,10 +1794,11 @@ describe('the console', () => {
 
             openHelp();
 
-            // V, F and the 3D keys need no permission; N, A and R follow the role.
+            // T, V, F and the 3D keys need no permission; N, A and R follow the role.
             expect(helpRows('Anywhere')).toEqual([
               ...(report ? ['Report an incident'] : []),
               'Search incidents or assets',
+              'Switch the incident list between list and table',
               'Switch between 3D and 2D',
               'Fly to the selection',
               'Switch the drag between Orbit and Pan',
@@ -2680,6 +2681,33 @@ describe('the console', () => {
       expect(inertAround('Campus map')).toBeNull();
 
       await userEvent.click(screen.getByRole('tab', { name: /^Incidents/ }));
+      expect(tableRegion()).toBeInTheDocument();
+    });
+
+    // V3-24.5: the sheet's Escape and the table's meet here, and only here.
+    it('opens a row in the inspector, gives focus back to the row on Esc, and a second Esc goes to the switch', async () => {
+      useConsole.setState({ feedView: 'table' });
+      renderConsole();
+      const row = within(tableRegion() as HTMLElement)
+        .getByText('INC-000001')
+        .closest('tr');
+      if (!row) throw new Error('no table row for INC-000001');
+      const open = within(row).getByRole('button');
+      open.focus();
+
+      await userEvent.keyboard('{Enter}');
+      const sheet = screen.getByRole('complementary', { name: 'Incident INC-000001' });
+      expect(sheet).toHaveFocus();
+      expect(row).toHaveAttribute('aria-current', 'true');
+
+      await userEvent.keyboard('{Escape}');
+      expect(useConsole.getState().selectedIncidentId).toBeNull();
+      // The sheet gives focus back to its opener one microtask after it closes.
+      await waitFor(() => expect(open).toHaveFocus());
+
+      await userEvent.keyboard('{Escape}');
+      const side = screen.getByRole('complementary', { name: 'Incidents and assets' });
+      expect(within(side).getByRole('radio', { name: 'Table' })).toHaveFocus();
       expect(tableRegion()).toBeInTheDocument();
     });
 

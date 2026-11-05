@@ -3,6 +3,14 @@ import { useDisplayMode } from '../shell/useDisplayMode';
 import { effectiveFeedView } from './feedView';
 
 /**
+ * The table section's element id (V3-24.5). `FeedViewSwitch` reads it to tell whether focus is in the table before `T`
+ * removes it, so focus can move to the switch instead of dropping to the page. Here, beside the "table shown" rule, and
+ * not in `IncidentTable.tsx`: the table already imports the switch's id, and the two components must not import each
+ * other.
+ */
+export const INCIDENT_TABLE_ID = 'incident-table';
+
+/**
  * Whether the incident table is drawn over the stage (V3-24.4): the one home of the rule, read by `App` for the mount and for
  * making the covered map and strip `inert`, and by V3-24.5 for Esc and the `T` key.
  *

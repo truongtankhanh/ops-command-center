@@ -212,6 +212,8 @@ Both views read their rows from one hook, `useFeedRows` (`lib/incidents/`): the 
 
 The table covers the stage (the map or the 3D scene, its tools and the camera strip) and never resizes it: they stay mounted under it and are `inert` while it shows, and the inspector sheet, the banners and the toasts lie over it. Its end padding follows an open inspector, so every column stays readable; on a tablet's narrower stage the Place and Code columns give way. It is shown only on the Incidents panel and never on a phone width (`useIncidentTableShown`), and the video wall has neither the switch nor the table. Its Attention column shows the same time left as the list's rows, as plain text and never a live region, on a clock of its own. No endpoint, event or permission is involved: it reads the incident and zone lists the console already holds.
 
+A table row behaves as a list row: a click on it, or Enter / Space on its button, opens the incident in the inspector through the same store action, so whatever follows a selection from the list follows it from the table too, and a second press closes it; the selected row is `aria-current`. The rows are one Tab stop: the arrows and Home / End move focus without opening anything, and Tab leaves the table. The table is a view, not a dialog: Esc in it, with no inspector open, moves focus to the List | Table switch and keeps the table. `T` switches between the two views while the Incidents panel is shown on a wider screen; it is a single-key shortcut, listed in the help and turned off with the others (WCAG 2.1.4), and when it removes the table with focus in it, focus moves to the switch.
+
 ## 6. Camera sources
 
 ```ts

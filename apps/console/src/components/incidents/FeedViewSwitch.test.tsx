@@ -1,7 +1,10 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useSession } from '../../auth/store';
+import { INCIDENT_TABLE_ID } from '../../lib/incidents/useIncidentTableShown';
 import { useConsole } from '../../store';
 import { expectNoAxeViolations, resetStore, stubViewportWidth } from '../../test-utils';
+import { ShortcutHelp } from '../shell/ShortcutHelp';
 import { FEED_VIEW_SWITCH_ID, FeedViewSwitch } from './FeedViewSwitch';
 
 const group = () => screen.queryByRole('radiogroup', { name: 'Incident view' });
@@ -228,6 +231,148 @@ describe('FeedViewSwitch', () => {
 
       act(() => state().setSidePanel('incidents'));
       expect(group()).toBeInTheDocument();
+    });
+  });
+
+  /*
+   * `T` (V3-24.5), in `TwinShortcuts.test.tsx`'s style: what the key does, and where it must not. A stand-in for the table
+   * (a section with the table's id and one focusable row) is enough to see where focus goes; the table's own keys are
+   * `IncidentTable.test.tsx`'s.
+   */
+  describe('the T key', () => {
+    /** The switch beside a text field, a control outside the table, a stand-in table and the help (a dialog). */
+    function renderKeys() {
+      return render(
+        <>
+          <input aria-label="Notes" />
+          <button type="button">Elsewhere</button>
+          <section id={INCIDENT_TABLE_ID} aria-label="Incident table">
+            <button type="button">Row</button>
+          </section>
+          <FeedViewSwitch />
+          <ShortcutHelp />
+        </>,
+      );
+    }
+
+    beforeEach(() => {
+      resetStore(useSession);
+      useSession.getState().signedIn({ displayName: 'Demo Operator', roles: ['operator'] });
+    });
+
+    it('switches between the list and the table, both ways, and remembers it', async () => {
+      renderKeys();
+
+      await userEvent.keyboard('t');
+      expect(state().feedView).toBe('table');
+      expect(localStorage.getItem('occ.console.feedView')).toBe('table');
+      expect(radio('Table')).toHaveAttribute('aria-checked', 'true');
+
+      await userEvent.keyboard('T');
+      expect(state().feedView).toBe('list');
+      expect(localStorage.getItem('occ.console.feedView')).toBeNull();
+    });
+
+    it('does nothing while single-key shortcuts are off', async () => {
+      act(() => useConsole.setState({ keyboardShortcuts: false }));
+      renderKeys();
+
+      await userEvent.keyboard('t');
+
+      expect(state().feedView).toBe('list');
+    });
+
+    it('is not typed into: a "t" in a text field only types', async () => {
+      renderKeys();
+
+      await userEvent.type(screen.getByLabelText('Notes'), 't');
+
+      expect(screen.getByLabelText('Notes')).toHaveValue('t');
+      expect(state().feedView).toBe('list');
+    });
+
+    it('ignores a modifier, a repeat and an IME composition', () => {
+      renderKeys();
+
+      fireEvent.keyDown(document.body, { key: 't', ctrlKey: true });
+      fireEvent.keyDown(document.body, { key: 't', metaKey: true });
+      fireEvent.keyDown(document.body, { key: 't', altKey: true });
+      fireEvent.keyDown(document.body, { key: 't', repeat: true });
+      fireEvent.keyDown(document.body, { key: 't', isComposing: true });
+
+      expect(state().feedView).toBe('list');
+    });
+
+    it('does nothing while a dialog is open', async () => {
+      renderKeys();
+      act(() => useConsole.getState().openShortcutHelp());
+
+      await userEvent.keyboard('t');
+
+      expect(state().feedView).toBe('list');
+    });
+
+    it('does nothing while the Assets panel is shown, and works again on the Incidents panel', async () => {
+      renderKeys();
+
+      act(() => state().setSidePanel('assets'));
+      await userEvent.keyboard('t');
+      expect(state().feedView).toBe('list');
+
+      act(() => state().setSidePanel('incidents'));
+      await userEvent.keyboard('t');
+      expect(state().feedView).toBe('table');
+    });
+
+    it('does nothing at a phone width, where the list is the only view', async () => {
+      stubViewportWidth(720);
+      renderKeys();
+
+      await userEvent.keyboard('t');
+
+      expect(state().feedView).toBe('list');
+    });
+
+    it('does nothing on a video wall', async () => {
+      act(() => useConsole.setState({ wall: 1 }));
+      renderKeys();
+
+      await userEvent.keyboard('t');
+
+      expect(state().feedView).toBe('list');
+    });
+
+    it('is announced on the group while single-key shortcuts are on, and not while they are off', () => {
+      renderKeys();
+      expect(group()).toHaveAttribute('aria-keyshortcuts', 'T');
+
+      act(() => useConsole.setState({ keyboardShortcuts: false }));
+      expect(group()).not.toHaveAttribute('aria-keyshortcuts');
+    });
+
+    it('moves focus to the List option when it removes the table with focus in it', async () => {
+      act(() => state().setFeedView('table'));
+      renderKeys();
+      screen.getByRole('button', { name: 'Row' }).focus();
+
+      await userEvent.keyboard('t');
+
+      expect(state().feedView).toBe('list');
+      expect(radio('List')).toHaveFocus();
+    });
+
+    it('leaves focus where it is when focus is outside the table', async () => {
+      renderKeys();
+      const elsewhere = screen.getByRole('button', { name: 'Elsewhere' });
+      elsewhere.focus();
+
+      await userEvent.keyboard('t');
+      expect(state().feedView).toBe('table');
+      expect(elsewhere).toHaveFocus();
+
+      await userEvent.keyboard('t');
+      expect(state().feedView).toBe('list');
+      expect(elsewhere).toHaveFocus();
     });
   });
 });

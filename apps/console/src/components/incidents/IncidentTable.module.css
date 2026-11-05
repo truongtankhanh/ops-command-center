@@ -121,6 +121,11 @@ th[aria-sort='descending'] .sort {
   --row-edge: var(--sev-low-border);
 }
 
+/* The whole row takes the click (V3-24.5); its button in the Incident cell is the keyboard's way in. */
+.table tbody tr {
+  cursor: pointer;
+}
+
 .table tbody tr:hover {
   background: var(--surface-2);
 }
@@ -135,6 +140,23 @@ th[aria-sort='descending'] .sort {
 
 .table tbody tr[aria-current='true'] > td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/*
+ * The row's button (V3-24.5): no box of its own, so the cell looks as it did; it fills the cell, so the title still gives way
+ * with an ellipsis. The focus ring is `base.css`'s. No coarse-pointer floor: the whole row is the target.
+ */
+.open {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: inherit;
 }
 
 /* The incident cell: the type tile, then the title, which gives way with an ellipsis (its full text is the `title`). */
