@@ -7,6 +7,7 @@ import {
   type IncidentCategory,
   type IncidentEventKind,
   type IncidentSeverity,
+  type IncidentSource,
   type IncidentStatus,
   type IncidentType,
   type Permission,
@@ -533,6 +534,20 @@ const STATUS_LABELS: Record<IncidentStatus, string> = {
 };
 
 export const statusLabel = (status: IncidentStatus) => STATUS_LABELS[status];
+
+const SOURCE_LABELS: Record<IncidentSource, string> = {
+  operator: 'Operator',
+  telemetry: 'Telemetry rule',
+  simulator: 'Simulator',
+};
+
+/**
+ * What kind of source raised the incident, as the table's Source column (V3-24.4, frame 19) and
+ * its CSV export (V3-24.2) say it. Not the inspector's "Reported by" (`reporterLabel` in
+ * `IncidentDetail`), which answers a different question. A source this console does not know yet
+ * reads as its raw id, as `typeLabel` does: the API can add one first.
+ */
+export const sourceLabel = (source: Incident['source']): string => SOURCE_LABELS[source] ?? source;
 
 const SEVERITY_LABELS: Record<IncidentSeverity, string> = {
   critical: 'Critical',
