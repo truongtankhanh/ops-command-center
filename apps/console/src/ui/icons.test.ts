@@ -21,6 +21,7 @@ import {
   connectionIcon,
   eventKindIcon,
   Fan,
+  feedViewIcon,
   type Glyph,
   healthIcon,
   incidentTypeIcon,
@@ -130,6 +131,24 @@ describe('side panel glyphs', () => {
   it('shares the high severity glyph and the box, on purpose', () => {
     expect(sidePanelIcon('incidents')).toBe(severityIcon('high'));
     expect(sidePanelIcon('assets')).toBe(Box);
+  });
+});
+
+describe('feed view glyphs', () => {
+  it('gives the list and the table their own glyphs', () => {
+    expect(feedViewIcon('list')).not.toBe(feedViewIcon('table'));
+  });
+
+  it('shares neither with a severity, a status or a side panel tab', () => {
+    const taken = new Set<Glyph>([
+      ...INCIDENT_SEVERITIES.map(severityIcon),
+      ...INCIDENT_STATUSES.map(statusIcon),
+      sidePanelIcon('incidents'),
+      sidePanelIcon('assets'),
+    ]);
+
+    expect(taken.has(feedViewIcon('list'))).toBe(false);
+    expect(taken.has(feedViewIcon('table'))).toBe(false);
   });
 });
 

@@ -10,8 +10,16 @@ import {
   writeStripCollapsed,
 } from './lib/cameras/cameras';
 import { readCriticalSound, writeCriticalSound } from './lib/incidents/criticalCue';
+import {
+  type FeedView,
+  readFeedView,
+  readTableSort,
+  writeFeedView,
+  writeTableSort,
+} from './lib/incidents/feedView';
 import { type Density, readDensity, writeDensity } from './lib/shell/density';
 import type { FeedFilter } from './lib/incidents/incidents';
+import type { TableSort } from './lib/incidents/incidentTable';
 import { readKeyboardShortcuts, writeKeyboardShortcuts } from './lib/shell/shortcuts';
 import { type TwinFault, twinCapability } from './lib/twin-core/twinCapability';
 import type { SceneLayerKey, SceneLayers } from './lib/twin-core/twinLayers';
@@ -165,6 +173,14 @@ interface ConsoleState extends ReportLocation {
   /** How tightly the console is spaced. Comfortable by default; remembered in this browser. */
   density: Density;
   /**
+   * The incident sidebar's view, the list or the table over the stage (V3-24.3). The list by default;
+   * remembered in this browser. The view drawn is `effectiveFeedView` (the list on a phone). A wall
+   * reads it and never uses it: it has no table.
+   */
+  feedView: FeedView;
+  /** The table's sort (V3-24.1); `null` is the feed's order. Remembered in this browser. */
+  tableSort: TableSort | null;
+  /**
    * What the map stage draws: the view that is in effect, not the one asked for. A stored `3d` is
    * `2d` here while the twin cannot be drawn (`twinCapability`), and is left as stored. Remembered
    * in this browser, as an explicit choice only (V2-10.1).
@@ -303,6 +319,10 @@ interface ConsoleState extends ReportLocation {
   openShortcutHelp(): void;
   closeShortcutHelp(): void;
   setDensity(density: Density): void;
+  /** Remembers the sidebar's view; it leaves the tab, the filters, the selection and the panel as they are. */
+  setFeedView(view: FeedView): void;
+  /** Remembers the table's sort; `null` goes back to the feed's order. */
+  setTableSort(sort: TableSort | null): void;
   /**
    * An operator's choice of view. `3d` does nothing while the twin cannot be drawn, so the store
    * never holds a view the stage cannot show and never remembers a choice it could not honour.
@@ -360,6 +380,8 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   keyboardShortcuts: readKeyboardShortcuts(),
   shortcutHelpOpen: false,
   density: readDensity(),
+  feedView: readFeedView(),
+  tableSort: readTableSort(),
   // Reads only: a choice this build cannot honour stays in storage for a build that can.
   view: effectiveView(readViewChoice(), twinCapability()),
   panTool: false,
@@ -537,6 +559,14 @@ export const useConsole = create<ConsoleState>((set, get) => ({
   setDensity: (density) => {
     writeDensity(density);
     set({ density });
+  },
+  setFeedView: (feedView) => {
+    writeFeedView(feedView);
+    set({ feedView });
+  },
+  setTableSort: (tableSort) => {
+    writeTableSort(tableSort);
+    set({ tableSort });
   },
   setPanTool: (on) => set({ panTool: on }),
   togglePanTool: () => set((state) => ({ panTool: !state.panTool })),

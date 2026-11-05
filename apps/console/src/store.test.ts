@@ -1099,6 +1099,84 @@ describe('useConsole', () => {
     });
   });
 
+  describe('feed view and table sort', () => {
+    const storedView = () => localStorage.getItem('occ.console.feedView');
+    const storedSort = () => localStorage.getItem('occ.console.tableSort');
+
+    beforeEach(() => localStorage.clear());
+
+    it('is the list with no sort by default', () => {
+      expect(useConsole.getInitialState().feedView).toBe('list');
+      expect(useConsole.getInitialState().tableSort).toBeNull();
+    });
+
+    it('turns to the table and remembers it in this browser', () => {
+      state().setFeedView('table');
+
+      expect(state().feedView).toBe('table');
+      expect(storedView()).toBe('table');
+    });
+
+    it('turns back to the list and forgets it', () => {
+      state().setFeedView('table');
+      state().setFeedView('list');
+
+      expect(state().feedView).toBe('list');
+      expect(storedView()).toBeNull();
+    });
+
+    it('remembers the sort, and forgets it with no sort', () => {
+      state().setTableSort({ key: 'attention', direction: 'ascending' });
+
+      expect(state().tableSort).toEqual({ key: 'attention', direction: 'ascending' });
+      expect(JSON.parse(storedSort() ?? 'null')).toEqual({
+        key: 'attention',
+        direction: 'ascending',
+      });
+
+      state().setTableSort(null);
+
+      expect(state().tableSort).toBeNull();
+      expect(storedSort()).toBeNull();
+    });
+
+    it('changes only the view or only the sort: the tab, filters, selection and panel stay', () => {
+      useConsole.setState({
+        filter: 'all',
+        severity: 'high',
+        category: 'security',
+        selectedIncidentId: 'inc-1',
+        sidePanel: 'incidents',
+      });
+      const before = state();
+
+      state().setFeedView('table');
+      state().setTableSort({ key: 'code', direction: 'descending' });
+
+      const after = state();
+      expect(after.filter).toBe(before.filter);
+      expect(after.severity).toBe(before.severity);
+      expect(after.category).toBe(before.category);
+      expect(after.selectedIncidentId).toBe(before.selectedIncidentId);
+      expect(after.sidePanel).toBe(before.sidePanel);
+      expect(after.feedView).toBe('table');
+      expect(after.tableSort).toEqual({ key: 'code', direction: 'descending' });
+    });
+
+    it('keeps the sort when the view changes, and the view when the sort changes', () => {
+      state().setTableSort({ key: 'severity', direction: 'descending' });
+      state().setFeedView('table');
+      state().setFeedView('list');
+
+      expect(state().tableSort).toEqual({ key: 'severity', direction: 'descending' });
+
+      state().setFeedView('table');
+      state().setTableSort(null);
+
+      expect(state().feedView).toBe('table');
+    });
+  });
+
   describe('view', () => {
     const KEY = 'occ.console.view';
 
