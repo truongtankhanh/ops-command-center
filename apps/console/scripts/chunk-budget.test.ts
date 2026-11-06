@@ -166,6 +166,12 @@ describe('graphProblems', () => {
   });
 });
 
+describe('BUDGET_BYTES', () => {
+  it('is the figure ADR-0020 states ("Amended in V3-11.7")', () => {
+    expect(BUDGET_BYTES).toBe(445_000);
+  });
+});
+
 describe('evaluate', () => {
   const size = (gzip: number) => ({ file: 'assets/TwinStage-b.js', bytes: gzip * 4, gzip });
 

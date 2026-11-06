@@ -49,9 +49,10 @@ interface HudProbeProps {
  *   like the draw calls. A resource enters the count the first time it is drawn and stays until it is disposed, so
  *   the evidence that a change of level releases what it made is a count that is **steady** over round trips after a
  *   first one has uploaded what the views need; one that rises by a fixed amount per trip is a leak.
- * - **Budgets** (V2-19.4). The same two figures are judged against the brief's 150 draw calls and 250,000 triangles
- *   (`createBudgetGuard`): a figure over budget gets `data-over="true"` on its cell, and a figure that **becomes** over
- *   budget is warned about once on the console (`console.warn`), again only after it has been back within budget. It
+ * - **Budgets** (V2-19.4). The same two figures are judged against the High tier's draw-call and triangle budgets
+ *   (`createBudgetGuard`; `TIER_SCENE_BUDGETS.high`, ADR-0020 "Amended in V3-11.7"), whatever the tier in force, until
+ *   V3-18.5 judges by that tier. A figure over budget gets `data-over="true"` on its cell, and a figure that **becomes**
+ *   over budget is warned about once on the console (`console.warn`), again only after it has been back within budget. It
  *   sees the last frame's reading twice a second, so it judges steady views and can miss a one-frame spike. It lives
  *   here, in the development-only probe, so a production build has neither the check nor its words.
  * - **Telemetry.** The client's cumulative counts (`getStats()`, V2-14.4; the engine posts them at most once a second)

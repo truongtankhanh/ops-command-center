@@ -4,8 +4,10 @@ import type { Bounds } from '../lib/twin-core/twinScene';
 
 /*
  * The scene's lighting (ADR-0020, brief § Model contract): one hemisphere light and one directional
- * light, no shadow maps (`castShadow` stays false and the Canvas has no `shadows`). Contact shadows are
- * a baked decal under each asset, and ambient occlusion is baked into textures.
+ * light. Outside the spike below, no shadow map (`castShadow` stays false and the Canvas has no
+ * `shadows`): ADR-0020 as amended in V3-11.7 allows one directional shadow in the High tier only, which
+ * V3-12.4 casts. Contact shadows are a baked decal under each asset, and ambient occlusion is baked into
+ * textures.
  *
  * A part is one material, `--tw-top`, and the lights make its three visible faces. The tokens give the
  * targets as shares of the top face (per channel, `--tw-south` over `--tw-top` is 0.74 – 0.82, mean 0.78,

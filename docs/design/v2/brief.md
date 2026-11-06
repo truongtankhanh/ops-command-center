@@ -230,6 +230,9 @@ a live text summary (`aria-label`, as in the mockups) and is a single tab stop.
 | Draw calls          | ≤ 150 per frame                                                                 | Merged statics, instancing for repeats (towers, lamp posts)    |
 | Lighting            | Baked AO in the texture; one hemisphere + one directional light, no shadow maps | Review                                                         |
 
+Amended for V3 by [ADR-0020](../../adr/0020-digital-twin-rendering-and-model-pipeline.md) ("Amended in V3-11.7"): the
+draw-call and triangle budgets stand in every quality tier, and one directional light casts a shadow in the High tier.
+
 The site plan stays data from the API (ADR-0017). Buildings are extruded shells from zone polygons until a building
 has its own model; only equipment needs authored models.
 
@@ -357,6 +360,9 @@ it is judged by its shortest headline interval, on the server's clock (V2-08.1;
 | First useful frame | Site plan + incidents ≤ 1 s after data                   | Models stream after, nearest first (frame 06)     |
 | Bundle             | 3D code in its own lazy chunk                            | The 2D console and the fallback never download it |
 | Memory             | Dispose geometry, materials and textures on level change | Checked in the dev HUD                            |
+
+Amended for V3 by [ADR-0020](../../adr/0020-digital-twin-rendering-and-model-pipeline.md) ("Amended in V3-11.7"): one
+directional shadow in the High tier; the frame target is unchanged.
 
 A developer-only HUD (`?debug=twin`, development builds only) shows FPS, p95 frame time, draw calls, triangles,
 telemetry messages per second and worker posts per frame (frame 00).
