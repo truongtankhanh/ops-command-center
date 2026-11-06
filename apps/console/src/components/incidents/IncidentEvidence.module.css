@@ -114,12 +114,14 @@
 }
 
 /*
- * Frame 10's `.asset-link` (V2-11.3): glyph, the asset and where it stands, and the actions. The
- * text column shrinks (ellipsis), so a long name never pushes the button off the sheet.
+ * Frame 10's `.asset-link` (V2-11.3): glyph, the asset and where it stands, then the actions on a row
+ * of their own. The text column shrinks (ellipsis), so a long name never pushes anything off the sheet.
+ * The actions sat beside the text in frame 10, but "Open asset" and "Show in 3D F" need about 265 px
+ * together: in the 360 px sheet they widened the card past the sheet and made it scroll sideways.
  */
 .assetLink {
   display: grid;
-  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr) auto;
+  grid-template-columns: calc(34px * var(--ui-scale)) minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   padding: calc(8px * var(--ui-scale)) calc(10px * var(--ui-scale));
@@ -157,10 +159,18 @@
   color: var(--text-secondary);
 }
 
+/* The full width under the glyph and the text; the buttons wrap rather than widen the card (a larger `--ui-scale`). */
 .assetActions {
   display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* Each button grows to share the row, so one that wraps spans the card instead of hanging short. */
+.assetActions > * {
+  flex: 1 1 auto;
 }
 
 /* What the evidence recorded, not a live value: quieter than one. */

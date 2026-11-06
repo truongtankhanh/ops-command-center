@@ -87,6 +87,7 @@ export function InspectorFrame<T extends string>({
             value={active.value}
             onChange={setSelected}
             reachablePanel
+            className={styles.tabs}
             panelClassName={styles.panel}
           >
             {active.content}
