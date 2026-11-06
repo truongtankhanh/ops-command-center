@@ -8,16 +8,31 @@
   padding: var(--section-pad-y) var(--space-5);
 }
 
+/*
+ * The tile and Close share the first line, and the title and its line take the whole width under them. With Close
+ * beside the title (frame 02's `.ph`), the 360 px sheet left the title about 130 px: a two-word incident title broke
+ * inside its words over six lines. The DOM order stays tile, heading, Close, so the heading is still read first; only
+ * the drawing moves Close up.
+ */
 .top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'tile . close'
+    'heading heading heading';
+  align-items: center;
+  row-gap: var(--space-3);
+}
+
+.close {
+  grid-area: close;
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
 }
 
 /* A neutral tile; a severity tile takes the hue on its glyph, its border and a faint fill. */
 .tile {
+  grid-area: tile;
   display: grid;
-  flex: none;
   place-items: center;
   width: calc(40px * var(--ui-scale));
   height: calc(40px * var(--ui-scale));
@@ -33,9 +48,9 @@
   color: var(--sev);
 }
 
-/* Takes the width the tile and Close leave, so Close stays in the corner with no title. */
+/* The whole width under the tile and Close; drawn only when there is a title or a line, so a bare header is one line. */
 .heading {
-  flex: 1;
+  grid-area: heading;
   min-width: 0;
 }
 
@@ -45,6 +60,8 @@
   font-size: var(--type-2xl);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-2xl);
+  /* Lines of even length rather than a long line and a stub ("Motor over-temperature —" / "Cooling tower 1"). */
+  text-wrap: balance;
   /* One long token (an id, a URL) must not push the sheet wider (V3-03.4). */
   overflow-wrap: anywhere;
 }
