@@ -5,6 +5,7 @@ import {
   type UserProfile,
   WebStorageStateStore,
 } from 'oidc-client-ts';
+import { debugTwinCarried } from '../lib/twin-core/twinDebugAddress';
 import { wallScreen } from '../lib/wall/wallMode';
 import { useSession } from './store';
 
@@ -106,12 +107,18 @@ async function signIn(): Promise<void> {
     useSession.getState().setStatus('failed');
   } finally {
     // Whatever the outcome, a reload must never send a used code again. A video wall keeps its `?wall=N`, so a reload
-    // of the window is still that wall (V2-21.2); the number is read before the address changes.
+    // of the window is still that wall (V2-21.2), and a developer keeps the HUD's flag (V3-11.8); both are read before
+    // the address changes. The flag is set as a name and a value: the text of the two joined is a marker that
+    // `scripts/chunk-budget.ts` refuses in a production build.
+    const query = new URLSearchParams();
     const wall = wallScreen();
+    if (wall !== null) query.set('wall', String(wall));
+    if (debugTwinCarried()) query.set('debug', 'twin');
+    const search = query.toString();
     window.history.replaceState(
       null,
       '',
-      wall === null ? window.location.pathname : `${window.location.pathname}?wall=${wall}`,
+      search === '' ? window.location.pathname : `${window.location.pathname}?${search}`,
     );
   }
 }

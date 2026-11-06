@@ -2,10 +2,10 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { lazy, type RefObject, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { Beacon } from '../lib/twin-core/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twin-core/twinCamera';
+import { debugTwinRequested } from '../lib/twin-core/twinDebugAddress';
 import type { HeatScene } from '../lib/twin-core/twinHeat';
 import type { LeaderStart } from '../lib/twin-core/twinLeader';
 import {
-  debugTwinRequested,
   DPR_STEPS,
   markTwin,
   rememberDprStep,
