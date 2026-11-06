@@ -305,7 +305,10 @@ scene, measures it, writes the numbers into an ADR-0020 amendment, and V3-12 –
 fixed: textures are fetched after the chunk, not inside it, so the chunk budget is spent on code; and the frame-time
 target (p95 ≤ 14 ms) is still judged on the reference machines. What gives when a machine misses it is the **tier**, not
 the target: the reference laptop (an integrated Iris Xe) may well run Standard, and the tech lead lowers the floor
-explicitly if that is not acceptable.
+explicitly if that is not acceptable. **Set in V3-11.7** (ADR-0020, "Amended in V3-11.7"): the 3D chunk 445 KB
+gzipped; draw calls and triangles stay at 150 and 250,000 in every tier, because the realism slice reads far under them;
+the environment files 226 KB after the chunk and 70 MB of texture memory; one directional shadow, 2048², in the High
+tier only. The reference machines were not available, so the frame-time target is `unverified` on them.
 
 ### The mockup scene follows the real site plan
 

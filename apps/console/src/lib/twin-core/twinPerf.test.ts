@@ -24,8 +24,10 @@ import {
   percentile,
   rememberDprStep,
   rememberedDprStep,
+  TIER_SCENE_BUDGETS,
   TRIANGLE_BUDGET,
 } from './twinPerf';
+import { TWIN_TIERS } from './twinTier';
 
 describe('percentile', () => {
   it('takes the nearest rank of a known list', () => {
@@ -821,26 +823,55 @@ describe('the remembered pixel-ratio step', () => {
   });
 });
 
-describe('budgetBreaches', () => {
-  it('holds the brief’s limits', () => {
-    expect(DRAW_CALL_BUDGET).toBe(150);
-    expect(TRIANGLE_BUDGET).toBe(250_000);
+describe('TIER_SCENE_BUDGETS (V3-11.7)', () => {
+  it('holds a budget for every tier', () => {
+    expect(Object.keys(TIER_SCENE_BUDGETS).sort()).toEqual([...TWIN_TIERS].sort());
   });
 
+  it('keeps V2’s numbers for Low, V2’s look', () => {
+    expect(TIER_SCENE_BUDGETS.low).toEqual({ calls: 150, triangles: 250_000 });
+  });
+
+  it('holds the figures ADR-0020 states: V2’s in High and Standard too ("Amended in V3-11.7")', () => {
+    expect(TIER_SCENE_BUDGETS.high).toEqual({ calls: 150, triangles: 250_000 });
+    expect(TIER_SCENE_BUDGETS.standard).toEqual({ calls: 150, triangles: 250_000 });
+  });
+
+  it('never lets a lower tier draw more than the tier above it', () => {
+    for (let i = 1; i < TWIN_TIERS.length; i += 1) {
+      const richer = TIER_SCENE_BUDGETS[TWIN_TIERS[i - 1]!];
+      const poorer = TIER_SCENE_BUDGETS[TWIN_TIERS[i]!];
+      expect(poorer.calls).toBeLessThanOrEqual(richer.calls);
+      expect(poorer.triangles).toBeLessThanOrEqual(richer.triangles);
+    }
+  });
+
+  it('exports High’s figures as the single constants the guard judges by', () => {
+    expect(DRAW_CALL_BUDGET).toBe(TIER_SCENE_BUDGETS.high.calls);
+    expect(TRIANGLE_BUDGET).toBe(TIER_SCENE_BUDGETS.high.triangles);
+  });
+});
+
+// The guard's cases are written against the constants, so they hold whatever V3-11.7 sets them to; the small figures
+// (10, 96, 100, 182,000) are within any budget, since none is below Low's, V2's 150 / 250,000.
+const CALLS = DRAW_CALL_BUDGET;
+const TRIANGLES = TRIANGLE_BUDGET;
+
+describe('budgetBreaches', () => {
   it('counts a reading equal to a limit as within budget and one above it as a breach', () => {
-    expect(budgetBreaches({ calls: 150, triangles: 250_000 })).toEqual([]);
-    expect(budgetBreaches({ calls: 151, triangles: 250_000 })).toEqual([
-      { figure: 'calls', value: 151, limit: 150 },
+    expect(budgetBreaches({ calls: CALLS, triangles: TRIANGLES })).toEqual([]);
+    expect(budgetBreaches({ calls: CALLS + 1, triangles: TRIANGLES })).toEqual([
+      { figure: 'calls', value: CALLS + 1, limit: CALLS },
     ]);
-    expect(budgetBreaches({ calls: 150, triangles: 250_001 })).toEqual([
-      { figure: 'triangles', value: 250_001, limit: 250_000 },
+    expect(budgetBreaches({ calls: CALLS, triangles: TRIANGLES + 1 })).toEqual([
+      { figure: 'triangles', value: TRIANGLES + 1, limit: TRIANGLES },
     ]);
   });
 
   it('lists both figures, calls first, when both are over', () => {
-    expect(budgetBreaches({ calls: 400, triangles: 900_000 })).toEqual([
-      { figure: 'calls', value: 400, limit: 150 },
-      { figure: 'triangles', value: 900_000, limit: 250_000 },
+    expect(budgetBreaches({ calls: CALLS * 3, triangles: TRIANGLES * 4 })).toEqual([
+      { figure: 'calls', value: CALLS * 3, limit: CALLS },
+      { figure: 'triangles', value: TRIANGLES * 4, limit: TRIANGLES },
     ]);
   });
 
@@ -861,17 +892,17 @@ describe('createBudgetGuard', () => {
   it('reports a first reading over budget as fresh', () => {
     const guard = createBudgetGuard();
 
-    const { over, fresh } = guard.check({ calls: 151, triangles: 10 });
+    const { over, fresh } = guard.check({ calls: CALLS + 1, triangles: 10 });
 
-    expect(over).toEqual([{ figure: 'calls', value: 151, limit: 150 }]);
+    expect(over).toEqual([{ figure: 'calls', value: CALLS + 1, limit: CALLS }]);
     expect(fresh).toEqual(over);
   });
 
   it('does not report the same breach again while it lasts, though it is still over', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 151, triangles: 10 });
+    guard.check({ calls: CALLS + 1, triangles: 10 });
 
-    const second = guard.check({ calls: 160, triangles: 10 });
+    const second = guard.check({ calls: CALLS + 10, triangles: 10 });
 
     expect(second.over).toHaveLength(1);
     expect(second.fresh).toEqual([]);
@@ -879,20 +910,20 @@ describe('createBudgetGuard', () => {
 
   it('arms a figure again once it is back within budget', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 151, triangles: 10 });
+    guard.check({ calls: CALLS + 1, triangles: 10 });
 
     const back = guard.check(within);
-    const again = guard.check({ calls: 152, triangles: 10 });
+    const again = guard.check({ calls: CALLS + 2, triangles: 10 });
 
     expect(back).toEqual({ over: [], fresh: [] });
-    expect(again.fresh).toEqual([{ figure: 'calls', value: 152, limit: 150 }]);
+    expect(again.fresh).toEqual([{ figure: 'calls', value: CALLS + 2, limit: CALLS }]);
   });
 
   it('treats each figure on its own: a second figure going over is fresh, the first is not', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 151, triangles: 10 });
+    guard.check({ calls: CALLS + 1, triangles: 10 });
 
-    const { over, fresh } = guard.check({ calls: 151, triangles: 250_001 });
+    const { over, fresh } = guard.check({ calls: CALLS + 1, triangles: TRIANGLES + 1 });
 
     expect(over.map(({ figure }) => figure)).toEqual(['calls', 'triangles']);
     expect(fresh.map(({ figure }) => figure)).toEqual(['triangles']);
@@ -901,35 +932,35 @@ describe('createBudgetGuard', () => {
   it('reports both figures as fresh when both go over at once', () => {
     const guard = createBudgetGuard();
 
-    const { fresh } = guard.check({ calls: 400, triangles: 900_000 });
+    const { fresh } = guard.check({ calls: CALLS * 3, triangles: TRIANGLES * 4 });
 
     expect(fresh.map(({ figure }) => figure)).toEqual(['calls', 'triangles']);
   });
 
   it('re-arms one figure while the other stays over', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 400, triangles: 900_000 });
-    guard.check({ calls: 100, triangles: 900_000 });
+    guard.check({ calls: CALLS * 3, triangles: TRIANGLES * 4 });
+    guard.check({ calls: 100, triangles: TRIANGLES * 4 });
 
-    const { fresh } = guard.check({ calls: 400, triangles: 900_000 });
+    const { fresh } = guard.check({ calls: CALLS * 3, triangles: TRIANGLES * 4 });
 
     expect(fresh.map(({ figure }) => figure)).toEqual(['calls']);
   });
 
   it('starts over after reset', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 151, triangles: 10 });
+    guard.check({ calls: CALLS + 1, triangles: 10 });
     guard.reset();
 
-    expect(guard.check({ calls: 151, triangles: 10 }).fresh).toHaveLength(1);
+    expect(guard.check({ calls: CALLS + 1, triangles: 10 }).fresh).toHaveLength(1);
   });
 
   it('counts an unmeasurable reading as within budget, which re-arms', () => {
     const guard = createBudgetGuard();
-    guard.check({ calls: 151, triangles: 10 });
+    guard.check({ calls: CALLS + 1, triangles: 10 });
 
     expect(guard.check({ calls: Number.NaN, triangles: 10 })).toEqual({ over: [], fresh: [] });
-    expect(guard.check({ calls: 151, triangles: 10 }).fresh).toHaveLength(1);
+    expect(guard.check({ calls: CALLS + 1, triangles: 10 }).fresh).toHaveLength(1);
   });
 });
 

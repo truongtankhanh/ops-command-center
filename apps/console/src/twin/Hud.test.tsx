@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import { StrictMode, useRef } from 'react';
 import type { MockInstance } from 'vitest';
 import { HUD_LABEL, HUD_ROWS, NO_VALUE } from '../lib/twin-core/twinHud';
+import { DRAW_CALL_BUDGET, TRIANGLE_BUDGET } from '../lib/twin-core/twinPerf';
 import type { TelemetryClient, TelemetryStats } from '../realtime/telemetryClient';
 import { useTelemetryStore } from '../realtime/telemetryStore';
 import { useConsole } from '../store';
@@ -329,6 +330,12 @@ describe('HudProbe (the measuring)', () => {
     });
     afterEach(() => warn.mockRestore());
 
+    // Written against the constants, so the cases hold whatever V3-11.7 sets them to; 10 and 96 are within any budget
+    // (none is below Low's, V2's 150 / 250,000).
+    const CALLS = DRAW_CALL_BUDGET;
+    const TRIANGLES = TRIANGLE_BUDGET;
+    const en = (n: number) => n.toLocaleString('en-US');
+
     const over = (id: string) =>
       document.querySelector(`[data-hud="${id}"]`)?.getAttribute('data-over');
 
@@ -344,7 +351,7 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('counts exactly the limits as within budget', () => {
-      canvas.gl.info.render = { calls: 150, triangles: 250_000 };
+      canvas.gl.info.render = { calls: CALLS, triangles: TRIANGLES };
       render(<Harness />);
 
       advance(1000);
@@ -355,35 +362,39 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('warns on a scene over the draw-call budget, and marks that value only', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       render(<Harness />);
 
       advance(500);
 
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(String(warn.mock.calls[0]?.[0])).toContain('151 draw calls (limit 150)');
+      expect(String(warn.mock.calls[0]?.[0])).toContain(
+        `${en(CALLS + 1)} draw calls (limit ${en(CALLS)})`,
+      );
       expect(over('calls')).toBe('true');
       expect(over('triangles')).toBeNull();
     });
 
     it('warns on a scene over the triangle budget, and marks that value only', () => {
-      canvas.gl.info.render = { calls: 10, triangles: 250_001 };
+      canvas.gl.info.render = { calls: 10, triangles: TRIANGLES + 1 };
       render(<Harness />);
 
       advance(500);
 
       expect(warn).toHaveBeenCalledTimes(1);
-      expect(String(warn.mock.calls[0]?.[0])).toContain('250,001 triangles (limit 250,000)');
+      expect(String(warn.mock.calls[0]?.[0])).toContain(
+        `${en(TRIANGLES + 1)} triangles (limit ${en(TRIANGLES)})`,
+      );
       expect(over('triangles')).toBe('true');
       expect(over('calls')).toBeNull();
     });
 
     it('warns once while the scene stays over, not at every tick', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       render(<Harness />);
 
       advance(500);
-      canvas.gl.info.render = { calls: 170, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 20, triangles: 10 };
       advance(1500);
 
       expect(warn).toHaveBeenCalledTimes(1);
@@ -391,7 +402,7 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('clears the mark when the scene is back within budget, and warns again at the next breach', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       render(<Harness />);
       advance(500);
 
@@ -399,7 +410,7 @@ describe('HudProbe (the measuring)', () => {
       advance(500);
       expect(over('calls')).toBeNull();
 
-      canvas.gl.info.render = { calls: 160, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 10, triangles: 10 };
       advance(500);
 
       expect(warn).toHaveBeenCalledTimes(2);
@@ -407,11 +418,11 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('names only the figure that has just gone over, and both when both do at once', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       render(<Harness />);
       advance(500);
 
-      canvas.gl.info.render = { calls: 151, triangles: 250_001 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: TRIANGLES + 1 };
       advance(500);
 
       const second = String(warn.mock.calls[1]?.[0]);
@@ -420,7 +431,7 @@ describe('HudProbe (the measuring)', () => {
 
       canvas.gl.info.render = { calls: 10, triangles: 10 };
       advance(500);
-      canvas.gl.info.render = { calls: 400, triangles: 900_000 };
+      canvas.gl.info.render = { calls: CALLS * 3, triangles: TRIANGLES * 4 };
       advance(500);
 
       const third = String(warn.mock.calls[2]?.[0]);
@@ -430,7 +441,7 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('says nothing and marks nothing while the tab is hidden, and judges again when it is back', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       setHidden(true);
       render(<Harness />);
 
@@ -446,7 +457,7 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('warns again for a scene that is still over when the probe is mounted again', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 10 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: 10 };
       const first = render(<Harness />);
       advance(500);
       first.unmount();
@@ -458,7 +469,7 @@ describe('HudProbe (the measuring)', () => {
     });
 
     it('marks neither the cost nor the tier: they have no budget here (V3-18.5 owns per-tier budgets)', () => {
-      canvas.gl.info.render = { calls: 151, triangles: 250_001 };
+      canvas.gl.info.render = { calls: CALLS + 1, triangles: TRIANGLES + 1 };
       useClock();
       render(<Harness />);
       loop(30, 30);

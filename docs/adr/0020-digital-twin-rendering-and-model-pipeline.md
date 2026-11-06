@@ -2,7 +2,7 @@
 
 - **Status:** Accepted 2026-10-09
 - **Date:** 2026-10-08
-- **Amended by:** [ADR-0022](0022-console-visual-language.md) (the camera moves when the operator opens an incident from the feed or its search, or asks for a flight; an arriving incident still never moves it); V3-29 (the console's 3D view gains a Pan tool, so the left mouse button, or one finger, can pan instead of orbit, and a pad of eight pan arrows; Shift flips the tool; the camera limits and the keys are unchanged)
+- **Amended by:** [ADR-0022](0022-console-visual-language.md) (the camera moves when the operator opens an incident from the feed or its search, or asks for a flight; an arriving incident still never moves it); V3-29 (the console's 3D view gains a Pan tool, so the left mouse button, or one finger, can pan instead of orbit, and a pad of eight pan arrows; Shift flips the tool; the camera limits and the keys are unchanged); V3-11.7 (the scene budgets are set by measurement for V3's quality tiers: the twin chunk's gzip budget is raised to 445,000 bytes, draw calls and triangles keep V2's numbers in every tier, the environment files and texture memory get budgets, and one directional shadow is allowed in the High tier, which amends "no shadow maps")
 - **Context documents:** [Console V2 design brief](../design/v2/brief.md), [ADR-0018](0018-assets-and-telemetry-as-domain-data.md), [ADR-0019](0019-telemetry-transport.md)
 
 ## Context
@@ -91,6 +91,8 @@ their author, checked in CI, and served by nginx as immutable files.
     scene trimmed now. It is a budget and not a measurement, as the first figure was: it is re-measured at V2-19.7 and kept
     or lowered then. The figures written in this ADR as "of 350,000" are what was measured at the time. The rule is
     unchanged (the build fails above the number, `scripts/chunk-budget.ts`).
+  - Amended in V3-11.7 (2026-11-06): the budget is **445,000 bytes** gzipped, set from a measurement; see "Amended in
+    V3-11.7" at the end of the Decision.
 - **Capability check.** The console renders the twin only if a WebGL 2 context can be created. Otherwise, and after
   a `webglcontextlost` that does not restore within 5 s, it shows the 2D map with the reason (brief, frame 07). The
   viewer's last choice of 2D or 3D is a per-browser convenience in `localStorage`.
@@ -117,6 +119,8 @@ their author, checked in CI, and served by nginx as immutable files.
     (ADR-0018). Only equipment uses authored models.
   - Lighting: one hemisphere light and one directional light, no shadow maps. Contact shadows are a baked blob
     decal under each asset; ambient occlusion is baked into textures.
+    - Amended in V3-11.7: one directional light casts a shadow in the High tier only; Standard and Low keep "no shadow
+      maps". See "Amended in V3-11.7" at the end of the Decision.
   - `frameloop="demand"`: the loop runs while a part moves, a value eases or the camera moves, and stops otherwise.
     Pixel ratio is at most 1.5, and 1.0 on a wall (UI-17).
   - Video wall (decided 2026-10-08): the wall shows the 3D view with a fixed camera and no controls (labels and
@@ -1634,6 +1638,200 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     with the canvas mocked.
   - Real WebGL rendering is covered by the Playwright smoke (OCC-25, not built yet; Playwright is not installed)
     with a software renderer.
+- **Scene budgets.**
+  - Amended in V3-11.7 (2026-11-06, the tech lead's decision): the scene budgets are set by measurement for V3's
+    realistic twin and its quality tiers (V3 brief § Realistic twin, "Budgets raised", decided 2026-10-21). The twin
+    chunk's budget is raised; draw calls and triangles keep V2's numbers in every tier, because the realism slice reads
+    far under them; the environment files and the texture memory get budgets of their own; one directional shadow is
+    allowed in the High tier. The rule of each budget is unchanged: the build fails above the chunk number
+    (`scripts/chunk-budget.ts`), and the development guard of V2-19.4 warns above the draw-call and triangle numbers
+    (`TIER_SCENE_BUDGETS` in `lib/twin-core/twinPerf.ts`, High's figures until V3-18.5 judges by the tier in force).
+    Change the numbers here first, then in the code.
+    - **The budgets.**
+
+      | Budget                          | High                         | Standard             | Low (V2's look) |
+      | ------------------------------- | ---------------------------- | -------------------- | --------------- |
+      | Draw calls per frame            | 150                          | 150                  | 150             |
+      | Triangles on screen             | 250,000                      | 250,000              | 250,000         |
+      | Shadow                          | One directional light, 2048² | None                 | None            |
+      | Trees (instances on the campus) | 26 (the frames' density)     | 13 (half, estimated) | None            |
+
+      Shared by every tier: the twin chunk **445,000 bytes** gzipped (three.js included, textures not; 375,000 until
+      V3-11.7); the environment files fetched after the chunk **226,000 bytes** transferred; texture memory on the GPU
+      **70,000,000 bytes**, estimated as width × height × 4 bytes × 4/3 for the mipmaps per uncompressed texture (WebGL
+      does not report it), plus the shadow map in the High tier (2048² × 4 bytes, about 16.8 MB); ground textures
+      **1024²**; one tree **208 triangles** (measured in V3-11.6's pre-run; V3-11.5 first wrote 240). The Basis
+      transcoder counts on its own line, outside the environment bytes: the demo fetches none (no model has a KTX2
+      texture yet).
+
+    - **How each number came from a reading** (V3-11.1's rule: the quarter scaled to the campus, a headroom of 25 % added
+      and rounded up).
+      - **Draw calls and triangles.** With every element on, the slice reads 37 calls and about 2 k triangles at the home
+        view and 58 calls and about 4 k triangles zoomed into the quarter. Scaled to the campus (triangles × 4; calls per
+        kind and per instanced mesh, plus one per ground kind the quarter lacks; the shadow pass once) and with the
+        headroom, that is at most about 75 calls and 20 k triangles: far under V2's 150 and 250,000. Setting High by the
+        rule would put it under Low, so every tier keeps V2's numbers and nothing is raised.
+      - **The chunk.** 355,013 bytes at `19116c2`, the build with the realism slice's code in it (+3,665 bytes over
+        `7045f7f`), × 1.25 = 443,766, rounded up to 445,000. It is the zlib level 9 size `chunk-budget.ts` prints; a
+        browser downloads that size only once nginx compresses the console's text assets (V3-11.9), which is done
+        separately.
+      - **Environment bytes and texture memory are counted per kind, not × 4** (the tech lead, 2026-11-06). The ground
+        textures are tiled: the whole campus uses the same file per kind, so their bytes grow with the kinds, not with
+        the area. The quarter fetched 105,712 bytes (five ground kinds and the facade atlas); with the four kinds it lacks
+        (parking, gate, sports, water) at the quarter's mean of about 18,750 bytes, about 180,700, + 25 % → 226,000.
+        Texture memory: ten 1024² textures (nine ground kinds and the atlas) at 5,592,405 bytes, about 55.9 MB, + 25 % →
+        70,000,000. Read × 4, the rule would have given 530,000 and 168,000,000, over twice what the kit can use.
+      - **Standard's trees are estimated**, not read: half of High's density, from the trees-at-`1` difference (V3-11.6,
+        P2); V3-13.9 measures them.
+    - **What stays.** The frame-time target is unchanged: p95 ≤ 14 ms of frame **cost** on the reference laptop, and
+      60 FPS while moving (the interval's p95 ≤ 18 ms); frame cost is never extrapolated from the slice, V3-18.7 reads it
+      on the full scene. Main thread ≤ 8 ms per frame stays a row of V2's table. Textures are fetched after the chunk,
+      never inside it, so the chunk budget is spent on code.
+    - **What is not adopted.** No reflective floors. No bloom pass: it would need a new dependency (`three`'s post
+      effects or `@react-three/postprocessing`), and the marker glow is an additive sprite (V3-15.3) that needs none.
+    - **The tiers** (V3 brief § Quality tiers). High holds the whole look: the environment kit, the shadow, the facade
+      windows, the halos and the panels' blur. Standard steps down when frames run long: the pixel ratio first, then the
+      shadow off, the trees thinned and the halos as flat rings. Low is V2's look and the fallback. Each element of the
+      slice and its tier:
+
+      | Element  | Tier                    | Why                                                  |
+      | -------- | ----------------------- | ---------------------------------------------------- |
+      | Textures | Standard                | The brief's default; not read on a reference machine |
+      | Trees    | Standard (half of High) | The brief's default; not read on a reference machine |
+      | Facades  | Standard                | The brief's default; not read on a reference machine |
+      | Shadow   | High only               | The brief's rule                                     |
+
+      Whether the reference laptop runs High or Standard with everything on is `unverified`.
+
+    - **No reference machine was available** (the tech lead, 2026-11-06). The reference laptop and the wall controller
+      (V2 brief § Reference hardware) were not at hand, so V3-11.4 and V3-11.6 were closed on their pre-runs on the
+      development machine (Apple M3 Pro, macOS, Chrome 157, ANGLE Metal, 120 Hz, device pixel ratio 2, pixel ratio
+      capped at 1.5). Its counts and bytes do not depend on the machine and are the readings below. Its frame cost
+      (0.5 – 1.2 ms in every configuration) does: it does not separate the elements, so the tier rule of V3-11.6 ("an
+      element that takes the laptop over 14 ms moves up a tier") could not be applied, and **the 14 ms target is
+      `unverified`** on either reference machine. V3-18.7 has the same gap.
+    - **The readings** (development build; calls / triangles at the home view, S1; textures and geometries in GPU
+      memory).
+
+      | Configuration (`?slice=`, `19116c2`) | Calls | Triangles | Textures | Geometries |
+      | ------------------------------------ | ----- | --------- | -------- | ---------- |
+      | none (equal to V3-11.4 at `b62fae9`) | 22    | 562       | 1        | 18         |
+      | `textures`                           | 27    | 609       | 6        | 23         |
+      | `trees=1` (6 trees)                  | 23    | ~2 k      | 1        | 19         |
+      | `trees=2` (60 trees)                 | 23    | ~13 k     | 1        | 19         |
+      | `facades`                            | 22    | 562       | 2        | 18         |
+      | `shadow`                             | 36    | 945       | 3        | 23         |
+      | `all` (trees at `1`)                 | 37    | ~2 k      | 9        | 24         |
+      | `all,trees=2`                        | 37    | ~13 k     | 9        | 24         |
+      - Zoomed into the quarter: none 17 calls / 418 triangles, `all` 58 / about 4 k. Without the slice (V3-11.4,
+        `b62fae9`): the Data Center in focus 56 – 57 / about 2 k, `CT-01` isolated 52 / about 2 k.
+      - Bytes after the chunk (development, cache disabled, transferred): `textures` 93,746 of environment files, `all`
+        105,712, plus 42,412 of the demo's two models; no transcoder request.
+      - Memory over 20 level trips with `all`: Geometries 48 → 48, Textures 9 → 9 (no leak).
+  - Settled in V3-11.1 (2026-11-05, confirmed the same day by the tech lead), without changing the decision: how the
+    budgets are measured, what the realism slice holds and what V3-11.7 must output. Each item of the task was answered with
+    its default, except where a deviation below says otherwise.
+    - **The frame metric (open since V2-19.3).** The target stays **p95 ≤ 14 ms of frame cost** on the reference laptop,
+      and 60 FPS while moving. The **cost** is the CPU time of one turn of R3F's loop: `addEffect` takes `performance.now()`
+      before the loop runs its `useFrame` subscribers and renders, and `addAfterEffect` takes the difference once `gl.render`
+      has returned. It holds the WebGL command submission, not the GPU's execution. Where the browser exposes
+      `EXT_disjoint_timer_query_webgl2`, a GPU time is recorded beside it for information; the CPU figure is the contract
+      (`unverified` that either reference machine exposes the extension). The **interval** (R3F's `delta`, the HUD's "Frame
+      (p95)") is not a cost: it stays the pixel-ratio controller's input at 18 ms (`DPR_BUDGET_MS`) and, read while moving, it
+      is the test of "60 FPS" (p95 ≤ 18 ms). A GPU that cannot keep up shows in the interval and not in the cost, so both are
+      read and a miss in either is a miss. The HUD row is **"Frame cost (p95)"** (V3-11.2), after V2's nine rows.
+      - The cost exists only in the development build (the HUD is nowhere else). R3F's loop runs no React render, so the
+        figure should be close to production's; `unverified`, so the campus orbit is cross-checked against the production
+        build's Performance panel (the "Animation frame fired" task).
+      - **Main thread ≤ 8 ms** per frame stays a row of V2's table, read in the Performance panel on the production build.
+        It is recorded and judged; the tier rule of V3-11.6 is judged on frame cost alone.
+    - **The slice: the north-east quarter.** The box east 0 – 228 m, north 0 – 247 m of `SITE.boundary`, holding the Library
+      (`BLD-LIB`), the Data Center (`BLD-DC`), the Science Lab (`BLD-LAB`), the Utility Plant (`UTL-PLANT`), the two roads'
+      segments inside the box and the north half of the Central Lawn. The rest of the campus is drawn as today, so a slice
+      reading less the same branch's reading with every switch off is the cost of one quarter's elements.
+      - **Ground:** the kinds of V3-13.1's list that occur in the quarter, with V3-13.1's defaults: lawn, asphalt (roads),
+        paving (building footprints), concrete (utility) and the boundary ground, tiled textures at 1024² (placeholder).
+        Parking, gate, sports and water are not in the quarter.
+      - **Trees:** one `InstancedMesh` of a tree of at most 300 triangles (V3-13.1's placeholder), placed by hand clear of
+        buildings, roads and assets, at three densities: `0` none; `1` the frames' density (26 trees on the campus, about one a
+        hectare, about 6 in the quarter); `2` ten times that, a headroom reading and not a look. V3-11.6 records the count drawn.
+      - **Facades:** the Science Lab, the Data Center and the Library (see the first deviation), with UVs in metres and a
+        window atlas, by V3-14.1's defaults: glass curtain wall, louvred block, brick with punched windows.
+      - **Light:** V3-12.1's defaults: the hemisphere light and the key from the west-south-west, on in every configuration;
+        one directional light casting a shadow, map 2048² PCF soft (placeholder), its camera fitted to the campus once per
+        stage, casters the shells and the equipment, receivers the ground and the shells. The shadow is a switch.
+      - **Not in it:** markers, the spotlight, halos, roof plant, lamps, lit windows, fog, the vignette, bloom. Building heights
+        are the seed's `heightM` (1.0×).
+      - **Switches** (V3-11.5): `?slice=` with `textures`, `trees=0|1|2`, `facades`, `shadow`. Configurations read: none;
+        each alone (trees at `1` and at `2`); all with trees at `1`; all with trees at `2`.
+    - **What V3-11.7 must output.**
+      - For High and Standard (Low is V2's 250,000 triangles and 150 draw calls): triangles on screen and draw calls, as
+        `Record<TwinTier, …>`.
+      - The twin chunk's gzip budget (`BUDGET_BYTES`).
+      - The environment bytes fetched after the chunk (transferred) and the texture memory on the GPU (estimated as
+        width × height × 4 bytes × 4/3 for the mipmaps, per uncompressed texture).
+      - The shadow rule: one directional light, High tier only, and its map size.
+      - The numbers V3-12.1 and V3-13.1 leave as placeholders: shadow map size, ground texture size, tree triangles, tree
+        density per tier.
+      - Each slice element's tier (High only, Standard, or Low = today's look) with the reading that decided it, and whether
+        the reference laptop runs High or Standard with everything on.
+      - The frame-time target, unchanged (p95 ≤ 14 ms of cost).
+      - **How a budget comes from a reading:** the quarter is scaled to the campus (triangles and texture bytes × 4; draw
+        calls per kind and per instanced mesh, not × 4, plus one per ground kind the quarter lacks; the shadow map once), the
+        tier's configuration is taken, and a headroom [25 %] is added, stated and rounded up. Frame cost is never
+        extrapolated: V3-18.7 reads it on the full scene.
+    - **Deviations from the task, found in the code.**
+      - **The facades.** The task named one `academic`, one `data_center` and one `residential` building, but the quarter
+        that holds the Data Center and the Library has neither an `academic` building (the Innovation Hub and Lecture Hall A are
+        to the west) nor a `residential` one (both dormitories are to the south). It holds the same facade families: the
+        Science Lab (`laboratory`) takes the glass curtain wall `academic` has, and the Library (`library`) the brick with
+        punched windows `residential` has (V3-14.1). The quarter was kept over the named uses so that one box holds the slice.
+      - **Four watched assets at 10 Hz cannot be produced.** The console watches at most two assets (the inspected one and
+        the asset of an open telemetry incident, `deriveWatchSet`), and the store keeps the inspector and the incident sheet
+        exclusive, so one in practice; neither the mock source nor the simulator sends faster than one reading a second per
+        point (ADR-0019: "the simulator cannot send 10 Hz"). The scene is read with one watched asset at the source's cadence,
+        the HUD's "Telemetry msgs/s" recorded; four at 10 Hz stays `unverified`.
+      - **On the spike branch** the chunk may exceed 375,000 B, which fails `pnpm build` and so the console's image.
+        `BUDGET_BYTES` may be raised on that branch only; the figure recorded is the total `chunk-budget.ts` prints.
+    - **Decided 2026-11-05 (tech lead), every proposal accepted:** (1) the facade substitution above stands; (2) four
+      watched assets at 10 Hz is not measured in Phase 3: a source and a client that can produce it would be a task of its
+      own, and none is planned; (3) building heights are the seed's `heightM` (**1.0×**), not the mockup's 1.4× (the V3 brief
+      left it to V3-11): a height is data (ADR-0017), and 1.4× changes neither triangles nor draw calls, so the slice could
+      not have decided it. The headroom default [25 %] and the tree densities stand as written.
+  - Settled in V3-11.2 (2026-11-05, the tech lead's decisions on the analysis and the plan), without changing the
+    decision: how the developer HUD reads the frame cost, the GPU time and the tier.
+    - **Two rows after V2's nine:** "Frame cost (p95)" and "Quality tier". Frame 00's rows keep their places.
+    - **The cost is counted on drawn ticks only.** A global `addEffect` starts the clock before R3F's loop runs its
+      `useFrame` subscribers and `gl.render`, and a global `addAfterEffect` stops it after them. Global effects fire on
+      every tick, also on one whose root drew nothing, so a span counts only when the probe's own `useFrame` ran in it
+      (`createFrameCostClock`). Both effects are removed on unmount.
+    - **The cost window keeps the 250 ms gap rule** of the interval's window. A shader-compile stall on a first frame is
+      left out of the p95, which describes continuous motion; a cold load is read from the marks (V3-11.1's S6).
+    - **The GPU time shares the cost's cell:** `7.4 ms · GPU 5.1` where `EXT_disjoint_timer_query_webgl2` exists, `7.4 ms`
+      without it. Without it, one `console.debug` per mount; nothing throws.
+      - `createGpuTimer` keeps a pool of four queries, reads results in the order they were ended, drops every pending one
+        on a disjoint, and drops the result of a tick that drew nothing.
+      - A call that throws (a lost context) stops the timer for good.
+      - It is polled twice a second, on its own interval.
+    - **The tier row reads the store's `twinTier` (V3-11.3) as its word**, so it says "High" until V3-18 moves it.
+    - **Only "Frame cost (p95)" is a build marker** (`DEBUG_MARKERS`); "Quality tier" is not, because shipped UI may say
+      it one day (V3-18).
+    - **Not done here and `unverified`:**
+      - the probe's own cost (under 0.2 ms a frame);
+      - that either reference machine exposes the timer;
+      - that the cost figure from the development build is close to production's (V3-11.1's cross-check).
+  - Decided in V3-11.4 (2026-11-06, the tech lead accepted both defaults of Open question 2), without changing the decision:
+    how the baseline's idle row is judged and what the chunk budget measures.
+    - **Idle with a spinning part.** The demo's scene never reaches 0 frames at rest: with the Incidents layer off and
+      nothing inspected it draws at the display's rate (300 frames in 5 s, development and production builds, V3-11.4's
+      pre-run on a non-reference machine), most likely because the cooling towers' fans spin (`FrameDemand.bound`, V2-19.2;
+      `unverified`, the demand is not exposed). S1 is therefore read with every spinning part noted and judged on frame cost,
+      not on "0 frames". A cap on the spin's frame rate would be a task of its own; none is planned.
+    - **The chunk budget stays a gzip figure, and nginx sends it compressed.** `docker/console/nginx.conf` had no
+      compression: the twin chunk travelled at 1,248,302 B against 351,348 B gzip (`b62fae9`). V3-11.9 compresses the
+      console's text assets before V3-11.7 sets the number, so `BUDGET_BYTES` (the zlib level 9 size `chunk-budget.ts`
+      prints) is also, within a few per cent, what a browser downloads. The alternative, a budget in transferred bytes,
+      was not taken.
 
 ## Consequences
 

@@ -7,7 +7,10 @@
  * never reaches `dist`). The labels, formats and warning text of the HUD are in `twinHud.ts`, on purpose not here (see there).
  * V3-11.2 added the frame **cost** (V3-11.1's metric: the CPU time of one turn of R3F's loop, `createFrameCostClock`), the
  * GPU time where a timer exists, and the quality tier's word; only the development-only probe imports them too.
+ * V3-11.7 gave the draw-call and triangle budgets one figure per quality tier (`TIER_SCENE_BUDGETS`).
  */
+
+import type { TwinTier } from './twinTier';
 
 /**
  * The `p`th percentile (0 – 100, nearest rank) of `values`, or `NaN` for none. Works on a copy: the caller's ring
@@ -575,12 +578,26 @@ export function forgetDprStep(): void {
 }
 
 /**
- * The most draw calls a frame may cost, and the most triangles it may put on screen (brief § Model contract, budgets
- * table: "Draw calls ≤ 150 per frame", "Triangles on screen ≤ 250,000"; ADR-0020 § Budgets). "At most" means a reading
- * equal to the limit is within budget.
+ * Per quality tier, the most draw calls a frame may cost and the most triangles it may put on screen (ADR-0020 "Amended
+ * in V3-11.7"; change it there first). "At most" means a reading equal to the limit is within budget. Low is V2's look
+ * and keeps V2's numbers (V2 brief § Format and budgets: "Draw calls ≤ 150 per frame", "Triangles on screen ≤ 250,000").
+ * High and Standard keep V2's numbers too: with every element of the realism slice on, the scene reads far under them
+ * (V3-11.6), so V3-11.7 raised none. They are separate entries so a tier can move alone; V3-18.5 reports each.
  */
-export const DRAW_CALL_BUDGET = 150;
-export const TRIANGLE_BUDGET = 250_000;
+export const TIER_SCENE_BUDGETS: Readonly<
+  Record<TwinTier, Readonly<Record<BudgetFigure, number>>>
+> = {
+  high: { calls: 150, triangles: 250_000 },
+  standard: { calls: 150, triangles: 250_000 },
+  low: { calls: 150, triangles: 250_000 },
+};
+
+/**
+ * High's figures: what the development guard (`createBudgetGuard`) judges a reading by, whatever the tier, until
+ * V3-18.5 judges by the tier in force. Kept as single exports while callers read them.
+ */
+export const DRAW_CALL_BUDGET = TIER_SCENE_BUDGETS.high.calls;
+export const TRIANGLE_BUDGET = TIER_SCENE_BUDGETS.high.triangles;
 
 /** The two budgeted figures, named as the HUD's rows are (`calls`, `triangles`), which is how the probe finds the cell. */
 export type BudgetFigure = 'calls' | 'triangles';
