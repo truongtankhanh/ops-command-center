@@ -1,4 +1,6 @@
+import { render } from '@testing-library/react';
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import { createElement, useLayoutEffect } from 'react';
 import { mapColors } from '../../styles/tokens';
 import { cameraIcon, incidentTypeIcon, severityIcon, unknownIcon } from '../../ui/icons';
 import {
@@ -440,5 +442,40 @@ describe('renderMarkerImages', () => {
 
   it('has nothing to draw for no forms', async () => {
     expect(await renderMarkerImages([])).toEqual({ ratio: 1, images: [] });
+  });
+
+  // The 3D atlases call it from effects that R3F runs inside React DOM's commit (its first mount is
+  // synchronous, from <Canvas>'s layout effect). There the glyph's flushSync cannot flush, and every glyph
+  // came back empty (investigation `stage-switch-flushsync`). A layout effect is the same situation with
+  // React DOM alone; it calls twice, as the camera markers and the beacons do in one commit.
+  it('draws every glyph when it is called from inside a React commit', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const calls: ReturnType<typeof renderMarkerImages>[] = [];
+    function CallsInItsLayoutEffect() {
+      useLayoutEffect(() => {
+        calls.push(renderMarkerImages([camera, offline]), renderMarkerImages([open]));
+      }, []);
+      return null;
+    }
+    try {
+      render(createElement(CallsInItsLayoutEffect));
+      const [cameras, beacons] = await Promise.all(calls);
+
+      // The marker's own <svg> and the glyph's inside it: the online camera, the offline one (its
+      // crossed-out glyph is half of "not only by colour") and an incident beacon.
+      for (const svg of [
+        svgAt(cameras!.images, 0),
+        svgAt(cameras!.images, 1),
+        svgAt(beacons!.images, 0),
+      ]) {
+        expect(svg.match(/<svg/g)).toHaveLength(2);
+      }
+      const messages = consoleError.mock.calls.map((call) => String(call[0]));
+      expect(messages.filter((message) => /flushSync|synchronously unmount/.test(message))).toEqual(
+        [],
+      );
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

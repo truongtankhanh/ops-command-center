@@ -306,11 +306,20 @@ function markerForms(): MarkerForm[] {
  * ratio (`ratio`: a bitmap is its CSS size times `ratio` device pixels). It needs no map, so the 3D
  * stage draws its camera markers from the very same images as the 2D map (V2-12.8). The glyph
  * renderer is disposed whether or not drawing succeeds.
+ *
+ * Safe to call from anywhere, a React effect included: the glyphs are rendered only after the caller's
+ * call stack has finished (one microtask). `glyphRenderer` needs `flushSync`, which cannot flush while
+ * React DOM is rendering or committing, and R3F mounts the 3D scene synchronously from `<Canvas>`'s
+ * layout effect, so the 3D atlases' effects (`useMarkerAtlas`, `useBeaconAtlas`) run inside React DOM's
+ * commit. Rendered there, every glyph came back empty and React logged an error per glyph
+ * (investigation `stage-switch-flushsync`). A microtask queued during a commit runs after it, since a
+ * commit is synchronous.
  */
 export async function renderMarkerImages(forms: readonly MarkerForm[]): Promise<{
   ratio: number;
   images: (readonly [id: string, image: HTMLImageElement])[];
 }> {
+  await Promise.resolve();
   const ratio = pixelRatio();
   const renderer = glyphRenderer();
   let svgs: [id: string, svg: string][];
@@ -373,6 +382,9 @@ const pixelRatio = () => Math.max(1, Math.ceil(window.devicePixelRatio || 1));
 /**
  * Renders glyph components to SVG markup with the bundled React DOM client, so the map uses the
  * console's own icon set (no second icon package, no server renderer in the bundle).
+ *
+ * Must not be used while React DOM is rendering or committing: `flushSync` would only queue the render
+ * and `innerHTML` would be read empty. `renderMarkerImages`, its one user, waits a microtask first.
  */
 function glyphRenderer() {
   const container = document.createElement('div');
