@@ -21,6 +21,7 @@ import { useFocusTargets } from './useFocusTargets';
 import { useHoverRef } from './useHoverRef';
 import { useSceneFocus } from './useSceneFocus';
 import { useSelectedPartRef } from './useSelectedPartRef';
+import { useSliceFlags } from './slice/sliceFlags';
 
 interface EquipmentProps {
   /** Every asset, placed (`useTwinScene`). */
@@ -70,7 +71,8 @@ interface EquipmentProps {
  * the `inside` ones are left out of its groups, and an instance is made once for every modelled asset (so a bound part
  * keeps its pose) and only mounted, and registered with the picker, while its presence is not `hidden`.
  *
- * Frame demand: one-shot. An effect asks for one frame when the presences change. The moving parts are the loop of
+ * Frame demand: one-shot. An effect asks for one frame when the presences change (and, on the V3-11.5 spike branch,
+ *   one when the slice's shadow marks the models as casters). The moving parts are the loop of
  *   `useBoundParts`, which reports `demand.bound`; the looks (`useModelLooks`, `useAssetLooks.ts`) are painted in
  *   frames somebody else asked for.
  */
@@ -132,6 +134,18 @@ export function Equipment({
     }
     return { boxes, instances, bound, looks };
   }, [assets, ready]);
+
+  // SPIKE (V3-11.5): with the slice's shadow the equipment casts it (V3-12.1's casters: the shells and the equipment).
+  const { shadow } = useSliceFlags();
+  useEffect(() => {
+    if (!shadow) return;
+    for (const { object } of instances) {
+      object.traverse((node) => {
+        node.castShadow = true;
+      });
+    }
+    invalidate();
+  }, [shadow, instances, invalidate]);
 
   // The feed's layout is the bound keys of every asset of a class: it follows what the models say.
   useEffect(() => {

@@ -1,3 +1,7 @@
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import { type DirectionalLight, Object3D } from 'three';
+import type { Bounds } from '../lib/twin-core/twinScene';
+
 /*
  * The scene's lighting (ADR-0020, brief § Model contract): one hemisphere light and one directional
  * light, no shadow maps (`castShadow` stays false and the Canvas has no `shadows`). Contact shadows are
@@ -22,6 +26,9 @@
  * so both intensities carry a factor of π. The face colours are calculated, not yet read from a render
  * (`unverified`): the developer reads one building's top, south and east face in the browser and the
  * constants are adjusted from that.
+ *
+ * SPIKE (V3-11.5, branch only): with `shadow` the key light casts the realism slice's one shadow. That is the spike's,
+ * not ADR-0020's: on `main` there is still no shadow map.
  */
 
 /** The share of a material's colour every face gets, whatever it looks at. */
@@ -35,12 +42,81 @@ const KEY_LIGHT = 0.53;
  */
 const TOWARDS_LIGHT: [x: number, y: number, z: number] = [-0.57, 0.75, 0.34];
 
-export function Lights() {
+/** SPIKE (V3-11.5): the shadow's map size (V3-12.1's placeholder) and its margin round the campus, in metres. */
+const SHADOW_MAP_SIZE = 2048;
+const SHADOW_MARGIN_M = 40;
+
+/**
+ * SPIKE (V3-11.5): where the shadow-casting key light stands and what its shadow camera covers, fitted to the campus
+ * once per stage (V3-12.1: not per frame). The light moves out along the same direction, so the faces are lit exactly
+ * as without the shadow; its orthographic camera is a square round the campus's circle, deep enough for the tallest
+ * building on either side.
+ */
+function shadowFit({ minX, maxX, minZ, maxZ }: Bounds) {
+  const centre: [number, number, number] = [(minX + maxX) / 2, 0, (minZ + maxZ) / 2];
+  const radius = Math.hypot(maxX - minX, maxZ - minZ) / 2 + SHADOW_MARGIN_M;
+  const length = Math.hypot(...TOWARDS_LIGHT);
+  const distance = radius * 2;
+  const position: [number, number, number] = [
+    centre[0] + (TOWARDS_LIGHT[0] / length) * distance,
+    centre[1] + (TOWARDS_LIGHT[1] / length) * distance,
+    centre[2] + (TOWARDS_LIGHT[2] / length) * distance,
+  ];
+  return { centre, position, radius, near: distance - radius, far: distance + radius };
+}
+
+interface LightsProps {
+  /** SPIKE (V3-11.5): the campus bounds when the slice's shadow is on; without it, the lights of `main`. */
+  shadow?: Bounds;
+}
+
+export function Lights({ shadow }: LightsProps) {
   return (
     <>
       {/* Sky and ground the same, so the base is the same on every face. */}
       <hemisphereLight color="#ffffff" groundColor="#ffffff" intensity={BASE_LIGHT * Math.PI} />
-      <directionalLight color="#ffffff" position={TOWARDS_LIGHT} intensity={KEY_LIGHT * Math.PI} />
+      {shadow ? (
+        <ShadowKey bounds={shadow} />
+      ) : (
+        <directionalLight
+          color="#ffffff"
+          position={TOWARDS_LIGHT}
+          intensity={KEY_LIGHT * Math.PI}
+        />
+      )}
+    </>
+  );
+}
+
+/** SPIKE (V3-11.5): the key light with the slice's shadow. Bias values are placeholders, tuned by eye (`unverified`). */
+function ShadowKey({ bounds }: { bounds: Bounds }) {
+  const light = useRef<DirectionalLight>(null);
+  const target = useMemo(() => new Object3D(), []);
+  const fit = useMemo(() => shadowFit(bounds), [bounds]);
+  // R3F sets the shadow camera's planes but three does not recompute its projection by itself.
+  useLayoutEffect(() => {
+    light.current?.shadow.camera.updateProjectionMatrix();
+  }, [fit]);
+  return (
+    <>
+      <primitive object={target} position={fit.centre} />
+      <directionalLight
+        ref={light}
+        color="#ffffff"
+        position={fit.position}
+        target={target}
+        intensity={KEY_LIGHT * Math.PI}
+        castShadow
+        shadow-mapSize={[SHADOW_MAP_SIZE, SHADOW_MAP_SIZE]}
+        shadow-bias={-0.0005}
+        shadow-normalBias={0.4}
+        shadow-camera-left={-fit.radius}
+        shadow-camera-right={fit.radius}
+        shadow-camera-top={fit.radius}
+        shadow-camera-bottom={-fit.radius}
+        shadow-camera-near={fit.near}
+        shadow-camera-far={fit.far}
+      />
     </>
   );
 }

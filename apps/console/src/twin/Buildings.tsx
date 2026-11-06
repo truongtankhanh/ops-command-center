@@ -16,6 +16,10 @@ import { twinColors } from '../styles/tokens';
 import { usePicker } from './PickContext';
 import { applyGroups } from './applyGroups';
 import { createShellColours, paintHeat, paintShell } from './shellLooks';
+import { FACADE_PROGRAM_KEY, patchFacadeShader } from './slice/facadeMaterial';
+import { facadeAttributes } from './slice/sliceFacades';
+import { useSliceFlags } from './slice/sliceFlags';
+import { useSliceTextureSet } from './slice/SliceScope';
 import { useHoverRef } from './useHoverRef';
 import { useSceneFocus } from './useSceneFocus';
 
@@ -31,6 +35,9 @@ interface BuildingsProps {
   /** The heat overlay (V2-17.3), or `null` while it is not shown: the shells' colours, and which ones fade. */
   heat: HeatScene | null;
 }
+
+/** SPIKE (V3-11.5): a stable cache key for the facade program (`slice/facadeMaterial.ts`). */
+const facadeProgramKey = () => FACADE_PROGRAM_KEY;
 
 /** No asset is lifted out of anything for a building: the overlay's lifted codes are the equipment's. */
 const NO_CODES: ReadonlySet<string> = new Set();
@@ -83,16 +90,23 @@ export function Buildings({ zones, frame, assets, heat }: BuildingsProps) {
     zone: null,
   });
   const faces = useRef<Mesh>(null);
+  // SPIKE (V3-11.5): the realism slice's facades and shadow; both off unless `?slice=` asks.
+  const slice = useSliceFlags();
+  const atlas = useSliceTextureSet().facades;
   const shell = useMemo(() => {
-    const { positions, normals, indices, edges, ranges } = buildShellGeometry(
-      buildingShells(zones, frame),
-    );
+    const geometry = buildShellGeometry(buildingShells(zones, frame));
+    const { positions, normals, indices, edges, ranges } = geometry;
     if (ranges.length === 0) return null;
     const colours = createShellColours(positions.length / 3);
     const faces = new BufferGeometry();
     faces.setAttribute('position', new Float32BufferAttribute(positions, 3));
     faces.setAttribute('normal', new Float32BufferAttribute(normals, 3));
     faces.setAttribute('color', colours);
+    if (slice.facades) {
+      const { uv, cell } = facadeAttributes(geometry, zones);
+      faces.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+      faces.setAttribute('cell', new Float32BufferAttribute(cell, 2));
+    }
     faces.setIndex(indices);
     const outline = new BufferGeometry();
     outline.setAttribute('position', new Float32BufferAttribute(edges, 3));
@@ -111,7 +125,7 @@ export function Buildings({ zones, frame, assets, heat }: BuildingsProps) {
     applyGroups(faces, groupsForLooks(faceSpans, [], faceTotal));
     applyGroups(outline, groupsForLooks(outlineSpans, [], outlineTotal));
     return { faces, outline, ranges, colours, faceSpans, outlineSpans, faceTotal, outlineTotal };
-  }, [zones, frame]);
+  }, [zones, frame, slice.facades]);
 
   useEffect(
     () => () => {
@@ -184,16 +198,35 @@ export function Buildings({ zones, frame, assets, heat }: BuildingsProps) {
         geometry={shell.faces}
         renderOrder={FACES_ORDER}
         userData={{ ranges: shell.ranges }}
+        castShadow={slice.shadow}
+        receiveShadow={slice.shadow}
       >
         {/* Group 0 is a building as it is, 1 one faded, 2 the one in focus, see-through (`applyGroups`). */}
-        <meshLambertMaterial
-          attach="material-0"
-          color="#ffffff"
-          vertexColors
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-        />
+        {slice.facades && atlas ? (
+          // SPIKE (V3-11.5): the facade atlas on the buildings as they are; faded and see-through stay flat (V3-14.1).
+          <meshLambertMaterial
+            key="facade"
+            attach="material-0"
+            color="#ffffff"
+            vertexColors
+            polygonOffset
+            polygonOffsetFactor={1}
+            polygonOffsetUnits={1}
+            map={atlas}
+            onBeforeCompile={patchFacadeShader}
+            customProgramCacheKey={facadeProgramKey}
+          />
+        ) : (
+          <meshLambertMaterial
+            key="flat"
+            attach="material-0"
+            color="#ffffff"
+            vertexColors
+            polygonOffset
+            polygonOffsetFactor={1}
+            polygonOffsetUnits={1}
+          />
+        )}
         <meshLambertMaterial
           attach="material-1"
           color="#ffffff"
