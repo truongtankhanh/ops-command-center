@@ -11,6 +11,7 @@ import { boxTable } from '../lib/twin-core/twinPicking';
 import type { TwinFeed } from '../realtime/twinFeed';
 import { applyGroups } from './applyGroups';
 import { usePicker } from './PickContext';
+import { useSliceFlags } from './slice/sliceFlags';
 import { type BoxLayers, createBoxLayers, useBoxLooks } from './useAssetLooks';
 
 /**
@@ -79,6 +80,8 @@ export function AssetBoxes({ assets, feed, hover, presences }: AssetBoxesProps) 
   const picker = usePicker();
   const invalidate = useThree((state) => state.invalidate);
   const faces = useRef<Mesh>(null);
+  // SPIKE (V3-11.5): the boxes cast the slice's shadow too, as the models do (`Equipment`).
+  const { shadow } = useSliceFlags();
   const layers = useMemo(() => {
     if (assets.length === 0) return null;
     const created = createBoxLayers(assets);
@@ -122,6 +125,7 @@ export function AssetBoxes({ assets, feed, hover, presences }: AssetBoxesProps) 
         geometry={layers.faces}
         renderOrder={FACES_ORDER}
         userData={{ ranges: layers.ranges }}
+        castShadow={shadow}
       >
         {/* Group 0 is a box as it is; group 1 is one faded (`applyGroups`). */}
         <meshLambertMaterial

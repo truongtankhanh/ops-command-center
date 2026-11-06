@@ -1,5 +1,5 @@
 import { Canvas, useFrame } from '@react-three/fiber';
-import { lazy, type RefObject, Suspense, useCallback, useRef, useState } from 'react';
+import { lazy, type RefObject, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { Beacon } from '../lib/twin-core/twinBeacons';
 import { type FitBox, HOME_FOV_DEG } from '../lib/twin-core/twinCamera';
 import type { HeatScene } from '../lib/twin-core/twinHeat';
@@ -32,6 +32,10 @@ import { Pointer } from './Pointer';
 import { ReportPin } from './ReportPin';
 import { Rig } from './Rig';
 import { ScaleSync } from './ScaleSync';
+import { describeSlice, parseSliceFlags, sliceActive } from './slice/sliceFlags';
+import { SliceGround } from './slice/SliceGround';
+import { SliceScope } from './slice/SliceScope';
+import { SliceTrees } from './slice/SliceTrees';
 import type { ClassPoints } from './useClassPoints';
 import type { TwinScene } from './useTwinScene';
 import { ZoneHighlight } from './ZoneHighlight';
@@ -192,6 +196,11 @@ export function TwinCanvas({
   wall = false,
 }: TwinCanvasProps) {
   const [hudRequested] = useState(() => HudProbe !== null && debugTwinRequested(location.search));
+  // SPIKE (V3-11.5): the realism slice's switches, read once per mount like the HUD's (`slice/sliceFlags.ts`).
+  const [slice] = useState(() => parseSliceFlags(location.search));
+  useEffect(() => {
+    if (sliceActive(slice)) console.info(describeSlice(slice));
+  }, [slice]);
   const [ratio, setRatio] = useState(() =>
     wall ? WALL_DPR : (rememberedDprStep() ?? DPR_STEPS[0] ?? 1.5),
   );
@@ -223,6 +232,9 @@ export function TwinCanvas({
       frameloop="demand"
       dpr={[1, ratio]}
       flat
+      // SPIKE (V3-11.5): a shadow map only with the slice's `shadow`. 'percentage' is PCF: three 0.186 removed
+      // PCFSoftShadowMap (R3F's `true`), which three replaces with PCF after a warning.
+      shadows={slice.shadow ? 'percentage' : undefined}
       onCreated={({ invalidate }) => onInvalidate(invalidate)}
     >
       {/* `--surface-0`, a copy kept in step by `scripts/contrast.ts --check` (WebGL cannot read CSS). */}
@@ -236,34 +248,48 @@ export function TwinCanvas({
       )}
       {scene && (
         <MarkerScaleContext.Provider value={markerScale}>
-          <FrameDriver>
-            <FirstFrameMark />
-            <PixelRatio initial={ratio} onStep={onStep} wall={wall} />
-            {wall && <FrameGuard />}
-            <Rig
-              bounds={scene.bounds}
-              boxes={boxes}
-              assetBoxes={assetBoxes}
-              beacons={beacons}
-              locked={wall}
-            />
-            <Lights />
-            <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
-            {wall ? (
-              drawn
-            ) : (
-              <PickLayer cameras={scene.cameras} frame={scene.frame}>
-                {drawn}
-                <ReportPin zones={scene.zones} frame={scene.frame} />
-              </PickLayer>
-            )}
-            {!wall && <Pointer assets={scene.assets} zones={scene.zones} frame={scene.frame} />}
-            <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
-            <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
-            <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
-            {!wall && <CompassSync compassRef={compassRef} />}
-            {!wall && <ScaleSync scaleRef={scaleRef} />}
-          </FrameDriver>
+          <SliceScope flags={slice}>
+            <FrameDriver>
+              <FirstFrameMark />
+              <PixelRatio initial={ratio} onStep={onStep} wall={wall} />
+              {wall && <FrameGuard />}
+              <Rig
+                bounds={scene.bounds}
+                boxes={boxes}
+                assetBoxes={assetBoxes}
+                beacons={beacons}
+                locked={wall}
+              />
+              <Lights shadow={slice.shadow ? scene.bounds : undefined} />
+              <Ground plan={scene.plan} zones={scene.zones} frame={scene.frame} />
+              {(slice.textures || slice.shadow) && (
+                <SliceGround plan={scene.plan} zones={scene.zones} frame={scene.frame} />
+              )}
+              {slice.trees > 0 && (
+                <SliceTrees
+                  density={slice.trees}
+                  plan={scene.plan}
+                  zones={scene.zones}
+                  frame={scene.frame}
+                  assets={scene.assets}
+                />
+              )}
+              {wall ? (
+                drawn
+              ) : (
+                <PickLayer cameras={scene.cameras} frame={scene.frame}>
+                  {drawn}
+                  <ReportPin zones={scene.zones} frame={scene.frame} />
+                </PickLayer>
+              )}
+              {!wall && <Pointer assets={scene.assets} zones={scene.zones} frame={scene.frame} />}
+              <ZoneHighlight zones={scene.zones} frame={scene.frame} zoneId={highlightZoneId} />
+              <CameraMarkers cameras={scene.cameras} frame={scene.frame} />
+              <LabelProjector anchors={scene.anchors} layerRef={labelLayer} />
+              {!wall && <CompassSync compassRef={compassRef} />}
+              {!wall && <ScaleSync scaleRef={scaleRef} />}
+            </FrameDriver>
+          </SliceScope>
         </MarkerScaleContext.Provider>
       )}
     </Canvas>
