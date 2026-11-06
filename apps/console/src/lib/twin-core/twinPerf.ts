@@ -1,13 +1,14 @@
 /*
  * What the developer HUD of the 3D twin measures and how (V2-19.1, ADR-0020 § Budgets, brief § Performance): a window of
- * frame times, the rate of a cumulative counter, the six values of frame 00, the `?debug=twin` request and the load
- * marks. Pure: no clock (the caller passes `now`, as `createPickStats` does), no React, no three, so it tests without
- * WebGL. V2-19.2 added `needsFrame`; V2-19.3 the pixel-ratio controller; V2-19.4 the budget guard: every export stands
+ * frame times, the rate of a cumulative counter, the six values of frame 00 and the load marks. Pure: no clock (the
+ * caller passes `now`, as `createPickStats` does), no React, no three, so it tests without WebGL. V2-19.2 added `needsFrame`; V2-19.3 the pixel-ratio controller; V2-19.4 the budget guard: every export stands
  * alone, so the build keeps only what shipped code imports (the guard is imported by the development-only probe, so it
  * never reaches `dist`). The labels, formats and warning text of the HUD are in `twinHud.ts`, on purpose not here (see there).
  * V3-11.2 added the frame **cost** (V3-11.1's metric: the CPU time of one turn of R3F's loop, `createFrameCostClock`), the
  * GPU time where a timer exists, and the quality tier's word; only the development-only probe imports them too.
  * V3-11.7 gave the draw-call and triangle budgets one figure per quality tier (`TIER_SCENE_BUDGETS`).
+ * V3-11.8 moved the `?debug=twin` request (`debugTwinRequested`) to `twinDebugAddress.ts`, which the entry chunk imports
+ * to carry the flag through sign-in: importing it from here would have pulled this module out of the lazy chunk.
  */
 
 import type { TwinTier } from './twinTier';
@@ -262,19 +263,6 @@ export function createFrameCostClock() {
       return cost;
     },
   };
-}
-
-/**
- * Whether the address asks for the HUD: a `debug` parameter equal to `twin`. Only half of the gate: the HUD also needs
- * a development build, decided where each piece is imported (a literal `import.meta.env.MODE` there, which the
- * production build folds away; a helper would not be). Never throws.
- */
-export function debugTwinRequested(search: string): boolean {
-  try {
-    return new URLSearchParams(search).get('debug') === 'twin';
-  } catch {
-    return false;
-  }
 }
 
 /** The load marks of V2-19.7: `performance.measure('twin:data', 'twin:first-frame')` is the first useful frame. */

@@ -13,7 +13,6 @@ import {
   DPR_STEPS,
   FALLBACK_AFTER_MS,
   FALLBACK_BUDGET_MS,
-  debugTwinRequested,
   DRAW_CALL_BUDGET,
   forgetDprStep,
   type FrameDemand,
@@ -425,30 +424,6 @@ describe('createFrameCostClock (V3-11.2)', () => {
     clock.begin(20);
 
     expect(clock.end(21)).toBeNull();
-  });
-});
-
-describe('debugTwinRequested', () => {
-  it.each([
-    ['?debug=twin', true],
-    ['debug=twin', true],
-    ['?a=1&debug=twin', true],
-    ['?debug=twin&a=1', true],
-    ['', false],
-    ['?debug', false],
-    ['?debug=', false],
-    ['?debug=twin2', false],
-    ['?debug=twins', false],
-    ['?Debug=twin', false],
-    ['?debug=Twin', false],
-    ['?twin=1', false],
-  ])('%j → %s', (search, expected) => {
-    expect(debugTwinRequested(search)).toBe(expected);
-  });
-
-  it('does not throw on a malformed string', () => {
-    expect(debugTwinRequested('?debug=twin&%E0%A4%A')).toBe(true);
-    expect(debugTwinRequested('%')).toBe(false);
   });
 });
 

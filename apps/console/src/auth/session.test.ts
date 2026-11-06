@@ -186,6 +186,64 @@ describe('session', () => {
       sessionStorage.clear();
     });
 
+    // V3-11.8: the developer HUD's flag crosses the redirect the way the wall's number does.
+    describe("the developer HUD's ?debug=twin", () => {
+      beforeEach(() => sessionStorage.setItem('occ.console.debugTwin', '1'));
+      afterEach(() => sessionStorage.clear());
+
+      it('is back on the address after sign-in, so the 3D stage finds it when it mounts', async () => {
+        const { session } = await load('/?code=c&state=s');
+        await session.startSession();
+
+        expect(lastManager().signinRedirectCallback).toHaveBeenCalledTimes(1);
+        expect(window.location.pathname).toBe('/');
+        expect(window.location.search).toBe('?debug=twin');
+      });
+
+      it("keeps a video wall's number too, the wall first", async () => {
+        sessionStorage.setItem('occ.console.wall', '2');
+        const { session } = await load('/?code=c&state=s');
+        await session.startSession();
+
+        expect(window.location.search).toBe('?wall=2&debug=twin');
+      });
+
+      it('is put back when the sign-in response is rejected, without the code', async () => {
+        oidc.FakeUserManager.onCreate = (manager) =>
+          manager.signinRedirectCallback.mockRejectedValue(new Error('invalid_grant'));
+        const { session, useSession } = await load('/?code=c&state=s');
+
+        await session.startSession();
+
+        expect(useSession.getState().status).toBe('failed');
+        expect(window.location.search).toBe('?debug=twin');
+      });
+
+      it('is put back after an error returned by Keycloak', async () => {
+        oidc.FakeUserManager.onCreate = (manager) =>
+          manager.signinRedirectCallback.mockRejectedValue(new Error('access_denied'));
+        const { session } = await load('/?error=access_denied&state=s');
+
+        await session.startSession();
+
+        expect(window.location.search).toBe('?debug=twin');
+      });
+
+      it('is lost, and sign-in still completes, where storage is blocked', async () => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+          throw new Error('Storage is disabled');
+        });
+        const { session, useSession } = await load('/?code=c&state=s');
+
+        await session.startSession();
+
+        expect(lastManager().signinRedirectCallback).toHaveBeenCalledTimes(1);
+        expect(useSession.getState().status).not.toBe('failed');
+        expect(window.location.pathname).toBe('/');
+        expect(window.location.search).toBe('');
+      });
+    });
+
     it('still removes the code from the address when the sign-in response is rejected', async () => {
       oidc.FakeUserManager.onCreate = (manager) =>
         manager.signinRedirectCallback.mockRejectedValue(new Error('invalid_grant'));

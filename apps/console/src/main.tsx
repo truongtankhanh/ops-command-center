@@ -9,6 +9,11 @@ import appStyles from './App.module.css';
 import { startSession } from './auth/session';
 import { AuthGate } from './components/auth/AuthGate';
 import { RegionFallback } from './components/shell/LoadStates';
+import {
+  debugTwinCarried,
+  forgetDebugTwin,
+  rememberDebugTwin,
+} from './lib/twin-core/twinDebugAddress';
 import { forgetWall, rememberWall, wallScreen } from './lib/wall/wallMode';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
@@ -24,6 +29,10 @@ const queryClient = new QueryClient({
 const wall = wallScreen();
 if (wall !== null) rememberWall(wall);
 else forgetWall();
+
+// The developer HUD's `?debug=twin` crosses the redirect the same way (V3-11.8); the address stays the switch.
+if (debugTwinCarried()) rememberDebugTwin();
+else forgetDebugTwin();
 
 // Outside React, so StrictMode's double effects cannot exchange the single-use code twice.
 void startSession();
