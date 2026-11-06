@@ -237,11 +237,11 @@ function reporterLabel(source: Detail['source']): string {
 }
 
 /**
- * The header of the sheet (frame 02): the type's icon in a tile of the severity's hue, the title, the
- * code and the zone, Close, then the chips: severity, how long ago it was reported, the status (the
- * stepper in the body says the same in full), while the incident is open the time left before its
- * attention threshold (V3-22.4), the type, the category and the source. The type and the status are
- * words as well as glyphs, so the tile is decorative.
+ * The header of the sheet (frame 02): the type's icon in a tile of the severity's hue, Close, the
+ * title, then the code, the zone and how long ago it was reported, then the chips in two rows: the
+ * state (severity, the status, which the stepper in the body says in full, and while the incident is
+ * open the time left before its attention threshold, V3-22.4), then the kind (the type, the category
+ * and the source). The type and the status are words as well as glyphs, so the tile is decorative.
  */
 function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: ReactNode }) {
   const { data: zones = [] } = useZones();
@@ -263,30 +263,35 @@ function DetailHead({ incident, closeButton }: { incident: Detail; closeButton: 
               <span>{zone.name}</span>
             </>
           )}
+          <span aria-hidden="true">·</span>
+          <IncidentAge reportedAt={incident.reportedAt} />
         </>
       }
       closeButton={closeButton}
     >
-      <SeverityBadge severity={incident.severity} />
-      <IncidentAge reportedAt={incident.reportedAt} />
-      <StatusChip status={incident.status} form="pill" />
-      <AttentionChip incident={incident} />
-      <span className={styles.chip}>
-        <Icon glyph={incidentTypeIcon(incident.type)} size={16} className={styles.chipIcon} />
-        {typeLabel(incident.type)}
+      <span className={styles.metaRow}>
+        <SeverityBadge severity={incident.severity} />
+        <StatusChip status={incident.status} form="pill" />
+        <AttentionChip incident={incident} />
       </span>
-      {category !== null && (
+      <span className={`${styles.metaRow} ${styles.kind}`}>
         <span className={styles.chip}>
-          <Icon glyph={categoryIcon(category)} size={16} className={styles.chipIcon} />
-          {categoryLabel(category)}
+          <Icon glyph={incidentTypeIcon(incident.type)} size={14} className={styles.chipIcon} />
+          {typeLabel(incident.type)}
         </span>
-      )}
-      {incident.source === 'telemetry' && (
-        <span className={styles.chip}>
-          <Icon glyph={actorKindIcon('system')} size={16} className={styles.chipIcon} />
-          Telemetry rule
-        </span>
-      )}
+        {category !== null && (
+          <span className={styles.chip}>
+            <Icon glyph={categoryIcon(category)} size={14} className={styles.chipIcon} />
+            {categoryLabel(category)}
+          </span>
+        )}
+        {incident.source === 'telemetry' && (
+          <span className={styles.chip}>
+            <Icon glyph={actorKindIcon('system')} size={14} className={styles.chipIcon} />
+            Telemetry rule
+          </span>
+        )}
+      </span>
     </InspectorHeader>
   );
 }

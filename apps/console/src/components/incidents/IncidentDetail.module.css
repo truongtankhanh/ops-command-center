@@ -3,18 +3,38 @@
  * the look of the chips it is given (type, category, source, age) and the sections of the body.
  */
 
-/* Type, category and source, beside the severity badge and as tall as it (frame 02 `.chip`). */
+/*
+ * The header's chips in two rows (the header's row wraps them): what state the incident is in (severity, status, the
+ * time to attention), then what kind it is (type, category, source). One mixed row put "Open" between the age and the
+ * countdown and broke wherever the widths fell, so the two kinds of fact read as one jumble.
+ */
+.metaRow {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+/*
+ * Type, category and source: the kind of the incident, on the second row as quiet words with their glyphs (frame 02 drew
+ * them as `.chip` pills beside the severity). As pills the three needed about 376 px against the header's 305, so one
+ * always fell to a line of its own; as text at 12 px (`--type-xs`) they fit one line, and the state row above stays the loud one.
+ * `--text-secondary` on `--surface-1` is a checked text pair (`scripts/contrast.ts`).
+ */
+.kind {
+  column-gap: var(--space-3);
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1-5);
-  /* `min-height`, so a long zone name that has to break stays inside its chip (V3-03.4). */
-  min-height: calc(26px * var(--ui-scale));
-  padding: 0 var(--space-2) 0 var(--space-1-5);
-  border-radius: var(--radius-s);
-  background: var(--surface-2);
+  gap: var(--space-1);
   font-family: var(--font-ui);
-  font-size: var(--type-m);
+  font-size: var(--type-xs);
+  line-height: var(--leading-s);
+  color: var(--text-secondary);
+  /* A long type or zone word breaks inside the row instead of widening it (V3-03.4). */
   overflow-wrap: anywhere;
 }
 

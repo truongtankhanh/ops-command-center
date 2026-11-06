@@ -10,3 +10,21 @@
   flex-direction: column;
   min-width: 0;
 }
+
+/*
+ * The tab list in the 360 px sheet. At `Tabs`' own spacing the incident's four tabs (Details, Related n,
+ * Telemetry, Timeline) need about 384 px, more than the sheet's content box (345 px beside a scrollbar),
+ * so the last tab widened the sheet and it scrolled sideways. Tighter spacing fits them with room for a
+ * three-digit count; wrapping is the last resort, never a sideways scroll. The selected tab's bar keeps
+ * `Tabs`' inset, so it still spans the label. The role in the selector outranks `Tabs`' `.list`, whose
+ * sheet may load after this one.
+ */
+.tabs[role='tablist'] {
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0 var(--space-1);
+}
+
+.tabs > [role='tab'] {
+  padding: 0 var(--space-2);
+}

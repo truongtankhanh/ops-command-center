@@ -101,14 +101,22 @@ export function IncidentRow({
         {formatAge(incident.reportedAt, now)}
         {spoken && <span className={styles.hidden}>{`, ${spoken}`}</span>}
       </time>
-      {left && (
-        <span className={styles.countdown} aria-hidden="true" data-attention={left.state}>
-          <CountdownRing fraction={left.fraction} state={left.state} />
-          {left.state === 'soon' && <Icon glyph={Clock} size={14} />}
-          <span>{countdownLabel(left.remainingMs)}</span>
-        </span>
-      )}
-      <StatusChip status={incident.status} className={styles.status} />
+      {/*
+       * Line 2 after the chip: the status, or the countdown in its place. A countdown is drawn only for an incident
+       * nobody has acknowledged, whose status is always "Open", so the ring says it and the word would only crowd the
+       * line (an overdue "+22d 15h over" and "Open" do not fit beside the chip in a 360 px column). The word stays for
+       * assistive tech, hidden, so the row's name is unchanged.
+       */}
+      <span className={styles.state}>
+        <StatusChip status={incident.status} className={left ? styles.hidden : styles.status} />
+        {left && (
+          <span className={styles.countdown} aria-hidden="true" data-attention={left.state}>
+            <CountdownRing fraction={left.fraction} state={left.state} />
+            {left.state === 'soon' && <Icon glyph={Clock} size={14} />}
+            <span>{countdownLabel(left.remainingMs)}</span>
+          </span>
+        )}
+      </span>
       <span className={styles.foot}>
         {zone && (
           <span className={styles.zone} title={zone}>

@@ -47,11 +47,14 @@ export function InspectorHeader({
             {tile}
           </span>
         )}
-        <div className={styles.heading}>
-          {title !== undefined && <h2 className={styles.title}>{title}</h2>}
-          {subtitle !== undefined && <p className={styles.subtitle}>{subtitle}</p>}
-        </div>
-        {closeButton}
+        {(title !== undefined || subtitle !== undefined) && (
+          <div className={styles.heading}>
+            {title !== undefined && <h2 className={styles.title}>{title}</h2>}
+            {subtitle !== undefined && <p className={styles.subtitle}>{subtitle}</p>}
+          </div>
+        )}
+        {/* After the heading, so the heading is read first; the grid draws it in the corner. */}
+        <span className={styles.close}>{closeButton}</span>
       </div>
       {children !== undefined && <div className={styles.meta}>{children}</div>}
     </div>
