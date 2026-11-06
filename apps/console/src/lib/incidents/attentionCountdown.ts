@@ -11,6 +11,7 @@ import type { Incident, IncidentSeverity } from '@occ/contracts';
 
 const MINUTE_MS = 60_000;
 const HOUR_SECONDS = 3600;
+const DAY_SECONDS = 24 * HOUR_SECONDS;
 
 /**
  * How long an incident may stay open (not acknowledged) before the feed flags its age. Provisional
@@ -87,8 +88,13 @@ export function attentionCountdown(
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
-/** `m:ss`, or `1h 05m` from an hour on. */
+/**
+ * `m:ss`, `1h 05m` from an hour on, and `22d 15h` from a day on: an incident left open for weeks would otherwise read
+ * `+543h 50m over`, which nobody reads as three weeks and which no longer fits the feed row's line.
+ */
 function clock(totalSeconds: number): string {
+  const days = Math.floor(totalSeconds / DAY_SECONDS);
+  if (days > 0) return `${days}d ${pad(Math.floor((totalSeconds % DAY_SECONDS) / HOUR_SECONDS))}h`;
   const hours = Math.floor(totalSeconds / HOUR_SECONDS);
   if (hours > 0) return `${hours}h ${pad(Math.floor((totalSeconds % HOUR_SECONDS) / 60))}m`;
   return `${Math.floor(totalSeconds / 60)}:${pad(totalSeconds % 60)}`;
@@ -96,8 +102,8 @@ function clock(totalSeconds: number): string {
 
 /**
  * The countdown as the ring's text, from the signed time left: `1:52`, `30:00`, then `+2:10 over` and `+1h 05m over` once
- * past the deadline. A time left rounds up to the second, so `0:00` is never shown before the deadline; a time over rounds
- * down, so `+0:00 over` is the first second after it.
+ * past the deadline, and `+22d 03h over` from a day on. A time left rounds up to the second, so `0:00` is never shown
+ * before the deadline; a time over rounds down, so `+0:00 over` is the first second after it.
  */
 export function formatCountdown(remainingMs: number): string {
   if (remainingMs > 0) return clock(Math.ceil(remainingMs / 1000));

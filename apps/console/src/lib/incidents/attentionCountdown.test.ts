@@ -180,6 +180,9 @@ describe('formatCountdown', () => {
     [-3 * SECOND, '+0:03 over'],
     [-130 * SECOND, '+2:10 over'],
     [-(HOUR + 5 * MINUTE), '+1h 05m over'],
+    [-(23 * HOUR + 59 * MINUTE + 59 * SECOND), '+23h 59m over'],
+    [-24 * HOUR, '+1d 00h over'],
+    [-(22 * 24 * HOUR + 15 * HOUR + 50 * MINUTE), '+22d 15h over'],
   ])('writes %i ms as %s', (remainingMs, text) => {
     expect(formatCountdown(remainingMs)).toBe(text);
   });
