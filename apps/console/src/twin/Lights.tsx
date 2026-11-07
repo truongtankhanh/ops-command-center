@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { type DirectionalLight, Object3D } from 'three';
+import { BASE_LIGHT, KEY_LIGHT, TOWARDS_LIGHT } from '../lib/twin-core/twinLighting';
 import type { Bounds } from '../lib/twin-core/twinScene';
 
 /*
@@ -9,41 +10,19 @@ import type { Bounds } from '../lib/twin-core/twinScene';
  * V3-12.4 casts. Contact shadows are a baked decal under each asset, and ambient occlusion is baked into
  * textures.
  *
- * A part is one material, `--tw-top`, and the lights make its three visible faces. The tokens give the
- * targets as shares of the top face (per channel, `--tw-south` over `--tw-top` is 0.74 – 0.82, mean 0.78,
- * and `--tw-east` over it 0.55 – 0.66, mean 0.60), and a face of unit albedo gets, in the Lambert model,
+ * A part or a building is one albedo, `--tw-top`, and the two lights make the three faces the home view shows read as
+ * `--tw-top`, `--tw-south` and `--tw-east`. The light set, the maths (in linear light, per channel) and the test that
+ * holds every face within 6 of 255 of its token are in `lib/twin-core/twinLighting.ts`, with why the key light comes
+ * from the west-south-west. The lights stay white (ADR-0020 "Settled in V3-12.1"): the cool look is the tokens'.
  *
- *   top = BASE + KEY·Ly,   south (normal +z) = BASE + KEY·Lz,   east (normal +x) = BASE + KEY·Lx
- *
- * where `L` is the unit vector towards the light and a face turned away from it gets the base only.
- * BASE = 0.60 and KEY = 0.53 with L = (−0.57, 0.75, 0.34) give 1.00, 0.78 and 0.60: every face within
- * 6 of 255 per channel of its token.
- *
- * The key light therefore comes from the west, 30° south of west, 49° above the ground. It cannot come
- * from the north-west as frame 00's prose says: seen from the south-east (the home view, V2-12.9) the
- * south and east walls both face away from such a light and would get the base alone, the same shade.
- * The walls turned away from the camera are lit from the side (west 0.90) or not at all (north 0.60).
- *
- * In three.js (r155 and later) a punctual light of intensity π gives a Lambert surface its full colour,
- * so both intensities carry a factor of π. The face colours are calculated, not yet read from a render
- * (`unverified`): the developer reads one building's top, south and east face in the browser and the
- * constants are adjusted from that.
+ * In three.js (r155 and later) a punctual light of intensity π gives a Lambert surface its full colour, and so does a
+ * hemisphere light, so both intensities carry a factor of π. The face colours are calculated, not yet read from a render
+ * (`unverified`): the developer reads one building's top, south and east face in the browser.
  *
  * SPIKE (V3-11.5, merged to `main` in #246): with `?slice=shadow` the key light casts the realism slice's one shadow.
  * That is the spike's, not the product's: without the switch there is no shadow map. V3-12.4 replaces it by the rules
- * of ADR-0020 "Settled in V3-12.1" (the key's direction and both intensities are unchanged there).
+ * of ADR-0020 "Settled in V3-12.1" (the key's direction is unchanged there; the intensities are V3-12.3's).
  */
-
-/** The share of a material's colour every face gets, whatever it looks at. */
-const BASE_LIGHT = 0.6;
-/** What a face looking straight at the light gets on top of the base. */
-const KEY_LIGHT = 0.53;
-/**
- * Towards the light, in scene axes (`x` east, `y` up, `z` = −north): west, a little south, and above.
- * Only the direction matters: a directional light aims at the origin, and its intensity does not
- * depend on how far away it is placed.
- */
-const TOWARDS_LIGHT: [x: number, y: number, z: number] = [-0.57, 0.75, 0.34];
 
 /** SPIKE (V3-11.5): the shadow's map size (V3-12.1's placeholder) and its margin round the campus, in metres. */
 const SHADOW_MAP_SIZE = 2048;

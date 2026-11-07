@@ -1863,9 +1863,21 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       The base light stays 0.60 and the key 0.53, so a face looking up gets 1.00 of its colour, a south face 0.78 and an
       east face 0.60. These figures are computed, not yet read from a render; the claim becomes a pure function with a
       test (`faceTones`, V3-12.3).
+      - Refined in V3-12.3 (2026-11-07): **the base is 0.44 and the key 0.72**; the direction is unchanged. V2's
+        figures did not hold. three lights in linear light (colour management on, no tone mapping), whereas they were
+        fitted by multiplying the sRGB bytes. V3-02 then moved `--tw-top` without `--tw-south` / `--tw-east`, so 0.60 /
+        0.53 missed the 6-of-255 rule by up to 12.6 (steel's east face, computed). In linear light a face looking up
+        now gets 0.98 of its colour, a south face 0.68 and an east face 0.44. The rule is a test
+        (`lib/twin-core/twinLighting.ts`, `faceTones`). Every face of the four neutral sets (idle, steel, concrete,
+        stale) is within 5 of 255 of its token, and a lit ground fill within 1. Hover and alarm are not held to it:
+        their face tokens are `color-mix` of each face, which no single light set can match, and only their top is a
+        contrast pair. A shaded face keeps the base, 0.44 of its linear light: on the dark ground tokens that is about
+        half to two thirds of the sRGB value (`#0f1d27` → `#071118`, computed). It replaces the "0.60 … at most 40 %
+        darker" below. Still `unverified` in a browser.
     - **The ground is lit.** The ground's fill layers (the boundary fill, the zone fills and the roads) move from unlit
       basic materials to Lambert materials in every tier, so that they can receive the shadow. A face looking up gets
-      0.60 + 0.53 × 0.75 ≈ 1.00 of its colour, so a lit fill still reads as its token (within 1 of 255). Lines and
+      0.60 + 0.53 × 0.75 ≈ 1.00 of its colour, so a lit fill still reads as its token (within 1 of 255; figures
+      refined in V3-12.3). Lines and
       outlines stay unlit. V3-13.7's textured ground replaces the fills later and is lit the same way.
     - **The shadow (High tier only).**
       - **Light and filter:** the key light casts the shadow, with `shadows="percentage"` on the Canvas. three 0.186
@@ -1879,8 +1891,8 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
         pre-run; they are re-read at the home view and at a 60 m building fit.
       - **Strength:** `shadow.intensity` is `--tw-shadow-strength`, **1.0**. The shadow removes only the key light,
         and the hemisphere base still lights the shaded area. Shaded ground therefore reads 0.60 of its token, as an
-        east wall does: at most 40 % darker. A lower strength would make the shadow hard to see on the dark ground
-        tokens.
+        east wall does: at most 40 % darker (see "Refined in V3-12.3" above). A lower strength would make the shadow
+        hard to see on the dark ground tokens.
       - **Casters:** the shells and the equipment (models and boxes). Trees do not cast (V3-11.5's decision D4; V3-13.1
         may change that with a reading). Markers, beacons, labels, decals and the zone highlight neither cast nor
         receive.
