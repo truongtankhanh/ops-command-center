@@ -136,6 +136,35 @@ jobs:
           code=$(get /campus/overview)
           test "$code" = 200 || fail "/campus/overview returned $code, want 200"
           grep -q 'id="root"' /tmp/models-body || fail "/campus/overview did not answer with the SPA page"
+      # Compression (V3-11.9, ADR-0020 § Serving): the console's JavaScript is sent gzipped to a browser that asks for it,
+      # with `Vary` and its immutable caching kept, and as is to one that does not; a model is never recompressed.
+      - name: Check nginx compresses the console's text and not its models
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          base=http://localhost:18080
+          get() { curl -s -o /tmp/gzip-body -D /tmp/gzip-headers -w '%{http_code}' "$@" || true; }
+          header() { grep -i "^$1:" /tmp/gzip-headers | tr -d '\r' | cut -d: -f2- | sed 's/^ *//' || true; }
+
+          js=$(curl -s "$base/" | grep -o '/assets/index-[^"]*\.js' | head -n 1 || true)
+          test -n "$js" || fail "index.html names no /assets/index-*.js"
+
+          code=$(get -H 'Accept-Encoding: gzip' "$base$js")
+          test "$code" = 200 || fail "$js returned $code, want 200"
+          test "$(header content-encoding)" = gzip || fail "$js with Accept-Encoding: gzip has Content-Encoding '$(header content-encoding)', want gzip"
+          case "$(header vary)" in *Accept-Encoding*) ;; *) fail "$js has Vary '$(header vary)', want Accept-Encoding" ;; esac
+          case "$(header cache-control)" in *immutable*) ;; *) fail "$js has Cache-Control '$(header cache-control)', want immutable" ;; esac
+          gzip -dc < /tmp/gzip-body > /dev/null || fail "$js answered Content-Encoding: gzip with a body that is not gzip"
+
+          code=$(get "$base$js")
+          test "$code" = 200 || fail "$js without Accept-Encoding returned $code, want 200"
+          test -z "$(header content-encoding)" || fail "$js without Accept-Encoding has Content-Encoding '$(header content-encoding)', want none"
+
+          set -- ops/models/*.glb
+          test -e "$1" || fail "ops/models holds no .glb to request"
+          model=$(basename "$1")
+          code=$(get -H 'Accept-Encoding: gzip' "$base/models/$model")
+          test "$code" = 200 || fail "/models/$model returned $code, want 200"
+          test -z "$(header content-encoding)" || fail "/models/$model has Content-Encoding '$(header content-encoding)', want none"
       # Last: it stops the database. Each replica must stay live and report not ready (ADR-0013).
       - name: Liveness survives a database outage
         run: |
