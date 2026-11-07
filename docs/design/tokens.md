@@ -218,14 +218,14 @@ The depth rules of [ADR-0020](../adr/0020-digital-twin-rendering-and-model-pipel
 in V3-12.2 before any component uses them. Every value is `unverified` until the task that draws it looks at it in a
 browser (V3-12.4 – V3-12.6).
 
-| Token                  | Value              | Use                                                                                       |
-| ---------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
-| `--tw-fog`             | `var(--surface-0)` | The fog's colour: the canvas background, so the far ground melts into the page            |
-| `--tw-fog-near`        | `0.5`              | Where the fog starts: campus half-diagonals beyond the camera's distance to its target    |
-| `--tw-fog-far`         | `3`                | Where the fog is full, in the same unit                                                   |
-| `--tw-shadow-strength` | `1`                | The key light's `shadow.intensity` (High tier only); a shaded face is at most 40 % darker |
-| `--tw-ao-base`         | `0.7`              | Baked AO: the multiplier at a wall's base, rising to 1 at its top                         |
-| `--tw-contact-opacity` | `0.5`              | The contact decal under an asset: its opacity at the centre                               |
+| Token                  | Value              | Use                                                                                                                                 |
+| ---------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--tw-fog`             | `var(--surface-0)` | The fog's colour: the canvas background, so the far ground melts into the page                                                      |
+| `--tw-fog-near`        | `0.5`              | Where the fog starts: campus half-diagonals beyond the camera's distance to its target                                              |
+| `--tw-fog-far`         | `3`                | Where the fog is full, in the same unit                                                                                             |
+| `--tw-shadow-strength` | `1`                | The key light's `shadow.intensity` (High tier only); a shaded face keeps the hemisphere's share (0.44 of its linear light, V3-12.3) |
+| `--tw-ao-base`         | `0.7`              | Baked AO: the multiplier at a wall's base, rising to 1 at its top                                                                   |
+| `--tw-contact-opacity` | `0.5`              | The contact decal under an asset: its opacity at the centre                                                                         |
 
 - **Not contrast pairs.** They are depth cues that carry no state, so `scripts/contrast.ts` holds none of them to a
   ratio; each has a copy in `twinColors`, checked for drift like the others (the numbers as the CSS spells them: `1`,

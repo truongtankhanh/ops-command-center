@@ -27,9 +27,17 @@ const LAYER_COLORS: Partial<Record<GroundLayerName, string>> = {
 
 type Geometries = Partial<Record<GroundLayerName, BufferGeometry>>;
 
+/**
+ * A fill as a lit geometry. Every vertex gets the normal (0, 1, 0): the fills lie flat and every triangle faces up
+ * (`twinGround.ts` `addTriangle`), and a two-sided Lambert material would flip the normal of one wound the other way
+ * and give it the base light alone.
+ */
 function meshGeometry({ positions, indices }: Mesh, vertexColors?: number[]): BufferGeometry {
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  const up = new Float32Array(positions.length);
+  for (let i = 1; i < up.length; i += 3) up[i] = 1;
+  geometry.setAttribute('normal', new Float32BufferAttribute(up, 3));
   if (vertexColors) geometry.setAttribute('color', new Float32BufferAttribute(vertexColors, 3));
   geometry.setIndex(indices);
   return geometry;
@@ -105,7 +113,9 @@ interface GroundProps {
  *
  * - The layers are coplanar at `y = 0`, ordered by `renderOrder` and writing no depth, so there is no
  *   z-fighting and whatever stands on the ground (V2-12.7) is drawn over it (`lib/twin-core/twinGround.ts`).
- * - Unlit basic materials: the ground reads as its token, whatever the lights do.
+ * - The fills (boundary, roads, zone fills) are lit Lambert materials (ADR-0020 "Settled in V3-12.1"), so V3-12.4's
+ *   shadow can fall on them: a face looking up gets about 0.98 of its colour in linear light, within 1 of 255 of its
+ *   token (`lib/twin-core/twinLighting.ts`, tested). The lines and outlines stay unlit.
  * - The geometries are built once per data change and disposed when replaced or unmounted; R3F does
  *   not dispose a geometry it was handed as a prop.
  */
@@ -130,7 +140,7 @@ export function Ground({ plan, zones, frame }: GroundProps) {
         if (primitive === 'mesh') {
           return (
             <mesh key={name} geometry={geometry} renderOrder={renderOrder}>
-              <meshBasicMaterial
+              <meshLambertMaterial
                 color={color}
                 vertexColors={name === 'zoneFills'}
                 side={DoubleSide}

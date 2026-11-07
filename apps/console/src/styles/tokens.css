@@ -157,7 +157,8 @@
      distance to its target (unitless). */
   --tw-fog-near: 0.5;
   --tw-fog-far: 3;
-  /* `shadow.intensity`: the shadow removes the key light only, so a shaded face is at most 40 % darker. */
+  /* `shadow.intensity`: the shadow removes the key light only, so a shaded face keeps the hemisphere's share
+     (0.44 of its linear light, V3-12.3). */
   --tw-shadow-strength: 1;
   /* Baked AO: the multiplier at a wall's base, rising linearly to 1 at its top. */
   --tw-ao-base: 0.7;
