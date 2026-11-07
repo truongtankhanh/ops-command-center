@@ -29,8 +29,9 @@ import type { Bounds } from '../lib/twin-core/twinScene';
  * (`unverified`): the developer reads one building's top, south and east face in the browser and the
  * constants are adjusted from that.
  *
- * SPIKE (V3-11.5, branch only): with `shadow` the key light casts the realism slice's one shadow. That is the spike's,
- * not ADR-0020's: on `main` there is still no shadow map.
+ * SPIKE (V3-11.5, merged to `main` in #246): with `?slice=shadow` the key light casts the realism slice's one shadow.
+ * That is the spike's, not the product's: without the switch there is no shadow map. V3-12.4 replaces it by the rules
+ * of ADR-0020 "Settled in V3-12.1" (the key's direction and both intensities are unchanged there).
  */
 
 /** The share of a material's colour every face gets, whatever it looks at. */
