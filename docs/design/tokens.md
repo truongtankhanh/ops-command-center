@@ -212,6 +212,27 @@ Added in V2-02.1, before any component uses them. WebGL cannot read custom prope
   same lightness band).
 - **Not tokens yet.** twin.css's other literals (details, louvres, ribs, seams, the blade hover) land with the scene.
 
+### Scene depth (V3-12)
+
+The depth rules of [ADR-0020](../adr/0020-digital-twin-rendering-and-model-pipeline.md) "Settled in V3-12.1", added
+in V3-12.2 before any component uses them. Every value is `unverified` until the task that draws it looks at it in a
+browser (V3-12.4 – V3-12.6).
+
+| Token                  | Value              | Use                                                                                       |
+| ---------------------- | ------------------ | ----------------------------------------------------------------------------------------- |
+| `--tw-fog`             | `var(--surface-0)` | The fog's colour: the canvas background, so the far ground melts into the page            |
+| `--tw-fog-near`        | `0.5`              | Where the fog starts: campus half-diagonals beyond the camera's distance to its target    |
+| `--tw-fog-far`         | `3`                | Where the fog is full, in the same unit                                                   |
+| `--tw-shadow-strength` | `1`                | The key light's `shadow.intensity` (High tier only); a shaded face is at most 40 % darker |
+| `--tw-ao-base`         | `0.7`              | Baked AO: the multiplier at a wall's base, rising to 1 at its top                         |
+| `--tw-contact-opacity` | `0.5`              | The contact decal under an asset: its opacity at the centre                               |
+
+- **Not contrast pairs.** They are depth cues that carry no state, so `scripts/contrast.ts` holds none of them to a
+  ratio; each has a copy in `twinColors`, checked for drift like the others (the numbers as the CSS spells them: `1`,
+  not `1.0`).
+- **No light colours, no scene vignette.** The lights stay neutral in hue, so the cool look is the `--tw-*` tokens'
+  and the textures'; the stage's vignette is `--vignette` above, CSS only.
+
 ## What may stay a raw value
 
 Component CSS and TSX use tokens for colour, `font-size` / `line-height` / `font-weight`, spacing (padding, margin,
@@ -546,6 +567,7 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.stale.south` (src/styles/tokens.ts)            | #22292e                                 | #22292e                                 | match  |
 | `twinColors.stale.east` (src/styles/tokens.ts)             | #1b2125                                 | #1b2125                                 | match  |
 | `twinColors.staleEdge` (src/styles/tokens.ts)              | #4a555c                                 | #4a555c                                 | match  |
+| `twinColors.fog` (src/styles/tokens.ts)                    | #07111f                                 | #07111f                                 | match  |
 | `twinColors.heat[0]` (src/styles/tokens.ts)                | #132b50                                 | #132b50                                 | match  |
 | `twinColors.heat[1]` (src/styles/tokens.ts)                | #1c3d6f                                 | #1c3d6f                                 | match  |
 | `twinColors.heat[2]` (src/styles/tokens.ts)                | #22539c                                 | #22539c                                 | match  |
@@ -555,6 +577,11 @@ Informational: a token is only held to a minimum on the surfaces listed below.
 | `twinColors.ghostOpacity` (src/styles/tokens.ts)           | 0.18                                    | 0.18                                    | match  |
 | `twinColors.alarmMix` (src/styles/tokens.ts)               | 35%                                     | 35%                                     | match  |
 | `twinColors.xrayOpacity` (src/styles/tokens.ts)            | 0.14                                    | 0.14                                    | match  |
+| `twinColors.fogNear` (src/styles/tokens.ts)                | 0.5                                     | 0.5                                     | match  |
+| `twinColors.fogFar` (src/styles/tokens.ts)                 | 3                                       | 3                                       | match  |
+| `twinColors.shadowStrength` (src/styles/tokens.ts)         | 1                                       | 1                                       | match  |
+| `twinColors.aoBase` (src/styles/tokens.ts)                 | 0.7                                     | 0.7                                     | match  |
+| `twinColors.contactOpacity` (src/styles/tokens.ts)         | 0.5                                     | 0.5                                     | match  |
 | `mapMotion.pulseMs` (src/styles/tokens.ts)                 | 1800ms                                  | 1800ms                                  | match  |
 | `canvasFont.clusterCount` family (src/styles/tokens.ts)    | Inter Variable, system-ui, sans-serif   | Inter Variable, system-ui, sans-serif   | match  |
 | `canvasFont.beaconTag` family (src/styles/tokens.ts)       | Inter Variable, system-ui, sans-serif   | Inter Variable, system-ui, sans-serif   | match  |

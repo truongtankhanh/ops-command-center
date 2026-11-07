@@ -155,6 +155,18 @@ export const twinColors = {
   ghostOpacity: 0.18,
   /** `--heat-0` … `--heat-5`: the telemetry overlay's ramp, in the accent's hue. */
   heat: ['#132b50', '#1c3d6f', '#22539c', '#266cd5', '#5292f2', '#9bc3ff'],
+  /** `--tw-fog`: the canvas background (`--surface-0`); ADR-0020 "Settled in V3-12.1". */
+  fog: '#07111f',
+  /** `--tw-fog-near`: where the fog starts, in campus half-diagonals beyond the target's distance. */
+  fogNear: 0.5,
+  /** `--tw-fog-far`: where the fog is full, in the same unit. */
+  fogFar: 3,
+  /** `--tw-shadow-strength`: the key light's `shadow.intensity` (High tier only). */
+  shadowStrength: 1,
+  /** `--tw-ao-base`: the baked AO's multiplier at a wall's base; 1 at its top. */
+  aoBase: 0.7,
+  /** `--tw-contact-opacity`: the contact decal's opacity at its centre. */
+  contactOpacity: 0.5,
 } as const;
 
 /**
