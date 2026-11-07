@@ -1631,6 +1631,17 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
     `GLTFLoader` and its own `MeshoptDecoder`, which embeds its WebAssembly and needs no file, and the Basis transcoder
     from `/decoders/basis/`; Draco is off. A class's file is fetched once per stage; the browser's HTTP cache answers
     when the stage is opened again, since the name is content-addressed.
+  - Settled in V3-11.9 (2026-11-07), without changing the decision: **the console's text is sent compressed, so the
+    chunk budget's gzip figure is what a browser downloads.** nginx had no compression, and the twin chunk travelled at
+    about 3.6 times its budgeted size. The console image now writes a level 9 `.gz` beside every JavaScript, CSS, JSON,
+    SVG and WASM file of `assets/` and `decoders/` at build time, and nginx sends it with `gzip_static` to a browser
+    that accepts gzip, with `Vary: Accept-Encoding` and the caching headers unchanged; any other text file over 1 KB is
+    compressed on the fly (`index.html` and the favicon are smaller and go as they are). Compression is on in the static locations only, never for the proxied API
+    and Keycloak responses, whose bodies can hold tokens. Models (`.glb`), images and fonts are not recompressed. Read on
+    the `TwinStage` chunk: 351,213 bytes sent against the 352,521 `chunk-budget.ts` prints. Compressing on the fly
+    instead was not taken: it costs nginx CPU on each first request and sends about 1 – 2 % more at level 6. Brotli
+    is out: the stock image has no module for it. CI's `images` job (and `scripts/ci-local.sh`) checks that the
+    console's JavaScript is sent gzipped only to a client that asks for it and that a model is not.
 - **Testing.**
   - Pure modules carry the logic and are unit-tested in Vitest: easing, bindings built from `extras`, the
     east-north-up projection, staleness, camera clamps.

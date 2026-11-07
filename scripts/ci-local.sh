@@ -263,6 +263,38 @@ images_models() {
   grep -q 'id="root"' "$body" || { fail "/campus/overview did not answer with the SPA page"; return 1; }
 }
 
+# Compression (V3-11.9, ADR-0020 § Serving): the same checks as ci.yml's step of that name.
+images_compression() {
+  local base=http://localhost:18080 body="$LOG_DIR/gzip-body" headers="$LOG_DIR/gzip-headers"
+  local js code model
+  get() { curl -s -o "$body" -D "$headers" -w '%{http_code}' "$@" || true; }
+  header() { grep -i "^$1:" "$headers" | tr -d '\r' | cut -d: -f2- | sed 's/^ *//' || true; }
+
+  js=$(curl -s "$base/" | grep -o '/assets/index-[^"]*\.js' | head -n 1 || true)
+  [ -n "$js" ] || { fail "index.html names no /assets/index-*.js"; return 1; }
+
+  code=$(get -H 'Accept-Encoding: gzip' "$base$js")
+  [ "$code" = 200 ] || { fail "$js returned $code, want 200"; return 1; }
+  [ "$(header content-encoding)" = gzip ] ||
+    { fail "$js with Accept-Encoding: gzip has Content-Encoding '$(header content-encoding)', want gzip"; return 1; }
+  case "$(header vary)" in *Accept-Encoding*) ;; *) fail "$js has Vary '$(header vary)', want Accept-Encoding"; return 1 ;; esac
+  case "$(header cache-control)" in *immutable*) ;; *) fail "$js has Cache-Control '$(header cache-control)', want immutable"; return 1 ;; esac
+  gzip -dc < "$body" > /dev/null || { fail "$js answered Content-Encoding: gzip with a body that is not gzip"; return 1; }
+
+  code=$(get "$base$js")
+  [ "$code" = 200 ] || { fail "$js without Accept-Encoding returned $code, want 200"; return 1; }
+  [ -z "$(header content-encoding)" ] ||
+    { fail "$js without Accept-Encoding has Content-Encoding '$(header content-encoding)', want none"; return 1; }
+
+  set -- ops/models/*.glb
+  [ -e "$1" ] || { fail "ops/models holds no .glb to request"; return 1; }
+  model=$(basename "$1")
+  code=$(get -H 'Accept-Encoding: gzip' "$base/models/$model")
+  [ "$code" = 200 ] || { fail "/models/$model returned $code, want 200"; return 1; }
+  [ -z "$(header content-encoding)" ] ||
+    { fail "/models/$model has Content-Encoding '$(header content-encoding)', want none"; return 1; }
+}
+
 images_liveness() {
   # Last: it stops the database. Each replica must stay live and report not ready (ADR-0013).
   dc stop postgres || return 1
@@ -282,6 +314,7 @@ images_job() {
   run_step "images: metrics stay off the edge" images_metrics
   run_step "images: nginx rate limit" images_rate_limit
   run_step "images: /models/ served immutably, nothing else" images_models
+  run_step "images: text compressed, models not" images_compression
   run_step "images: liveness survives a DB outage" images_liveness
 }
 
