@@ -542,11 +542,20 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
     ...faces('alarm'),
     ...faces('stale'),
     ['staleEdge', twinColors.staleEdge, '--tw-stale-edge'],
+    ['fog', twinColors.fog, '--tw-fog'],
     ...twinColors.heat.map((value, i): [string, string, string] => [
       `heat[${i}]`,
       value,
       `--heat-${i}`,
     ]),
+  ];
+  // Unitless numbers, compared as the CSS spells them: write `1`, not `1.0` (V3-12.2).
+  const twinNumbers: [copy: string, value: number, token: string][] = [
+    ['fogNear', twinColors.fogNear, '--tw-fog-near'],
+    ['fogFar', twinColors.fogFar, '--tw-fog-far'],
+    ['shadowStrength', twinColors.shadowStrength, '--tw-shadow-strength'],
+    ['aoBase', twinColors.aoBase, '--tw-ao-base'],
+    ['contactOpacity', twinColors.contactOpacity, '--tw-contact-opacity'],
   ];
   return [
     ...mapCopies.map(([copy, value, token]) => ({
@@ -574,6 +583,11 @@ function copiedTokens(): { copy: string; actual: string; expected: string }[] {
       actual: String(twinColors.xrayOpacity),
       expected: css.get('--tw-xray-opacity') ?? 'missing',
     },
+    ...twinNumbers.map(([copy, value, token]) => ({
+      copy: `\`twinColors.${copy}\` (src/styles/tokens.ts)`,
+      actual: String(value),
+      expected: css.get(token) ?? 'missing',
+    })),
     {
       copy: '`mapMotion.pulseMs` (src/styles/tokens.ts)',
       actual: `${mapMotion.pulseMs}ms`,
