@@ -121,6 +121,8 @@ their author, checked in CI, and served by nginx as immutable files.
     decal under each asset; ambient occlusion is baked into textures.
     - Amended in V3-11.7: one directional light casts a shadow in the High tier only; Standard and Low keep "no shadow
       maps". See "Amended in V3-11.7" at the end of the Decision.
+    - Settled in V3-12.1: the lights stay neutral in hue, and the rules for the shadow, the baked AO, the contact
+      decal, the fog and the vignette. See "Settled in V3-12.1" at the end of the Decision.
   - `frameloop="demand"`: the loop runs while a part moves, a value eases or the camera moves, and stops otherwise.
     Pixel ratio is at most 1.5, and 1.0 on a wall (UI-17).
   - Video wall (decided 2026-10-08): the wall shows the 3D view with a fixed camera and no controls (labels and
@@ -1843,6 +1845,112 @@ isolate: false })`: the second narrow command after `flyToIncident` ("Settled in
       console's text assets before V3-11.7 sets the number, so `BUDGET_BYTES` (the zlib level 9 size `chunk-budget.ts`
       prints) is also, within a few per cent, what a browser downloads. The alternative, a budget in transferred bytes,
       was not taken.
+  - Settled in V3-12.1 (2026-11-07), without changing the decision: how the scene is lit, what casts and receives the
+    shadow, how depth is baked, and what the fog and the vignette do. Every value is `unverified` until it is looked at
+    in a browser by the task that builds it; where a default of the task was replaced, the bullet says why.
+    - **The lights stay neutral in hue (the tech lead, 2026-11-07; replaces the default of a cool sky and ground
+      colour).** The hemisphere light keeps sky = ground and both lights stay white. The cool look comes from the
+      `--tw-*` tokens (already blue-grey), from the generated textures, whose colours are copies of the tokens
+      (V3-13.1), and from the fog. **Why:** the V2 rule says an untextured face lands within 6 of 255 per channel of
+      its token, and `scripts/contrast.ts` judges the hover, alarm, dim and heat colours on those token values. A tinted
+      light breaks that rule unless every albedo is divided by the tint, and then an untextured face looks exactly as
+      it does today, so a tint would change only the textured surfaces, which are drawn from the tokens anyway. With a
+      neutral light, what is on screen stays what the contrast check reads, and Calm view (frame 15) stays a colour
+      operation. The scene therefore has no light-colour tokens (`--tw-light-*`).
+    - **The key light's direction and the intensities are V2's.** The key still comes from the west-south-west, about
+      30° south of west and 49° above the ground (`TOWARDS_LIGHT` (−0.57, 0.75, 0.34)). From the south-east home view the
+      south and east walls stay lit, and the shadows fall to the east-north-east, at about 0.87 of a caster's height.
+      The base light stays 0.60 and the key 0.53, so a face looking up gets 1.00 of its colour, a south face 0.78 and an
+      east face 0.60. These figures are computed, not yet read from a render; the claim becomes a pure function with a
+      test (`faceTones`, V3-12.3).
+    - **The ground is lit.** The ground's fill layers (the boundary fill, the zone fills and the roads) move from unlit
+      basic materials to Lambert materials in every tier, so that they can receive the shadow. A face looking up gets
+      0.60 + 0.53 × 0.75 ≈ 1.00 of its colour, so a lit fill still reads as its token (within 1 of 255). Lines and
+      outlines stay unlit. V3-13.7's textured ground replaces the fills later and is lit the same way.
+    - **The shadow (High tier only).**
+      - **Light and filter:** the key light casts the shadow, with `shadows="percentage"` on the Canvas. three 0.186
+        removed `PCFSoftShadowMap` and falls back to PCF with a warning, so "PCF soft" is PCF: five taps on a rotated
+        disc at `shadow.radius` texels. The radius stays three's default, 1, as seen in V3-11.6's pre-run.
+      - **Map and fit:** the map is 2048² (the amendment's figure). The shadow camera is orthographic: a square around
+        the circle that holds the campus bounds, plus a 40 m margin, which covers the shadow of a building up to about
+        60 m tall (the demo's tallest is 24 m). It is fitted once per stage, never per frame, and the fit does not
+        change when the light rotates about its own axis. On the demo campus that is about 0.4 m of ground per texel.
+      - **Bias:** `bias` −0.0005 and `normalBias` 0.4 (one texel), V3-11.5's values. They showed no acne in the
+        pre-run; they are re-read at the home view and at a 60 m building fit.
+      - **Strength:** `shadow.intensity` is `--tw-shadow-strength`, **1.0**. The shadow removes only the key light,
+        and the hemisphere base still lights the shaded area. Shaded ground therefore reads 0.60 of its token, as an
+        east wall does: at most 40 % darker. A lower strength would make the shadow hard to see on the dark ground
+        tokens.
+      - **Casters:** the shells and the equipment (models and boxes). Trees do not cast (V3-11.5's decision D4; V3-13.1
+        may change that with a reading). Markers, beacons, labels, decals and the zone highlight neither cast nor
+        receive.
+      - **When the shells cast:** `castShadow` is per mesh, not per material group, and three's shadow pass draws
+        every visible group, a transparent one included, so a faded or see-through building would cast a black
+        block. The merged shell is not split (V2-19.5: splitting costs draw calls). Instead, the shell mesh casts only
+        while every building is drawn as it is: at campus level without the heat overlay. At building, asset and part
+        level every shell is faded or see-through, so only the equipment casts, onto the floor and the ground.
+        V3-15.8's dim is an opaque colour mix, not a fade, so a dimmed building still casts. This replaces V3-12.4's
+        "the dimmed groups do not cast".
+      - **Receivers:** the ground's fill layers and the shells. Equipment does not receive: at 0.4 m a texel is coarser
+        than its parts, and self-shadow on a model would read as blotches.
+      - **Redraws:** the frame-demand rules are unchanged. `shadowMap.autoUpdate` stays true and `needsUpdate` is not
+        used, so the map is rendered on every frame that is drawn, and on no other. The map depends neither on the
+        camera nor on the orbit, so rendering it only when a caster changes would save the shadow pass while the camera
+        moves. That is a rule of its own (stale shadows if a change is missed), and it is the first step if V3-18.7
+        finds the shadow too costly. It is not built now.
+      - **Off:** in Standard and Low, on the wall unless V3-18.1 lets the wall run High (Open question 13's default is
+        Standard), and **while the heat overlay is shown**. A shaded heat colour would read as a lower stop of the
+        ramp, and the overlay's colours are the reading.
+    - **Baked AO.**
+      - **Walls:** a float attribute `ao` per shell vertex, multiplied into the colour in the shells' shader through
+        one `onBeforeCompile` patch. The colour attribute stays the only thing `paintShell`, `paintHeat`, the hover
+        tint and V3-15.8's dim write, so none of them has to know about AO. The other option, baking AO into a second
+        colour set, would make every paint multiply it again. The patch is shared with V3-14.4's facades: one patch per
+        material with one cache key, not two that each assume they are alone.
+      - **Strength:** a wall's base is multiplied by `--tw-ao-base` **0.70**, rising linearly to 1.0 at its top. The
+        6-of-255 rule is therefore read at the top of a wall, where AO is 1.
+      - **Roofs: none.** The default "roofs lighten toward their centre" cannot be drawn by vertex: a roof is
+        triangulated from its outline and has no vertex inside it. V3-14.4's roof detail may bake it into the texture.
+      - **Off:** set to 1 through a uniform, with no recompile, while the heat overlay is shown (the ramp is the
+        reading) and in Low (V2's look). On in High and Standard, where it costs nothing measurable.
+    - **Contact decal.** A soft radial blob under each drawn asset, as ADR-0020 has always said, now actually drawn
+      (V3-12.5): one instanced quad, its texture generated in code, its colour `--surface-0`, and its opacity at the
+      centre `--tw-contact-opacity`, **0.5**. It is drawn in every tier, Low included (it was part of V2's decision),
+      and with the heat overlay (assets are not painted by the ramp). In High it stays beside the shadow, because a
+      0.4 m texel cannot draw the contact under a base.
+    - **Fog: depth fog, not height fog.**
+      - **Kind:** three's linear `Fog`, which fades by the distance from the camera. A true height fog needs a shader
+        patch on every lit material, the loaded models included, and the direction asks for depth, not for a layer of
+        mist. The brief's "height fog" is read as this.
+      - **Colour:** `--tw-fog` is the canvas background (`mapColors.ground`, a copy of `--surface-0`), so the far
+        ground melts into the page.
+      - **Range (replaces "from about 70 % of the far distance"):** that default would never show, because the lens's
+        `far` is 2,500 m and the farthest point of the campus is about 1,250 m away even at the 900 m limit. The fog
+        is measured from the camera's target instead: `near` = the distance to the target + `--tw-fog-near` × R, and
+        `far` = the distance to the target + `--tw-fog-far` × R. R is the campus bounds' half-diagonal (about 366 m on
+        the demo). The defaults are **0.5** and **3.0**, unitless. At the home view (taking a home distance of about
+        700 m) the far edge of the campus is then fogged by about 15 % (computed). Near and far are set on drawn frames only (a `useFrame` subscriber), and
+        nothing new asks for a frame.
+      - **Never fogged:** the camera markers, the beacons and the report pin are drawn by `Markers`,
+        whose shader material has `fog` false by default. The zone
+        highlight and anything else that marks a selection, a hover or a place is drawn with `fog: false`. Labels and
+        the callout are DOM. Alarm and stale looks are fogged like their surroundings, by at most the far edge's 15 %
+        at the home view.
+      - **Tiers (replaces "off in Standard"):** on in High and Standard, where it costs a few operations per fragment
+        and the brief's Standard drops only the pixel ratio, the shadow, tree density and the halos. Off in Low (V2's
+        look) and while the heat overlay is shown.
+    - **Vignette: CSS, the existing token.** `--vignette` (V3-02, unused until now) is the gradient, so the scene gets
+      no `--tw-vignette`. It is a pseudo-element over the canvas with `pointer-events: none`, below every control,
+      label, legend and sheet, with no animation. Its stops are percentages, so the wall needs no `--ui-scale` and
+      keeps it. It is 3D-only (the 2D map's look is V3-10's). It is off in Low and while the heat overlay is shown,
+      because the gradient darkens the ramp's colours at the edge by up to 60 %.
+    - **The heat overlay** turns off the shadow, the AO, the fog and the vignette. The ramp is read on a lit,
+      unshadowed and unfogged face, as in V2. The contact decal stays.
+    - **The spotlight (V3 tasks, Open question 9): the default is kept.** At campus level, other zones are dimmed
+      (`--tw-spotlight-dim`, V3-15.1's figure). At building, asset and part level, V2's ghost rules win and the
+      spotlight is a ring and a label only. For the lighting this means the dim is an opaque colour mix: AO and the
+      shadow apply over it, and the dim never affects which buildings cast.
+    - **Bloom stays out** ("What is not adopted" above). Nothing in the lighting needs it.
 
 ## Consequences
 
